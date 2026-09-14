@@ -1,0 +1,65 @@
+---
+description: DealAtlas global engineering and product safeguards
+alwaysApply: true
+---
+
+# DealAtlas Agent Rules
+
+Before making changes, inspect the current implementation and adapt to what already exists. Do not assume the repository is in the state described by the master specification.
+
+Read relevant `/docs` files before implementing a feature.
+
+## Product priority
+The anti-bypass rule is non-negotiable:
+- free/anonymous clients must not receive buyer identity, source identity, exact source title, source URL, notice/reference identifiers, original documents, procurement contacts, or combinations of exact facts that make reverse lookup trivial;
+- do not hide protected data with CSS or client rendering;
+- protected data must not be sent to the client before paid entitlement is verified server-side.
+
+## Database/security
+- Do not disable RLS to fix a bug.
+- Do not broaden anon/authenticated grants casually.
+- Do not expose Supabase secret/service keys.
+- Do not use client-side plan/role values as authorization.
+- Canonical source-bearing tables remain server-only.
+- Public/free search must use `deal_previews` only.
+- Subscriber detail routes must verify auth + entitlement before trusted query.
+- Admin mutations must verify admin role server-side.
+- Migrations are append-only after they have been applied to production.
+
+## Billing
+- Dodo checkout redirect is not proof of entitlement.
+- Only verified webhook/provider reconciliation grants Pro.
+- Webhook handling must be idempotent.
+- Product IDs are allowlisted server-side and loaded from environment.
+- Never trust a product ID/plan/user ID supplied by browser without validation.
+
+## Ingestion
+- Prefer official APIs/open data.
+- Do not bypass CAPTCHAs, logins, access controls or anti-bot restrictions.
+- Do not automate a source with UNKNOWN or PROHIBITED reuse status.
+- Preserve raw provenance and source versions.
+- Source adapters must fail independently.
+- Never silently discard malformed records.
+
+## Quality
+For every goal:
+1. inspect existing code;
+2. make the smallest coherent changes that satisfy the specification;
+3. reuse existing patterns/components;
+4. avoid duplicate architectures;
+5. validate input;
+6. add/update tests;
+7. run lint, typecheck/build and relevant tests;
+8. fix failures caused by the work;
+9. inspect final diff for unrelated changes;
+10. update docs when architecture/behaviour changed.
+
+Never claim completion while known critical/blocking tests fail.
+
+## UI
+Follow `/docs/DESIGN.md`.
+Do not blur protected source text that has already been sent to the browser.
+Do not invent statistics, live opportunity counts or customer claims.
+
+## Scope
+Do not add CRM, bid-writing AI, team workspaces, public API, mobile apps or unrelated enterprise features before the launch requirements in `/docs/PRODUCT.md` are complete.
