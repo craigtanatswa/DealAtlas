@@ -1,8 +1,9 @@
 -- DealAtlas migration 0001
 -- Extensions, private schema and enums.
 
-create extension if not exists pgcrypto;
-create extension if not exists pg_trgm;
+create schema if not exists extensions;
+create extension if not exists pgcrypto with schema extensions;
+create extension if not exists pg_trgm with schema extensions;
 
 create schema if not exists private;
 revoke all on schema private from public;

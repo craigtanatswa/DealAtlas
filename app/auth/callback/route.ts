@@ -1,0 +1,73 @@
+import { cookies } from "next/headers";
+import { NextResponse, type NextRequest } from "next/server";
+
+import {
+  LOGIN_PATH,
+  RESET_PASSWORD_PATH,
+  defaultPathForAuthType,
+  sanitizeRedirectPath,
+} from "@/lib/auth/redirect";
+import { parseEmailOtpType } from "@/lib/auth/otp";
+import { PASSWORD_RESET_COOKIE } from "@/lib/auth/cookies";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+
+function errorRedirect(request: NextRequest, code: string) {
+  const url = request.nextUrl.clone();
+  url.pathname = LOGIN_PATH;
+  url.search = `?error=${encodeURIComponent(code)}`;
+  return NextResponse.redirect(url);
+}
+
+function safeNext(request: NextRequest, fallback: string) {
+  return sanitizeRedirectPath(request.nextUrl.searchParams.get("next"), fallback);
+}
+
+export async function GET(request: NextRequest) {
+  const code = request.nextUrl.searchParams.get("code");
+  const tokenHash = request.nextUrl.searchParams.get("token_hash");
+  const type = parseEmailOtpType(request.nextUrl.searchParams.get("type"));
+  const cookieStore = await cookies();
+  const pendingReset = cookieStore.get(PASSWORD_RESET_COOKIE);
+  if (pendingReset) {
+    cookieStore.delete(PASSWORD_RESET_COOKIE);
+  }
+
+  const fallback = pendingReset
+    ? RESET_PASSWORD_PATH
+    : defaultPathForAuthType(type);
+  const next = safeNext(request, fallback);
+
+  if (request.nextUrl.searchParams.get("error")) {
+    return errorRedirect(
+      request,
+      type === "recovery" ? "reset_failed" : "auth_callback_failed",
+    );
+  }
+
+  if (!code && !(tokenHash && type)) {
+    return errorRedirect(request, "invalid_link");
+  }
+
+  const supabase = await createSupabaseServerClient();
+
+  if (code) {
+    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    if (error) {
+      return errorRedirect(request, "auth_callback_failed");
+    }
+  } else if (tokenHash && type) {
+    const { error } = await supabase.auth.verifyOtp({
+      type,
+      token_hash: tokenHash,
+    });
+    if (error) {
+      return errorRedirect(
+        request,
+        type === "recovery" ? "reset_failed" : "verification_failed",
+      );
+    }
+  }
+
+  const url = new URL(next, request.url);
+  return NextResponse.redirect(url);
+}

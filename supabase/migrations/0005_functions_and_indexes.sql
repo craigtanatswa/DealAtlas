@@ -266,7 +266,10 @@ returns public.leakage_risk
 language plpgsql
 stable
 security definer
-set search_path = ''
+-- pg_trgm may live in public (local) or extensions (hosted). Keep both on the
+-- path so similarity() and related operators resolve without weakening
+-- schema-qualified table access.
+set search_path = pg_catalog, public, extensions
 as $$
 declare
   d public.deals%rowtype;
@@ -404,7 +407,7 @@ returns table (
 language sql
 stable
 security invoker
-set search_path = public
+set search_path = public, extensions, pg_catalog
 as $$
   select
     dp.deal_id,
@@ -455,7 +458,7 @@ as $$
 $$;
 
 grant execute on function public.search_deal_previews(text, text, public.buyer_sector, public.deal_type, text, public.deal_status, integer, integer)
-  to anon, authenticated;
+  to anon, authenticated, service_role;
 
 -- -----------------------------------------------------------------------------
 -- Updated-at triggers
@@ -481,75 +484,75 @@ end $$;
 -- -----------------------------------------------------------------------------
 -- Indexes: sources/ingestion
 -- -----------------------------------------------------------------------------
-create index data_sources_enabled_idx on public.data_sources(enabled);
-create index ingestion_runs_source_created_idx on public.ingestion_runs(source_id, created_at desc);
-create index raw_records_source_external_idx on public.raw_records(source_id, external_record_id);
-create index raw_records_fetched_idx on public.raw_records(fetched_at desc);
-create index ingestion_errors_run_idx on public.ingestion_errors(ingestion_run_id);
+create index if not exists data_sources_enabled_idx on public.data_sources(enabled);
+create index if not exists ingestion_runs_source_created_idx on public.ingestion_runs(source_id, created_at desc);
+create index if not exists raw_records_source_external_idx on public.raw_records(source_id, external_record_id);
+create index if not exists raw_records_fetched_idx on public.raw_records(fetched_at desc);
+create index if not exists ingestion_errors_run_idx on public.ingestion_errors(ingestion_run_id);
 
 -- Organizations
-create index organizations_normalized_name_idx on public.organizations(normalized_name);
-create index organizations_normalized_name_trgm_idx on public.organizations using gin (normalized_name gin_trgm_ops);
-create index organizations_domain_idx on public.organizations(domain);
-create index organization_aliases_normalized_idx on public.organization_aliases(normalized_alias);
-create index organization_aliases_org_idx on public.organization_aliases(organization_id);
-create index organization_contacts_org_idx on public.organization_contacts(organization_id);
+create index if not exists organizations_normalized_name_idx on public.organizations(normalized_name);
+create index if not exists organizations_normalized_name_trgm_idx on public.organizations using gin (normalized_name extensions.gin_trgm_ops);
+create index if not exists organizations_domain_idx on public.organizations(domain);
+create index if not exists organization_aliases_normalized_idx on public.organization_aliases(normalized_alias);
+create index if not exists organization_aliases_org_idx on public.organization_aliases(organization_id);
+create index if not exists organization_contacts_org_idx on public.organization_contacts(organization_id);
 
 -- Deals/previews
-create index deals_primary_source_idx on public.deals(primary_source_id);
-create index deals_buyer_idx on public.deals(buyer_organization_id);
-create index deals_status_idx on public.deals(status);
-create index deals_stage_idx on public.deals(stage);
-create index deals_type_idx on public.deals(deal_type);
-create index deals_submission_deadline_idx on public.deals(submission_deadline);
-create index deals_estimated_renewal_idx on public.deals(estimated_renewal_date);
-create index deals_updated_idx on public.deals(updated_at desc);
-create index deals_ocid_idx on public.deals(ocid) where ocid is not null;
+create index if not exists deals_primary_source_idx on public.deals(primary_source_id);
+create index if not exists deals_buyer_idx on public.deals(buyer_organization_id);
+create index if not exists deals_status_idx on public.deals(status);
+create index if not exists deals_stage_idx on public.deals(stage);
+create index if not exists deals_type_idx on public.deals(deal_type);
+create index if not exists deals_submission_deadline_idx on public.deals(submission_deadline);
+create index if not exists deals_estimated_renewal_idx on public.deals(estimated_renewal_date);
+create index if not exists deals_updated_idx on public.deals(updated_at desc);
+create index if not exists deals_ocid_idx on public.deals(ocid) where ocid is not null;
 
-create index deal_previews_publish_idx on public.deal_previews(is_published, leakage_risk, updated_at desc);
-create index deal_previews_status_idx on public.deal_previews(status);
-create index deal_previews_type_idx on public.deal_previews(deal_type);
-create index deal_previews_sector_idx on public.deal_previews(buyer_sector);
-create index deal_previews_category_idx on public.deal_previews(main_category);
-create index deal_previews_region_idx on public.deal_previews(broad_region);
-create index deal_previews_title_trgm_idx on public.deal_previews using gin (preview_title gin_trgm_ops);
-create index deal_previews_fts_idx on public.deal_previews using gin (
+create index if not exists deal_previews_publish_idx on public.deal_previews(is_published, leakage_risk, updated_at desc);
+create index if not exists deal_previews_status_idx on public.deal_previews(status);
+create index if not exists deal_previews_type_idx on public.deal_previews(deal_type);
+create index if not exists deal_previews_sector_idx on public.deal_previews(buyer_sector);
+create index if not exists deal_previews_category_idx on public.deal_previews(main_category);
+create index if not exists deal_previews_region_idx on public.deal_previews(broad_region);
+create index if not exists deal_previews_title_trgm_idx on public.deal_previews using gin (preview_title extensions.gin_trgm_ops);
+create index if not exists deal_previews_fts_idx on public.deal_previews using gin (
   to_tsvector('english', coalesce(preview_title, '') || ' ' || coalesce(preview_summary, '') || ' ' || coalesce(main_category, ''))
 );
 
 -- Related procurement entities
-create index notices_deal_idx on public.notices(deal_id);
-create index notices_source_idx on public.notices(source_id);
-create index lots_deal_idx on public.lots(deal_id);
-create index deal_locations_deal_idx on public.deal_locations(deal_id);
-create unique index deal_locations_no_lot_unique_idx on public.deal_locations(deal_id, location_id) where lot_id is null;
-create unique index deal_locations_with_lot_unique_idx on public.deal_locations(deal_id, location_id, lot_id) where lot_id is not null;
-create index deal_classifications_deal_idx on public.deal_classifications(deal_id);
-create index deal_classifications_cpv_idx on public.deal_classifications(cpv_code);
-create index deal_organizations_org_idx on public.deal_organizations(organization_id);
-create unique index deal_organizations_no_lot_unique_idx on public.deal_organizations(deal_id, organization_id, role) where lot_id is null;
-create unique index deal_organizations_with_lot_unique_idx on public.deal_organizations(deal_id, organization_id, role, lot_id) where lot_id is not null;
-create unique index commercial_tool_members_no_lot_unique_idx on public.commercial_tool_members(commercial_tool_id, organization_id, role) where lot_id is null;
-create unique index commercial_tool_members_with_lot_unique_idx on public.commercial_tool_members(commercial_tool_id, organization_id, role, lot_id) where lot_id is not null;
-create index requirements_deal_idx on public.requirements(deal_id);
-create index award_criteria_deal_idx on public.award_criteria(deal_id);
-create index documents_deal_idx on public.documents(deal_id);
-create index awards_deal_idx on public.awards(deal_id);
-create index award_suppliers_org_idx on public.award_suppliers(organization_id);
-create index contracts_deal_idx on public.contracts(deal_id);
-create index contracts_end_date_idx on public.contracts(end_date);
-create index contract_payments_contract_idx on public.contract_payments(contract_id);
-create index contract_performance_contract_idx on public.contract_performance(contract_id);
-create index data_changes_deal_time_idx on public.data_changes(deal_id, occurred_at desc);
+create index if not exists notices_deal_idx on public.notices(deal_id);
+create index if not exists notices_source_idx on public.notices(source_id);
+create index if not exists lots_deal_idx on public.lots(deal_id);
+create index if not exists deal_locations_deal_idx on public.deal_locations(deal_id);
+create unique index if not exists deal_locations_no_lot_unique_idx on public.deal_locations(deal_id, location_id) where lot_id is null;
+create unique index if not exists deal_locations_with_lot_unique_idx on public.deal_locations(deal_id, location_id, lot_id) where lot_id is not null;
+create index if not exists deal_classifications_deal_idx on public.deal_classifications(deal_id);
+create index if not exists deal_classifications_cpv_idx on public.deal_classifications(cpv_code);
+create index if not exists deal_organizations_org_idx on public.deal_organizations(organization_id);
+create unique index if not exists deal_organizations_no_lot_unique_idx on public.deal_organizations(deal_id, organization_id, role) where lot_id is null;
+create unique index if not exists deal_organizations_with_lot_unique_idx on public.deal_organizations(deal_id, organization_id, role, lot_id) where lot_id is not null;
+create unique index if not exists commercial_tool_members_no_lot_unique_idx on public.commercial_tool_members(commercial_tool_id, organization_id, role) where lot_id is null;
+create unique index if not exists commercial_tool_members_with_lot_unique_idx on public.commercial_tool_members(commercial_tool_id, organization_id, role, lot_id) where lot_id is not null;
+create index if not exists requirements_deal_idx on public.requirements(deal_id);
+create index if not exists award_criteria_deal_idx on public.award_criteria(deal_id);
+create index if not exists documents_deal_idx on public.documents(deal_id);
+create index if not exists awards_deal_idx on public.awards(deal_id);
+create index if not exists award_suppliers_org_idx on public.award_suppliers(organization_id);
+create index if not exists contracts_deal_idx on public.contracts(deal_id);
+create index if not exists contracts_end_date_idx on public.contracts(end_date);
+create index if not exists contract_payments_contract_idx on public.contract_payments(contract_id);
+create index if not exists contract_performance_contract_idx on public.contract_performance(contract_id);
+create index if not exists data_changes_deal_time_idx on public.data_changes(deal_id, occurred_at desc);
 
 -- User/RLS-performance indexes
-create index company_profiles_user_idx on public.company_profiles(user_id);
-create index subscriptions_user_idx on public.subscriptions(user_id);
-create index subscriptions_user_status_idx on public.subscriptions(user_id, is_current, status, current_period_end);
-create index deal_matches_profile_idx on public.deal_matches(company_profile_id);
-create index deal_matches_deal_idx on public.deal_matches(deal_id);
-create index saved_deals_user_idx on public.saved_deals(user_id);
-create index saved_searches_user_idx on public.saved_searches(user_id);
-create index watched_organizations_user_idx on public.watched_organizations(user_id);
-create index alerts_user_created_idx on public.alerts(user_id, created_at desc);
-create index export_usage_user_month_idx on public.export_usage(user_id, billing_month);
+create index if not exists company_profiles_user_idx on public.company_profiles(user_id);
+create index if not exists subscriptions_user_idx on public.subscriptions(user_id);
+create index if not exists subscriptions_user_status_idx on public.subscriptions(user_id, is_current, status, current_period_end);
+create index if not exists deal_matches_profile_idx on public.deal_matches(company_profile_id);
+create index if not exists deal_matches_deal_idx on public.deal_matches(deal_id);
+create index if not exists saved_deals_user_idx on public.saved_deals(user_id);
+create index if not exists saved_searches_user_idx on public.saved_searches(user_id);
+create index if not exists watched_organizations_user_idx on public.watched_organizations(user_id);
+create index if not exists alerts_user_created_idx on public.alerts(user_id, created_at desc);
+create index if not exists export_usage_user_month_idx on public.export_usage(user_id, billing_month);

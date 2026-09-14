@@ -15,6 +15,8 @@ The browser must never have direct access to source-bearing canonical procuremen
 - `deal_previews` (published sanitised rows only)
 - user-owned tables only through RLS policies appropriate to the user
 
+`subscriptions`, `billing_events` and `export_usage` have no anon/authenticated grants. Ordinary clients must not read billing state directly; trusted server code reads the subscription mirror after authentication.
+
 ### Never directly readable by ordinary client roles
 - `deals`
 - `notices`
@@ -335,7 +337,30 @@ Included in the build pack:
 - `0005_functions_and_indexes.sql`
 - `0006_seed_reference_data.sql`
 
-Apply in numeric order.
+Apply in numeric order with the Supabase CLI (`npx supabase db reset` locally, or `npx supabase db push` to a linked project). Never reset or drop a linked production database.
+
+`supabase/dealatlas_full_schema.sql` is a generated concatenation of those files for SQL Editor use on a fresh project. Regenerate it with `npm run db:bundle` after changing a migration. Do not run the combined file after individual migrations have already been applied.
+
+### TypeScript types
+Generate application types from the applied local schema:
+
+```bash
+npx supabase start
+npm run db:types
+```
+
+This writes `lib/db/database.types.ts`. Do not edit that file by hand.
+
+### Query modules
+- Public/free: `lib/db/previews.ts` — `deal_previews` and `search_deal_previews` only, with an explicit column list (never `select('*')`).
+- Browser and cookie-based SSR clients are typed with the granted public surface only (`lib/db/public-schema.ts`).
+- Protected canonical tables: `lib/db/canonical.ts` is `server-only` and uses the privileged admin client after an explicit Pro/admin access argument.
+
+### Database tests
+```bash
+npm run db:test      # pgTAP via supabase test db
+npm run test:db      # pgTAP plus PostgREST RLS smoke tests against local Supabase
+```
 
 ## 10. Destructive change rule
 Never edit an already-applied production migration. Add a new migration.
@@ -370,7 +395,7 @@ Must test:
 - anon cannot insert/update/delete previews
 - authenticated normal user cannot read canonical tables
 - user can manage only own saved deals/searches/company profile
-- user can read only own subscription mirror
+- subscription, billing event and export usage rows are not directly readable or writable by ordinary client roles; entitlement is read by trusted server code
 - user cannot write subscription state
 - user cannot promote own role
 - user cannot exceed direct table permissions to reveal source

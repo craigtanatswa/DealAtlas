@@ -105,7 +105,11 @@ After applying, verify in Table Editor that the tables exist. Do not manually lo
 ## Phase G — Configure Supabase Auth
 In Supabase:
 1. Configure Site URL for local development: `http://localhost:3000`.
-2. Add redirect URLs for local auth flows.
+2. Add redirect URLs for local auth flows:
+   - `http://localhost:3000/auth/callback`
+   - `http://localhost:3000/auth/callback?next=/app`
+   - `http://localhost:3000/auth/callback?next=/reset-password`
+   - `http://localhost:3000/auth/confirm`
 3. Later add the Vercel production domain.
 4. Enable email/password sign-up.
 5. Require email verification for production.

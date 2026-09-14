@@ -1,6 +1,15 @@
 -- DealAtlas migration 0004
 -- RLS, table grants and client security boundary.
 
+-- Future tables created by this migration role must not inherit client grants.
+-- service_role keeps full access for trusted server/admin/worker paths and bypasses RLS.
+alter default privileges in schema public revoke all on tables from anon, authenticated;
+alter default privileges in schema public revoke all on sequences from anon, authenticated;
+alter default privileges in schema public revoke all on functions from anon, authenticated;
+alter default privileges in schema public grant all on tables to service_role;
+alter default privileges in schema public grant all on sequences to service_role;
+alter default privileges in schema public grant all on functions to service_role;
+
 -- Enable RLS on every public table created so far.
 do $$
 declare
@@ -20,6 +29,7 @@ begin
     execute format('alter table public.%I enable row level security', t);
     execute format('revoke all on table public.%I from anon', t);
     execute format('revoke all on table public.%I from authenticated', t);
+    execute format('grant all on table public.%I to service_role', t);
   end loop;
 end $$;
 

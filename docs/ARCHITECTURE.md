@@ -332,3 +332,58 @@ GitHub Actions ingestion uses repository/environment secrets with least privileg
 - preview payload contains no buyer/source identifiers
 - source marked UNKNOWN cannot run automatically
 - duplicate webhook does not create duplicate subscription transition
+
+## 21. Foundation implementation notes
+The application foundation was added to this repository on top of the specification pack. The following are intentional current-state notes, not changes to the two-surface security model.
+
+### Aligned with this document
+- Next.js 16 App Router, TypeScript strict mode, Tailwind, shadcn/ui, Supabase SSR helpers, Zod, Vercel-compatible Next.js runtime.
+- Route groups: `(marketing)`, `(auth)`, `(app)`, `(admin)`, plus `/api`.
+- Public marketing routes include `/`, `/deals`, `/deals/[slug]`, `/pricing`, `/how-it-works`.
+- Authenticated placeholders live under `/app/...` as specified.
+- `lib/` contains `auth`, `billing`, `db`, `entitlements`, `search`, `redaction`, `email`, `monitoring`, and `validation`.
+- Privileged Supabase access is isolated in `lib/supabase/admin.ts` with `import "server-only"`. Browser and cookie-based SSR clients use the publishable key only.
+- Environment validation splits `NEXT_PUBLIC_*` (`lib/env/public.ts`) from server secrets (`lib/env/server.ts`).
+- Feature limits live in `lib/constants.ts` and must be enforced server-side when those features are implemented.
+
+### Additive alignments with PRODUCT.md
+These public/admin routes are specified in `docs/PRODUCT.md` and were added even though they are not listed in the layout snippet above:
+- `/privacy`, `/terms`, `/cookies`, `/contact`
+- `/admin/deals`, `/admin/sources`, `/admin/ingestion`, `/admin/organisations`, `/admin/deduplication`, `/admin/data-quality`, `/admin/billing-events`
+
+### Deferred on purpose
+Business features are not implemented in the foundation. Placeholder pages prove the route tree only.
+
+### Database integration
+Committed migrations in `supabase/migrations` remain the schema source of truth. Local `supabase/config.toml` is configured so new public tables are not auto-exposed to `anon`/`authenticated`. Database TypeScript types are generated with `npm run db:types` into `lib/db/database.types.ts`.
+
+Public/free query helpers in `lib/db/previews.ts` may touch `deal_previews` only. Canonical source-bearing query helpers in `lib/db/canonical.ts` are `server-only` and use `lib/supabase/admin.ts`. Browser and SSR clients are typed with the granted public table surface, not the canonical tables.
+
+pgTAP tests live in `supabase/tests/database`. PostgREST RLS smoke tests live in `tests/integration/rls.rest.test.ts` and require a running local stack (`npm run test:db`). Auth integration tests live in `tests/integration/auth.rest.test.ts`.
+
+### Authentication
+Launch authentication is email/password with Supabase SSR helpers.
+
+- `proxy.ts` refreshes the Auth session on each matched request and redirects unauthenticated users away from `/app` and `/admin`.
+- `lib/auth/session.ts` loads the user with `getUser()` and authorizes from `profiles.role` only. Client metadata is not trusted.
+- Admin routes call `requireAdmin()` in `app/(admin)/admin/layout.tsx` and return 403 via `forbidden()` for signed-in non-admins.
+- Profile rows are created by `private.handle_new_user()`. If a row is missing, `lib/auth/profile.ts` inserts a USER row with the admin client and never copies a role from metadata.
+- Auth callbacks at `/auth/callback` and `/auth/confirm` exchange a code or `token_hash` and sanitize `next` to same-origin relative paths.
+
+Deferred until later goals:
+- Deal search, preview querying, and protected deal reveal
+- Dodo checkout, portal, and webhook routes
+- Ingestion scripts (`scripts/ingest.ts`, `scripts/rebuild-previews.ts`, `scripts/send-alerts.ts`)
+- `/api/deals/[id]`, `/api/search`, `/api/exports`, `/api/billing/*`, `/api/webhooks/dodo`
+- `/checkout/success` (referenced by `DODO_PAYMENTS_RETURN_URL`)
+
+`/api/health` is an extra operational endpoint for the web runtime.
+
+### Stack details
+- Tailwind CSS v4 ships with the Next.js 16 scaffold (no `tailwind.config.ts`).
+- shadcn/ui uses the current radix-nova preset, including the `cn` and `radix-ui` packages.
+- The npm package name is `dealatlas` because npm does not allow capital letters. The product name remains DealAtlas.
+- Current `@supabase/supabase-js` declares `engines.node >= 22`. Local Node 20 can install with an engine warning; production should use Vercel Node 22.
+- Dodo, Resend, Cheerio, and `p-limit` are installed for later goals and are unused by the foundation runtime.
+- Display pricing copy in `lib/constants.ts` is not a billing entitlement. Dodo product IDs remain environment-only.
+- Geist is the Next.js/shadcn default sans-serif. Inter (suggested in `docs/DESIGN.md`) can replace it in the design-system goal without changing architecture.

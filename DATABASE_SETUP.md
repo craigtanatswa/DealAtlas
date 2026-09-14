@@ -24,6 +24,14 @@ Copy the entire file into Supabase SQL Editor and run it on a fresh DealAtlas pr
 
 Do not run the combined file after individual migrations have already been applied.
 
+After a successful local apply:
+
+```bash
+npx supabase start
+npm run db:types
+npm run test:db
+```
+
 ## What the SQL creates
 - 46 application tables
 - source/ingestion registry
