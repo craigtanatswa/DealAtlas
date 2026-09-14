@@ -72,6 +72,8 @@ Prioritise:
 
 The system must support adding sources through configuration plus an adapter.
 
+Current onboarding (14 September 2026) is recorded in `docs/SOURCE_COMPLIANCE_REPORT.md`. The reusable framework lives at `ingestion/sources/private` (`createPrivateSourceAdapter` plus JSON/CSV/HTML extractors). Production automation is enabled only for sources with clear OPEN_LICENSE / PERMISSION_GRANTED / LICENSED / TERMS_REVIEWED evidence. The first enabled private/infrastructure channel is the official UK Infrastructure Pipeline (NISTA/GOV.UK) via its public JSON layout payload. UNKNOWN and PROHIBITED rows are stored on `data_sources` but blocked by the database trigger and `canIngestSource`.
+
 ## 7. Adapter interface
 Every adapter should implement a source-neutral contract conceptually similar to:
 ```ts

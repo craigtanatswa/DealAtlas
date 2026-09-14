@@ -73,4 +73,25 @@ describe("ingestion compliance gate", () => {
       canIngestSource(findATenderSourceRecord({ enabled: false })).allowed,
     ).toBe(false);
   });
+
+  it("blocks PDF discovery sources until scraping is permitted", () => {
+    const decision = canIngestSource(
+      findATenderSourceRecord({
+        sourceKey: "national-highways-contracts-pipeline",
+        enabled: true,
+        reuseStatus: "OPEN_LICENSE",
+        accessMethod: "PDF_LINK_DISCOVERY",
+        scrapingPermitted: false,
+        licenceName: "Open Government Licence v3.0",
+        licenceUrl:
+          "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
+      }),
+    );
+    expect(decision).toEqual({
+      allowed: false,
+      reason:
+        "Source national-highways-contracts-pipeline uses PDF_LINK_DISCOVERY but scraping_permitted is false.",
+      code: "SCRAPING_NOT_PERMITTED",
+    });
+  });
 });

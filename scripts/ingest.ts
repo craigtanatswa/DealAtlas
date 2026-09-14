@@ -4,13 +4,7 @@ loadEnvFiles();
 
 async function main() {
   const { runIngestion } = await import("@/ingestion/core/pipeline");
-  const { createFindATenderAdapter } = await import(
-    "@/ingestion/sources/find-a-tender/adapter"
-  );
-  const {
-    FIND_A_TENDER_RELEASE_API,
-    FIND_A_TENDER_SOURCE_KEY,
-  } = await import("@/ingestion/sources/find-a-tender/constants");
+  const { getSourceAdapter } = await import("@/ingestion/sources/registry");
   const { createSupabaseIngestionStore } = await import(
     "@/ingestion/store/supabase"
   );
@@ -21,14 +15,8 @@ async function main() {
   const args = parseArgs(process.argv.slice(2));
   if (!args.source) {
     console.error(
-      "Usage: npm run ingest -- --source find-a-tender [--limit 5] [--smoke]",
+      "Usage: npm run ingest -- --source <source-key> [--limit 5] [--smoke]",
     );
-    process.exitCode = 1;
-    return;
-  }
-
-  if (args.source !== FIND_A_TENDER_SOURCE_KEY) {
-    console.error(`No production adapter registered for source ${args.source}`);
     process.exitCode = 1;
     return;
   }
@@ -36,17 +24,12 @@ async function main() {
   const smoke = Boolean(args.smoke);
   const limit = args.limit ?? (smoke ? 3 : 20);
   const store = createSupabaseIngestionStore(createIngestionSupabaseClient());
-  const source = await store.getSourceByKey(args.source);
-  if (source && !source.apiUrl) {
-    await store.updateSource(source.id, { apiUrl: FIND_A_TENDER_RELEASE_API });
-  }
+  const adapter = getSourceAdapter(args.source);
 
   const result = await runIngestion({
     sourceKey: args.source,
     store,
-    adapter: createFindATenderAdapter({
-      defaultLookbackHours: smoke ? 6 : 24,
-    }),
+    adapter,
     triggerType: smoke ? "SMOKE" : "MANUAL",
     limit,
     cursor: args.cursor,

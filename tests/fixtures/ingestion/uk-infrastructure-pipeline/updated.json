@@ -1,0 +1,16 @@
+{
+  "project_id": "aaaaaaaa-1111-4222-8333-bbbbbbbbbbbb",
+  "project_name": "North Suffolk Reservoir",
+  "sector": "Water and Wastewater",
+  "sub_sector": "Water",
+  "procurement_stage": "Not procured",
+  "scheme_status": "In procurement",
+  "is_this_project_programme_drawing_on_public_or_private_funds": "Private",
+  "procurement_investment_framework": "Direct procurement for customers",
+  "key_client": "Northumbrian Water",
+  "total_capital_costs_real": 810000000,
+  "start_of_works_construction_projected": "2032-06-30",
+  "date_in_service_projected": "2041-03-31",
+  "ONS Region": "East of England",
+  "project_summary": "Updated capital cost and construction window for the reservoir programme."
+}

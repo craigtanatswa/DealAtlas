@@ -13,6 +13,22 @@ export function readFindATenderFixture(name: string): unknown {
   return JSON.parse(fs.readFileSync(filePath, "utf8")) as unknown;
 }
 
+export function readUkInfrastructureFixture(name: string): unknown {
+  const filePath = path.join(
+    process.cwd(),
+    "tests/fixtures/ingestion/uk-infrastructure-pipeline",
+    name,
+  );
+  return JSON.parse(fs.readFileSync(filePath, "utf8")) as unknown;
+}
+
+export function readPrivateFrameworkFixture(name: string): string {
+  return fs.readFileSync(
+    path.join(process.cwd(), "tests/fixtures/ingestion/private-framework", name),
+    "utf8",
+  );
+}
+
 export function packageFromFixtures(names: string[]): unknown {
   const releases = names.flatMap((name) => {
     const payload = readFindATenderFixture(name) as {

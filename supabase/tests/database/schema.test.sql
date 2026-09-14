@@ -74,6 +74,62 @@ select throws_ok(
   'UNKNOWN sources cannot be enabled'
 );
 
+select ok(
+  (select enabled from public.data_sources where source_key = 'uk-infrastructure-pipeline'),
+  'UK Infrastructure Pipeline is seeded and enabled'
+);
+
+select is(
+  (select reuse_status::text from public.data_sources where source_key = 'uk-infrastructure-pipeline'),
+  'OPEN_LICENSE',
+  'UK Infrastructure Pipeline is OPEN_LICENSE'
+);
+
+select is(
+  (
+    select reuse_status::text from public.data_sources
+    where source_key = 'nicp-govuk-2023' and enabled = false
+  ),
+  'OPEN_LICENSE',
+  'NICP 2023 is represented as OPEN_LICENSE and not enabled'
+);
+
+select is(
+  (
+    select reuse_status::text from public.data_sources
+    where source_key = 'national-highways-contracts-pipeline' and enabled = false
+  ),
+  'OPEN_LICENSE',
+  'National Highways contracts pipeline is represented as OPEN_LICENSE and not enabled'
+);
+
+select throws_ok(
+  $$ update public.data_sources set enabled = true where source_key = 'national-highways-contracts-pipeline' $$,
+  'P0001',
+  'HTML/PDF discovery source cannot be enabled until scraping_permitted=true',
+  'PDF pipeline sources cannot be enabled without scraping permission'
+);
+
+select is(
+  (select reuse_status::text from public.data_sources where source_key = 'competefor'),
+  'PROHIBITED',
+  'CompeteFor is marked PROHIBITED'
+);
+
+select throws_ok(
+  $$ update public.data_sources set enabled = true where source_key = 'competefor' $$,
+  'P0001',
+  'source cannot be enabled with reuse status PROHIBITED',
+  'PROHIBITED sources cannot be enabled'
+);
+
+select throws_ok(
+  $$ update public.data_sources set enabled = true where source_key = 'hs2-direct-contract-opportunities' $$,
+  'P0001',
+  'source cannot be enabled with reuse status UNKNOWN',
+  'HS2 HTML source remains blocked while UNKNOWN'
+);
+
 select isnt_empty(
   $$ select slug from public.categories where slug = 'technology' $$,
   'reference categories are seeded'

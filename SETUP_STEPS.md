@@ -218,7 +218,7 @@ For each private source:
 9. inspect canonical output and preview leakage;
 10. enable schedule.
 
-The Cursor source-onboarding goal should produce a compliance report and must skip uncertain sources rather than bypassing restrictions.
+The Cursor source-onboarding goal produces `docs/SOURCE_COMPLIANCE_REPORT.md` and must skip uncertain sources rather than bypassing restrictions.
 
 ## Phase M — Vercel setup
 1. Import GitHub repository into Vercel.

@@ -96,6 +96,7 @@ User-specific matching preferences.
 
 ### data_sources
 Registry of procurement/opportunity sources and legal/technical access state.
+Enabled production sources must pass `private.enforce_source_enablement`. Private/supply-chain onboarding evidence is in `docs/SOURCE_COMPLIANCE_REPORT.md`.
 - source_type
 - access_method
 - reuse_status
