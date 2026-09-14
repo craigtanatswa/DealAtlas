@@ -14,6 +14,8 @@ describe("typed data-access boundaries", () => {
     const source = read("lib/db/previews.ts");
     expect(source).toContain('.from("deal_previews")');
     expect(source).toContain("search_deal_previews");
+    expect(source).toContain("p_value_band");
+    expect(source).toContain("p_deadline_band");
     expect(source).toContain("DEAL_PREVIEW_PUBLIC_SELECT");
     expect(source).not.toMatch(/select\(\s*["']\*["']\s*\)/);
     expect(source).not.toContain('.from("deals")');

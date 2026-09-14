@@ -323,10 +323,13 @@ Indexes:
 - btree deal_type
 - btree buyer_sector
 - btree main_category
+- btree broad_region
+- btree value_band
+- btree deadline_band
 - btree updated_at
 - btree is_published
 
-Protected Pro filters run through trusted server code against canonical tables and return paid results only after entitlement check.
+`search_deal_previews` is the public/free RPC. It only reads `deal_previews` and accepts keyword, category, buyer sector, deal type, broad region, status, value band, closing window, limit, and offset. Protected Pro filters run through trusted server code against canonical tables and return paid results only after entitlement check.
 
 ## 9. Migrations
 Included in the build pack:
@@ -336,6 +339,7 @@ Included in the build pack:
 - `0004_security_and_rls.sql`
 - `0005_functions_and_indexes.sql`
 - `0006_seed_reference_data.sql`
+- `0007_search_preview_filters.sql`
 
 Apply in numeric order with the Supabase CLI (`npx supabase db reset` locally, or `npx supabase db push` to a linked project). Never reset or drop a linked production database.
 
@@ -352,7 +356,7 @@ npm run db:types
 This writes `lib/db/database.types.ts`. Do not edit that file by hand.
 
 ### Query modules
-- Public/free: `lib/db/previews.ts` — `deal_previews` and `search_deal_previews` only, with an explicit column list (never `select('*')`).
+- Public/free: `lib/db/previews.ts` and `lib/search/public.ts` — `deal_previews` and `search_deal_previews` only, with an explicit column list (never `select('*')`). Public search JSON is `/api/search`. Public HTML is `/deals` and `/deals/[slug]`.
 - Browser and cookie-based SSR clients are typed with the granted public surface only (`lib/db/public-schema.ts`).
 - Protected canonical tables: `lib/db/canonical.ts` is `server-only` and uses the privileged admin client after an explicit Pro/admin access argument.
 

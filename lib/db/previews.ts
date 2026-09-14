@@ -68,6 +68,8 @@ const previewListSchema = paginationSchema.extend({
     ])
     .optional(),
   region: z.string().trim().min(1).max(200).optional(),
+  valueBand: z.string().trim().min(1).max(80).optional(),
+  deadlineBand: z.string().trim().min(1).max(80).optional(),
   status: z
     .enum([
       "UPCOMING",
@@ -86,6 +88,7 @@ const previewListSchema = paginationSchema.extend({
 const previewSearchSchema = previewListSchema.extend({
   query: z.string().trim().max(200).optional(),
   offset: z.coerce.number().int().min(0).max(10_000).default(0),
+  limit: z.coerce.number().int().min(1).max(50).default(20),
 });
 
 const publishedPreviewFilter = {
@@ -121,6 +124,12 @@ export async function listPublishedDealPreviews(
   }
   if (filters.status) {
     query = query.eq("status", filters.status);
+  }
+  if (filters.valueBand) {
+    query = query.eq("value_band", filters.valueBand);
+  }
+  if (filters.deadlineBand) {
+    query = query.eq("deadline_band", filters.deadlineBand);
   }
 
   const { data, error } = await query;
@@ -180,6 +189,8 @@ export async function searchPublishedDealPreviews(
     p_deal_type: filters.dealType,
     p_region: filters.region,
     p_status: filters.status,
+    p_value_band: filters.valueBand,
+    p_deadline_band: filters.deadlineBand,
     p_limit: filters.limit,
     p_offset: filters.offset,
   });

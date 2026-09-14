@@ -1,8 +1,12 @@
 "use client";
 
 import { DealCard, DealCardSkeleton } from "@/components/deals/deal-card";
+import { DealPreviewDetail } from "@/components/deals/deal-preview-detail";
 import { DealStatusBadge } from "@/components/deals/deal-status";
-import { DEAL_CARD_STORIES } from "@/components/deals/fixtures";
+import {
+  DEAL_CARD_STORIES,
+  DEAL_PREVIEW_DETAIL_FIXTURE,
+} from "@/components/deals/fixtures";
 import { LockedField } from "@/components/deals/locked-field";
 import { MatchScore } from "@/components/deals/match-score";
 import { UnlockPanel } from "@/components/deals/unlock-panel";
@@ -164,6 +168,14 @@ export function DesignSystemCatalog() {
           benefit="See who is buying"
         />
         <UnlockPanel />
+      </section>
+
+      <section className="flex flex-col gap-4">
+        <Heading level={2}>Free deal preview detail</Heading>
+        <p className="max-w-2xl text-[0.9375rem] leading-7 text-muted-foreground">
+          Dummy preview layout with labelled locked fields. Not a live opportunity.
+        </p>
+        <DealPreviewDetail deal={DEAL_PREVIEW_DETAIL_FIXTURE} />
       </section>
 
       <section className="flex flex-col gap-4">

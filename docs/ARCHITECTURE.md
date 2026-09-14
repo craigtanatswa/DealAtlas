@@ -359,7 +359,10 @@ Committed migrations in `supabase/migrations` remain the schema source of truth.
 
 Public/free query helpers in `lib/db/previews.ts` may touch `deal_previews` only. Canonical source-bearing query helpers in `lib/db/canonical.ts` are `server-only` and use `lib/supabase/admin.ts`. Browser and SSR clients are typed with the granted public table surface, not the canonical tables.
 
-pgTAP tests live in `supabase/tests/database`. PostgREST RLS smoke tests live in `tests/integration/rls.rest.test.ts` and require a running local stack (`npm run test:db`). Auth integration tests live in `tests/integration/auth.rest.test.ts`.
+pgTAP tests live in `supabase/tests/database`. PostgREST RLS smoke tests live in `tests/integration/rls.rest.test.ts` and require a running local stack (`npm run test:db`). Auth integration tests live in `tests/integration/auth.rest.test.ts`. Public/free discovery leak tests live in `tests/integration/public-discovery.rest.test.ts` and `tests/unit/deal-preview-leak.test.tsx`.
+
+### Public/free discovery
+Anonymous and free visitors search and view `/deals` and `/deals/[slug]` through `lib/search/public.ts`. Those helpers only call `deal_previews` / `search_deal_previews`. Metadata, JSON (`/api/search`), and HTML/RSC payloads use the explicit public preview DTO. `/api/deals/[id]` is rejected without a canonical query until the entitlement goal implements the paid boundary.
 
 ### Authentication
 Launch authentication is email/password with Supabase SSR helpers.
@@ -371,10 +374,10 @@ Launch authentication is email/password with Supabase SSR helpers.
 - Auth callbacks at `/auth/callback` and `/auth/confirm` exchange a code or `token_hash` and sanitize `next` to same-origin relative paths.
 
 Deferred until later goals:
-- Deal search, preview querying, and protected deal reveal
+- Protected deal reveal after entitlement (`/api/deals/[id]` currently returns 401 without querying canonical tables)
 - Dodo checkout, portal, and webhook routes
 - Ingestion scripts (`scripts/ingest.ts`, `scripts/rebuild-previews.ts`, `scripts/send-alerts.ts`)
-- `/api/deals/[id]`, `/api/search`, `/api/exports`, `/api/billing/*`, `/api/webhooks/dodo`
+- `/api/exports`, `/api/billing/*`, `/api/webhooks/dodo`
 - `/checkout/success` (referenced by `DODO_PAYMENTS_RETURN_URL`)
 
 `/api/health` is an extra operational endpoint for the web runtime.

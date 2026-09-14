@@ -1,4 +1,5 @@
 import type { DealCardData } from "@/components/deals/types";
+import type { PublicDealPreview } from "@/lib/search/dto";
 
 /**
  * Dummy fixtures for component stories and tests.
@@ -50,6 +51,22 @@ export const DEAL_CARD_STORIES = [
     deal: DEAL_CARD_FIXTURES.closingPublic,
   },
 ] as const;
+
+export const DEAL_PREVIEW_DETAIL_FIXTURE = {
+  ...DEAL_CARD_FIXTURES.freePreview,
+  dealType: "PRIVATE_TENDER",
+  stage: "LIVE",
+  durationBand: "3–5 years",
+  competitionLevel: "MEDIUM",
+  requirementsPreview: [
+    "relevant implementation experience",
+    "security/data-protection capability",
+    "ongoing support capability",
+    "evidence of comparable deployments",
+  ],
+  relevanceTags: ["cloud", "contact centre"],
+  freshnessLabel: "Recently added",
+} as const satisfies PublicDealPreview;
 
 export const PROTECTED_FIELD_NAMES = [
   "buyerName",

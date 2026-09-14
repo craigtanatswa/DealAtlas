@@ -1,4 +1,20 @@
-/**
- * Search helpers will query sanitised preview fields only on the public/free path.
- */
-export {};
+export {
+  parsePublicSearchParams,
+  publicSearchHref,
+  type PublicSearchFilters,
+} from "@/lib/search/params";
+export {
+  toDealCardData,
+  toPublicDealPreview,
+  type PublicDealPreview,
+  type PublicDealSearchResult,
+} from "@/lib/search/dto";
+export {
+  getPublicDealPreviewBySlug,
+  searchPublicDealPreviews,
+  searchPublicDealPreviewsFromParams,
+} from "@/lib/search/public";
+export {
+  publicDealPreviewMetadata,
+  publicDealsIndexMetadata,
+} from "@/lib/search/metadata";

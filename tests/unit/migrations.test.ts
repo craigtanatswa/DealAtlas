@@ -48,7 +48,7 @@ describe("supabase migrations", () => {
   const files = listMigrations();
   const sql = files.map(readMigration).join("\n");
 
-  it("are numbered 0001-0006 in order with no gaps", () => {
+  it("are numbered 0001-0007 in order with no gaps", () => {
     expect(files).toEqual([
       "0001_extensions_and_types.sql",
       "0002_core_schema.sql",
@@ -56,7 +56,17 @@ describe("supabase migrations", () => {
       "0004_security_and_rls.sql",
       "0005_functions_and_indexes.sql",
       "0006_seed_reference_data.sql",
+      "0007_search_preview_filters.sql",
     ]);
+  });
+
+  it("keeps search_deal_previews on deal_previews only after filter extension", () => {
+    const search = readMigration("0007_search_preview_filters.sql");
+    expect(search).toContain("from public.deal_previews dp");
+    expect(search).toContain("p_value_band");
+    expect(search).toContain("p_deadline_band");
+    expect(search).not.toMatch(/from public\.deals\b/);
+    expect(search).not.toMatch(/from public\.organizations\b/);
   });
 
   it("never disable RLS", () => {

@@ -3,7 +3,7 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { DEAL_CARD_FIXTURES, PROTECTED_FIELD_NAMES } from "@/components/deals/fixtures";
+import { DEAL_CARD_FIXTURES, DEAL_PREVIEW_DETAIL_FIXTURE, PROTECTED_FIELD_NAMES } from "@/components/deals/fixtures";
 import { EMPTY_STATE_COPY } from "@/components/feedback/empty-state";
 
 const ROOT = path.resolve(__dirname, "../..");
@@ -33,7 +33,10 @@ describe("design-system anti-bypass guards", () => {
   });
 
   it("keeps fixtures free of protected canary markers and field names", () => {
-    const serialized = JSON.stringify(DEAL_CARD_FIXTURES);
+    const serialized = JSON.stringify({
+      cards: DEAL_CARD_FIXTURES,
+      detail: DEAL_PREVIEW_DETAIL_FIXTURE,
+    });
 
     for (const marker of CANARY_MARKERS) {
       expect(serialized).not.toContain(marker);
@@ -43,6 +46,10 @@ describe("design-system anti-bypass guards", () => {
       for (const fieldName of PROTECTED_FIELD_NAMES) {
         expect(fieldName in fixture).toBe(false);
       }
+    }
+
+    for (const fieldName of PROTECTED_FIELD_NAMES) {
+      expect(fieldName in DEAL_PREVIEW_DETAIL_FIXTURE).toBe(false);
     }
   });
 

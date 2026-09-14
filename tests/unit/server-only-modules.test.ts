@@ -11,6 +11,7 @@ const SERVER_ONLY_MODULES = [
   "lib/db/canonical.ts",
   "lib/auth/session.ts",
   "lib/auth/profile.ts",
+  "lib/search/public.ts",
 ];
 
 const CLIENT_GLOBS = ["components", "app"];
@@ -49,6 +50,7 @@ describe("server-only module boundary", () => {
       expect(source).not.toMatch(/from ["']@\/lib\/db\/canonical["']/);
       expect(source).not.toMatch(/from ["']@\/lib\/auth\/session["']/);
       expect(source).not.toMatch(/from ["']@\/lib\/auth\/profile["']/);
+      expect(source).not.toMatch(/from ["']@\/lib\/search\/public["']/);
     }
   });
 });
