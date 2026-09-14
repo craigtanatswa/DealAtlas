@@ -15,6 +15,13 @@ const SERVER_ONLY_MODULES = [
   "lib/entitlements/service.ts",
   "lib/entitlements/store.ts",
   "lib/deals/protected.ts",
+  "lib/billing/config.ts",
+  "lib/billing/store.ts",
+  "lib/billing/process.ts",
+  "lib/billing/checkout.ts",
+  "lib/billing/portal.ts",
+  "lib/billing/webhook-handler.ts",
+  "lib/billing/reconcile.ts",
 ];
 
 const CLIENT_GLOBS = ["components", "app"];
@@ -57,6 +64,13 @@ describe("server-only module boundary", () => {
       expect(source).not.toMatch(/from ["']@\/lib\/entitlements\/service["']/);
       expect(source).not.toMatch(/from ["']@\/lib\/entitlements\/store["']/);
       expect(source).not.toMatch(/from ["']@\/lib\/deals\/protected["']/);
+      expect(source).not.toMatch(/from ["']@\/lib\/billing\/config["']/);
+      expect(source).not.toMatch(/from ["']@\/lib\/billing\/store["']/);
+      expect(source).not.toMatch(/from ["']@\/lib\/billing\/process["']/);
+      expect(source).not.toMatch(/from ["']@\/lib\/billing\/checkout["']/);
+      expect(source).not.toMatch(/from ["']@\/lib\/billing\/portal["']/);
+      expect(source).not.toMatch(/from ["']@\/lib\/billing\/webhook-handler["']/);
+      expect(source).not.toMatch(/from ["']@\/lib\/billing\/reconcile["']/);
     }
   });
 });

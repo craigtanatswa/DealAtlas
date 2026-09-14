@@ -8,7 +8,7 @@ UK-first B2B opportunity intelligence. This repository contains the Next.js appl
 - Tailwind CSS v4
 - shadcn/ui
 - Supabase SSR/Auth/Postgres
-- Dodo Payments (dependency installed; billing features come later)
+- Dodo Payments (`@dodopayments/nextjs`) for Pro checkout, webhooks, and the customer portal
 - Vercel-compatible runtime
 
 ## Local development

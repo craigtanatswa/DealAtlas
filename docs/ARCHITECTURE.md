@@ -382,12 +382,18 @@ Launch authentication is email/password with Supabase SSR helpers.
 - `fulfillProtectedDealRequest` rejects anonymous (401), FREE/expired/on-hold (403), and invalid IDs (400) before canonical reads.
 - `lib/deals/protected.ts` queries canonical tables and `lib/deals/paid-dto.ts` maps an explicit paid DTO without internal/raw/secret fields.
 
+### Dodo billing
+- `/api/billing/checkout` is an authenticated POST. The browser may send only `planKey` (`PRO_MONTHLY` | `PRO_ANNUAL`). The server maps that to `DODO_PRO_*_PRODUCT_ID` and creates a Checkout Session through `@dodopayments/nextjs`.
+- Checkout metadata `user_id` and `plan_key` are generated from the authenticated session, never from the request body.
+- `/api/webhooks/dodo` uses the official `Webhooks` adapter for Standard Webhooks verification, then writes `billing_events` and the `subscriptions` mirror idempotently.
+- `/checkout/success` polls `/api/billing/entitlement` and does not treat `?success=true` as Pro.
+- `/api/billing/portal` creates a Dodo Customer Portal session from the signed-in user's stored `dodo_customer_id` only.
+- `/app/billing` shows plan, interval, status, period end, and Manage billing.
+
 Deferred until later goals:
 - Paid Deal UI reveal on `/app/deals/[id]` (API boundary exists; page is still a placeholder)
-- Dodo checkout, portal, and webhook routes
 - Ingestion scripts (`scripts/ingest.ts`, `scripts/rebuild-previews.ts`, `scripts/send-alerts.ts`)
-- `/api/exports`, `/api/billing/*`, `/api/webhooks/dodo`
-- `/checkout/success` (referenced by `DODO_PAYMENTS_RETURN_URL`)
+- `/api/exports`
 
 `/api/health` is an extra operational endpoint for the web runtime.
 
@@ -396,7 +402,7 @@ Deferred until later goals:
 - shadcn/ui uses the current radix-nova preset, including the `cn` and `radix-ui` packages.
 - The npm package name is `dealatlas` because npm does not allow capital letters. The product name remains DealAtlas.
 - Current `@supabase/supabase-js` declares `engines.node >= 22`. Local Node 20 can install with an engine warning; production should use Vercel Node 22.
-- Dodo, Resend, Cheerio, and `p-limit` are installed for later goals and are unused by the foundation runtime.
+- Dodo Payments is wired through `@dodopayments/nextjs` plus the official `dodopayments` SDK for subscription reconciliation. Display pricing copy in `lib/constants.ts` is not entitlement.
 - Display pricing copy in `lib/constants.ts` is not a billing entitlement. Dodo product IDs remain environment-only.
 - Inter is the application sans-serif (`next/font/google`), with Geist Mono for code. Semantic colour tokens in `app/globals.css` follow `docs/DESIGN.md`.
 - Visual primitives live in `components/ui`, layout in `components/layout`, shells in `components/navigation`, deal display in `components/deals`, and empty/loading/error patterns in `components/feedback`.

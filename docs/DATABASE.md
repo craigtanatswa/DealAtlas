@@ -359,6 +359,7 @@ This writes `lib/db/database.types.ts`. Do not edit that file by hand.
 - Public/free: `lib/db/previews.ts` and `lib/search/public.ts` — `deal_previews` and `search_deal_previews` only, with an explicit column list (never `select('*')`). Public search JSON is `/api/search`. Public HTML is `/deals` and `/deals/[slug]`.
 - Browser and cookie-based SSR clients are typed with the granted public surface only (`lib/db/public-schema.ts`).
 - Protected canonical tables: `lib/db/canonical.ts` is `server-only` and uses the privileged admin client after an explicit Pro/admin access argument.
+- Billing writes: `lib/billing/store.ts` is `server-only` and uses the admin client for `subscriptions` and `billing_events`. Ordinary client roles still have no grants on those tables.
 
 ### Database tests
 ```bash
