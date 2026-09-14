@@ -1,5 +1,8 @@
-/**
- * Ingestion pipeline modules are deferred until the data-ingestion goals.
- * Adapters must fail independently and must not automate UNKNOWN or PROHIBITED sources.
- */
-export {};
+export { canIngestSource, assertCanIngestSource } from "@/ingestion/core/compliance";
+export { runIngestion } from "@/ingestion/core/pipeline";
+export type {
+  CanonicalCandidate,
+  DiscoverResult,
+  IngestionRunResult,
+  SourceAdapter,
+} from "@/ingestion/core/types";

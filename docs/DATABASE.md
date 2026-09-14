@@ -340,6 +340,7 @@ Included in the build pack:
 - `0005_functions_and_indexes.sql`
 - `0006_seed_reference_data.sql`
 - `0007_search_preview_filters.sql`
+- `0008_find_a_tender_ocds.sql`
 
 Apply in numeric order with the Supabase CLI (`npx supabase db reset` locally, or `npx supabase db push` to a linked project). Never reset or drop a linked production database.
 

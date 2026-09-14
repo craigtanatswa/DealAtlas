@@ -1,0 +1,29 @@
+import type { SourceAdapter } from "@/ingestion/core/types";
+import { IngestionError } from "@/ingestion/core/errors";
+import { createFindATenderAdapter } from "@/ingestion/sources/find-a-tender/adapter";
+import { FIND_A_TENDER_SOURCE_KEY } from "@/ingestion/sources/find-a-tender/constants";
+
+const adapters = new Map<string, () => SourceAdapter>([
+  [FIND_A_TENDER_SOURCE_KEY, () => createFindATenderAdapter()],
+]);
+
+export function getSourceAdapter(sourceKey: string): SourceAdapter {
+  const factory = adapters.get(sourceKey);
+  if (!factory) {
+    throw new IngestionError({
+      message: `No adapter registered for source ${sourceKey}.`,
+      stage: "discover",
+      code: "ADAPTER_NOT_FOUND",
+    });
+  }
+  return factory();
+}
+
+export function registerSourceAdapter(
+  sourceKey: string,
+  factory: () => SourceAdapter,
+): void {
+  adapters.set(sourceKey, factory);
+}
+
+export { FIND_A_TENDER_SOURCE_KEY };

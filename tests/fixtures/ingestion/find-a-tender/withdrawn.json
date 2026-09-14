@@ -1,0 +1,31 @@
+{
+  "uri": "https://www.find-tender.service.gov.uk/api/1.0/ocdsReleasePackages/000003-2026",
+  "version": "1.1",
+  "license": "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
+  "releases": [
+    {
+      "ocid": "ocds-h6vhtk-fixture3",
+      "id": "000003-2026",
+      "date": "2026-09-03T11:00:00Z",
+      "tag": ["tender"],
+      "tender": {
+        "id": "REF-FIXTURE-3",
+        "title": "Withdrawn cleaning contract",
+        "description": "Opportunity withdrawn before the deadline.",
+        "status": "withdrawn",
+        "procurementMethod": "open",
+        "value": { "amount": 80000, "currency": "GBP" },
+        "tenderPeriod": { "endDate": "2026-09-30T12:00:00Z" }
+      },
+      "parties": [
+        {
+          "id": "GB-PPON-EEEE-3333-FFFF",
+          "name": "Example Borough Council",
+          "identifier": { "scheme": "GB-PPON", "id": "EEEE-3333-FFFF" },
+          "roles": ["buyer"]
+        }
+      ],
+      "buyer": { "id": "GB-PPON-EEEE-3333-FFFF", "name": "Example Borough Council" }
+    }
+  ]
+}

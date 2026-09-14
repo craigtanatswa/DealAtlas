@@ -1,0 +1,47 @@
+{
+  "uri": "https://www.find-tender.service.gov.uk/api/1.0/ocdsReleasePackages/000001-2026",
+  "version": "1.1",
+  "license": "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
+  "releases": [
+    {
+      "ocid": "ocds-h6vhtk-fixture1",
+      "id": "000001-2026",
+      "date": "2026-09-08T09:00:00Z",
+      "tag": ["tenderAmendment"],
+      "tender": {
+        "id": "REF-FIXTURE-1",
+        "title": "Managed IT support for civic offices",
+        "description": "Updated scope: include hybrid working devices.",
+        "status": "active",
+        "procurementMethod": "open",
+        "value": { "amount": 275000, "currency": "GBP" },
+        "tenderPeriod": {
+          "startDate": "2026-09-01T09:00:00Z",
+          "endDate": "2026-10-15T12:00:00Z"
+        },
+        "classification": {
+          "scheme": "CPV",
+          "id": "72000000",
+          "description": "IT services: consulting, software development, Internet and support"
+        },
+        "lots": [
+          {
+            "id": "1",
+            "title": "Managed IT support",
+            "status": "active",
+            "value": { "amount": 275000, "currency": "GBP" }
+          }
+        ]
+      },
+      "parties": [
+        {
+          "id": "GB-PPON-AAAA-1111-BBBB",
+          "name": "Example City Council",
+          "identifier": { "scheme": "GB-PPON", "id": "AAAA-1111-BBBB" },
+          "roles": ["buyer"]
+        }
+      ],
+      "buyer": { "id": "GB-PPON-AAAA-1111-BBBB", "name": "Example City Council" }
+    }
+  ]
+}

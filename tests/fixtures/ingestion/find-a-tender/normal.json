@@ -1,0 +1,112 @@
+{
+  "uri": "https://www.find-tender.service.gov.uk/api/1.0/ocdsReleasePackages/000001-2026",
+  "version": "1.1",
+  "license": "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
+  "publisher": { "name": "Cabinet Office" },
+  "releases": [
+    {
+      "ocid": "ocds-h6vhtk-fixture1",
+      "id": "000001-2026",
+      "date": "2026-09-01T09:00:00Z",
+      "tag": ["tender"],
+      "initiationType": "tender",
+      "tender": {
+        "id": "REF-FIXTURE-1",
+        "title": "Managed IT support for civic offices",
+        "description": "Provision of managed IT support, service desk and endpoint management.",
+        "status": "active",
+        "procurementMethod": "open",
+        "mainProcurementCategory": "services",
+        "value": { "amount": 250000, "currency": "GBP" },
+        "tenderPeriod": {
+          "startDate": "2026-09-01T09:00:00Z",
+          "endDate": "2026-10-01T12:00:00Z"
+        },
+        "enquiryPeriod": {
+          "endDate": "2026-09-20T12:00:00Z"
+        },
+        "classification": {
+          "scheme": "CPV",
+          "id": "72000000",
+          "description": "IT services: consulting, software development, Internet and support"
+        },
+        "lots": [
+          {
+            "id": "1",
+            "title": "Managed IT support",
+            "description": "Service desk and endpoint management",
+            "status": "active",
+            "value": { "amount": 250000, "currency": "GBP" },
+            "awardCriteria": {
+              "criteria": [
+                { "type": "quality", "description": "Quality 60%", "numbers": [{ "weight": 60 }] },
+                { "type": "price", "description": "Price 40%", "numbers": [{ "weight": 40 }] }
+              ]
+            }
+          }
+        ],
+        "items": [
+          {
+            "id": "1",
+            "relatedLot": "1",
+            "additionalClassifications": [
+              {
+                "scheme": "CPV",
+                "id": "72222300",
+                "description": "Information technology services"
+              }
+            ],
+            "deliveryAddresses": [
+              { "locality": "Manchester", "region": "UKD", "country": "GB", "countryName": "United Kingdom" }
+            ]
+          }
+        ],
+        "selectionCriteria": {
+          "criteria": [
+            { "type": "economic", "description": "Minimum turnover £500,000" },
+            { "type": "technical", "description": "ISO 27001 certification" }
+          ]
+        },
+        "suitability": { "sme": true, "vcse": false },
+        "documents": [
+          {
+            "id": "1",
+            "documentType": "tenderNotice",
+            "description": "Notice on Find a Tender",
+            "url": "https://www.find-tender.service.gov.uk/Notice/000001-2026",
+            "format": "text/html",
+            "datePublished": "2026-09-01T09:00:00Z"
+          }
+        ]
+      },
+      "parties": [
+        {
+          "id": "GB-PPON-AAAA-1111-BBBB",
+          "name": "Example City Council",
+          "identifier": { "scheme": "GB-PPON", "id": "AAAA-1111-BBBB" },
+          "address": {
+            "streetAddress": "Town Hall",
+            "locality": "Manchester",
+            "region": "UKD",
+            "postalCode": "M1 1AD",
+            "country": "GB",
+            "countryName": "United Kingdom"
+          },
+          "contactPoint": {
+            "name": "Procurement Team",
+            "email": "procurement@example-council.gov.uk",
+            "telephone": "+44 161 000 0000"
+          },
+          "roles": ["buyer"],
+          "details": {
+            "url": "https://www.example-council.gov.uk",
+            "classifications": [
+              { "scheme": "UK_CA_TYPE", "id": "publicAuthorityLocal", "description": "Public authority - local" }
+            ]
+          }
+        }
+      ],
+      "buyer": { "id": "GB-PPON-AAAA-1111-BBBB", "name": "Example City Council" }
+    }
+  ]
+}

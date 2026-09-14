@@ -56,6 +56,12 @@ select ok(
 );
 
 select is(
+  (select api_url from public.data_sources where source_key = 'find-a-tender'),
+  'https://www.find-tender.service.gov.uk/api/1.0/ocdsReleasePackages',
+  'Find a Tender official OCDS API URL is recorded'
+);
+
+select is(
   (select reuse_status::text from public.data_sources where source_key = 'private-source-template'),
   'UNKNOWN',
   'private source template remains UNKNOWN'

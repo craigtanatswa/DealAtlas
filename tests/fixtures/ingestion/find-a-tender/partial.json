@@ -1,0 +1,26 @@
+{
+  "uri": "https://www.find-tender.service.gov.uk/api/1.0/ocdsReleasePackages/000005-2026",
+  "version": "1.1",
+  "license": "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
+  "releases": [
+    {
+      "ocid": "ocds-h6vhtk-fixture5",
+      "id": "000005-2026",
+      "date": "2026-09-05T08:00:00Z",
+      "tag": ["planning"],
+      "tender": {
+        "title": "Early market engagement for fleet vehicles",
+        "status": "planned",
+        "communication": { "futureNoticeDate": "2026-12-01T00:00:00Z" }
+      },
+      "parties": [
+        {
+          "id": "buyer-partial",
+          "name": "Example Transport Authority",
+          "roles": ["buyer"]
+        }
+      ],
+      "buyer": { "id": "buyer-partial", "name": "Example Transport Authority" }
+    }
+  ]
+}

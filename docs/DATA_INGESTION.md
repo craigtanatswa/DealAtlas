@@ -51,7 +51,7 @@ UNKNOWN or PROHIBITED => block automatic production ingestion
 
 ## 5. Initial public-sector adapters
 Build adapters in this order, subject to current official access terms:
-1. Find a Tender/OCDS API.
+1. Find a Tender official OCDS API (`GET https://www.find-tender.service.gov.uk/api/1.0/ocdsReleasePackages`, plus `ocdsRecordPackages/{ocid}` and notice/OCID lookups). Notice data is published under the Open Government Licence. Do not scrape Find a Tender HTML when this API is available.
 2. Contracts Finder historical/legacy data if useful and permitted.
 3. Public Contracts Scotland official data/API/feed if available.
 4. Sell2Wales official OCDS/API/bulk data if available.

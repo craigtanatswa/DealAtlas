@@ -394,9 +394,13 @@ Launch authentication is email/password with Supabase SSR helpers.
 - `/api/billing/portal` creates a Dodo Customer Portal session from the signed-in user's stored `dodo_customer_id` only.
 - `/app/billing` shows plan, interval, status, period end, and Manage billing.
 
+### Ingestion
+Production ingestion lives under `/ingestion` with a source-neutral `SourceAdapter` (`discover` / `fetch` / `parse`), a compliance gate, immutable `raw_records`, and canonical persist for deals, notices, lots, organisations, requirements, awards and contracts. The first adapter is Find a Tender via the official OCDS API (`/api/1.0/ocdsReleasePackages`), not HTML. Run one source with `npm run ingest -- --source find-a-tender`. Routine tests use saved fixtures and do not call the live site.
+
 Deferred until later goals:
 - Paid Deal UI reveal on `/app/deals/[id]` (API boundary exists; page is still a placeholder)
-- Ingestion scripts (`scripts/ingest.ts`, `scripts/rebuild-previews.ts`, `scripts/send-alerts.ts`)
+- Preview generation / leak scanning (canonical ingest stops before that)
+- `scripts/rebuild-previews.ts`, `scripts/send-alerts.ts`
 - `/api/exports`
 
 `/api/health` is an extra operational endpoint for the web runtime.
