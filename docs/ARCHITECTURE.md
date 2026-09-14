@@ -362,7 +362,9 @@ Public/free query helpers in `lib/db/previews.ts` may touch `deal_previews` only
 pgTAP tests live in `supabase/tests/database`. PostgREST RLS smoke tests live in `tests/integration/rls.rest.test.ts` and require a running local stack (`npm run test:db`). Auth integration tests live in `tests/integration/auth.rest.test.ts`. Public/free discovery leak tests live in `tests/integration/public-discovery.rest.test.ts` and `tests/unit/deal-preview-leak.test.tsx`.
 
 ### Public/free discovery
-Anonymous and free visitors search and view `/deals` and `/deals/[slug]` through `lib/search/public.ts`. Those helpers only call `deal_previews` / `search_deal_previews`. Metadata, JSON (`/api/search`), and HTML/RSC payloads use the explicit public preview DTO. `/api/deals/[id]` is rejected without a canonical query until the entitlement goal implements the paid boundary.
+Anonymous and free visitors search and view `/deals` and `/deals/[slug]` through `lib/search/public.ts`. Those helpers only call `deal_previews` / `search_deal_previews`. Metadata, JSON (`/api/search`), and HTML/RSC payloads use the explicit public preview DTO.
+
+Protected Deal JSON lives at `/api/deals/[id]`. The route authenticates with `getAuthUser()`, resolves FREE/PRO via `getCurrentEntitlement()` from the local `subscriptions` mirror, then loads canonical rows with the server-only admin client and maps an explicit paid DTO. Query parameters and client plan labels cannot grant Pro. The authenticated `/app/deals/[id]` page remains a placeholder until the paid UI goal.
 
 ### Authentication
 Launch authentication is email/password with Supabase SSR helpers.
@@ -373,8 +375,15 @@ Launch authentication is email/password with Supabase SSR helpers.
 - Profile rows are created by `private.handle_new_user()`. If a row is missing, `lib/auth/profile.ts` inserts a USER row with the admin client and never copies a role from metadata.
 - Auth callbacks at `/auth/callback` and `/auth/confirm` exchange a code or `token_hash` and sanitize `next` to same-origin relative paths.
 
+### Entitlement and protected Deal API
+- `lib/entitlements/policy.ts` is the single FREE/PRO rule and mirrors `private.is_user_pro` plus documented on-hold/expired behaviour.
+- `getCurrentEntitlement(userId)` in `lib/entitlements/service.ts` reads the current subscriptions row with the server-only admin client.
+- Tests inject in-memory subscription fixtures through `resolveUserEntitlement`; there is no query-parameter Pro grant.
+- `fulfillProtectedDealRequest` rejects anonymous (401), FREE/expired/on-hold (403), and invalid IDs (400) before canonical reads.
+- `lib/deals/protected.ts` queries canonical tables and `lib/deals/paid-dto.ts` maps an explicit paid DTO without internal/raw/secret fields.
+
 Deferred until later goals:
-- Protected deal reveal after entitlement (`/api/deals/[id]` currently returns 401 without querying canonical tables)
+- Paid Deal UI reveal on `/app/deals/[id]` (API boundary exists; page is still a placeholder)
 - Dodo checkout, portal, and webhook routes
 - Ingestion scripts (`scripts/ingest.ts`, `scripts/rebuild-previews.ts`, `scripts/send-alerts.ts`)
 - `/api/exports`, `/api/billing/*`, `/api/webhooks/dodo`

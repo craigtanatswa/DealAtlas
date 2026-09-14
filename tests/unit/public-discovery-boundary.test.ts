@@ -57,6 +57,14 @@ describe("public discovery data boundary", () => {
     expect(combined).toContain("DEAL_PREVIEW_PUBLIC_SELECT");
   });
 
+  it("does not import paid/canonical helpers from public/free discovery", () => {
+    for (const { file, source } of sources) {
+      expect(source, file).not.toMatch(/from ["']@\/lib\/deals\/protected["']/);
+      expect(source, file).not.toMatch(/from ["']@\/lib\/deals\/paid-dto["']/);
+      expect(source, file).not.toMatch(/from ["']@\/lib\/entitlements\/service["']/);
+    }
+  });
+
   it("builds metadata from preview helpers only", () => {
     const slugPage = sources.find(({ file }) =>
       file.replaceAll("\\", "/").endsWith("app/(marketing)/deals/[slug]/page.tsx"),

@@ -43,7 +43,18 @@ describe("typed data-access boundaries", () => {
     expect(source).toContain('.from("notices")');
     expect(source).toContain('.from("documents")');
     expect(source).toContain('.from("data_sources")');
+    expect(source).toContain("exact_location_text");
     expect(source).not.toMatch(/select\(\s*["']\*["']\s*\)/);
+  });
+
+  it("loads the subscriptions mirror with explicit columns behind server-only", () => {
+    const source = read("lib/entitlements/store.ts");
+    expect(source).toMatch(/import ["']server-only["']/);
+    expect(source).toContain('.from("subscriptions")');
+    expect(source).toContain("is_current");
+    expect(source).not.toMatch(/select\(\s*["']\*["']\s*\)/);
+    expect(source).not.toContain("dodo_customer_id");
+    expect(source).not.toContain("payload");
   });
 
   it("does not re-export canonical queries from the public db index", () => {

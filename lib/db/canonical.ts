@@ -40,6 +40,7 @@ const CANONICAL_DEAL_COLUMNS = [
   "value_min_ex_vat",
   "value_max_ex_vat",
   "exact_value_text",
+  "exact_location_text",
   "enquiry_deadline",
   "submission_deadline",
   "award_decision_date",

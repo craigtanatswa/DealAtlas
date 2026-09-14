@@ -12,6 +12,9 @@ const SERVER_ONLY_MODULES = [
   "lib/auth/session.ts",
   "lib/auth/profile.ts",
   "lib/search/public.ts",
+  "lib/entitlements/service.ts",
+  "lib/entitlements/store.ts",
+  "lib/deals/protected.ts",
 ];
 
 const CLIENT_GLOBS = ["components", "app"];
@@ -51,6 +54,9 @@ describe("server-only module boundary", () => {
       expect(source).not.toMatch(/from ["']@\/lib\/auth\/session["']/);
       expect(source).not.toMatch(/from ["']@\/lib\/auth\/profile["']/);
       expect(source).not.toMatch(/from ["']@\/lib\/search\/public["']/);
+      expect(source).not.toMatch(/from ["']@\/lib\/entitlements\/service["']/);
+      expect(source).not.toMatch(/from ["']@\/lib\/entitlements\/store["']/);
+      expect(source).not.toMatch(/from ["']@\/lib\/deals\/protected["']/);
     }
   });
 });

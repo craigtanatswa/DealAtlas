@@ -6,11 +6,7 @@ import { DealPreviewDetail } from "@/components/deals/deal-preview-detail";
 import { DealSearchResults } from "@/components/deals/deal-search-results";
 import { DEAL_PREVIEW_DETAIL_FIXTURE } from "@/components/deals/fixtures";
 import { UnlockPanel } from "@/components/deals/unlock-panel";
-import { GET as getProtectedDeal } from "@/app/api/deals/[id]/route";
-import {
-  findForbiddenPublicKeys,
-  findProtectedMarkerLeaks,
-} from "../helpers/protected-leak";
+import { findProtectedMarkerLeaks } from "../helpers/protected-leak";
 
 describe("free discovery HTML and protected paths", () => {
   it("renders free card/detail HTML without seeded protected markers", () => {
@@ -41,14 +37,9 @@ describe("free discovery HTML and protected paths", () => {
     expect(html).not.toMatch(/CANARY/);
   });
 
-  it("rejects direct protected deal API access without querying canonical data", async () => {
-    const response = await getProtectedDeal();
-    const body = await response.json();
-    const serialized = JSON.stringify(body);
-
-    expect(response.status).toBe(401);
-    expect(findProtectedMarkerLeaks(serialized)).toEqual([]);
-    expect(findForbiddenPublicKeys(body)).toEqual([]);
-    expect(body.error).toMatch(/Pro subscription/i);
+  it("does not ship a UI bypass or protected fields on free fixtures", () => {
+    expect(DEAL_PREVIEW_DETAIL_FIXTURE).not.toHaveProperty("sourceTitle");
+    expect(DEAL_PREVIEW_DETAIL_FIXTURE).not.toHaveProperty("sourceUrl");
+    expect(DEAL_PREVIEW_DETAIL_FIXTURE).not.toHaveProperty("buyerName");
   });
 });
