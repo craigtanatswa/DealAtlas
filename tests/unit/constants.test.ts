@@ -1,8 +1,14 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  ACCOUNT_NAV,
+  ADMIN_NAV,
+  APP_NAV,
+  AUTH_NAV,
   FEATURE_LIMITS,
+  FOOTER_NAV,
   PLANS,
+  PUBLIC_NAV,
   ROLES,
   UNLIMITED,
 } from "@/lib/constants";
@@ -23,5 +29,38 @@ describe("application constants", () => {
     expect(ROLES.ADMIN).toBe("ADMIN");
     expect(PLANS.FREE).toBe("FREE");
     expect(PLANS.PRO).toBe("PRO");
+  });
+
+  it("matches the documented public, app, and admin navigation", () => {
+    expect(PUBLIC_NAV.map((item) => item.label)).toEqual([
+      "Find Deals",
+      "How It Works",
+      "Pricing",
+    ]);
+    expect(AUTH_NAV.map((item) => item.label)).toEqual([
+      "Sign In",
+      "Get Started",
+    ]);
+    expect(APP_NAV.map((item) => item.label)).toEqual([
+      "Discover",
+      "Saved",
+      "Searches",
+      "Alerts",
+      "Buyers",
+      "Renewals",
+    ]);
+    expect(APP_NAV.filter((item) => "pro" in item && item.pro).map((item) => item.label)).toEqual([
+      "Buyers",
+      "Renewals",
+    ]);
+    expect(ACCOUNT_NAV.map((item) => item.label)).toEqual([
+      "Account",
+      "Billing",
+      "Settings",
+    ]);
+    expect(ADMIN_NAV.map((item) => item.href)).toContain("/admin/ingestion");
+    expect(FOOTER_NAV.map((item) => item.href)).toEqual(
+      expect.arrayContaining(["/privacy", "/terms", "/cookies", "/contact"]),
+    );
   });
 });

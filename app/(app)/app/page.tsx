@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { Heading } from "@/components/layout/heading";
+import { Main } from "@/components/layout/container";
 import { Button } from "@/components/ui/button";
 import { requireUser } from "@/lib/auth/session";
 
@@ -13,11 +15,9 @@ export default async function AppHomePage() {
   const firstName = profile.display_name?.split(" ")[0] ?? "there";
 
   return (
-    <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-6 py-16">
-      <h1 className="text-3xl font-semibold tracking-tight">
-        Welcome, {firstName}
-      </h1>
-      <p className="max-w-2xl text-base leading-7 text-muted-foreground">
+    <Main>
+      <Heading>Welcome, {firstName}</Heading>
+      <p className="max-w-2xl text-[0.9375rem] leading-7 text-muted-foreground md:text-base">
         Your workspace is ready. Complete your company profile so DealAtlas can
         match opportunities when search and scoring go live.
       </p>
@@ -29,6 +29,6 @@ export default async function AppHomePage() {
           <Link href="/deals">Browse public deals</Link>
         </Button>
       </div>
-    </main>
+    </Main>
   );
 }

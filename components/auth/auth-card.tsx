@@ -1,5 +1,13 @@
 import type { ReactNode } from "react";
 
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+
 export function AuthCard({
   title,
   description,
@@ -10,10 +18,16 @@ export function AuthCard({
   children: ReactNode;
 }) {
   return (
-    <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
-      <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-      <p className="mt-2 text-sm leading-6 text-muted-foreground">{description}</p>
-      <div className="mt-6">{children}</div>
-    </div>
+    <Card>
+      <CardHeader>
+        <CardTitle className="font-heading text-2xl font-semibold tracking-tight">
+          {title}
+        </CardTitle>
+        <CardDescription className="text-[0.9375rem] leading-6">
+          {description}
+        </CardDescription>
+      </CardHeader>
+      <CardContent>{children}</CardContent>
+    </Card>
   );
 }

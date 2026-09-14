@@ -2,6 +2,14 @@ import type { Metadata } from "next";
 
 import { CompanyProfileForm } from "@/components/account/company-profile-form";
 import { ProfileForm } from "@/components/account/profile-form";
+import { Heading } from "@/components/layout/heading";
+import { Main } from "@/components/layout/container";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { isEmailVerified, requireUser } from "@/lib/auth/session";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -22,25 +30,33 @@ export default async function ProfilePage() {
     .maybeSingle();
 
   return (
-    <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-10 px-6 py-16">
+    <Main className="gap-10">
       <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-semibold tracking-tight">Profile</h1>
-        <p className="max-w-2xl text-base leading-7 text-muted-foreground">
+        <Heading>Profile</Heading>
+        <p className="max-w-2xl text-[0.9375rem] leading-7 text-muted-foreground md:text-base">
           Manage your account details and the company profile used for matching.
         </p>
       </div>
-      <section className="rounded-xl border border-border bg-card p-6 shadow-sm">
-        <h2 className="text-xl font-semibold tracking-tight">Account</h2>
-        <div className="mt-4">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-xl font-semibold tracking-tight">
+            Account
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
           <ProfileForm profile={profile} emailVerified={isEmailVerified(user)} />
-        </div>
-      </section>
-      <section className="rounded-xl border border-border bg-card p-6 shadow-sm">
-        <h2 className="text-xl font-semibold tracking-tight">Company profile</h2>
-        <div className="mt-4">
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-xl font-semibold tracking-tight">
+            Company profile
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
           <CompanyProfileForm companyProfile={companyProfile} />
-        </div>
-      </section>
-    </main>
+        </CardContent>
+      </Card>
+    </Main>
   );
 }

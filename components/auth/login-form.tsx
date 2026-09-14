@@ -7,8 +7,8 @@ import { signInAction } from "@/lib/auth/actions";
 import { INITIAL_ACTION_STATE } from "@/lib/auth/messages";
 import { FormStatus } from "@/components/auth/form-status";
 import { Button } from "@/components/ui/button";
+import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 
 export function LoginForm({
   nextPath,
@@ -25,8 +25,7 @@ export function LoginForm({
   return (
     <form action={action} className="flex flex-col gap-4">
       <input type="hidden" name="next" value={nextPath} />
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="email">Email</Label>
+      <Field id="email" label="Email">
         <Input
           id="email"
           name="email"
@@ -34,9 +33,8 @@ export function LoginForm({
           autoComplete="email"
           required
         />
-      </div>
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="password">Password</Label>
+      </Field>
+      <Field id="password" label="Password">
         <Input
           id="password"
           name="password"
@@ -44,7 +42,7 @@ export function LoginForm({
           autoComplete="current-password"
           required
         />
-      </div>
+      </Field>
       <FormStatus error={state.error} success={state.success} />
       <Button type="submit" disabled={pending}>
         {pending ? "Signing in…" : "Sign in"}

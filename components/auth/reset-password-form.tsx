@@ -7,8 +7,8 @@ import { resetPasswordAction } from "@/lib/auth/actions";
 import { INITIAL_ACTION_STATE } from "@/lib/auth/messages";
 import { FormStatus } from "@/components/auth/form-status";
 import { Button } from "@/components/ui/button";
+import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 
 export function ResetPasswordForm({ hasSession }: { hasSession: boolean }) {
   const [state, action, pending] = useActionState(
@@ -33,8 +33,7 @@ export function ResetPasswordForm({ hasSession }: { hasSession: boolean }) {
 
   return (
     <form action={action} className="flex flex-col gap-4">
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="password">New password</Label>
+      <Field id="password" label="New password">
         <Input
           id="password"
           name="password"
@@ -43,9 +42,8 @@ export function ResetPasswordForm({ hasSession }: { hasSession: boolean }) {
           minLength={8}
           required
         />
-      </div>
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="confirmPassword">Confirm new password</Label>
+      </Field>
+      <Field id="confirmPassword" label="Confirm new password">
         <Input
           id="confirmPassword"
           name="confirmPassword"
@@ -54,7 +52,7 @@ export function ResetPasswordForm({ hasSession }: { hasSession: boolean }) {
           minLength={8}
           required
         />
-      </div>
+      </Field>
       <FormStatus error={state.error} success={state.success} />
       <Button type="submit" disabled={pending}>
         {pending ? "Updating…" : "Update password"}

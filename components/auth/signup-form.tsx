@@ -7,8 +7,8 @@ import { signUpAction } from "@/lib/auth/actions";
 import { INITIAL_ACTION_STATE } from "@/lib/auth/messages";
 import { FormStatus } from "@/components/auth/form-status";
 import { Button } from "@/components/ui/button";
+import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 
 export function SignupForm({ nextPath }: { nextPath: string }) {
   const [state, action, pending] = useActionState(
@@ -19,8 +19,7 @@ export function SignupForm({ nextPath }: { nextPath: string }) {
   return (
     <form action={action} className="flex flex-col gap-4">
       <input type="hidden" name="next" value={nextPath} />
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="displayName">Display name</Label>
+      <Field id="displayName" label="Display name">
         <Input
           id="displayName"
           name="displayName"
@@ -28,9 +27,8 @@ export function SignupForm({ nextPath }: { nextPath: string }) {
           autoComplete="name"
           maxLength={80}
         />
-      </div>
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="email">Email</Label>
+      </Field>
+      <Field id="email" label="Email">
         <Input
           id="email"
           name="email"
@@ -38,9 +36,8 @@ export function SignupForm({ nextPath }: { nextPath: string }) {
           autoComplete="email"
           required
         />
-      </div>
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="password">Password</Label>
+      </Field>
+      <Field id="password" label="Password">
         <Input
           id="password"
           name="password"
@@ -49,9 +46,8 @@ export function SignupForm({ nextPath }: { nextPath: string }) {
           minLength={8}
           required
         />
-      </div>
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="confirmPassword">Confirm password</Label>
+      </Field>
+      <Field id="confirmPassword" label="Confirm password">
         <Input
           id="confirmPassword"
           name="confirmPassword"
@@ -60,7 +56,7 @@ export function SignupForm({ nextPath }: { nextPath: string }) {
           minLength={8}
           required
         />
-      </div>
+      </Field>
       <FormStatus error={state.error} success={state.success} />
       <Button type="submit" disabled={pending}>
         {pending ? "Creating account…" : "Create account"}

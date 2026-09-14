@@ -56,12 +56,28 @@ export const AUTH_NAV = [
 ] as const;
 
 export const APP_NAV = [
-  { href: "/app", label: "Workspace" },
   { href: "/app/search", label: "Discover" },
   { href: "/app/saved", label: "Saved" },
   { href: "/app/searches", label: "Searches" },
   { href: "/app/alerts", label: "Alerts" },
-  { href: "/app/profile", label: "Profile" },
+  { href: "/app/buyers", label: "Buyers", pro: true },
+  { href: "/app/renewals", label: "Renewals", pro: true },
+] as const;
+
+export const ACCOUNT_NAV = [
+  { href: "/app/profile", label: "Account" },
+  { href: "/app/billing", label: "Billing" },
+  { href: "/app/settings", label: "Settings" },
+] as const;
+
+export const FOOTER_NAV = [
+  { href: "/deals", label: "Find Deals" },
+  { href: "/how-it-works", label: "How It Works" },
+  { href: "/pricing", label: "Pricing" },
+  { href: "/privacy", label: "Privacy" },
+  { href: "/terms", label: "Terms" },
+  { href: "/cookies", label: "Cookies" },
+  { href: "/contact", label: "Contact" },
 ] as const;
 
 export const ADMIN_NAV = [

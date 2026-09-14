@@ -7,8 +7,8 @@ import { INITIAL_ACTION_STATE } from "@/lib/auth/messages";
 import type { AppProfile } from "@/lib/auth/types";
 import { FormStatus } from "@/components/auth/form-status";
 import { Button } from "@/components/ui/button";
+import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 
 export function ProfileForm({
   profile,
@@ -24,15 +24,14 @@ export function ProfileForm({
 
   return (
     <form action={action} className="flex flex-col gap-4">
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="email">Email</Label>
+      <Field
+        id="email"
+        label="Email"
+        hint={emailVerified ? "Email confirmed." : "Email not confirmed yet."}
+      >
         <Input id="email" value={profile.email} readOnly disabled />
-        <p className="text-xs text-muted-foreground">
-          {emailVerified ? "Email confirmed." : "Email not confirmed yet."}
-        </p>
-      </div>
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="displayName">Display name</Label>
+      </Field>
+      <Field id="displayName" label="Display name">
         <Input
           id="displayName"
           name="displayName"
@@ -41,7 +40,7 @@ export function ProfileForm({
           maxLength={80}
           defaultValue={profile.display_name ?? ""}
         />
-      </div>
+      </Field>
       <FormStatus error={state.error} success={state.success} />
       <div>
         <Button type="submit" disabled={pending}>

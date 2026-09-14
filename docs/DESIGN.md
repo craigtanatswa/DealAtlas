@@ -175,3 +175,6 @@ Do not:
 - blur protected source text
 - show fake live counts
 - use artificial urgency
+
+## 15. Implementation notes
+Semantic tokens, Inter typography, shells, and Deal display components are implemented in the Next.js app. Reusable Deal cards use dummy fixtures/stories only. Locked fields render labelled placeholders and benefits; they do not accept protected values and must not blur source text.

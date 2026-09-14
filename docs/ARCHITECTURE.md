@@ -386,4 +386,6 @@ Deferred until later goals:
 - Current `@supabase/supabase-js` declares `engines.node >= 22`. Local Node 20 can install with an engine warning; production should use Vercel Node 22.
 - Dodo, Resend, Cheerio, and `p-limit` are installed for later goals and are unused by the foundation runtime.
 - Display pricing copy in `lib/constants.ts` is not a billing entitlement. Dodo product IDs remain environment-only.
-- Geist is the Next.js/shadcn default sans-serif. Inter (suggested in `docs/DESIGN.md`) can replace it in the design-system goal without changing architecture.
+- Inter is the application sans-serif (`next/font/google`), with Geist Mono for code. Semantic colour tokens in `app/globals.css` follow `docs/DESIGN.md`.
+- Visual primitives live in `components/ui`, layout in `components/layout`, shells in `components/navigation`, deal display in `components/deals`, and empty/loading/error patterns in `components/feedback`.
+- Dummy Deal card stories live in `components/deals/fixtures.ts` and `/design-system` (noindex). They are not live product statistics. Locked-field components accept labels/benefits only and must not receive protected values.

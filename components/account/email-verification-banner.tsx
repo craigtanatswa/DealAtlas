@@ -9,7 +9,7 @@ export function EmailVerificationBanner({ verified }: { verified: boolean }) {
 
   return (
     <div className="border-b border-border bg-muted/60">
-      <div className="mx-auto flex w-full max-w-5xl flex-col gap-2 px-6 py-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mx-auto flex w-full max-w-[80rem] flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
         <p className="text-sm text-foreground">
           Confirm your email to use saved searches and alerts when those
           features go live.

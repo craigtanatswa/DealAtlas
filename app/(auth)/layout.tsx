@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
-import Link from "next/link";
 
-import { APP_NAME } from "@/lib/constants";
+import { SiteFooter } from "@/components/navigation/site-footer";
+import { BrandMark } from "@/components/navigation/brand-mark";
 
 export default function AuthLayout({
   children,
@@ -10,16 +10,18 @@ export default function AuthLayout({
 }) {
   return (
     <div className="flex min-h-full flex-1 flex-col">
-      <header className="border-b border-border">
-        <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-4 px-6 py-4">
-          <Link href="/" className="text-sm font-semibold tracking-tight">
-            {APP_NAME}
-          </Link>
+      <header className="border-b border-border bg-background">
+        <div className="mx-auto flex h-16 w-full max-w-[80rem] items-center px-4 sm:px-6 lg:px-8">
+          <BrandMark href="/" />
         </div>
       </header>
-      <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-6 py-16">
+      <main
+        id="main-content"
+        className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-4 py-16 sm:px-6"
+      >
         {children}
       </main>
+      <SiteFooter />
     </div>
   );
 }
