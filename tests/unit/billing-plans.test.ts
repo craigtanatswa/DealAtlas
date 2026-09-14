@@ -40,6 +40,18 @@ describe("checkout plan allowlist", () => {
     });
   });
 
+  it("ignores returnTo in the plan-key parser and keeps product IDs server-mapped", () => {
+    expect(
+      parseCheckoutRequest({
+        planKey: "PRO_MONTHLY",
+        returnTo: "/app/deals/22222222-2222-4222-8222-222222222222",
+      }),
+    ).toEqual({
+      ok: true,
+      planKey: "PRO_MONTHLY",
+    });
+  });
+
   it("does not map unknown product IDs", () => {
     expect(mapProductId("pdt_other", BILLING_FIXTURE_PRODUCTS)).toBeNull();
   });

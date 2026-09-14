@@ -61,4 +61,26 @@ describe("locked intelligence", () => {
     expect(container.textContent).not.toMatch(/CANARY/);
     expect(container.innerHTML).not.toMatch(/blur/);
   });
+
+  it("starts authenticated Dodo checkout for signed-in free users", () => {
+    const { container } = render(
+      <UnlockPanel
+        mode="free"
+        returnTo="/app/deals/22222222-2222-4222-8222-222222222222"
+      />,
+    );
+
+    const form = container.querySelector("form");
+    expect(form?.getAttribute("action")).toBe("/api/billing/checkout");
+    expect(form?.getAttribute("method")).toBe("post");
+    expect(
+      container.querySelector("input[name='planKey']")?.getAttribute("value"),
+    ).toBe("PRO_MONTHLY");
+    expect(
+      container.querySelector("input[name='returnTo']")?.getAttribute("value"),
+    ).toBe("/app/deals/22222222-2222-4222-8222-222222222222");
+    expect(
+      screen.getByRole("button", { name: "Unlock with DealAtlas Pro" }),
+    ).toBeTruthy();
+  });
 });

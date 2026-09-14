@@ -22,6 +22,8 @@ describe("billing anti-bypass boundary", () => {
     expect(checkout).toContain("from \"@dodopayments/nextjs\"");
     expect(checkout).toContain("checkoutMetadata");
     expect(checkout).toContain("userId: input.user.id");
+    expect(checkout).toContain("parseCheckoutReturnTo");
+    expect(checkout).toContain("checkoutReturnUrl");
     expect(plans).toContain("productId");
     expect(plans).toContain("user_id");
   });
@@ -60,9 +62,12 @@ describe("billing anti-bypass boundary", () => {
 
     expect(page).toContain("getCurrentEntitlement");
     expect(page).toContain("void params.success");
+    expect(page).toContain("parseCheckoutReturnTo");
+    expect(page).toContain("afterConfirmHref");
     expect(page).not.toMatch(/plan === ["']PRO["'] && params\.success/);
     expect(confirming).toContain("/api/billing/entitlement");
     expect(confirming).toContain("PLANS.PRO");
+    expect(confirming).toContain("afterConfirmHref");
     expect(confirming).not.toContain("searchParams");
     expect(entitlementRoute).toContain("getCurrentEntitlement");
     expect(entitlementRoute).not.toContain("success=true");

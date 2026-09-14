@@ -14,6 +14,10 @@ export {
   type PlanProductMap,
 } from "@/lib/billing/plans";
 export { checkoutMetadata, CHECKOUT_METADATA_KEYS } from "@/lib/billing/metadata";
+export {
+  checkoutReturnUrl,
+  parseCheckoutReturnTo,
+} from "@/lib/deals/paths";
 export { mapDodoSubscriptionStatus } from "@/lib/billing/status";
 export {
   extractBillingEvent,

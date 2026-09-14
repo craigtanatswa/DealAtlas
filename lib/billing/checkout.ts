@@ -7,6 +7,7 @@ import { checkoutMetadata } from "@/lib/billing/metadata";
 import { mapPlanKey, parseCheckoutRequest } from "@/lib/billing/plans";
 import { requireDodoCheckoutConfig } from "@/lib/billing/config";
 import { BillingConfigError } from "@/lib/billing/errors";
+import { checkoutReturnUrl, parseCheckoutReturnTo } from "@/lib/deals/paths";
 import type { AppProfile } from "@/lib/auth/types";
 
 function checkoutCustomerName(profile: AppProfile, email: string): string {
@@ -30,7 +31,7 @@ async function readCheckoutBody(request: NextRequest): Promise<unknown> {
 
   try {
     const form = await request.formData();
-    return { planKey: form.get("planKey") };
+    return { planKey: form.get("planKey"), returnTo: form.get("returnTo") };
   } catch {
     return null;
   }
@@ -72,10 +73,16 @@ export async function createAuthenticatedCheckoutResponse(input: {
   }
 
   const mapped = mapPlanKey(parsed.planKey, config.products);
+  const returnTo = parseCheckoutReturnTo(
+    body && typeof body === "object" && !Array.isArray(body)
+      ? (body as Record<string, unknown>).returnTo
+      : null,
+  );
+  const returnUrl = checkoutReturnUrl(config.returnUrl, returnTo);
   const checkout = Checkout({
     bearerToken: config.bearerToken,
     environment: config.environment,
-    returnUrl: config.returnUrl,
+    returnUrl,
     type: "session",
   });
 
@@ -92,7 +99,7 @@ export async function createAuthenticatedCheckoutResponse(input: {
         userId: input.user.id,
         planKey: mapped.planKey,
       }),
-      return_url: config.returnUrl,
+      return_url: returnUrl,
       feature_flags: {
         allow_customer_editing_email: false,
       },

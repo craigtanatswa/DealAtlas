@@ -161,10 +161,14 @@ Webhook processing must be idempotent and recorded in `billing_events` before/wh
 Browser → public search endpoint/query → `deal_previews` only.
 
 ### Free detail
-Browser → `/deals/[slug]` → `deal_previews` only.
+Browser → `/deals/[slug]` → `deal_previews` only. Authenticated upgrade CTAs start Dodo checkout with a server-mapped plan key. Checkout redirects are not entitlement.
 
 ### Pro detail
-Browser → authenticated server route/server action → entitlement check → protected canonical tables → response.
+Browser → `/app/deals/[id]` or `/api/deals/[id]` → authenticate → server entitlement check → protected canonical tables → explicit paid DTO.
+
+The paid DTO includes buyer identity, source title/reference, source/application URLs, exact value/dates/location, published procurement contacts, requirements, lots, award criteria, document links, lifecycle timeline, and source provenance.
+
+Verbatim notice text and document files are omitted when source licence/terms do not permit redistribution. In that case the Pro view links to the original source instead. `extracted_text` is never sent to the browser.
 
 ### Admin detail
 Browser → authenticated admin route → role check → protected canonical tables.

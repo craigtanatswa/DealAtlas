@@ -1,6 +1,7 @@
 import "server-only";
 
 import {
+  getPublishedDealPreviewByDealId,
   getPublishedDealPreviewBySlug,
   searchPublishedDealPreviews,
   type PublicSupabaseClient,
@@ -77,4 +78,32 @@ export async function getPublicDealPreviewBySlug(
   const parsedSlug = parseInput(slugSchema, slug, "Preview slug");
   const row = await getPublishedDealPreviewBySlug(client, parsedSlug);
   return row ? toPublicDealPreview(row) : null;
+}
+
+export type PublicDealPreviewPage = {
+  preview: PublicDealPreview;
+  dealId: string;
+};
+
+export async function getPublicDealPreviewPageBySlug(
+  client: PublicSupabaseClient,
+  slug: string,
+): Promise<PublicDealPreviewPage | null> {
+  const parsedSlug = parseInput(slugSchema, slug, "Preview slug");
+  const row = await getPublishedDealPreviewBySlug(client, parsedSlug);
+  if (!row) {
+    return null;
+  }
+  return { preview: toPublicDealPreview(row), dealId: row.deal_id };
+}
+
+export async function getPublicDealPreviewPageByDealId(
+  client: PublicSupabaseClient,
+  dealId: string,
+): Promise<PublicDealPreviewPage | null> {
+  const row = await getPublishedDealPreviewByDealId(client, dealId);
+  if (!row) {
+    return null;
+  }
+  return { preview: toPublicDealPreview(row), dealId: row.deal_id };
 }

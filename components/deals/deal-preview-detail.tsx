@@ -1,6 +1,6 @@
 import { DeadlineBand } from "@/components/deals/deadline-band";
 import { DealStatusBadge } from "@/components/deals/deal-status";
-import { UnlockPanel } from "@/components/deals/unlock-panel";
+import { UnlockPanel, type UnlockCtaMode } from "@/components/deals/unlock-panel";
 import {
   buyerVisibilityLabel,
   levelLabel,
@@ -15,7 +15,18 @@ import {
   DEAL_TYPE_LABELS,
 } from "@/lib/search/filters";
 
-export function DealPreviewDetail({ deal }: { deal: PublicDealPreview }) {
+export function DealPreviewDetail({
+  deal,
+  unlock,
+}: {
+  deal: PublicDealPreview;
+  unlock?: {
+    mode?: UnlockCtaMode;
+    loginHref?: string;
+    revealHref?: string;
+    returnTo?: string;
+  };
+}) {
   return (
     <article className="flex flex-col gap-10">
       <header className="flex flex-col gap-4">
@@ -137,7 +148,12 @@ export function DealPreviewDetail({ deal }: { deal: PublicDealPreview }) {
         <Heading id="locked-heading" level={2}>
           Locked source and buyer intelligence
         </Heading>
-        <UnlockPanel />
+        <UnlockPanel
+          mode={unlock?.mode}
+          loginHref={unlock?.loginHref}
+          revealHref={unlock?.revealHref}
+          returnTo={unlock?.returnTo}
+        />
       </section>
     </article>
   );

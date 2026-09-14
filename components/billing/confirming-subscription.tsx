@@ -5,6 +5,7 @@ import Link from "next/link";
 
 import { EmptyState } from "@/components/feedback/empty-state";
 import { Button } from "@/components/ui/button";
+import { isAppDealPath } from "@/lib/deals/paths";
 import { PLANS } from "@/lib/constants";
 import type { EntitlementSnapshot } from "@/lib/entitlements/types";
 
@@ -13,13 +14,16 @@ const TIMEOUT_MS = 60_000;
 
 export function ConfirmingSubscription({
   initialEntitlement,
+  afterConfirmHref = "/app",
 }: {
   initialEntitlement: EntitlementSnapshot;
+  afterConfirmHref?: string;
 }) {
   const [entitlement, setEntitlement] = useState(initialEntitlement);
   const [timedOut, setTimedOut] = useState(false);
 
   const confirmed = entitlement.plan === PLANS.PRO;
+  const revealDeal = isAppDealPath(afterConfirmHref);
 
   useEffect(() => {
     if (confirmed) {
@@ -70,7 +74,9 @@ export function ConfirmingSubscription({
         description="DealAtlas Pro is active. Protected source details stay hidden until this verified entitlement is present."
       >
         <Button asChild>
-          <Link href="/app">Go to workspace</Link>
+          <Link href={afterConfirmHref}>
+            {revealDeal ? "Open opportunity details" : "Go to workspace"}
+          </Link>
         </Button>
         <Button asChild variant="outline">
           <Link href="/app/billing">View billing</Link>

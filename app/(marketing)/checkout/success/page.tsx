@@ -7,6 +7,7 @@ import { Main } from "@/components/layout/container";
 import { Button } from "@/components/ui/button";
 import { getAuthUser } from "@/lib/auth/session";
 import { loginPathWithNext } from "@/lib/auth/redirect";
+import { parseCheckoutReturnTo } from "@/lib/deals/paths";
 import { getCurrentEntitlement } from "@/lib/entitlements/service";
 import { FREE_ENTITLEMENT } from "@/lib/entitlements/policy";
 
@@ -23,6 +24,13 @@ export default async function CheckoutSuccessPage({
   void params.success;
   void params.status;
   void params.session_id;
+  const afterConfirmHref = parseCheckoutReturnTo(
+    typeof params.next === "string"
+      ? params.next
+      : Array.isArray(params.next)
+        ? params.next[0]
+        : null,
+  ) ?? "/app";
 
   const user = await getAuthUser();
   if (!user) {
@@ -45,7 +53,10 @@ export default async function CheckoutSuccessPage({
   return (
     <Main>
       <Heading>Confirming subscription</Heading>
-      <ConfirmingSubscription initialEntitlement={entitlement ?? FREE_ENTITLEMENT} />
+      <ConfirmingSubscription
+        initialEntitlement={entitlement ?? FREE_ENTITLEMENT}
+        afterConfirmHref={afterConfirmHref}
+      />
     </Main>
   );
 }

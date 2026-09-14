@@ -105,6 +105,7 @@ const CANONICAL_DOCUMENT_COLUMNS = [
   "source_url",
   "mime_type",
   "published_at",
+  "redistribution_permitted",
   "processing_status",
   "created_at",
   "updated_at",
@@ -118,10 +119,65 @@ const CANONICAL_DATA_SOURCE_COLUMNS = [
   "access_method",
   "base_url",
   "reuse_status",
+  "licence_name",
+  "licence_url",
+  "terms_url",
   "scraping_permitted",
   "enabled",
   "created_at",
   "updated_at",
+] as const;
+
+const CANONICAL_LOT_COLUMNS = [
+  "id",
+  "deal_id",
+  "lot_number",
+  "source_title",
+  "source_description",
+  "status",
+  "currency",
+  "value_min",
+  "value_max",
+  "exact_location_text",
+  "submission_deadline",
+  "contract_start_date",
+  "contract_end_date",
+  "sme_suitable",
+  "vcse_suitable",
+] as const;
+
+const CANONICAL_REQUIREMENT_COLUMNS = [
+  "id",
+  "deal_id",
+  "lot_id",
+  "requirement_type",
+  "name",
+  "description",
+  "mandatory",
+  "minimum_value",
+  "unit",
+  "evidence_required",
+  "is_inferred",
+] as const;
+
+const CANONICAL_AWARD_CRITERION_COLUMNS = [
+  "id",
+  "deal_id",
+  "lot_id",
+  "criterion_name",
+  "criterion_description",
+  "criterion_type",
+  "weight_percent",
+  "order_of_importance",
+] as const;
+
+const CANONICAL_CHANGE_COLUMNS = [
+  "id",
+  "deal_id",
+  "change_type",
+  "field_name",
+  "occurred_at",
+  "material",
 ] as const;
 
 export type CanonicalDeal = Pick<
@@ -143,6 +199,22 @@ export type CanonicalDocument = Pick<
 export type CanonicalDataSource = Pick<
   Database["public"]["Tables"]["data_sources"]["Row"],
   (typeof CANONICAL_DATA_SOURCE_COLUMNS)[number]
+>;
+export type CanonicalLot = Pick<
+  Database["public"]["Tables"]["lots"]["Row"],
+  (typeof CANONICAL_LOT_COLUMNS)[number]
+>;
+export type CanonicalRequirement = Pick<
+  Database["public"]["Tables"]["requirements"]["Row"],
+  (typeof CANONICAL_REQUIREMENT_COLUMNS)[number]
+>;
+export type CanonicalAwardCriterion = Pick<
+  Database["public"]["Tables"]["award_criteria"]["Row"],
+  (typeof CANONICAL_AWARD_CRITERION_COLUMNS)[number]
+>;
+export type CanonicalChange = Pick<
+  Database["public"]["Tables"]["data_changes"]["Row"],
+  (typeof CANONICAL_CHANGE_COLUMNS)[number]
 >;
 
 function requireCanonicalAccess(access: CanonicalAccess): CanonicalAccess {
@@ -239,6 +311,78 @@ export async function getCanonicalDataSourceById(
 
   return throwIfQueryError("Failed to load canonical data source", {
     data: (data as unknown as CanonicalDataSource | null) ?? null,
+    error,
+  });
+}
+
+export async function listCanonicalLotsForDeal(
+  dealId: string,
+  access: CanonicalAccess,
+) {
+  requireCanonicalAccess(access);
+  const id = parseInput(uuidSchema, dealId, "Deal id");
+  const { data, error } = await adminClient()
+    .from("lots")
+    .select(CANONICAL_LOT_COLUMNS.join(", "))
+    .eq("deal_id", id)
+    .order("lot_number", { ascending: true });
+
+  return throwIfQueryError("Failed to load canonical lots", {
+    data: (data as unknown as CanonicalLot[]) ?? [],
+    error,
+  });
+}
+
+export async function listCanonicalRequirementsForDeal(
+  dealId: string,
+  access: CanonicalAccess,
+) {
+  requireCanonicalAccess(access);
+  const id = parseInput(uuidSchema, dealId, "Deal id");
+  const { data, error } = await adminClient()
+    .from("requirements")
+    .select(CANONICAL_REQUIREMENT_COLUMNS.join(", "))
+    .eq("deal_id", id)
+    .order("created_at", { ascending: true });
+
+  return throwIfQueryError("Failed to load canonical requirements", {
+    data: (data as unknown as CanonicalRequirement[]) ?? [],
+    error,
+  });
+}
+
+export async function listCanonicalAwardCriteriaForDeal(
+  dealId: string,
+  access: CanonicalAccess,
+) {
+  requireCanonicalAccess(access);
+  const id = parseInput(uuidSchema, dealId, "Deal id");
+  const { data, error } = await adminClient()
+    .from("award_criteria")
+    .select(CANONICAL_AWARD_CRITERION_COLUMNS.join(", "))
+    .eq("deal_id", id)
+    .order("order_of_importance", { ascending: true });
+
+  return throwIfQueryError("Failed to load canonical award criteria", {
+    data: (data as unknown as CanonicalAwardCriterion[]) ?? [],
+    error,
+  });
+}
+
+export async function listCanonicalChangesForDeal(
+  dealId: string,
+  access: CanonicalAccess,
+) {
+  requireCanonicalAccess(access);
+  const id = parseInput(uuidSchema, dealId, "Deal id");
+  const { data, error } = await adminClient()
+    .from("data_changes")
+    .select(CANONICAL_CHANGE_COLUMNS.join(", "))
+    .eq("deal_id", id)
+    .order("occurred_at", { ascending: true });
+
+  return throwIfQueryError("Failed to load canonical deal changes", {
+    data: (data as unknown as CanonicalChange[]) ?? [],
     error,
   });
 }

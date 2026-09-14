@@ -59,9 +59,12 @@ describe("public discovery data boundary", () => {
 
   it("does not import paid/canonical helpers from public/free discovery", () => {
     for (const { file, source } of sources) {
+      const relative = file.replaceAll("\\", "/");
       expect(source, file).not.toMatch(/from ["']@\/lib\/deals\/protected["']/);
       expect(source, file).not.toMatch(/from ["']@\/lib\/deals\/paid-dto["']/);
-      expect(source, file).not.toMatch(/from ["']@\/lib\/entitlements\/service["']/);
+      if (!relative.endsWith("app/(marketing)/deals/[slug]/page.tsx")) {
+        expect(source, file).not.toMatch(/from ["']@\/lib\/entitlements\/service["']/);
+      }
     }
   });
 
@@ -71,8 +74,9 @@ describe("public discovery data boundary", () => {
     );
     expect(slugPage).toBeTruthy();
     expect(slugPage?.source).toContain("publicDealPreviewMetadata");
-    expect(slugPage?.source).toContain("getPublicDealPreviewBySlug");
+    expect(slugPage?.source).toContain("getPublicDealPreviewPageBySlug");
     expect(slugPage?.source).not.toContain("source_title");
     expect(slugPage?.source).not.toContain("source_url");
+    expect(slugPage?.source).not.toContain("loadPaidDealDto");
   });
 });

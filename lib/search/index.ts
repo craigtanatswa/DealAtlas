@@ -11,6 +11,8 @@ export {
 } from "@/lib/search/dto";
 export {
   getPublicDealPreviewBySlug,
+  getPublicDealPreviewPageByDealId,
+  getPublicDealPreviewPageBySlug,
   searchPublicDealPreviews,
   searchPublicDealPreviewsFromParams,
 } from "@/lib/search/public";

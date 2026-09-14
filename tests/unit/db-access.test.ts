@@ -43,7 +43,13 @@ describe("typed data-access boundaries", () => {
     expect(source).toContain('.from("notices")');
     expect(source).toContain('.from("documents")');
     expect(source).toContain('.from("data_sources")');
+    expect(source).toContain('.from("lots")');
+    expect(source).toContain('.from("requirements")');
+    expect(source).toContain('.from("award_criteria")');
+    expect(source).toContain('.from("data_changes")');
     expect(source).toContain("exact_location_text");
+    expect(source).toContain("licence_name");
+    expect(source).toContain("redistribution_permitted");
     expect(source).not.toMatch(/select\(\s*["']\*["']\s*\)/);
   });
 

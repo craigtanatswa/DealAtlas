@@ -36,15 +36,22 @@ describe("protected deal boundary", () => {
     expect(loader).toMatch(/import ["']server-only["']/);
     expect(loader).toContain("getCanonicalDealById");
     expect(loader).toContain("toPaidDealDto");
+    expect(loader).toContain("listCanonicalLotsForDeal");
+    expect(loader).toContain("listCanonicalRequirementsForDeal");
+    expect(loader).toContain("listCanonicalAwardCriteriaForDeal");
+    expect(loader).toContain("listCanonicalChangesForDeal");
     expect(loader).not.toMatch(/select\(\s*["']\*["']\s*\)/);
   });
 
-  it("does not reveal protected source data from the app deal placeholder", () => {
+  it("reveals protected source data on the app deal page only after a server entitlement check", () => {
     const page = read("app/(app)/app/deals/[id]/page.tsx");
-    expect(page).toContain("PagePlaceholder");
-    expect(page).not.toContain("loadPaidDealDto");
-    expect(page).not.toContain("sourceTitle");
-    expect(page).not.toContain("getCanonicalDealById");
+    expect(page).toContain("getCurrentEntitlement");
+    expect(page).toContain("isProEntitlement");
+    expect(page).toContain("loadPaidDealDto");
+    expect(page).toContain("DealPaidDetail");
+    expect(page).toContain("getPublicDealPreviewPageByDealId");
+    expect(page).not.toMatch(/success=true/);
+    expect(page).not.toMatch(/grantPro|forcePro|bypass/i);
   });
 
   it("mirrors private.is_user_pro status and paid-through rules", () => {

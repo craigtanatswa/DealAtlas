@@ -1,5 +1,7 @@
 export { DealCard, DealCardSkeleton } from "@/components/deals/deal-card";
 export { DealPreviewDetail } from "@/components/deals/deal-preview-detail";
+export { DealPaidDetail } from "@/components/deals/deal-paid-detail";
+export { ExternalSourceLink } from "@/components/deals/external-source-link";
 export { DealStatusBadge } from "@/components/deals/deal-status";
 export { ValueBand } from "@/components/deals/value-band";
 export { DeadlineBand } from "@/components/deals/deadline-band";
