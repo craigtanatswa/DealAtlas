@@ -25,7 +25,14 @@ async function main() {
       published: outcome.published,
       risk: outcome.leakageRisk,
     });
+    if (outcome.published) {
+      const { enqueueDealMatches } = await import("@/lib/matching/queue");
+      await enqueueDealMatches(deal.id);
+    }
   }
+
+  const { processMatchJobs } = await import("@/lib/matching/queue");
+  const matches = await processMatchJobs({ limit: 10, maxPairs: 80 });
 
   console.log(
     JSON.stringify(
@@ -33,6 +40,7 @@ async function main() {
         processed: results.length,
         published: results.filter((item) => item.published).length,
         blocked: results.filter((item) => !item.published).length,
+        matches,
         results,
       },
       null,

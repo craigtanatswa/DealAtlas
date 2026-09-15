@@ -5,6 +5,8 @@ import { useActionState } from "react";
 import { saveCompanyProfileAction } from "@/lib/auth/actions";
 import { INITIAL_ACTION_STATE } from "@/lib/auth/messages";
 import { BUYER_SECTOR_LABELS, BUYER_SECTORS } from "@/lib/constants";
+import { DEAL_CATEGORY_CATALOG } from "@/lib/matching/categories";
+import { UK_REGION_OPTIONS } from "@/lib/search/filters";
 import { FormStatus } from "@/components/auth/form-status";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,13 +44,15 @@ export function CompanyProfileForm({
     INITIAL_ACTION_STATE,
   );
   const selectedSectors = new Set(companyProfile?.preferred_buyer_sectors ?? []);
+  const selectedRegions = new Set(companyProfile?.preferred_regions ?? []);
+  const selectedCategories = new Set(companyProfile?.preferred_category_slugs ?? []);
 
   return (
     <form action={action} className="flex flex-col gap-4">
       <p className="text-sm leading-6 text-muted-foreground">
-        This matching profile is used later to score opportunities against your
-        company. Save a first version now; relevance scoring arrives in a later
-        release.
+        Free accounts can save one matching profile. Saving recalculates relevance
+        scores for published opportunities. Scores and preview reasons stay
+        sanitised; exact source identity is never included.
       </p>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="company_name">Company name</Label>
@@ -115,6 +119,38 @@ export function CompanyProfileForm({
           ))}
         </div>
       </fieldset>
+      <fieldset className="flex flex-col gap-2">
+        <legend className="text-sm font-medium">Preferred categories</legend>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {DEAL_CATEGORY_CATALOG.map((category) => (
+            <label key={category.slug} className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                name="preferred_category_slugs"
+                value={category.slug}
+                defaultChecked={selectedCategories.has(category.slug)}
+              />
+              {category.name}
+            </label>
+          ))}
+        </div>
+      </fieldset>
+      <fieldset className="flex flex-col gap-2">
+        <legend className="text-sm font-medium">Regions served</legend>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {UK_REGION_OPTIONS.map((region) => (
+            <label key={region} className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                name="preferred_regions"
+                value={region}
+                defaultChecked={selectedRegions.has(region)}
+              />
+              {region}
+            </label>
+          ))}
+        </div>
+      </fieldset>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="products_services">Products and services</Label>
         <Textarea
@@ -138,26 +174,8 @@ export function CompanyProfileForm({
         <Textarea
           id="negative_keywords"
           name="negative_keywords"
-          placeholder="One item per line"
+          placeholder="One item per line. These reduce poor matches."
           defaultValue={listValue(companyProfile?.negative_keywords)}
-        />
-      </div>
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="preferred_regions">Regions served</Label>
-        <Textarea
-          id="preferred_regions"
-          name="preferred_regions"
-          placeholder="One item per line"
-          defaultValue={listValue(companyProfile?.preferred_regions)}
-        />
-      </div>
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="preferred_category_slugs">Preferred categories</Label>
-        <Textarea
-          id="preferred_category_slugs"
-          name="preferred_category_slugs"
-          placeholder="Category slugs, one per line"
-          defaultValue={listValue(companyProfile?.preferred_category_slugs)}
         />
       </div>
       <div className="flex flex-col gap-1.5">

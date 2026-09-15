@@ -18,6 +18,7 @@ export type DealCardData = {
   bidComplexity: SuitabilityLevel | null;
   status: DealStatus;
   matchScore?: number | null;
+  matchReasons?: string[];
 };
 
 export function buyerVisibilityLabel(sector: BuyerSector): "Public" | "Private" {

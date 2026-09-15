@@ -89,7 +89,16 @@ export function DealCard({
           </div>
         </dl>
         {typeof deal.matchScore === "number" ? (
-          <MatchScore score={deal.matchScore} />
+          <div className="flex flex-col gap-2">
+            <MatchScore score={deal.matchScore} />
+            {deal.matchReasons && deal.matchReasons.length > 0 ? (
+              <ul className="list-disc space-y-1 pl-5 text-[0.8125rem] leading-5 text-muted-foreground">
+                {deal.matchReasons.map((reason) => (
+                  <li key={reason}>{reason}</li>
+                ))}
+              </ul>
+            ) : null}
+          </div>
         ) : null}
       </CardContent>
       <CardFooter>

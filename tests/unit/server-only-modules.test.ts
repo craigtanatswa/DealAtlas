@@ -22,6 +22,11 @@ const SERVER_ONLY_MODULES = [
   "lib/billing/portal.ts",
   "lib/billing/webhook-handler.ts",
   "lib/billing/reconcile.ts",
+  "lib/matching/persist.ts",
+  "lib/matching/queue.ts",
+  "lib/matching/load.ts",
+  "lib/matching/search.ts",
+  "lib/matching/recalculate.ts",
 ];
 
 const CLIENT_GLOBS = ["components", "app"];
@@ -71,6 +76,11 @@ describe("server-only module boundary", () => {
       expect(source).not.toMatch(/from ["']@\/lib\/billing\/portal["']/);
       expect(source).not.toMatch(/from ["']@\/lib\/billing\/webhook-handler["']/);
       expect(source).not.toMatch(/from ["']@\/lib\/billing\/reconcile["']/);
+      expect(source).not.toMatch(/from ["']@\/lib\/matching\/persist["']/);
+      expect(source).not.toMatch(/from ["']@\/lib\/matching\/queue["']/);
+      expect(source).not.toMatch(/from ["']@\/lib\/matching\/load["']/);
+      expect(source).not.toMatch(/from ["']@\/lib\/matching\/search["']/);
+      expect(source).not.toMatch(/from ["']@\/lib\/matching\/recalculate["']/);
     }
   });
 });

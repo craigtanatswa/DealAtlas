@@ -78,6 +78,7 @@ Never use CSS blur or client-side conditional rendering as the protection mechan
   /search
   /redaction
   /email
+  /matching
   /monitoring
   /validation
 /ingestion
@@ -91,6 +92,7 @@ Never use CSS blur or client-side conditional rendering as the protection mechan
 /scripts
   /ingest.ts
   /rebuild-previews.ts
+  /rebuild-matches.ts
   /send-alerts.ts
 /supabase
   /migrations
@@ -184,6 +186,8 @@ Do not expose source-bearing fields through search snippets.
 
 Paid advanced search may query protected dimensions server-side but must return protected results only after entitlement verification.
 
+Signed-in relevance sort/filter uses stored `deal_matches` rows (0–100) plus sanitised `preview_reasons`. Semantic similarity is included only when an embedding model and API key are configured. Free clients receive limited canned reasons. Pro mismatch notes that depend on protected requirement types are loaded server-side from `detail_reasons` after entitlement checks and still must not copy source identity. Authenticated clients are granted SELECT on preview-safe `deal_matches` columns only; `detail_reasons` is not included.
+
 ## 10. Preview generation/redaction
 Every canonical deal gets a separate `deal_previews` row.
 
@@ -247,6 +251,8 @@ preview generation + leak scan
   ↓
 searchable preview publish
   ↓
+match scoring / match_jobs queue
+  ↓
 alert matching
 ```
 
@@ -275,6 +281,7 @@ MVP scheduled jobs:
 - frequent active-source ingestion, frequency configurable per source
 - daily stale-source checks
 - daily preview regeneration for changed deals
+- match recalculation for new/changed previews and edited company profiles (`npm run rebuild-matches`)
 - daily alert matching/delivery
 - nightly data-quality rollup
 - weekly contract-renewal recalculation
@@ -353,8 +360,9 @@ The application foundation was added to this repository on top of the specificat
 - Next.js 16 App Router, TypeScript strict mode, Tailwind, shadcn/ui, Supabase SSR helpers, Zod, Vercel-compatible Next.js runtime.
 - Route groups: `(marketing)`, `(auth)`, `(app)`, `(admin)`, plus `/api`.
 - Public marketing routes include `/`, `/deals`, `/deals/[slug]`, `/pricing`, `/how-it-works`.
-- Authenticated placeholders live under `/app/...` as specified.
-- `lib/` contains `auth`, `billing`, `db`, `entitlements`, `search`, `redaction`, `email`, `monitoring`, and `validation`.
+- Authenticated search at `/app/search` sorts and filters by company-profile relevance when a profile exists. Public `/deals` can show scores for signed-in users without revealing source identity.
+- Saving `/app/profile` queues `match_jobs` and recalculates `deal_matches` for published previews.
+- `lib/` contains `auth`, `billing`, `db`, `entitlements`, `search`, `matching`, `redaction`, `email`, `monitoring`, and `validation`.
 - Privileged Supabase access is isolated in `lib/supabase/admin.ts` with `import "server-only"`. Browser and cookie-based SSR clients use the publishable key only.
 - Environment validation splits `NEXT_PUBLIC_*` (`lib/env/public.ts`) from server secrets (`lib/env/server.ts`).
 - Feature limits live in `lib/constants.ts` and must be enforced server-side when those features are implemented.
@@ -375,9 +383,9 @@ Public/free query helpers in `lib/db/previews.ts` may touch `deal_previews` only
 pgTAP tests live in `supabase/tests/database`. PostgREST RLS smoke tests live in `tests/integration/rls.rest.test.ts` and require a running local stack (`npm run test:db`). Auth integration tests live in `tests/integration/auth.rest.test.ts`. Public/free discovery leak tests live in `tests/integration/public-discovery.rest.test.ts` and `tests/unit/deal-preview-leak.test.tsx`.
 
 ### Public/free discovery
-Anonymous and free visitors search and view `/deals` and `/deals/[slug]` through `lib/search/public.ts`. Those helpers only call `deal_previews` / `search_deal_previews`. Metadata, JSON (`/api/search`), and HTML/RSC payloads use the explicit public preview DTO.
+Anonymous and free visitors search and view `/deals` and `/deals/[slug]` through `lib/search/public.ts`. Those helpers only call `deal_previews` / `search_deal_previews`. Metadata, JSON (`/api/search`), and HTML/RSC payloads use the explicit public preview DTO. Signed-in HTML search may attach `deal_matches` scores and canned reasons without adding source identity.
 
-Protected Deal JSON lives at `/api/deals/[id]`. The route authenticates with `getAuthUser()`, resolves FREE/PRO via `getCurrentEntitlement()` from the local `subscriptions` mirror, then loads canonical rows with the server-only admin client and maps an explicit paid DTO. Query parameters and client plan labels cannot grant Pro. The authenticated `/app/deals/[id]` page remains a placeholder until the paid UI goal.
+Protected Deal JSON lives at `/api/deals/[id]`. The route authenticates with `getAuthUser()`, resolves FREE/PRO via `getCurrentEntitlement()` from the local `subscriptions` mirror, then loads canonical rows with the server-only admin client and maps an explicit paid DTO. Query parameters and client plan labels cannot grant Pro. `/app/deals/[id]` shows the paid UI for entitled users and the sanitised preview plus limited match reasons for free users.
 
 ### Authentication
 Launch authentication is email/password with Supabase SSR helpers.

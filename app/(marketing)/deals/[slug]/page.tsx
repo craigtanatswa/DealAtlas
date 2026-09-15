@@ -12,6 +12,7 @@ import { isProEntitlement } from "@/lib/entitlements/policy";
 import { getCurrentEntitlement } from "@/lib/entitlements/service";
 import { publicDealPreviewMetadata } from "@/lib/search/metadata";
 import { getPublicDealPreviewPageBySlug } from "@/lib/search/public";
+import { loadMatchForPreviewPage } from "@/lib/matching/search";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { parseInputSafe, slugSchema } from "@/lib/validation";
 
@@ -66,11 +67,18 @@ export default async function DealPreviewPage({ params }: PageProps) {
     : isProEntitlement(entitlement)
       ? "pro"
       : "free";
+  const client = await createSupabaseServerClient();
+  const match = await loadMatchForPreviewPage({
+    client,
+    userId: user?.id ?? null,
+    dealId: page.dealId,
+  });
 
   return (
     <Main>
       <DealPreviewDetail
         deal={page.preview}
+        match={match}
         unlock={{
           mode,
           loginHref: loginPathWithNext(`/deals/${page.preview.slug}`),

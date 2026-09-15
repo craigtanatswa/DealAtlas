@@ -73,12 +73,21 @@ export function parseOptionalNumber(value: FormDataEntryValue | null): number | 
   return parsed;
 }
 
+export function parseAllowedList(
+  formData: FormData,
+  key: string,
+  allowed: readonly string[],
+  maxItems = 40,
+): string[] {
+  const allowedSet = new Set(allowed);
+  const items = formData
+    .getAll(key)
+    .filter((value): value is string => typeof value === "string" && allowedSet.has(value));
+  return [...new Set(items)].slice(0, maxItems);
+}
+
 export function parseBuyerSectors(formData: FormData): BuyerSector[] {
-  const allowed = new Set<string>(BUYER_SECTORS);
-  return formData
-    .getAll("preferred_buyer_sectors")
-    .filter((value): value is string => typeof value === "string" && allowed.has(value))
-    .map((value) => value as BuyerSector);
+  return parseAllowedList(formData, "preferred_buyer_sectors", BUYER_SECTORS) as BuyerSector[];
 }
 
 export const companyProfileSchema = z

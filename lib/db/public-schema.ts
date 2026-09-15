@@ -17,7 +17,10 @@ export const PUBLIC_TABLE_NAMES = [
 
 export type PublicTableName = (typeof PUBLIC_TABLE_NAMES)[number];
 
-export const PUBLIC_FUNCTION_NAMES = ["search_deal_previews"] as const;
+export const PUBLIC_FUNCTION_NAMES = [
+  "search_deal_previews",
+  "search_deal_previews_for_profile",
+] as const;
 
 export type PublicFunctionName = (typeof PUBLIC_FUNCTION_NAMES)[number];
 

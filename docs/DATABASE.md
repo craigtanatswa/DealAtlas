@@ -181,7 +181,14 @@ Participating suppliers/buyers where appropriate.
 DealAtlas-derived intelligence such as summary, ideal supplier, risk flags, incumbent inference and renewal signals. Each inferred field should retain provenance, confidence and model/version in `field_provenance`. Never present these as official source facts.
 
 ### deal_matches
-Per-company-profile relevance score and match/mismatch reasons.
+Per-company-profile relevance score and sanitised match/mismatch reasons.
+
+`preview_reasons` is readable by the owning authenticated user and must contain only canned, non-source-identifying labels. `detail_reasons` is a server-only column: table-level SELECT is revoked from `anon`/`authenticated`, then preview-safe columns are granted to `authenticated`. Entitled Pro mismatch notes may refer to protected requirement *types* without copying source identity.
+
+Score columns: `relevance_score` (0–100), plus optional `category_score`, `keyword_score`, `location_score`, `value_score`, `sector_score`, `certification_score`, `semantic_score`.
+
+### match_jobs
+Server-only queue for recalculating `deal_matches` after a company profile is saved or a sanitised preview is published. Ordinary client roles have no grants.
 
 ### saved_deals
 User saves a Deal preview/Deal.
@@ -334,7 +341,9 @@ Indexes:
 - btree updated_at
 - btree is_published
 
-`search_deal_previews` is the public/free RPC. It only reads `deal_previews` and accepts keyword, category, buyer sector, deal type, broad region, status, value band, closing window, limit, and offset. Protected Pro filters run through trusted server code against canonical tables and return paid results only after entitlement check.
+`search_deal_previews` is the public/free RPC. It only reads `deal_previews` and accepts keyword, category, buyer sector, deal type, broad region, status, value band, closing window, limit, and offset.
+
+Signed-in relevance sort/filter uses `search_deal_previews_for_profile`, which still reads published `deal_previews` and RLS-constrained `deal_matches` only. It is granted to `authenticated` and `service_role`, not `anon`. Protected Pro filters that need canonical tables still run through trusted server code after entitlement check.
 
 ## 9. Migrations
 Included in the build pack:
@@ -348,6 +357,7 @@ Included in the build pack:
 - `0008_find_a_tender_ocds.sql`
 - `0009_private_source_onboarding.sql`
 - `0010_intelligence_preview_pipeline.sql`
+- `0011_matching_pipeline.sql`
 
 Apply in numeric order with the Supabase CLI (`npx supabase db reset` locally, or `npx supabase db push` to a linked project). Never reset or drop a linked production database.
 
@@ -365,6 +375,7 @@ This writes `lib/db/database.types.ts`. Do not edit that file by hand.
 
 ### Query modules
 - Public/free: `lib/db/previews.ts` and `lib/search/public.ts` — `deal_previews` and `search_deal_previews` only, with an explicit column list (never `select('*')`). Public search JSON is `/api/search`. Public HTML is `/deals` and `/deals/[slug]`.
+- Signed-in relevance: `lib/matching/search.ts` may join `deal_matches` for the caller’s company profile. `lib/matching/persist.ts` writes matches with the admin client. `detail_reasons` is never selected on the user client.
 - Browser and cookie-based SSR clients are typed with the granted public surface only (`lib/db/public-schema.ts`).
 - Protected canonical tables: `lib/db/canonical.ts` is `server-only` and uses the privileged admin client after an explicit Pro/admin access argument.
 - Billing writes: `lib/billing/store.ts` is `server-only` and uses the admin client for `subscriptions` and `billing_events`. Ordinary client roles still have no grants on those tables.

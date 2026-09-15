@@ -36,9 +36,16 @@ async function main() {
     updatedFrom: args.updatedFrom,
     updatedTo: args.updatedTo,
     force: args.force,
+    onPreviewPublished: async (dealId) => {
+      const { enqueueDealMatches } = await import("@/lib/matching/queue");
+      await enqueueDealMatches(dealId);
+    },
   });
 
-  console.log(JSON.stringify(result, null, 2));
+  const { processMatchJobs } = await import("@/lib/matching/queue");
+  const matches = await processMatchJobs({ limit: 10, maxPairs: 80 });
+
+  console.log(JSON.stringify({ ...result, matches }, null, 2));
   if (result.status === "FAILED" || result.status === "SKIPPED") {
     process.exitCode = 1;
   }

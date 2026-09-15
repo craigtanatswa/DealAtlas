@@ -1,5 +1,6 @@
 import { DealStatusBadge } from "@/components/deals/deal-status";
 import { ExternalSourceLink } from "@/components/deals/external-source-link";
+import { MatchReasons } from "@/components/deals/match-reasons";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { Heading, Text } from "@/components/layout/heading";
 import { Badge } from "@/components/ui/badge";
@@ -25,12 +26,19 @@ import type {
   PaidLotDto,
   PaidRequirementDto,
 } from "@/lib/deals/paid-dto";
+import type { ProMatchView } from "@/lib/matching/types";
 import {
   DEAL_STAGE_LABELS,
   DEAL_TYPE_LABELS,
 } from "@/lib/search/filters";
 
-export function DealPaidDetail({ deal }: { deal: PaidDealDto }) {
+export function DealPaidDetail({
+  deal,
+  match,
+}: {
+  deal: PaidDealDto;
+  match?: ProMatchView | null;
+}) {
   const withheld = deal.provenance.contentAccess === "withhold";
   const value = formatDealValueRange({
     exactValueText: deal.exactValueText,
@@ -137,6 +145,15 @@ export function DealPaidDetail({ deal }: { deal: PaidDealDto }) {
           </section>
 
           {deal.intelligence ? <IntelligenceSection intelligence={deal.intelligence} /> : null}
+
+          {match ? (
+            <MatchReasons
+              score={match.score}
+              reasons={match.reasons}
+              mismatches={match.mismatches}
+              caption="DealAtlas relevance against your company profile. Mismatch notes may use protected requirement types, not original notice wording."
+            />
+          ) : null}
 
           <section aria-labelledby="contact-heading" className="flex flex-col gap-3">
             <Heading id="contact-heading" level={2}>

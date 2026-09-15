@@ -44,6 +44,9 @@ export const publicSearchInputSchema = z.object({
 
 export type PublicSearchInput = z.infer<typeof publicSearchInputSchema>;
 
+export const SEARCH_SORTS = ["updated", "relevance"] as const;
+export type SearchSort = (typeof SEARCH_SORTS)[number];
+
 export type PublicSearchFilters = {
   query?: string;
   category?: string;
@@ -55,6 +58,12 @@ export type PublicSearchFilters = {
   status?: DealStatus;
   page: number;
   limit: number;
+  sort?: SearchSort;
+  minScore?: number;
+};
+
+export type SignedInSearchFilters = PublicSearchFilters & {
+  sort: SearchSort;
 };
 
 export type SearchParamRecord = Record<
@@ -159,6 +168,12 @@ export function toPublicSearchQuery(filters: PublicSearchFilters): string {
   if (filters.status) {
     params.set("status", filters.status);
   }
+  if (filters.sort && filters.sort !== "updated") {
+    params.set("sort", filters.sort);
+  }
+  if (filters.minScore != null) {
+    params.set("minScore", String(filters.minScore));
+  }
   if (filters.page > 1) {
     params.set("page", String(filters.page));
   }
@@ -166,9 +181,43 @@ export function toPublicSearchQuery(filters: PublicSearchFilters): string {
   return query ? `/deals?${query}` : "/deals";
 }
 
+export function searchHref(
+  filters: PublicSearchFilters,
+  page = filters.page,
+  path = "/deals",
+): string {
+  const url = toPublicSearchQuery({ ...filters, page });
+  if (path === "/deals") {
+    return url;
+  }
+  return url.replace(/^\/deals/, path);
+}
+
 export function publicSearchHref(
   filters: PublicSearchFilters,
   page = filters.page,
 ): string {
-  return toPublicSearchQuery({ ...filters, page });
+  return searchHref(filters, page, "/deals");
+}
+
+export function parseSignedInSearchParams(
+  searchParams: SearchParamRecord,
+  options?: { defaultSort?: SearchSort },
+): SignedInSearchFilters {
+  const base = parsePublicSearchParams(searchParams);
+  const sort =
+    optionalEnum(firstParam(searchParams.sort), SEARCH_SORTS) ??
+    options?.defaultSort ??
+    "updated";
+  const minScoreRaw = firstParam(searchParams.minScore);
+  const minScoreParsed = minScoreRaw ? Number(minScoreRaw) : Number.NaN;
+  const minScore =
+    Number.isFinite(minScoreParsed) && minScoreParsed >= 0 && minScoreParsed <= 100
+      ? Math.round(minScoreParsed)
+      : undefined;
+  return {
+    ...base,
+    sort,
+    minScore,
+  };
 }

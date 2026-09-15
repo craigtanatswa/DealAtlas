@@ -15,7 +15,7 @@ describe("free discovery HTML and protected paths", () => {
       <DealSearchResults
         filters={{ page: 1, limit: 20 }}
         result={{
-          items: [DEAL_PREVIEW_DETAIL_FIXTURE],
+          items: [{ preview: DEAL_PREVIEW_DETAIL_FIXTURE, match: null }],
           total: 1,
           page: 1,
           pageSize: 20,

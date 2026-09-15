@@ -2,6 +2,7 @@ import type { DealCardData, SuitabilityLevel } from "@/components/deals/types";
 import type { BuyerSector } from "@/lib/constants";
 import { BUYER_SECTORS } from "@/lib/constants";
 import type { DealPreviewPublic, DealPreviewSearchRow } from "@/lib/db/previews";
+import type { SafeMatchView } from "@/lib/matching/types";
 import {
   DEAL_STAGES,
   DEAL_STATUSES,
@@ -57,6 +58,18 @@ export type PublicDealPreview = {
 
 export type PublicDealSearchResult = {
   items: PublicDealPreview[];
+  total: number;
+  page: number;
+  pageSize: number;
+};
+
+export type RankedDealSearchItem = {
+  preview: PublicDealPreview;
+  match: SafeMatchView | null;
+};
+
+export type RankedDealSearchResult = {
+  items: RankedDealSearchItem[];
   total: number;
   page: number;
   pageSize: number;
@@ -162,7 +175,11 @@ export function toPublicDealPreview(
   };
 }
 
-export function toDealCardData(preview: PublicDealPreview): DealCardData {
+export function toDealCardData(
+  preview: PublicDealPreview,
+  matchScore?: number | null,
+  matchReasons?: string[] | null,
+): DealCardData {
   return {
     slug: preview.slug,
     previewTitle: preview.previewTitle,
@@ -175,6 +192,8 @@ export function toDealCardData(preview: PublicDealPreview): DealCardData {
     smeSuitability: preview.smeSuitability,
     bidComplexity: preview.bidComplexity,
     status: preview.status,
+    matchScore: matchScore ?? null,
+    matchReasons: (matchReasons ?? []).slice(0, 3),
   };
 }
 

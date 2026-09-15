@@ -10,6 +10,8 @@ import { appDealPath, parseDealIdParam } from "@/lib/deals/paths";
 import { loadPaidDealDto } from "@/lib/deals/protected";
 import { isProEntitlement } from "@/lib/entitlements/policy";
 import { getCurrentEntitlement } from "@/lib/entitlements/service";
+import { loadCompanyProfileIdForUser, loadProMatchForDeal } from "@/lib/matching/load";
+import { loadMatchForPreviewPage } from "@/lib/matching/search";
 import { getPublicDealPreviewPageByDealId } from "@/lib/search/public";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -36,6 +38,7 @@ export default async function AppDealPage({ params }: PageProps) {
 
   const { user } = await requireUser(appDealPath(dealId));
   const entitlement = await getCurrentEntitlement(user.id);
+  const client = await createSupabaseServerClient();
 
   if (isProEntitlement(entitlement)) {
     let dto = null;
@@ -64,23 +67,34 @@ export default async function AppDealPage({ params }: PageProps) {
       notFound();
     }
 
+    const companyProfileId = await loadCompanyProfileIdForUser(client, user.id);
+    const match = companyProfileId
+      ? await loadProMatchForDeal({ companyProfileId, dealId })
+      : null;
+
     return (
       <Main>
-        <DealPaidDetail deal={dto} />
+        <DealPaidDetail deal={dto} match={match} />
       </Main>
     );
   }
 
-  const client = await createSupabaseServerClient();
   const previewPage = await getPublicDealPreviewPageByDealId(client, dealId);
   if (!previewPage) {
     notFound();
   }
 
+  const match = await loadMatchForPreviewPage({
+    client,
+    userId: user.id,
+    dealId,
+  });
+
   return (
     <Main>
       <DealPreviewDetail
         deal={previewPage.preview}
+        match={match}
         unlock={{
           mode: "free",
           returnTo: appDealPath(dealId),

@@ -8,12 +8,13 @@ import {
 import { DealSearchResults } from "@/components/deals/deal-search-results";
 import { Heading, Text } from "@/components/layout/heading";
 import { Main } from "@/components/layout/container";
+import { getAuthUser } from "@/lib/auth/session";
+import { searchDealPreviewsForUser } from "@/lib/matching/search";
 import { publicDealsIndexMetadata } from "@/lib/search/metadata";
 import {
   hasActivePublicFilters,
   parsePublicSearchParams,
 } from "@/lib/search/params";
-import { searchPublicDealPreviewsFromParams } from "@/lib/search/public";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -34,10 +35,13 @@ export async function generateMetadata({
 export default async function DealsIndexPage({ searchParams }: PageProps) {
   const params = await searchParams;
   const client = await createSupabaseServerClient();
-  const { filters, result } = await searchPublicDealPreviewsFromParams(
+  const user = await getAuthUser();
+  const { filters, result, companyProfileId } = await searchDealPreviewsForUser({
     client,
-    params,
-  );
+    searchParams: params,
+    userId: user?.id,
+    defaultSort: "updated",
+  });
 
   return (
     <Main className="gap-8">
@@ -53,10 +57,16 @@ export default async function DealsIndexPage({ searchParams }: PageProps) {
         <div className="min-w-0 flex-1">
           <DealKeywordForm filters={filters} />
         </div>
-        <DealSearchFilterDrawer filters={filters} />
+        <DealSearchFilterDrawer
+          filters={filters}
+          showRelevance={Boolean(companyProfileId)}
+        />
       </div>
       <div className="grid gap-8 lg:grid-cols-[17rem_minmax(0,1fr)]">
-        <DealSearchFilterRail filters={filters} />
+        <DealSearchFilterRail
+          filters={filters}
+          showRelevance={Boolean(companyProfileId)}
+        />
         <DealSearchResults result={result} filters={filters} />
       </div>
     </Main>

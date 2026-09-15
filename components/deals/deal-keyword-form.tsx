@@ -4,13 +4,15 @@ import type { PublicSearchFilters } from "@/lib/search/params";
 
 export function DealKeywordForm({
   filters,
+  path = "/deals",
 }: {
   filters: PublicSearchFilters;
+  path?: string;
 }) {
   return (
     <form
       method="get"
-      action="/deals"
+      action={path}
       className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4 shadow-sm sm:flex-row sm:items-end"
     >
       {filters.category ? (
@@ -33,6 +35,12 @@ export function DealKeywordForm({
       ) : null}
       {filters.status ? (
         <input type="hidden" name="status" value={filters.status} />
+      ) : null}
+      {filters.sort && filters.sort !== "updated" ? (
+        <input type="hidden" name="sort" value={filters.sort} />
+      ) : null}
+      {filters.minScore != null ? (
+        <input type="hidden" name="minScore" value={String(filters.minScore)} />
       ) : null}
       <div className="min-w-0 flex-1">
         <DealKeywordFields filters={filters} idPrefix="search" />

@@ -174,6 +174,36 @@ describe("paid deal detail", () => {
     expect(sourceLink.getAttribute("rel")).toContain("noreferrer");
   });
 
+  it("renders sanitised match reasons without extra source copying", () => {
+    cleanup();
+    const dto = toPaidDealDto(mappingInput);
+    const { container } = render(
+      <DealPaidDetail
+        deal={dto}
+        match={{
+          score: 81,
+          reasons: [
+            {
+              code: "CATEGORY_OVERLAP",
+              kind: "match",
+              label: "Category overlap with your profile",
+            },
+          ],
+          mismatches: [
+            {
+              code: "FRAMEWORK_GAP",
+              kind: "mismatch",
+              label:
+                "This opportunity appears framework-related and your listed memberships did not overlap",
+            },
+          ],
+        }}
+      />,
+    );
+    expect(container.innerHTML).toContain("Category overlap with your profile");
+    expect(container.innerHTML).toContain("Possible mismatches");
+  });
+
   it("labels external source links for assistive technology", () => {
     cleanup();
     render(

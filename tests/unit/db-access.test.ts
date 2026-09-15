@@ -77,4 +77,18 @@ describe("typed data-access boundaries", () => {
     expect(read("lib/supabase/admin.ts")).toContain("Database");
     expect(read("lib/supabase/admin.ts")).not.toContain("PublicDatabase");
   });
+
+  it("writes deal matches with the admin client and never selects star", () => {
+    const persist = read("lib/matching/persist.ts");
+    expect(persist).toMatch(/import ["']server-only["']/);
+    expect(persist).toContain('.from("deal_matches")');
+    expect(persist).toContain("preview_reasons");
+    expect(persist).toContain("detail_reasons");
+    expect(persist).not.toMatch(/select\(\s*["']\*["']\s*\)/);
+
+    const load = read("lib/matching/load.ts");
+    expect(load).toContain("MATCH_PREVIEW_SELECT");
+    expect(load).not.toContain("select(\"*\")");
+    expect(load).toContain("detail_reasons");
+  });
 });

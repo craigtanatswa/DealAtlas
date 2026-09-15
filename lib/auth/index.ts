@@ -33,6 +33,7 @@ export {
   loginSchema,
   parseBuyerSectors,
   parseDelimitedList,
+  parseAllowedList,
   parseOptionalNumber,
   passwordSchema,
   resetPasswordSchema,

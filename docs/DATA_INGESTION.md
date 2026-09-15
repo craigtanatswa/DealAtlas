@@ -203,6 +203,8 @@ Steps:
 
 The application scanner is the primary control. The database trigger is a failsafe and must not be the only check. REVIEW/HIGH drafts are regenerated once; if still not LOW they remain unpublished for admin review. Optional LLM rewrites are isolated behind `LanguageModelProvider` and cannot override leak findings.
 
+After a preview is published, ingestion enqueues `match_jobs` so each company profile can be scored against the sanitised preview (plus server-only classification/requirement signals). `preview_reasons` stay canned. Semantic similarity is optional and runs only when `DEALATLAS_EMBEDDING_MODEL` and an API key are configured. Rebuild with `npm run rebuild-matches`.
+
 ## 17. Suggested bands
 Value bands, configurable:
 - Under £25k

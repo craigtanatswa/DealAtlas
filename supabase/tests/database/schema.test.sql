@@ -12,7 +12,8 @@ select ok(
       'awards','award_suppliers','contracts','contract_changes','contract_payments','contract_performance',
       'commercial_tools','commercial_tool_members','private_opportunity_details','deal_insights','related_deals',
       'data_changes','profiles','company_profiles','subscriptions','billing_events','deal_matches','saved_deals',
-      'saved_searches','watched_organizations','notification_preferences','alerts','export_usage','preview_generation_runs'
+      'saved_searches','watched_organizations','notification_preferences','alerts','export_usage','preview_generation_runs',
+      'match_jobs'
     ]::text[]) as t
   ),
   'all DealAtlas application tables exist'
@@ -33,7 +34,8 @@ select ok(
         'awards','award_suppliers','contracts','contract_changes','contract_payments','contract_performance',
         'commercial_tools','commercial_tool_members','private_opportunity_details','deal_insights','related_deals',
         'data_changes','profiles','company_profiles','subscriptions','billing_events','deal_matches','saved_deals',
-        'saved_searches','watched_organizations','notification_preferences','alerts','export_usage','preview_generation_runs'
+        'saved_searches','watched_organizations','notification_preferences','alerts','export_usage','preview_generation_runs',
+        'match_jobs'
       ]::text[])
   ),
   'RLS is enabled on every DealAtlas application table'
@@ -48,6 +50,20 @@ select has_function(
   'public',
   'search_deal_previews',
   'public search RPC exists'
+);
+
+select has_function(
+  'public',
+  'search_deal_previews_for_profile',
+  'authenticated relevance search RPC exists'
+);
+
+select ok(
+  has_column_privilege('authenticated', 'public.deal_matches', 'preview_reasons', 'SELECT')
+  and not has_column_privilege('authenticated', 'public.deal_matches', 'detail_reasons', 'SELECT')
+  and not has_table_privilege('anon', 'public.deal_matches', 'SELECT')
+  and not has_table_privilege('authenticated', 'public.match_jobs', 'SELECT'),
+  'match preview columns are readable; detail_reasons and match_jobs are not'
 );
 
 select ok(

@@ -4,21 +4,23 @@ import { DealCard } from "@/components/deals/deal-card";
 import { PaginationNav } from "@/components/deals/pagination-nav";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { Button } from "@/components/ui/button";
-import { toDealCardData, type PublicDealSearchResult } from "@/lib/search/dto";
+import { toDealCardData, type RankedDealSearchResult } from "@/lib/search/dto";
 import type { PublicSearchFilters } from "@/lib/search/params";
 
 export function DealSearchResults({
   result,
   filters,
+  path = "/deals",
 }: {
-  result: PublicDealSearchResult;
+  result: RankedDealSearchResult;
   filters: PublicSearchFilters;
+  path?: string;
 }) {
   if (result.total === 0) {
     return (
       <EmptyState kind="noDealsMatchFilters">
         <Button asChild variant="outline">
-          <Link href="/deals">Clear filters</Link>
+          <Link href={path}>Clear filters</Link>
         </Button>
       </EmptyState>
     );
@@ -36,8 +38,14 @@ export function DealSearchResults({
       </p>
       <ul className="grid gap-4">
         {result.items.map((item) => (
-          <li key={item.slug}>
-            <DealCard deal={toDealCardData(item)} />
+          <li key={item.preview.slug}>
+            <DealCard
+              deal={toDealCardData(
+                item.preview,
+                item.match?.score,
+                item.match?.reasons.map((reason) => reason.label),
+              )}
+            />
           </li>
         ))}
       </ul>
@@ -46,6 +54,7 @@ export function DealSearchResults({
         pageSize={result.pageSize}
         total={result.total}
         filters={filters}
+        path={path}
       />
     </div>
   );

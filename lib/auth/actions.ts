@@ -16,6 +16,7 @@ import {
   loginSchema,
   parseBuyerSectors,
   parseDelimitedList,
+  parseAllowedList,
   parseOptionalNumber,
   resetPasswordSchema,
   signupFormSchema,
@@ -25,8 +26,11 @@ import { getAuthUser } from "@/lib/auth/session";
 import { mapAuthError, type ActionState } from "@/lib/auth/messages";
 import { PASSWORD_RESET_COOKIE } from "@/lib/auth/cookies";
 import { authCallbackUrl } from "@/lib/auth/urls";
+import { queueCompanyProfileMatches } from "@/lib/matching/recalculate";
 import { parseInputSafe } from "@/lib/validation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { DEAL_CATEGORY_SLUGS } from "@/lib/matching/categories";
+import { UK_REGION_OPTIONS } from "@/lib/search/filters";
 
 function formString(formData: FormData, key: string): string {
   const value = formData.get(key);
@@ -261,8 +265,12 @@ export async function saveCompanyProfileAction(
     products_services: parseDelimitedList(formData.get("products_services")),
     keywords: parseDelimitedList(formData.get("keywords")),
     negative_keywords: parseDelimitedList(formData.get("negative_keywords")),
-    preferred_regions: parseDelimitedList(formData.get("preferred_regions")),
-    preferred_category_slugs: parseDelimitedList(formData.get("preferred_category_slugs")),
+    preferred_regions: parseAllowedList(formData, "preferred_regions", UK_REGION_OPTIONS),
+    preferred_category_slugs: parseAllowedList(
+      formData,
+      "preferred_category_slugs",
+      DEAL_CATEGORY_SLUGS,
+    ),
     preferred_cpv_codes: parseDelimitedList(formData.get("preferred_cpv_codes")),
     certifications: parseDelimitedList(formData.get("certifications")),
     framework_memberships: parseDelimitedList(formData.get("framework_memberships")),
@@ -290,6 +298,8 @@ export async function saveCompanyProfileAction(
     return { error: "We could not load your company profile.", success: null };
   }
 
+  let profileId = existing.data?.id ?? null;
+
   if (existing.data) {
     const { error } = await supabase
       .from("company_profiles")
@@ -299,15 +309,26 @@ export async function saveCompanyProfileAction(
       return { error: "We could not save your company profile.", success: null };
     }
   } else {
-    const { error } = await supabase.from("company_profiles").insert({
-      ...parsed.data,
-      user_id: user.id,
-    });
-    if (error) {
+    const { data, error } = await supabase
+      .from("company_profiles")
+      .insert({
+        ...parsed.data,
+        user_id: user.id,
+      })
+      .select("id")
+      .maybeSingle();
+    if (error || !data) {
       return { error: "We could not save your company profile.", success: null };
     }
+    profileId = data.id;
+  }
+
+  if (profileId) {
+    await queueCompanyProfileMatches(profileId);
   }
 
   revalidatePath("/app/profile");
-  return { error: null, success: "Company profile saved." };
+  revalidatePath("/app/search");
+  revalidatePath("/deals");
+  return { error: null, success: "Company profile saved. Relevance scores are updating." };
 }

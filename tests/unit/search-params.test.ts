@@ -3,7 +3,9 @@ import { describe, expect, it } from "vitest";
 import {
   hasActivePublicFilters,
   parsePublicSearchParams,
+  parseSignedInSearchParams,
   publicSearchHref,
+  searchHref,
 } from "@/lib/search/params";
 
 describe("public search params", () => {
@@ -60,5 +62,30 @@ describe("public search params", () => {
         limit: 20,
       }),
     ).toBe("/deals?q=cloud&category=Technology&page=3");
+  });
+
+  it("parses signed-in relevance sort and minimum score", () => {
+    const filters = parseSignedInSearchParams(
+      {
+        q: "cloud",
+        sort: "relevance",
+        minScore: "60",
+      },
+      { defaultSort: "updated" },
+    );
+    expect(filters.sort).toBe("relevance");
+    expect(filters.minScore).toBe(60);
+    expect(searchHref(filters, 1, "/app/search")).toBe(
+      "/app/search?q=cloud&sort=relevance&minScore=60",
+    );
+  });
+
+  it("ignores invalid relevance params", () => {
+    const filters = parseSignedInSearchParams({
+      sort: "secret",
+      minScore: "nope",
+    });
+    expect(filters.sort).toBe("updated");
+    expect(filters.minScore).toBeUndefined();
   });
 });

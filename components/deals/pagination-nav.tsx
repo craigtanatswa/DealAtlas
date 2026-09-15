@@ -1,18 +1,20 @@
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
-import { publicSearchHref, type PublicSearchFilters } from "@/lib/search/params";
+import { searchHref, type PublicSearchFilters } from "@/lib/search/params";
 
 export function PaginationNav({
   page,
   pageSize,
   total,
   filters,
+  path = "/deals",
 }: {
   page: number;
   pageSize: number;
   total: number;
   filters: PublicSearchFilters;
+  path?: string;
 }) {
   if (total === 0) {
     return null;
@@ -38,7 +40,7 @@ export function PaginationNav({
       <div className="flex flex-wrap items-center gap-2">
         {hasPrevious ? (
           <Button asChild variant="outline" size="sm">
-            <Link href={publicSearchHref(filters, current - 1)}>Previous</Link>
+            <Link href={searchHref(filters, current - 1, path)}>Previous</Link>
           </Button>
         ) : (
           <Button type="button" variant="outline" size="sm" disabled>
@@ -67,7 +69,7 @@ export function PaginationNav({
                   </Button>
                 ) : (
                   <Button asChild size="sm" variant="ghost">
-                    <Link href={publicSearchHref(filters, item)}>{item}</Link>
+                    <Link href={searchHref(filters, item, path)}>{item}</Link>
                   </Button>
                 )}
               </li>
@@ -76,7 +78,7 @@ export function PaginationNav({
         </ul>
         {hasNext ? (
           <Button asChild variant="outline" size="sm">
-            <Link href={publicSearchHref(filters, current + 1)}>Next</Link>
+            <Link href={searchHref(filters, current + 1, path)}>Next</Link>
           </Button>
         ) : (
           <Button type="button" variant="outline" size="sm" disabled>

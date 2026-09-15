@@ -12,6 +12,47 @@ import {
 } from "@/lib/search/filters";
 import type { PublicSearchFilters } from "@/lib/search/params";
 
+export function DealRelevanceFields({
+  filters,
+  idPrefix,
+}: {
+  filters: PublicSearchFilters;
+  idPrefix: string;
+}) {
+  return (
+    <div className="grid gap-4">
+      <Field
+        id={`${idPrefix}-sort`}
+        label="Sort"
+        hint="Relevance uses your company profile. Source identity is not used."
+      >
+        <NativeSelect
+          id={`${idPrefix}-sort`}
+          name="sort"
+          defaultValue={filters.sort ?? "updated"}
+        >
+          <option value="updated">Newest updates</option>
+          <option value="relevance">Relevance</option>
+        </NativeSelect>
+      </Field>
+      <Field id={`${idPrefix}-minScore`} label="Minimum relevance">
+        <NativeSelect
+          id={`${idPrefix}-minScore`}
+          name="minScore"
+          defaultValue={
+            filters.minScore != null ? String(filters.minScore) : ""
+          }
+        >
+          <option value="">Any score</option>
+          <option value="40">40+</option>
+          <option value="60">60+</option>
+          <option value="75">75+</option>
+        </NativeSelect>
+      </Field>
+    </div>
+  );
+}
+
 export function DealKeywordFields({
   filters,
   idPrefix,

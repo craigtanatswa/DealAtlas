@@ -48,7 +48,7 @@ describe("supabase migrations", () => {
   const files = listMigrations();
   const sql = files.map(readMigration).join("\n");
 
-  it("are numbered 0001-0010 in order with no gaps", () => {
+  it("are numbered 0001-0012 in order with no gaps", () => {
     expect(files).toEqual([
       "0001_extensions_and_types.sql",
       "0002_core_schema.sql",
@@ -60,6 +60,8 @@ describe("supabase migrations", () => {
       "0008_find_a_tender_ocds.sql",
       "0009_private_source_onboarding.sql",
       "0010_intelligence_preview_pipeline.sql",
+      "0011_matching_pipeline.sql",
+      "0012_deal_match_column_privileges.sql",
     ]);
   });
 
@@ -70,6 +72,34 @@ describe("supabase migrations", () => {
     expect(search).toContain("p_deadline_band");
     expect(search).not.toMatch(/from public\.deals\b/);
     expect(search).not.toMatch(/from public\.organizations\b/);
+  });
+
+  it("queues matches without exposing detail_reasons or canonical joins to clients", () => {
+    const matching = readMigration("0011_matching_pipeline.sql");
+    expect(matching).toContain("revoke select (detail_reasons)");
+    expect(matching).toContain("create table if not exists public.match_jobs");
+    expect(matching).toContain("search_deal_previews_for_profile");
+    expect(matching).toContain("from public.deal_previews dp");
+    expect(matching).toContain("left join public.deal_matches dm");
+    expect(matching).not.toMatch(/from public\.deals\b/);
+    expect(matching).not.toMatch(/from public\.organizations\b/);
+    expect(matching).not.toMatch(
+      /grant select on table public\.match_jobs to (anon|authenticated)/,
+    );
+    expect(matching).toContain(
+      "grant execute on function public.search_deal_previews_for_profile",
+    );
+    expect(matching).toContain("to authenticated, service_role");
+  });
+
+  it("grants deal_matches preview columns without detail_reasons", () => {
+    const privileges = readMigration("0012_deal_match_column_privileges.sql");
+    expect(privileges).toContain("revoke select on table public.deal_matches from anon, authenticated");
+    expect(privileges).toContain("preview_reasons");
+    expect(privileges).toContain("on table public.deal_matches to authenticated");
+    expect(privileges).not.toMatch(
+      /grant select \([\s\S]*detail_reasons[\s\S]*\) on table public\.deal_matches to authenticated/,
+    );
   });
 
   it("never disable RLS", () => {

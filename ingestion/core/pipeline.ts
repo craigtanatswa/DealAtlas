@@ -29,6 +29,7 @@ export type RunIngestionOptions = {
   now?: Date;
   force?: boolean;
   pageSize?: number;
+  onPreviewPublished?: (dealId: string) => Promise<void>;
 };
 
 function emptyCounters(): IngestionCounters {
@@ -244,6 +245,24 @@ export async function runIngestion(
               });
               if (previewResult.published) {
                 counters.previewsPublished += 1;
+                if (options.onPreviewPublished) {
+                  try {
+                    await options.onPreviewPublished(persisted.deal.id);
+                  } catch (matchError) {
+                    const ingestionError = asIngestionError(matchError, "preview");
+                    await options.store.insertError({
+                      sourceId: source.id,
+                      ingestionRunId: run.id,
+                      rawRecordId: snapshot.record.id,
+                      externalRecordId: candidate.noticeIdentifier,
+                      errorStage: "preview",
+                      errorCode: ingestionError.code ?? "MATCH_QUEUE_FAILED",
+                      message: ingestionError.message,
+                      retryable: true,
+                      details: { dealId: persisted.deal.id },
+                    });
+                  }
+                }
               } else {
                 counters.previewsBlocked += 1;
               }

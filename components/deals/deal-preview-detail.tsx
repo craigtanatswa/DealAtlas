@@ -1,3 +1,4 @@
+import { MatchReasons } from "@/components/deals/match-reasons";
 import { DeadlineBand } from "@/components/deals/deadline-band";
 import { DealStatusBadge } from "@/components/deals/deal-status";
 import { UnlockPanel, type UnlockCtaMode } from "@/components/deals/unlock-panel";
@@ -10,6 +11,7 @@ import { Heading, Text } from "@/components/layout/heading";
 import { Badge } from "@/components/ui/badge";
 import { BUYER_SECTOR_LABELS } from "@/lib/constants";
 import type { PublicDealPreview } from "@/lib/search/dto";
+import type { SafeMatchView } from "@/lib/matching/types";
 import {
   DEAL_STAGE_LABELS,
   DEAL_TYPE_LABELS,
@@ -17,9 +19,11 @@ import {
 
 export function DealPreviewDetail({
   deal,
+  match,
   unlock,
 }: {
   deal: PublicDealPreview;
+  match?: SafeMatchView | null;
   unlock?: {
     mode?: UnlockCtaMode;
     loginHref?: string;
@@ -141,6 +145,13 @@ export function DealPreviewDetail({
               </li>
             ))}
           </ul>
+        ) : null}
+        {match ? (
+          <MatchReasons
+            score={match.score}
+            reasons={match.reasons}
+            caption="Limited relevance based on your company profile and sanitised preview fields."
+          />
         ) : null}
       </section>
 

@@ -1147,36 +1147,48 @@ export type Database = {
         Row: {
           calculated_at: string
           category_score: number | null
+          certification_score: number | null
           company_profile_id: string
           deal_id: string
+          detail_reasons: Json
           id: string
+          keyword_score: number | null
           location_score: number | null
           preview_reasons: Json
           relevance_score: number
+          sector_score: number | null
           semantic_score: number | null
           value_score: number | null
         }
         Insert: {
           calculated_at?: string
           category_score?: number | null
+          certification_score?: number | null
           company_profile_id: string
           deal_id: string
+          detail_reasons?: Json
           id?: string
+          keyword_score?: number | null
           location_score?: number | null
           preview_reasons?: Json
           relevance_score: number
+          sector_score?: number | null
           semantic_score?: number | null
           value_score?: number | null
         }
         Update: {
           calculated_at?: string
           category_score?: number | null
+          certification_score?: number | null
           company_profile_id?: string
           deal_id?: string
+          detail_reasons?: Json
           id?: string
+          keyword_score?: number | null
           location_score?: number | null
           preview_reasons?: Json
           relevance_score?: number
+          sector_score?: number | null
           semantic_score?: number | null
           value_score?: number | null
         }
@@ -1892,6 +1904,54 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "lots_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      match_jobs: {
+        Row: {
+          company_profile_id: string | null
+          cursor_offset: number
+          deal_id: string | null
+          error_message: string | null
+          id: string
+          processed_at: string | null
+          requested_at: string
+          status: string
+        }
+        Insert: {
+          company_profile_id?: string | null
+          cursor_offset?: number
+          deal_id?: string | null
+          error_message?: string | null
+          id?: string
+          processed_at?: string | null
+          requested_at?: string
+          status?: string
+        }
+        Update: {
+          company_profile_id?: string | null
+          cursor_offset?: number
+          deal_id?: string | null
+          error_message?: string | null
+          id?: string
+          processed_at?: string | null
+          requested_at?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "match_jobs_company_profile_id_fkey"
+            columns: ["company_profile_id"]
+            isOneToOne: false
+            referencedRelation: "company_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "match_jobs_deal_id_fkey"
             columns: ["deal_id"]
             isOneToOne: false
             referencedRelation: "deals"
@@ -2823,6 +2883,47 @@ export type Database = {
           main_category: string
           preview_summary: string
           preview_title: string
+          relevance_tags: string[]
+          requirements_preview: Json
+          slug: string
+          sme_suitability: string
+          stage: Database["public"]["Enums"]["deal_stage"]
+          status: Database["public"]["Enums"]["deal_status"]
+          total_count: number
+          value_band: string
+        }[]
+      }
+      search_deal_previews_for_profile: {
+        Args: {
+          p_buyer_sector?: Database["public"]["Enums"]["buyer_sector"]
+          p_category?: string
+          p_company_profile_id: string
+          p_deadline_band?: string
+          p_deal_type?: Database["public"]["Enums"]["deal_type"]
+          p_limit?: number
+          p_min_score?: number
+          p_offset?: number
+          p_query?: string
+          p_region?: string
+          p_sort?: string
+          p_status?: Database["public"]["Enums"]["deal_status"]
+          p_value_band?: string
+        }
+        Returns: {
+          bid_complexity: string
+          broad_region: string
+          buyer_sector: Database["public"]["Enums"]["buyer_sector"]
+          competition_level: string
+          deadline_band: string
+          deal_id: string
+          deal_type: Database["public"]["Enums"]["deal_type"]
+          duration_band: string
+          freshness_label: string
+          main_category: string
+          preview_reasons: Json
+          preview_summary: string
+          preview_title: string
+          relevance_score: number
           relevance_tags: string[]
           requirements_preview: Json
           slug: string
