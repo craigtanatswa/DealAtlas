@@ -5,16 +5,19 @@ import { cache } from "react";
 import { SaveDealButton } from "@/components/saves/save-deal-button";
 import { DealPreviewDetail } from "@/components/deals/deal-preview-detail";
 import { Main } from "@/components/layout/container";
+import { JsonLd } from "@/components/seo/json-ld";
 import { getAuthUser } from "@/lib/auth/session";
 import { loginPathWithNext } from "@/lib/auth/redirect";
+import { getAppOrigin } from "@/lib/auth/urls";
 import { appDealPath } from "@/lib/deals/paths";
-import { getPublicEnv } from "@/lib/env/public";
 import { isProEntitlement } from "@/lib/entitlements/policy";
 import { getCurrentEntitlement } from "@/lib/entitlements/service";
 import { featureLimit } from "@/lib/quotas";
 import { loadDealSaveState } from "@/lib/saves/queries";
-import { publicDealPreviewMetadata } from "@/lib/search/metadata";
+import { publicDealPreviewMetadata, missingPublicDealPreviewMetadata } from "@/lib/search/metadata";
 import { getPublicDealPreviewPageBySlug } from "@/lib/search/public";
+import { isIndexablePublicPreview } from "@/lib/seo/indexability";
+import { webPageJsonLd } from "@/lib/seo/json-ld";
 import { loadMatchForPreviewPage } from "@/lib/matching/search";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { parseInputSafe, slugSchema } from "@/lib/validation";
@@ -42,13 +45,10 @@ export async function generateMetadata({
   const page = await loadPreviewPage(slug);
 
   if (!page) {
-    return {
-      title: "Opportunity not found",
-      robots: { index: false, follow: false },
-    };
+    return missingPublicDealPreviewMetadata();
   }
 
-  const origin = getPublicEnv().NEXT_PUBLIC_APP_URL.replace(/\/$/, "");
+  const origin = getAppOrigin();
   return publicDealPreviewMetadata(
     page.preview,
     `${origin}/deals/${page.preview.slug}`,
@@ -80,8 +80,21 @@ export default async function DealPreviewPage({ params }: PageProps) {
     ? await loadDealSaveState(client, user.id, page.dealId)
     : { saved: false, used: 0 };
 
+  const origin = getAppOrigin();
+  const indexable = isIndexablePublicPreview(page.preview);
+
   return (
     <Main>
+      {indexable ? (
+        <JsonLd
+          data={webPageJsonLd({
+            origin,
+            path: `/deals/${page.preview.slug}`,
+            name: page.preview.previewTitle,
+            description: page.preview.previewSummary,
+          })}
+        />
+      ) : null}
       <DealPreviewDetail
         deal={page.preview}
         match={match}

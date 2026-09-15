@@ -74,6 +74,7 @@ export const ACCOUNT_NAV = [
 
 export const FOOTER_NAV = [
   { href: "/deals", label: "Find Deals" },
+  { href: "/categories", label: "Categories" },
   { href: "/how-it-works", label: "How It Works" },
   { href: "/pricing", label: "Pricing" },
   { href: "/privacy", label: "Privacy" },

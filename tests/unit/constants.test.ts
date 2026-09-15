@@ -65,7 +65,13 @@ describe("application constants", () => {
     ]);
     expect(ADMIN_NAV.map((item) => item.href)).toContain("/admin/ingestion");
     expect(FOOTER_NAV.map((item) => item.href)).toEqual(
-      expect.arrayContaining(["/privacy", "/terms", "/cookies", "/contact"]),
+      expect.arrayContaining([
+        "/categories",
+        "/privacy",
+        "/terms",
+        "/cookies",
+        "/contact",
+      ]),
     );
   });
 });

@@ -7,8 +7,12 @@ const ROOT = path.resolve(__dirname, "../..");
 
 const PUBLIC_DISCOVERY_PATHS = [
   "app/(marketing)/deals",
+  "app/(marketing)/categories",
+  "app/sitemap.ts",
+  "app/robots.ts",
   "app/api/search",
   "lib/search",
+  "lib/seo",
   "lib/db/previews.ts",
   "lib/db/preview-columns.ts",
 ];

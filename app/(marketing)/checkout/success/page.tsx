@@ -13,6 +13,7 @@ import { FREE_ENTITLEMENT } from "@/lib/entitlements/policy";
 
 export const metadata: Metadata = {
   title: "Confirming subscription",
+  robots: { index: false, follow: false },
 };
 
 export default async function CheckoutSuccessPage({

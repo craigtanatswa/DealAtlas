@@ -397,6 +397,15 @@ Public/free query helpers in `lib/db/previews.ts` may touch `deal_previews` only
 
 pgTAP tests live in `supabase/tests/database`. PostgREST RLS smoke tests live in `tests/integration/rls.rest.test.ts` and require a running local stack (`npm run test:db`). Auth integration tests live in `tests/integration/auth.rest.test.ts`. Public/free discovery leak tests live in `tests/integration/public-discovery.rest.test.ts` and `tests/unit/deal-preview-leak.test.tsx`.
 
+### Technical SEO and public trust pages
+Public marketing routes now include `/`, `/deals`, `/deals/[slug]`, `/categories`, `/categories/[slug]`, `/pricing`, `/how-it-works`, `/contact`, `/privacy`, `/terms`, and `/cookies`. Category landings are a fixed catalogue from `lib/seo/category-landings.ts` (`dynamicParams = false`); search/filter combinations stay noindex and are not mass-generated as pages.
+
+`app/robots.ts` and `app/sitemap.ts` expose crawl policy and static/category URLs. Published Deal preview URLs are listed from `deal_previews` only via `app/(marketing)/deals/sitemap.ts`. Metadata, OpenGraph, JSON-LD, and sitemap loc values use sanitised preview fields or static product copy — never buyer/source identity.
+
+Internal `/app`, `/admin`, `/auth`, `/api`, and checkout confirmation routes are noindex (and disallowed in robots.txt where appropriate). Google Search Console verification and GA/GTM scripts are optional `NEXT_PUBLIC_*` placeholders and must not receive source URLs on free pages.
+
+Privacy, terms, and cookies pages are draft trust copy with explicit “Requires final business/legal review” markers.
+
 ### Public/free discovery
 Anonymous and free visitors search and view `/deals` and `/deals/[slug]` through `lib/search/public.ts`. Those helpers only call `deal_previews` / `search_deal_previews`. Metadata, JSON (`/api/search`), and HTML/RSC payloads use the explicit public preview DTO. Signed-in HTML search may attach `deal_matches` scores and canned reasons without adding source identity.
 

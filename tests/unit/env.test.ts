@@ -13,7 +13,7 @@ const validPublicEnv = {
 
 describe("environment schemas", () => {
   it("accepts valid public environment values", () => {
-    expect(publicEnvSchema.parse(validPublicEnv)).toEqual(validPublicEnv);
+    expect(publicEnvSchema.parse(validPublicEnv)).toMatchObject(validPublicEnv);
   });
 
   it("rejects a non-URL public Supabase URL", () => {
@@ -55,8 +55,22 @@ describe("environment schemas", () => {
     ).toThrow(/NEXT_PUBLIC_SUPABASE_SECRET_KEY/);
   });
 
+  it("accepts optional Search Console and analytics placeholders", () => {
+    const parsed = publicEnvSchema.parse({
+      ...validPublicEnv,
+      NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION: "token",
+      NEXT_PUBLIC_GA_MEASUREMENT_ID: "G-ABC123DEF",
+    });
+    expect(parsed.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION).toBe("token");
+    expect(parsed.NEXT_PUBLIC_GA_MEASUREMENT_ID).toBe("G-ABC123DEF");
+  });
+
   it("loads public env through the shared helper", () => {
-    expect(getPublicEnv(validPublicEnv)).toEqual(validPublicEnv);
+    expect(getPublicEnv(validPublicEnv)).toMatchObject(validPublicEnv);
+  });
+
+  it("loads public env through the shared helper", () => {
+    expect(getPublicEnv(validPublicEnv)).toMatchObject(validPublicEnv);
   });
 
   it("treats blank env values as missing", () => {

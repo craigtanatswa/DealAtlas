@@ -17,10 +17,13 @@ export {
   getPublicDealPreviewBySlug,
   getPublicDealPreviewPageByDealId,
   getPublicDealPreviewPageBySlug,
+  countPublishedPreviewSitemapPages,
+  listIndexablePreviewSitemapEntries,
   searchPublicDealPreviews,
   searchPublicDealPreviewsFromParams,
 } from "@/lib/search/public";
 export {
+  missingPublicDealPreviewMetadata,
   publicDealPreviewMetadata,
   publicDealsIndexMetadata,
 } from "@/lib/search/metadata";

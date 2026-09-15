@@ -79,8 +79,31 @@ describe("public preview DTO", () => {
 
     expect(serialized).toContain(dto.previewTitle);
     expect(serialized).toContain(dto.previewSummary.slice(0, 40));
+    expect(serialized).toContain("http://localhost:3000/deals/managed-it-support-preview");
     expect(findProtectedMarkerLeaks(serialized)).toEqual([]);
     expect(findForbiddenPublicKeys(metadata)).toEqual([]);
+    expect(metadata.robots).toEqual({ index: true, follow: true });
+    expect(metadata.openGraph?.url).toBe(
+      "http://localhost:3000/deals/managed-it-support-preview",
+    );
+  });
+
+  it("does not index thin sanitised previews", () => {
+    const dto = toPublicDealPreview({
+      ...sanitisedRow,
+      preview_title: "Opportunity",
+      preview_summary: "A sanitised summary.",
+      main_category: null,
+      broad_region: null,
+      value_band: null,
+      deadline_band: null,
+    });
+    const metadata = publicDealPreviewMetadata(
+      dto,
+      "http://localhost:3000/deals/thin-preview",
+    );
+    expect(metadata.robots).toEqual({ index: false, follow: true });
+    expect(findProtectedMarkerLeaks(JSON.stringify(metadata))).toEqual([]);
   });
 
   it("knows the seeded canary markers used by leak tests", () => {

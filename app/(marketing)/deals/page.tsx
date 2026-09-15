@@ -10,11 +10,9 @@ import { Heading, Text } from "@/components/layout/heading";
 import { Main } from "@/components/layout/container";
 import { getAuthUser } from "@/lib/auth/session";
 import { searchDealPreviewsForUser } from "@/lib/matching/search";
+import { getAppOrigin } from "@/lib/auth/urls";
+import { hasActivePublicFilters, parsePublicSearchParams } from "@/lib/search/params";
 import { publicDealsIndexMetadata } from "@/lib/search/metadata";
-import {
-  hasActivePublicFilters,
-  parsePublicSearchParams,
-} from "@/lib/search/params";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -27,9 +25,13 @@ export async function generateMetadata({
   searchParams,
 }: PageProps): Promise<Metadata> {
   const params = await searchParams;
-  return publicDealsIndexMetadata(
-    hasActivePublicFilters(parsePublicSearchParams(params)),
-  );
+  const filters = parsePublicSearchParams(params);
+  const origin = getAppOrigin();
+  return publicDealsIndexMetadata({
+    hasFilters: hasActivePublicFilters(filters),
+    page: filters.page,
+    canonicalUrl: `${origin}/deals`,
+  });
 }
 
 export default async function DealsIndexPage({ searchParams }: PageProps) {

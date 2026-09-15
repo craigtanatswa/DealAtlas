@@ -3,9 +3,18 @@ import "server-only";
 import {
   getPublishedDealPreviewByDealId,
   getPublishedDealPreviewBySlug,
+  listPublishedDealPreviewSitemapRows,
+  countPublishedDealPreviewSitemapRows,
   searchPublishedDealPreviews,
+  type DealPreviewSitemapRow,
   type PublicSupabaseClient,
 } from "@/lib/db/previews";
+import { DEAL_PREVIEW_SITEMAP_PAGE_SIZE } from "@/lib/db/preview-columns";
+import {
+  evaluatePublicIndexability,
+  type PreviewIndexSignals,
+} from "@/lib/seo/indexability";
+import { absoluteUrl } from "@/lib/seo/urls";
 import {
   toPublicDealPreview,
   type PublicDealPreview,
@@ -106,4 +115,57 @@ export async function getPublicDealPreviewPageByDealId(
     return null;
   }
   return { preview: toPublicDealPreview(row), dealId: row.deal_id };
+}
+
+function sitemapRowSignals(row: DealPreviewSitemapRow): PreviewIndexSignals {
+  return {
+    previewTitle: row.preview_title,
+    previewSummary: row.preview_summary,
+    mainCategory: row.main_category,
+    broadRegion: row.broad_region,
+    valueBand: row.value_band,
+    deadlineBand: row.deadline_band,
+    status: row.status,
+  };
+}
+
+export async function countPublishedPreviewSitemapPages(
+  client: PublicSupabaseClient,
+): Promise<number> {
+  const total = await countPublishedDealPreviewSitemapRows(client);
+  return Math.max(1, Math.ceil(total / DEAL_PREVIEW_SITEMAP_PAGE_SIZE));
+}
+
+export type IndexablePreviewSitemapEntry = {
+  slug: string;
+  lastModified: string;
+  url: string;
+};
+
+export async function listIndexablePreviewSitemapEntries(
+  client: PublicSupabaseClient,
+  origin: string,
+  pageIndex: number,
+): Promise<IndexablePreviewSitemapEntry[]> {
+  const offset = pageIndex * DEAL_PREVIEW_SITEMAP_PAGE_SIZE;
+  const rows = await listPublishedDealPreviewSitemapRows(client, {
+    offset,
+    limit: DEAL_PREVIEW_SITEMAP_PAGE_SIZE,
+  });
+
+  return rows
+    .filter(
+      (row) =>
+        evaluatePublicIndexability({
+          kind: "deal-preview",
+          published: true,
+          leakageRisk: "LOW",
+          preview: sitemapRowSignals(row),
+        }).index,
+    )
+    .map((row) => ({
+      slug: row.slug,
+      lastModified: row.updated_at,
+      url: absoluteUrl(`/deals/${row.slug}`, origin),
+    }));
 }

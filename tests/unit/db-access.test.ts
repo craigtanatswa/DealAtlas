@@ -17,6 +17,7 @@ describe("typed data-access boundaries", () => {
     expect(source).toContain("p_value_band");
     expect(source).toContain("p_deadline_band");
     expect(source).toContain("DEAL_PREVIEW_PUBLIC_SELECT");
+    expect(source).toContain("DEAL_PREVIEW_SITEMAP_SELECT");
     expect(source).not.toMatch(/select\(\s*["']\*["']\s*\)/);
     expect(source).not.toContain('.from("deals")');
     expect(source).not.toContain('.from("organizations")');
@@ -36,6 +37,9 @@ describe("typed data-access boundaries", () => {
     expect(columns).not.toContain("unpublished_by_admin");
     expect(columns).not.toContain("leakage_risk");
     expect(columns).not.toContain("is_published");
+    expect(source).toContain("DEAL_PREVIEW_SITEMAP_COLUMNS");
+    expect(source).not.toContain("source_title");
+    expect(source).not.toContain("source_url");
   });
 
   it("isolates canonical queries behind server-only", () => {
@@ -82,6 +86,7 @@ describe("typed data-access boundaries", () => {
   it("types browser and SSR clients with the public schema only", () => {
     expect(read("lib/supabase/browser.ts")).toContain("PublicDatabase");
     expect(read("lib/supabase/server.ts")).toContain("PublicDatabase");
+    expect(read("lib/supabase/anonymous.ts")).toContain("PublicDatabase");
     expect(read("lib/supabase/admin.ts")).toContain("Database");
     expect(read("lib/supabase/admin.ts")).not.toContain("PublicDatabase");
   });

@@ -1,7 +1,13 @@
 import type { ReactNode } from "react";
+import type { Metadata } from "next";
 
 import { SiteFooter } from "@/components/navigation/site-footer";
 import { BrandMark } from "@/components/navigation/brand-mark";
+import { NOINDEX_ROBOTS } from "@/lib/seo/metadata";
+
+export const metadata: Metadata = {
+  robots: NOINDEX_ROBOTS,
+};
 
 export default function AuthLayout({
   children,
