@@ -26,7 +26,8 @@
     "ingest:smoke": "tsx scripts/ingest.ts --source find-a-tender --smoke",
     "rebuild-previews": "tsx scripts/rebuild-previews.ts",
     "rebuild-matches": "tsx scripts/rebuild-matches.ts",
-    "send-alerts": "tsx --import ./scripts/allow-server-only.mjs scripts/send-alerts.ts"
+    "send-alerts": "tsx --import ./scripts/allow-server-only.mjs scripts/send-alerts.ts",
+    "job": "tsx --import ./scripts/allow-server-only.mjs scripts/run-job.ts"
   },
   "dependencies": {
     "@dodopayments/nextjs": "^0.3.9",

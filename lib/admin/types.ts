@@ -26,6 +26,7 @@ export type AdminSourceRow = {
   updatedAt: string;
   enableBlockedReason: string | null;
   ingestionBlockedReason: string | null;
+  stale: boolean;
 };
 
 export type AdminRunRow = {
@@ -202,8 +203,19 @@ export type AdminAuditRow = {
   createdAt: string;
 };
 
+export type AdminJobRunRow = {
+  id: string;
+  jobName: string;
+  triggerType: string;
+  status: Database["public"]["Enums"]["ingestion_status"];
+  mode: string;
+  startedAt: string;
+  finishedAt: string | null;
+  errorMessage: string | null;
+};
+
 export type AdminDashboard = {
-  sources: { total: number; enabled: number; blocked: number };
+  sources: { total: number; enabled: number; blocked: number; stale: number };
   runs: { failed24h: number; skipped24h: number };
   errors24h: number;
   previews: {
@@ -214,7 +226,10 @@ export type AdminDashboard = {
   failedMatchJobs: number;
   failedDocuments: number;
   billingErrors: number;
+  emailConfigured: boolean;
+  monitoringConfigured: boolean;
   recentRuns: AdminRunRow[];
+  recentJobRuns: AdminJobRunRow[];
   recentErrors: AdminErrorRow[];
   leakQueue: AdminDealListRow[];
   recentAudit: AdminAuditRow[];

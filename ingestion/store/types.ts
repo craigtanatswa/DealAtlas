@@ -295,6 +295,9 @@ export type CreateDealInput = Omit<
 export type IngestionStore = {
   getSourceByKey(sourceKey: string): Promise<DataSourceRecord | null>;
   getSourceById(id: string): Promise<DataSourceRecord | null>;
+  listSources(): Promise<DataSourceRecord[]>;
+  listChangedDealIds(sinceIso: string, limit?: number): Promise<string[]>;
+  listContractsForDeal(dealId: string): Promise<ContractRecord[]>;
   getOrganizationById(id: string): Promise<OrganizationRecord | null>;
   listOrganizationAliases(organizationId: string): Promise<string[]>;
   listDeals(limit?: number): Promise<DealRecord[]>;

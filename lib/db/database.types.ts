@@ -1839,6 +1839,45 @@ export type Database = {
           },
         ]
       }
+      job_runs: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          finished_at: string | null
+          id: string
+          job_name: string
+          mode: string
+          started_at: string
+          status: Database["public"]["Enums"]["ingestion_status"]
+          summary: Json
+          trigger_type: string
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          finished_at?: string | null
+          id?: string
+          job_name: string
+          mode?: string
+          started_at?: string
+          status?: Database["public"]["Enums"]["ingestion_status"]
+          summary?: Json
+          trigger_type?: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          finished_at?: string | null
+          id?: string
+          job_name?: string
+          mode?: string
+          started_at?: string
+          status?: Database["public"]["Enums"]["ingestion_status"]
+          summary?: Json
+          trigger_type?: string
+        }
+        Relationships: []
+      }
       locations: {
         Row: {
           city: string | null

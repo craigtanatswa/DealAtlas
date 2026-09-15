@@ -345,6 +345,37 @@ export function createSupabaseIngestionStore(
       const row = throwIfQueryError("Load data source by id", result);
       return row ? mapSource(row) : null;
     },
+    async listSources() {
+      const result = await client
+        .from("data_sources")
+        .select("*")
+        .order("source_key", { ascending: true });
+      const rows = throwIfQueryError("List data sources", result) ?? [];
+      return rows.map(mapSource);
+    },
+    async listChangedDealIds(sinceIso, limit = 200) {
+      const result = await client
+        .from("data_changes")
+        .select("deal_id")
+        .eq("material", true)
+        .gte("occurred_at", sinceIso)
+        .order("occurred_at", { ascending: false })
+        .limit(limit * 4);
+      const rows = throwIfQueryError("List changed deals", result) ?? [];
+      const ids: string[] = [];
+      const seen = new Set<string>();
+      for (const row of rows) {
+        if (seen.has(row.deal_id)) {
+          continue;
+        }
+        seen.add(row.deal_id);
+        ids.push(row.deal_id);
+        if (ids.length >= limit) {
+          break;
+        }
+      }
+      return ids;
+    },
     async getOrganizationById(id) {
       const result = await client.from("organizations").select("*").eq("id", id).maybeSingle();
       const row = throwIfQueryError("Load organization", result);
@@ -1245,6 +1276,10 @@ export function createSupabaseIngestionStore(
         data: result.data,
         error: result.error,
       });
+    },
+    async listContractsForDeal(dealId) {
+      const result = await client.from("contracts").select("*").eq("deal_id", dealId);
+      return (throwIfQueryError("List contracts", result) ?? []).map(mapContract);
     },
     async findContract(dealId, contractIdentifier) {
       const result = await client

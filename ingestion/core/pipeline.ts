@@ -8,6 +8,7 @@ import { contentHash } from "@/ingestion/core/hash";
 import { persistCandidate } from "@/ingestion/core/persist";
 import { contextFromCandidate } from "@/ingestion/intelligence/types";
 import { persistIntelligenceAndPreview } from "@/ingestion/preview/publish";
+import { defaultSleep } from "@/ingestion/core/retry";
 import { unwrapReleasePayload } from "@/ingestion/sources/find-a-tender/parse";
 import type {
   IngestionCounters,
@@ -29,6 +30,8 @@ export type RunIngestionOptions = {
   now?: Date;
   force?: boolean;
   pageSize?: number;
+  minFetchIntervalMs?: number;
+  sleep?: (ms: number) => Promise<void>;
   onPreviewPublished?: (dealId: string) => Promise<void>;
 };
 
@@ -141,6 +144,9 @@ export async function runIngestion(
 
   let cursor = options.cursor;
   let remaining = options.limit ?? Number.POSITIVE_INFINITY;
+  const minFetchIntervalMs = options.minFetchIntervalMs ?? 0;
+  const sleep = options.sleep ?? defaultSleep;
+  let lastFetchAt = 0;
 
   try {
     while (remaining > 0) {
@@ -163,7 +169,14 @@ export async function runIngestion(
 
       for (const item of items) {
         try {
+          if (minFetchIntervalMs > 0 && lastFetchAt > 0) {
+            const wait = lastFetchAt + minFetchIntervalMs - Date.now();
+            if (wait > 0) {
+              await sleep(wait);
+            }
+          }
           const raw = await options.adapter.fetch(item);
+          lastFetchAt = Date.now();
           counters.fetched += 1;
           const hash = contentHash(unwrapReleasePayload(raw.payload) ?? raw.payload);
           const snapshot = await options.store.insertRawRecord({

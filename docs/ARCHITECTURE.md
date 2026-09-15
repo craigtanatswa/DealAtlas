@@ -95,6 +95,8 @@ Never use CSS blur or client-side conditional rendering as the protection mechan
   /intelligence
   /admin
   /monitoring
+  /observability
+  /jobs
   /validation
 /ingestion
   /core
@@ -109,6 +111,7 @@ Never use CSS blur or client-side conditional rendering as the protection mechan
   /rebuild-previews.ts
   /rebuild-matches.ts
   /send-alerts.ts
+  /run-job.ts
 /supabase
   /migrations
   /tests
@@ -292,16 +295,15 @@ Adapter contract should return a source-neutral DTO with:
 - confidence
 
 ## 14. Scheduled jobs
-MVP scheduled jobs:
-- frequent active-source ingestion, frequency configurable per source
-- daily stale-source checks
-- daily preview regeneration for changed deals
+MVP scheduled jobs (GitHub Actions, `npm run job`):
+- frequent active-source ingestion, frequency configurable per source (`--job ingest --due`)
+- daily stale-source / data-quality checks (`--job data-quality`)
+- daily preview regeneration for changed deals (`--job previews`)
 - match recalculation for new/changed previews and edited company profiles (`npm run rebuild-matches`)
-- daily alert matching/delivery (`npm run send-alerts`)
-- nightly data-quality rollup
-- weekly contract-renewal recalculation
+- daily alert matching/delivery (`--job alerts` / `npm run send-alerts`)
+- weekly contract-renewal recalculation (`--job renewals`)
 
-Avoid recurrence faster than source terms/rate limits permit.
+Jobs support `--mode test` (smoke limits, no user emails) and `--mode dry-run`. One failed source does not stop the others. Avoid recurrence faster than source terms/rate limits permit.
 
 ## 15. Data retention
 - raw source snapshots retained for provenance unless source licence/terms require deletion
@@ -321,8 +323,9 @@ Capture:
 - authorisation failures
 - alert delivery failures
 - export volume
+- scheduled job_runs summaries
 
-Never log secrets, full card/payment details or unnecessary personal data.
+Structured JSON logs omit secrets, full card/payment details and unnecessary personal data. When `SENTRY_DSN` is unset, `createErrorReporter` logs only. When set, it posts a Sentry-compatible envelope.
 
 ## 17. Performance
 Indexes are mandatory for:
@@ -354,7 +357,7 @@ Production environment variables are configured in Vercel.
 
 Supabase migrations are source-controlled and applied deliberately.
 
-GitHub Actions ingestion uses repository/environment secrets with least privilege. It may use a Supabase secret/service credential because it is a trusted server worker; never expose that key to the client.
+GitHub Actions ingestion uses repository/environment secrets with least privilege. It may use a Supabase secret/service credential because it is a trusted server worker; never expose that key to the client. The workflow is `.github/workflows/scheduled-jobs.yml` with `workflow_dispatch` and `--mode test|dry-run|live`.
 
 ## 20. Architectural acceptance tests
 - anonymous user cannot select canonical/source tables
@@ -445,11 +448,11 @@ Launch authentication is email/password with Supabase SSR helpers.
 - `/app/billing` shows plan, interval, status, period end, and Manage billing.
 
 ### Ingestion
-Production ingestion lives under `/ingestion` with a source-neutral `SourceAdapter` (`discover` / `fetch` / `parse`), a compliance gate, immutable `raw_records`, and canonical persist for deals, notices, lots, organisations, requirements, awards and contracts. Find a Tender uses the official OCDS API (`/api/1.0/ocdsReleasePackages`), not HTML. Private/supply-chain sources use a reusable config-driven adapter (`ingestion/sources/private`). The first enabled mixed public/private infrastructure channel is the UK Infrastructure Pipeline (NISTA) via `GET /_dash-layout`. Run a source with `npm run ingest -- --source <source-key>`. Evidence and blocked sources are in `docs/SOURCE_COMPLIANCE_REPORT.md`. Routine tests use saved fixtures and do not call the live site.
+Production ingestion lives under `/ingestion` with a source-neutral `SourceAdapter` (`discover` / `fetch` / `parse`), a compliance gate, immutable `raw_records`, and canonical persist for deals, notices, lots, organisations, requirements, awards and contracts. Find a Tender uses the official OCDS API (`/api/1.0/ocdsReleasePackages`), not HTML. Private/supply-chain sources use a reusable config-driven adapter (`ingestion/sources/private`). The first enabled mixed public/private infrastructure channel is the UK Infrastructure Pipeline (NISTA) via `GET /_dash-layout`. Run a source with `npm run ingest -- --source <source-key>`, or due sources with `npm run job -- --job ingest --due`. Evidence and blocked sources are in `docs/SOURCE_COMPLIANCE_REPORT.md`. Routine tests use saved fixtures and do not call the live site.
 
-Retention workflows: saved deals (free quota 5), saved searches (free 1 / Pro 50), notification preferences, `GET/POST /api/alerts` entitlement-safe DTOs, and `npm run send-alerts` for new-match, deal-changed, deadline, and renewal evaluation plus Resend-compatible digests. Alerts remain server-only; `protected_payload` is never returned to the browser.
+Retention workflows: saved deals (free quota 5), saved searches (free 1 / Pro 50), notification preferences, `GET/POST /api/alerts` entitlement-safe DTOs, and `npm run send-alerts` for new-match, deal-changed, deadline, and renewal evaluation plus Resend-compatible digests. Alerts remain server-only; `protected_payload` is never returned to the browser. `--mode test` sends a sanitised provider test when `DEALATLAS_EMAIL_TEST_TO` or `--test-email` is set and `RESEND_API_KEY` is configured; it does not email users.
 
-`/api/health` is an extra operational endpoint for the web runtime.
+`/api/health` is a public liveness endpoint. Admin `/admin` shows source staleness, email/monitoring configuration, and `job_runs`.
 
 ### Stack details
 - Tailwind CSS v4 ships with the Next.js 16 scaffold (no `tailwind.config.ts`).

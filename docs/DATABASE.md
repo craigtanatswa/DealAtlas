@@ -33,6 +33,7 @@ The browser must never have direct access to source-bearing canonical procuremen
 - `raw_records`
 - `ingestion_runs`
 - `ingestion_errors`
+- `job_runs`
 - `billing_events`
 
 Trusted server code/admin/worker code retrieves these using server-only credentials after its own authorization checks.
@@ -207,6 +208,9 @@ Rows exported by user/month for limit enforcement. Ordinary client roles have no
 
 ### data_changes
 Material canonical changes used for alerts/history.
+
+### job_runs
+Server-only history of scheduled operational jobs (`ingest`, `previews`, `alerts`, `renewals`, `data-quality`). Ordinary client roles have no grants. Summaries must not contain secrets.
 
 ## 4. Canonical Deal fields
 At minimum:

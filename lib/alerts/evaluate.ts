@@ -30,6 +30,8 @@ import { DIGEST_CADENCES } from "@/lib/alerts/types";
 import { renderAlertDigest } from "@/lib/email/render";
 import { createEmailSender, type EmailSender } from "@/lib/email/send";
 import { getPublicEnv } from "@/lib/env/public";
+import { errorMessage, structuredLog } from "@/lib/observability/log";
+import { createErrorReporter, type ErrorReporter } from "@/lib/monitoring";
 
 type AdminClient = SupabaseClient<Database>;
 
@@ -268,7 +270,16 @@ export async function evaluateAlerts(options?: {
   now?: Date;
   sender?: EmailSender;
   appUrl?: string;
-}): Promise<{ created: number; duplicates: number; digested: number }> {
+  dryRun?: boolean;
+  reporter?: ErrorReporter;
+}): Promise<{
+  created: number;
+  duplicates: number;
+  digested: number;
+  deliveryFailures: number;
+  planned: number;
+  dryRun: boolean;
+}> {
   const admin = options?.admin ?? createSupabaseAdminClient();
   const now = options?.now ?? new Date();
   const matchSince = new Date(now.getTime() - MATCH_LOOKBACK_MS).toISOString();
@@ -284,7 +295,14 @@ export async function evaluateAlerts(options?: {
     error: prefError,
   });
   if (prefs.length === 0) {
-    return { created: 0, duplicates: 0, digested: 0 };
+    return {
+      created: 0,
+      duplicates: 0,
+      digested: 0,
+      deliveryFailures: 0,
+      planned: 0,
+      dryRun: Boolean(options?.dryRun),
+    };
   }
 
   const { data: savedDealData, error: savedDealError } = await admin
@@ -580,16 +598,34 @@ export async function evaluateAlerts(options?: {
     );
   }
 
+  if (options?.dryRun) {
+    return {
+      created: 0,
+      duplicates: 0,
+      digested: 0,
+      deliveryFailures: 0,
+      planned: planned.length,
+      dryRun: true,
+    };
+  }
+
   const insertResult = await insertPlannedAlerts(admin, planned);
-  const digested = await sendDueDigests({
+  const delivery = await sendDueDigests({
     admin,
     prefs,
     now,
     sender: options?.sender,
     appUrl: options?.appUrl,
+    reporter: options?.reporter,
   });
 
-  return { ...insertResult, digested };
+  return {
+    ...insertResult,
+    digested: delivery.digested,
+    deliveryFailures: delivery.failures,
+    planned: planned.length,
+    dryRun: false,
+  };
 }
 
 async function sendDueDigests(input: {
@@ -598,10 +634,13 @@ async function sendDueDigests(input: {
   now: Date;
   sender?: EmailSender;
   appUrl?: string;
-}): Promise<number> {
+  reporter?: ErrorReporter;
+}): Promise<{ digested: number; failures: number }> {
   const sender = input.sender ?? createEmailSender();
+  const reporter = input.reporter ?? createErrorReporter();
   const appUrl = input.appUrl ?? getPublicEnv().NEXT_PUBLIC_APP_URL;
   let digested = 0;
+  let failures = 0;
 
   for (const pref of input.prefs) {
     if (!pref.email_enabled) {
@@ -668,10 +707,22 @@ async function sendDueDigests(input: {
       appUrl,
     });
 
-    await sender.send({
-      to: profileRow.email,
-      ...rendered,
-    });
+    try {
+      await sender.send({
+        to: profileRow.email,
+        ...rendered,
+      });
+    } catch (error) {
+      failures += 1;
+      structuredLog({
+        job: "alerts",
+        msg: "alert_delivery_failed",
+        level: "error",
+        error: errorMessage(error),
+      });
+      await reporter.captureException(error, { job: "alerts" });
+      continue;
+    }
 
     const ids = rows.map((row) => row.id);
     const sentAt = input.now.toISOString();
@@ -690,7 +741,7 @@ async function sendDueDigests(input: {
     digested += 1;
   }
 
-  return digested;
+  return { digested, failures };
 }
 
 export type { AlertType };

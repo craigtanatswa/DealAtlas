@@ -229,19 +229,36 @@ The Cursor source-onboarding goal produces `docs/SOURCE_COMPLIANCE_REPORT.md` an
 6. Deploy.
 
 ## Phase N — GitHub Actions ingestion
-Create repository/environment secrets for trusted ingestion worker:
-- Supabase URL
-- Supabase secret/service credential
-- any source-specific permitted API credentials
-- email/monitoring credentials needed by scheduled jobs
+Create repository/environment secrets for the trusted ingestion worker. Do not commit them.
 
-Do not expose these as `NEXT_PUBLIC_*`.
+Required:
+- `NEXT_PUBLIC_APP_URL`
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+- `SUPABASE_SECRET_KEY`
 
-The workflow should support:
-- manual dispatch
-- scheduled ingestion
+Optional:
+- `RESEND_API_KEY`
+- `DEALATLAS_EMAIL_FROM`
+- `DEALATLAS_EMAIL_TEST_TO` (test-mode alert email)
+- `SENTRY_DSN`
+- LLM/embedding keys used by preview regeneration
+
+Do not expose these as `NEXT_PUBLIC_*` except the public App/Supabase values.
+
+The workflow `.github/workflows/scheduled-jobs.yml` supports:
+- manual dispatch with `--mode test` (default), `dry-run`, or `live`
+- scheduled ingestion every six hours, daily preview/alert/quality jobs, weekly renewals
 - source-by-source failure isolation
-- logs without secrets
+- structured logs without secrets
+
+Safe local/manual runs:
+```bash
+npm run job -- --job ingest --due --mode dry-run
+npm run job -- --job ingest --due --mode test
+npm run job -- --job alerts --mode test
+npm run job -- --job alerts --mode test --test-email you@example.com
+```
 
 ## Phase O — Dodo live mode
 Only after test mode passes:

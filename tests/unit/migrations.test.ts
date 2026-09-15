@@ -48,7 +48,7 @@ describe("supabase migrations", () => {
   const files = listMigrations();
   const sql = files.map(readMigration).join("\n");
 
-  it("are numbered 0001-0016 in order with no gaps", () => {
+  it("are numbered 0001-0017 in order with no gaps", () => {
     expect(files).toEqual([
       "0001_extensions_and_types.sql",
       "0002_core_schema.sql",
@@ -66,6 +66,7 @@ describe("supabase migrations", () => {
       "0014_intelligence_query_indexes.sql",
       "0015_export_usage_quota.sql",
       "0016_admin_operations.sql",
+      "0017_job_runs.sql",
     ]);
   });
 
@@ -149,6 +150,15 @@ describe("supabase migrations", () => {
     );
     expect(admin).not.toMatch(
       /grant execute on function public\.admin_merge_organizations[\s\S]{0,80}to (anon|authenticated)/i,
+    );
+  });
+
+  it("keeps operational job_runs server-only", () => {
+    const jobs = readMigration("0017_job_runs.sql");
+    expect(jobs).toContain("create table if not exists public.job_runs");
+    expect(jobs).toContain("enable row level security");
+    expect(jobs).not.toMatch(
+      /grant (select|insert|update|delete|all) on table public\.job_runs to (anon|authenticated)/i,
     );
   });
 

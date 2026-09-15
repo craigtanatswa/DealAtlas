@@ -58,6 +58,7 @@ export default async function AdminSourcesPage() {
               <TableHead>Access</TableHead>
               <TableHead>Enabled</TableHead>
               <TableHead>Last success</TableHead>
+              <TableHead>Health</TableHead>
               <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -84,6 +85,15 @@ export default async function AdminSourcesPage() {
                   )}
                 </TableCell>
                 <TableCell>{formatDealDateTime(source.lastSuccessAt) ?? "—"}</TableCell>
+                <TableCell>
+                  {source.stale ? (
+                    <Badge variant="destructive">Stale</Badge>
+                  ) : source.enabled ? (
+                    <Badge variant="success">On schedule</Badge>
+                  ) : (
+                    <Badge variant="outline">Idle</Badge>
+                  )}
+                </TableCell>
                 <TableCell className="min-w-[14rem]">
                   <div className="flex flex-col gap-2">
                     {source.enableBlockedReason ? (

@@ -3,91 +3,59 @@ import { loadEnvFiles } from "./load-env";
 loadEnvFiles();
 
 async function main() {
-  const { runIngestion } = await import("@/ingestion/core/pipeline");
-  const { getSourceAdapter } = await import("@/ingestion/sources/registry");
+  const { parseJobArgs } = await import("@/lib/jobs/cli");
+  const args = parseJobArgs(process.argv.slice(2));
+  if (!args.source && !args.due && !args.all) {
+    console.error(
+      "Usage: npm run ingest -- --source <source-key> [--limit 5] [--smoke]\n" +
+        "   or: npm run ingest -- --due [--mode test|dry-run]",
+    );
+    process.exitCode = 1;
+    return;
+  }
+
   const { createSupabaseIngestionStore } = await import(
     "@/ingestion/store/supabase"
   );
   const { createIngestionSupabaseClient } = await import(
     "@/ingestion/store/worker-client"
   );
+  const { runScheduledIngestion } = await import("@/lib/jobs/ingest");
+  const { createErrorReporter } = await import("@/lib/monitoring");
+  const { structuredLog } = await import("@/lib/observability/log");
 
-  const args = parseArgs(process.argv.slice(2));
-  if (!args.source) {
-    console.error(
-      "Usage: npm run ingest -- --source <source-key> [--limit 5] [--smoke]",
-    );
-    process.exitCode = 1;
-    return;
-  }
-
-  const smoke = Boolean(args.smoke);
-  const limit = args.limit ?? (smoke ? 3 : 20);
   const store = createSupabaseIngestionStore(createIngestionSupabaseClient());
-  const adapter = getSourceAdapter(args.source);
-
-  const result = await runIngestion({
-    sourceKey: args.source,
+  const result = await runScheduledIngestion({
     store,
-    adapter,
-    triggerType: smoke ? "SMOKE" : "MANUAL",
-    limit,
+    mode: args.mode,
+    force: args.force,
+    due: args.due || (!args.source && !args.all),
+    all: args.all,
+    sourceKeys: args.sources.length ? args.sources : undefined,
+    limit: args.limit,
     cursor: args.cursor,
     updatedFrom: args.updatedFrom,
     updatedTo: args.updatedTo,
-    force: args.force,
+    smoke: args.smoke,
+    reporter: createErrorReporter(),
     onPreviewPublished: async (dealId) => {
       const { enqueueDealMatches } = await import("@/lib/matching/queue");
       await enqueueDealMatches(dealId);
     },
   });
 
-  const { processMatchJobs } = await import("@/lib/matching/queue");
-  const matches = await processMatchJobs({ limit: 10, maxPairs: 80 });
+  if (!args.dryRun) {
+    const { processMatchJobs } = await import("@/lib/matching/queue");
+    const matches = await processMatchJobs({ limit: 10, maxPairs: 80 });
+    structuredLog({ job: "ingest", msg: "ingestion_complete", ...result, matches });
+    console.log(JSON.stringify({ ...result, matches }, null, 2));
+  } else {
+    console.log(JSON.stringify(result, null, 2));
+  }
 
-  console.log(JSON.stringify({ ...result, matches }, null, 2));
-  if (result.status === "FAILED" || result.status === "SKIPPED") {
+  if (result.status === "FAILED") {
     process.exitCode = 1;
   }
-}
-
-function parseArgs(argv: string[]) {
-  const result: {
-    source?: string;
-    limit?: number;
-    cursor?: string;
-    updatedFrom?: string;
-    updatedTo?: string;
-    smoke?: boolean;
-    force?: boolean;
-  } = {};
-
-  for (let index = 0; index < argv.length; index += 1) {
-    const arg = argv[index];
-    const next = argv[index + 1];
-    if (arg === "--source" && next) {
-      result.source = next;
-      index += 1;
-    } else if (arg === "--limit" && next) {
-      result.limit = Number(next);
-      index += 1;
-    } else if (arg === "--cursor" && next) {
-      result.cursor = next;
-      index += 1;
-    } else if (arg === "--updated-from" && next) {
-      result.updatedFrom = next;
-      index += 1;
-    } else if (arg === "--updated-to" && next) {
-      result.updatedTo = next;
-      index += 1;
-    } else if (arg === "--smoke") {
-      result.smoke = true;
-    } else if (arg === "--force") {
-      result.force = true;
-    }
-  }
-
-  return result;
 }
 
 main().catch((error: unknown) => {

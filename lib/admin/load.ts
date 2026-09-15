@@ -9,6 +9,9 @@ import {
   ADMIN_PAGE_SIZE,
   ADMIN_STALE_AFTER_DAYS,
 } from "@/lib/admin/paths";
+import { emailProviderConfigured } from "@/lib/email/send";
+import { monitoringConfigured } from "@/lib/monitoring";
+import { isSourceStale } from "@/lib/jobs/schedule";
 import type {
   AdminBillingEventRow,
   AdminDashboard,
@@ -16,6 +19,7 @@ import type {
   AdminDedupCandidate,
   AdminErrorRow,
   AdminJobRow,
+  AdminJobRunRow,
   AdminListResult,
   AdminNoticeRow,
   AdminNoticeVersionRow,
@@ -308,6 +312,13 @@ function mapSource(row: SourceRow): AdminSourceRow {
     updatedAt: row.updated_at,
     enableBlockedReason,
     ingestionBlockedReason: ingest.allowed ? null : ingest.reason,
+    stale: isSourceStale({
+      enabled: row.enabled,
+      scheduleExpression: row.schedule_expression,
+      lastSuccessAt: row.last_success_at,
+      now: new Date(),
+      staleAfterMs: ADMIN_STALE_AFTER_DAYS * 24 * 60 * 60 * 1000,
+    }),
   };
 }
 
@@ -434,6 +445,8 @@ export async function loadAdminDashboard(): Promise<AdminDashboard> {
     recentErrorRows,
     leakPreviewRows,
     recentAudit,
+    enabledSourceRows,
+    recentJobRows,
   ] = await Promise.all([
     countExact(() =>
       admin().from("data_sources").select("source_key", { count: "exact", head: true }),
@@ -527,6 +540,17 @@ export async function loadAdminDashboard(): Promise<AdminDashboard> {
       .order("updated_at", { ascending: false })
       .limit(8),
     listAdminAuditEvents(8),
+    admin()
+      .from("data_sources")
+      .select("enabled, schedule_expression, last_success_at")
+      .eq("enabled", true),
+    admin()
+      .from("job_runs")
+      .select(
+        "id, job_name, trigger_type, status, mode, started_at, finished_at, error_message",
+      )
+      .order("started_at", { ascending: false })
+      .limit(8),
   ]);
 
   const runResult = throwIfQueryError("Failed to load recent runs", {
@@ -541,6 +565,38 @@ export async function loadAdminDashboard(): Promise<AdminDashboard> {
     data: leakPreviewRows.data ?? [],
     error: leakPreviewRows.error,
   });
+  const enabledSources = throwIfQueryError("Failed to load enabled sources", {
+    data:
+      (enabledSourceRows.data as Array<{
+        enabled: boolean;
+        schedule_expression: string | null;
+        last_success_at: string | null;
+      }> | null) ?? [],
+    error: enabledSourceRows.error,
+  });
+  const jobResult = throwIfQueryError("Failed to load recent job runs", {
+    data:
+      (recentJobRows.data as Array<{
+        id: string;
+        job_name: string;
+        trigger_type: string;
+        status: Database["public"]["Enums"]["ingestion_status"];
+        mode: string;
+        started_at: string;
+        finished_at: string | null;
+        error_message: string | null;
+      }> | null) ?? [],
+    error: recentJobRows.error,
+  });
+  const staleSources = enabledSources.filter((row) =>
+    isSourceStale({
+      enabled: row.enabled,
+      scheduleExpression: row.schedule_expression,
+      lastSuccessAt: row.last_success_at,
+      now: new Date(),
+      staleAfterMs: ADMIN_STALE_AFTER_DAYS * 24 * 60 * 60 * 1000,
+    }),
+  ).length;
 
   const sourceIds = [
     ...runResult.map((row) => row.source_id),
@@ -568,6 +624,7 @@ export async function loadAdminDashboard(): Promise<AdminDashboard> {
       total: sourcesTotal,
       enabled: sourcesEnabled,
       blocked: sourcesBlocked,
+      stale: staleSources,
     },
     runs: { failed24h: failedRuns, skipped24h: skippedRuns },
     errors24h,
@@ -579,7 +636,21 @@ export async function loadAdminDashboard(): Promise<AdminDashboard> {
     failedMatchJobs,
     failedDocuments,
     billingErrors,
+    emailConfigured: emailProviderConfigured(),
+    monitoringConfigured: monitoringConfigured(),
     recentRuns: runResult.map((row) => mapRun(row, sources.get(row.source_id))),
+    recentJobRuns: jobResult.map(
+      (row): AdminJobRunRow => ({
+        id: row.id,
+        jobName: row.job_name,
+        triggerType: row.trigger_type,
+        status: row.status,
+        mode: row.mode,
+        startedAt: row.started_at,
+        finishedAt: row.finished_at,
+        errorMessage: row.error_message,
+      }),
+    ),
     recentErrors: errorResult.map((row) =>
       mapError(row, row.source_id ? sources.get(row.source_id)?.source_key ?? null : null),
     ),

@@ -112,6 +112,28 @@ export function createMemoryIngestionStore(seed?: {
     async getSourceById(id) {
       return state.sources.find((item) => item.id === id) ?? null;
     },
+    async listSources() {
+      return [...state.sources];
+    },
+    async listChangedDealIds(sinceIso, limit = 200) {
+      const since = Date.parse(sinceIso);
+      const ids: string[] = [];
+      const seen = new Set<string>();
+      for (const change of state.dataChanges) {
+        if (!change.material || Date.parse(change.occurredAt) < since) {
+          continue;
+        }
+        if (seen.has(change.dealId)) {
+          continue;
+        }
+        seen.add(change.dealId);
+        ids.push(change.dealId);
+        if (ids.length >= limit) {
+          break;
+        }
+      }
+      return ids;
+    },
     async getOrganizationById(id) {
       return state.organizations.find((item) => item.id === id) ?? null;
     },
@@ -484,6 +506,9 @@ export function createMemoryIngestionStore(seed?: {
       ) {
         state.awardSuppliers.push(input);
       }
+    },
+    async listContractsForDeal(dealId) {
+      return state.contracts.filter((item) => item.dealId === dealId);
     },
     async findContract(dealId, contractIdentifier) {
       return (

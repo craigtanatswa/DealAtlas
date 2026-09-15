@@ -1,0 +1,109 @@
+name: Scheduled jobs
+
+on:
+  schedule:
+    - cron: "20 */6 * * *"
+    - cron: "10 7 * * *"
+    - cron: "30 7 * * 1"
+  workflow_dispatch:
+    inputs:
+      job:
+        description: Job to run
+        type: choice
+        options:
+          - ingest
+          - previews
+          - alerts
+          - renewals
+          - data-quality
+        default: ingest
+      mode:
+        description: Safe test mode uses smoke limits and does not email users
+        type: choice
+        options:
+          - test
+          - dry-run
+          - live
+        default: test
+
+concurrency:
+  group: dealatlas-jobs-${{ github.event.inputs.job || github.event.schedule || 'manual' }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  run:
+    name: Run operational job
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+      RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+      DEALATLAS_EMAIL_FROM: ${{ secrets.DEALATLAS_EMAIL_FROM }}
+      DEALATLAS_EMAIL_TEST_TO: ${{ secrets.DEALATLAS_EMAIL_TEST_TO }}
+      SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+      DEALATLAS_LLM_API_KEY: ${{ secrets.DEALATLAS_LLM_API_KEY }}
+      DEALATLAS_LLM_BASE_URL: ${{ secrets.DEALATLAS_LLM_BASE_URL }}
+      DEALATLAS_LLM_MODEL: ${{ secrets.DEALATLAS_LLM_MODEL }}
+      DEALATLAS_EMBEDDING_API_KEY: ${{ secrets.DEALATLAS_EMBEDDING_API_KEY }}
+      DEALATLAS_EMBEDDING_BASE_URL: ${{ secrets.DEALATLAS_EMBEDDING_BASE_URL }}
+      DEALATLAS_EMBEDDING_MODEL: ${{ secrets.DEALATLAS_EMBEDDING_MODEL }}
+    steps:
+      - name: Check out
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Resolve job
+        id: resolve
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          SCHEDULE: ${{ github.event.schedule }}
+          INPUT_JOB: ${{ github.event.inputs.job }}
+          INPUT_MODE: ${{ github.event.inputs.mode }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            echo "job=${INPUT_JOB}" >> "$GITHUB_OUTPUT"
+            echo "mode=${INPUT_MODE}" >> "$GITHUB_OUTPUT"
+          elif [ "$SCHEDULE" = "20 */6 * * *" ]; then
+            echo "job=ingest" >> "$GITHUB_OUTPUT"
+            echo "mode=live" >> "$GITHUB_OUTPUT"
+          elif [ "$SCHEDULE" = "10 7 * * *" ]; then
+            echo "job=daily" >> "$GITHUB_OUTPUT"
+            echo "mode=live" >> "$GITHUB_OUTPUT"
+          elif [ "$SCHEDULE" = "30 7 * * 1" ]; then
+            echo "job=renewals" >> "$GITHUB_OUTPUT"
+            echo "mode=live" >> "$GITHUB_OUTPUT"
+          else
+            echo "Unknown schedule: $SCHEDULE" >&2
+            exit 1
+          fi
+
+      - name: Run ingest
+        if: steps.resolve.outputs.job == 'ingest'
+        run: npm run job -- --job ingest --due --mode "${{ steps.resolve.outputs.mode }}"
+
+      - name: Run daily operational jobs
+        if: steps.resolve.outputs.job == 'daily'
+        run: |
+          set -euo pipefail
+          npm run job -- --job previews --mode live
+          npm run job -- --job alerts --mode live
+          npm run job -- --job data-quality --mode live
+
+      - name: Run selected job
+        if: steps.resolve.outputs.job != 'ingest' && steps.resolve.outputs.job != 'daily'
+        run: npm run job -- --job "${{ steps.resolve.outputs.job }}" --mode "${{ steps.resolve.outputs.mode }}"

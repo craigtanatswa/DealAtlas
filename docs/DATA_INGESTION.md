@@ -271,6 +271,8 @@ MVP recommendation:
 - static pipeline pages: daily/weekly depending on expected change
 - renewal recalculation: weekly
 
+GitHub Actions runs `npm run job -- --job ingest --due`, which selects enabled, compliant, registered sources whose cron is due, then ingests them sequentially with per-source isolation and `rate_limit_per_minute` spacing.
+
 ## 20. Retry and resilience
 - exponential backoff for transient failures
 - cap retry count

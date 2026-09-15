@@ -3,63 +3,40 @@ import { loadEnvFiles } from "./load-env";
 loadEnvFiles();
 
 async function main() {
-  const { contextFromPersisted } = await import("@/ingestion/intelligence/types");
-  const { persistIntelligenceAndPreview } = await import("@/ingestion/preview/publish");
-  const { createSupabaseIngestionStore } = await import("@/ingestion/store/supabase");
-  const { createIngestionSupabaseClient } = await import("@/ingestion/store/worker-client");
-
-  const args = parseArgs(process.argv.slice(2));
-  const store = createSupabaseIngestionStore(createIngestionSupabaseClient());
-  const deals = await store.listDeals(args.limit ?? 50);
-  const now = new Date();
-  const results: Array<{ dealId: string; published: boolean; risk: string }> = [];
-
-  for (const deal of deals) {
-    const context = await contextFromPersisted({ store, deal, now });
-    if (!context) {
-      continue;
-    }
-    const outcome = await persistIntelligenceAndPreview({ store, context });
-    results.push({
-      dealId: deal.id,
-      published: outcome.published,
-      risk: outcome.leakageRisk,
-    });
-    if (outcome.published) {
-      const { enqueueDealMatches } = await import("@/lib/matching/queue");
-      await enqueueDealMatches(deal.id);
-    }
-  }
-
-  const { processMatchJobs } = await import("@/lib/matching/queue");
-  const matches = await processMatchJobs({ limit: 10, maxPairs: 80 });
-
-  console.log(
-    JSON.stringify(
-      {
-        processed: results.length,
-        published: results.filter((item) => item.published).length,
-        blocked: results.filter((item) => !item.published).length,
-        matches,
-        results,
-      },
-      null,
-      2,
-    ),
+  const { parseJobArgs } = await import("@/lib/jobs/cli");
+  const args = parseJobArgs(process.argv.slice(2));
+  const { createSupabaseIngestionStore } = await import(
+    "@/ingestion/store/supabase"
   );
-}
+  const { createIngestionSupabaseClient } = await import(
+    "@/ingestion/store/worker-client"
+  );
+  const { rebuildChangedPreviews } = await import("@/lib/jobs/previews");
+  const { structuredLog } = await import("@/lib/observability/log");
+  const { createErrorReporter } = await import("@/lib/monitoring");
 
-function parseArgs(argv: string[]) {
-  const result: { limit?: number } = {};
-  for (let index = 0; index < argv.length; index += 1) {
-    const arg = argv[index];
-    const next = argv[index + 1];
-    if (arg === "--limit" && next) {
-      result.limit = Number(next);
-      index += 1;
-    }
+  const store = createSupabaseIngestionStore(createIngestionSupabaseClient());
+  const result = await rebuildChangedPreviews({
+    store,
+    mode: args.mode,
+    limit: args.limit,
+    changedSince: args.changedSince,
+    all: args.all || !args.changedSince,
+    reporter: createErrorReporter(),
+    onPreviewPublished: async (dealId) => {
+      const { enqueueDealMatches } = await import("@/lib/matching/queue");
+      await enqueueDealMatches(dealId);
+    },
+  });
+
+  let matches = null;
+  if (!args.dryRun) {
+    const { processMatchJobs } = await import("@/lib/matching/queue");
+    matches = await processMatchJobs({ limit: 10, maxPairs: 80 });
   }
-  return result;
+  const payload = { ...result, matches };
+  structuredLog({ job: "previews", msg: "preview_rebuild_complete", ...payload });
+  console.log(JSON.stringify(payload, null, 2));
 }
 
 main().catch((error: unknown) => {

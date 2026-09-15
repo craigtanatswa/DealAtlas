@@ -13,6 +13,10 @@ const adapters = new Map<string, () => SourceAdapter>([
   ],
 ]);
 
+export function listRegisteredSourceKeys(): string[] {
+  return [...adapters.keys()];
+}
+
 export function getSourceAdapter(sourceKey: string): SourceAdapter {
   const factory = adapters.get(sourceKey);
   if (!factory) {
