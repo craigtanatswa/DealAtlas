@@ -64,6 +64,13 @@ Never use CSS blur or client-side conditional rendering as the protection mechan
       /renewals
   /(admin)
     /admin
+      /deals
+      /sources
+      /ingestion
+      /organisations
+      /deduplication
+      /data-quality
+      /billing-events
   /api
     /deals/[id]
     /search
@@ -86,6 +93,7 @@ Never use CSS blur or client-side conditional rendering as the protection mechan
   /email
   /matching
   /intelligence
+  /admin
   /monitoring
   /validation
 /ingestion
@@ -369,7 +377,7 @@ The application foundation was added to this repository on top of the specificat
 - Public marketing routes include `/`, `/deals`, `/deals/[slug]`, `/pricing`, `/how-it-works`.
 - Authenticated search at `/app/search` sorts and filters by company-profile relevance when a profile exists. Public `/deals` can show scores for signed-in users without revealing source identity.
 - Saving `/app/profile` queues `match_jobs` and recalculates `deal_matches` for published previews.
-- `lib/` contains `auth`, `billing`, `db`, `entitlements`, `search`, `matching`, `intelligence`, `redaction`, `email`, `monitoring`, and `validation`.
+- `lib/` contains `auth`, `billing`, `db`, `entitlements`, `search`, `matching`, `intelligence`, `admin`, `redaction`, `email`, `monitoring`, and `validation`.
 - Privileged Supabase access is isolated in `lib/supabase/admin.ts` with `import "server-only"`. Browser and cookie-based SSR clients use the publishable key only.
 - Environment validation splits `NEXT_PUBLIC_*` (`lib/env/public.ts`) from server secrets (`lib/env/server.ts`).
 - Feature limits live in `lib/constants.ts` and must be enforced server-side when those features are implemented.
@@ -399,7 +407,10 @@ Launch authentication is email/password with Supabase SSR helpers.
 
 - `proxy.ts` refreshes the Auth session on each matched request and redirects unauthenticated users away from `/app` and `/admin`.
 - `lib/auth/session.ts` loads the user with `getUser()` and authorizes from `profiles.role` only. Client metadata is not trusted.
-- Admin routes call `requireAdmin()` in `app/(admin)/admin/layout.tsx` and return 403 via `forbidden()` for signed-in non-admins.
+- Admin routes call `requireAdmin()` in `app/(admin)/admin/layout.tsx` and again in `lib/admin/page.ts` before loaders run, then return 403 via `forbidden()` for signed-in non-admins.
+- Admin mutations live in `lib/admin/actions.ts` (`"use server"`). Each action calls `requireAdminAction()` again. There is no `/api/admin` mutation route.
+- Meaningful admin writes record `admin_audit_events`. Ordinary client roles have no grants on that table.
+- Source enablement uses the same database gates as `private.enforce_source_enablement`. Previews can be held unpublished with `unpublished_by_admin`. Regeneration and scheduled preview writes copy that hold so a later LOW scan cannot republish the row. The database trigger is a failsafe.
 - Profile rows are created by `private.handle_new_user()`. If a row is missing, `lib/auth/profile.ts` inserts a USER row with the admin client and never copies a role from metadata.
 - Auth callbacks at `/auth/callback` and `/auth/confirm` exchange a code or `token_hash` and sanitize `next` to same-origin relative paths.
 

@@ -39,6 +39,11 @@ const SERVER_ONLY_MODULES = [
   "lib/exports/usage.ts",
   "lib/exports/select.ts",
   "lib/exports/load.ts",
+  "lib/admin/access.ts",
+  "lib/admin/audit.ts",
+  "lib/admin/load.ts",
+  "lib/admin/mutations.ts",
+  "lib/admin/page.ts",
 ];
 
 const CLIENT_GLOBS = ["components", "app"];
@@ -105,6 +110,11 @@ describe("server-only module boundary", () => {
       expect(source).not.toMatch(/from ["']@\/lib\/exports\/usage["']/);
       expect(source).not.toMatch(/from ["']@\/lib\/exports\/select["']/);
       expect(source).not.toMatch(/from ["']@\/lib\/exports\/load["']/);
+      expect(source).not.toMatch(/from ["']@\/lib\/admin\/access["']/);
+      expect(source).not.toMatch(/from ["']@\/lib\/admin\/audit["']/);
+      expect(source).not.toMatch(/from ["']@\/lib\/admin\/load["']/);
+      expect(source).not.toMatch(/from ["']@\/lib\/admin\/mutations["']/);
+      expect(source).not.toMatch(/from ["']@\/lib\/admin\/page["']/);
     }
   });
 });

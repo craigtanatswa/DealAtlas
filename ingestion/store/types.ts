@@ -243,6 +243,7 @@ export type DealPreviewRecord = {
   freshnessLabel: string | null;
   leakageRisk: Database["public"]["Enums"]["leakage_risk"];
   isPublished: boolean;
+  unpublishedByAdmin?: boolean;
 };
 
 export type DealInsightRecord = {

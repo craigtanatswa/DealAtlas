@@ -179,6 +179,7 @@ function mapPreview(row: PreviewRow): DealPreviewRecord {
     freshnessLabel: row.freshness_label,
     leakageRisk: row.leakage_risk,
     isPublished: row.is_published,
+    unpublishedByAdmin: row.unpublished_by_admin,
   };
 }
 
@@ -406,6 +407,7 @@ export function createSupabaseIngestionStore(
             freshness_label: input.freshnessLabel,
             leakage_risk: input.leakageRisk,
             is_published: input.isPublished,
+            unpublished_by_admin: input.unpublishedByAdmin === true,
             updated_at: new Date().toISOString(),
           },
           { onConflict: "deal_id" },

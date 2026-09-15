@@ -237,4 +237,62 @@ describe("preview generation from canonical records", () => {
       leakDrafts.enabled = false;
     }
   });
+
+  it("keeps an admin unpublished hold after a later LOW-risk regeneration", async () => {
+    const { store } = await ingestNormal();
+    const deal = store.deals[0]!;
+    store.previews[0] = {
+      ...store.previews[0]!,
+      isPublished: false,
+      unpublishedByAdmin: true,
+    };
+
+    const outcome = await persistIntelligenceAndPreview({
+      store,
+      context: contextFromCandidate({
+        deal,
+        source: store.sources[0]!,
+        buyer: store.organizations[0]!,
+        buyerAliases: ["Example Council"],
+        lots: store.lots,
+        candidate: {
+          sourceKey: "find-a-tender",
+          ocid: deal.ocid ?? "",
+          externalPrimaryId: deal.externalPrimaryId ?? "",
+          noticeIdentifier: "000001-2026",
+          releaseId: "000001-2026",
+          reference: deal.reference,
+          sourceTitle: deal.sourceTitle,
+          sourceDescription: deal.sourceDescription,
+          sourceUrl: deal.sourceUrl ?? "",
+          dealType: deal.dealType,
+          buyerSector: deal.buyerSector,
+          stage: deal.stage,
+          status: deal.status,
+          mainCategory: deal.mainCategory,
+          currency: deal.currency ?? "GBP",
+          valueMinExVat: deal.valueMinExVat,
+          valueMaxExVat: deal.valueMaxExVat,
+          exactValueText: deal.exactValueText,
+          exactLocationText: deal.exactLocationText,
+          submissionDeadline: deal.submissionDeadline,
+          organizations: [],
+          lots: [],
+          requirements: [],
+          awardCriteria: [],
+          awards: [],
+          contracts: [],
+          documents: [],
+          classifications: [],
+          relatedOcids: [],
+        },
+        now: NOW,
+      }),
+    });
+
+    expect(outcome.leakageRisk).toBe("LOW");
+    expect(outcome.published).toBe(false);
+    expect(store.previews[0]?.unpublishedByAdmin).toBe(true);
+    expect(store.previews[0]?.isPublished).toBe(false);
+  });
 });

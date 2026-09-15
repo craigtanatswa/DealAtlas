@@ -64,7 +64,7 @@ Never grant Pro because `?success=true` exists in URL.
 ## 8. Admin
 Admin role is stored in server-controlled database state.
 
-Admin routes and mutations require server-side `role=ADMIN` verification. Hiding `/admin` navigation is not authorization.
+Admin routes and mutations require server-side `role=ADMIN` verification. Hiding `/admin` navigation is not authorization. There is no public admin mutation API. The browser never receives the Supabase secret key. Meaningful admin changes are written to server-only `admin_audit_events`.
 
 ## 9. Rate limiting
 Rate-limit:

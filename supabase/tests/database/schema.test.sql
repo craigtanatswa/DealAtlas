@@ -13,7 +13,7 @@ select ok(
       'commercial_tools','commercial_tool_members','private_opportunity_details','deal_insights','related_deals',
       'data_changes','profiles','company_profiles','subscriptions','billing_events','deal_matches','saved_deals',
       'saved_searches','watched_organizations','notification_preferences','alerts','export_usage','preview_generation_runs',
-      'match_jobs'
+      'match_jobs','admin_audit_events'
     ]::text[]) as t
   ),
   'all DealAtlas application tables exist'
@@ -35,7 +35,7 @@ select ok(
         'commercial_tools','commercial_tool_members','private_opportunity_details','deal_insights','related_deals',
         'data_changes','profiles','company_profiles','subscriptions','billing_events','deal_matches','saved_deals',
         'saved_searches','watched_organizations','notification_preferences','alerts','export_usage','preview_generation_runs',
-        'match_jobs'
+        'match_jobs','admin_audit_events'
       ]::text[])
   ),
   'RLS is enabled on every DealAtlas application table'
@@ -62,6 +62,19 @@ select has_function(
   'private',
   'enforce_export_usage_limit',
   'export usage quota trigger function exists'
+);
+
+select has_function(
+  'public',
+  'admin_merge_organizations',
+  'admin organisation merge RPC exists'
+);
+
+select has_column(
+  'public',
+  'deal_previews',
+  'unpublished_by_admin',
+  'admin unpublished hold exists on deal_previews'
 );
 
 select ok(

@@ -33,6 +33,9 @@ describe("typed data-access boundaries", () => {
     expect(columns).toContain("preview_title");
     expect(columns).not.toContain('"*"');
     expect(columns).not.toContain("'*'");
+    expect(columns).not.toContain("unpublished_by_admin");
+    expect(columns).not.toContain("leakage_risk");
+    expect(columns).not.toContain("is_published");
   });
 
   it("isolates canonical queries behind server-only", () => {
@@ -115,5 +118,18 @@ describe("typed data-access boundaries", () => {
     expect(usage).toContain("billing_month");
     expect(usage).not.toMatch(/select\(\s*["']\*["']\s*\)/);
     expect(read("lib/db/public-schema.ts")).not.toContain('"export_usage"');
+  });
+
+  it("loads admin operations with explicit columns behind server-only", () => {
+    const load = read("lib/admin/load.ts");
+    expect(load).toMatch(/import ["']server-only["']/);
+    expect(load).toContain('.from("data_sources")');
+    expect(load).toContain('.from("ingestion_runs")');
+    expect(load).toContain('.from("raw_records")');
+    expect(load).toContain('.from("deal_previews")');
+    expect(load).toContain("unpublished_by_admin");
+    expect(load).not.toMatch(/select\(\s*["']\*["']\s*\)/);
+    expect(read("lib/db/public-schema.ts")).not.toContain("admin_audit_events");
+    expect(read("lib/admin/actions.ts")).toContain("requireAdminAction");
   });
 });

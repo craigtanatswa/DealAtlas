@@ -115,9 +115,9 @@ export async function persistIntelligenceAndPreview(options: {
     ),
   );
   const leakageRisk = finalScan.risk;
-  const published = leakageRisk === "LOW";
-
   const existing = await store.getDealPreview(context.deal.id);
+  const unpublishedByAdmin = existing?.unpublishedByAdmin === true;
+  const published = leakageRisk === "LOW" && !unpublishedByAdmin;
   const slug = existing?.slug ?? slugifyPreview(draft.previewTitle, context.deal.id);
 
   const preview: DealPreviewRecord = {
@@ -142,6 +142,7 @@ export async function persistIntelligenceAndPreview(options: {
     freshnessLabel: draft.freshnessLabel,
     leakageRisk,
     isPublished: published,
+    unpublishedByAdmin,
   };
 
   await store.upsertDealInsight(insightRecord(context.deal.id, intelligence));

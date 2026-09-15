@@ -24,6 +24,12 @@ select ok(not has_table_privilege('authenticated', 'public.data_sources', 'selec
 select ok(not has_table_privilege('authenticated', 'public.subscriptions', 'select'), 'authenticated cannot select subscriptions');
 select ok(not has_table_privilege('authenticated', 'public.billing_events', 'select'), 'authenticated cannot select billing_events');
 select ok(not has_table_privilege('authenticated', 'public.alerts', 'select'), 'authenticated cannot select alerts');
+select ok(not has_table_privilege('authenticated', 'public.admin_audit_events', 'select'), 'authenticated cannot select admin_audit_events');
+select ok(not has_table_privilege('anon', 'public.admin_audit_events', 'select'), 'anon cannot select admin_audit_events');
+select ok(
+  not has_function_privilege('authenticated', 'public.admin_merge_organizations(uuid, uuid)', 'execute'),
+  'authenticated cannot execute admin organisation merge'
+);
 
 select ok(
   not has_column_privilege('authenticated', 'public.profiles', 'role', 'update'),

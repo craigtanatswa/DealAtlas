@@ -14,6 +14,47 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      admin_audit_events: {
+        Row: {
+          action: string
+          actor_id: string
+          created_at: string
+          entity_id: string | null
+          entity_type: string
+          id: string
+          metadata: Json
+          summary: string
+        }
+        Insert: {
+          action: string
+          actor_id: string
+          created_at?: string
+          entity_id?: string | null
+          entity_type: string
+          id?: string
+          metadata?: Json
+          summary: string
+        }
+        Update: {
+          action?: string
+          actor_id?: string
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string
+          id?: string
+          metadata?: Json
+          summary?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_audit_events_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       alerts: {
         Row: {
           alert_type: Database["public"]["Enums"]["alert_type"]
@@ -1294,6 +1335,7 @@ export type Database = {
           sme_suitability: string | null
           stage: Database["public"]["Enums"]["deal_stage"]
           status: Database["public"]["Enums"]["deal_status"]
+          unpublished_by_admin: boolean
           updated_at: string
           value_band: string | null
         }
@@ -1319,6 +1361,7 @@ export type Database = {
           sme_suitability?: string | null
           stage: Database["public"]["Enums"]["deal_stage"]
           status: Database["public"]["Enums"]["deal_status"]
+          unpublished_by_admin?: boolean
           updated_at?: string
           value_band?: string | null
         }
@@ -1344,6 +1387,7 @@ export type Database = {
           sme_suitability?: string | null
           stage?: Database["public"]["Enums"]["deal_stage"]
           status?: Database["public"]["Enums"]["deal_status"]
+          unpublished_by_admin?: boolean
           updated_at?: string
           value_band?: string | null
         }
@@ -2863,6 +2907,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_merge_organizations: {
+        Args: {
+          p_drop: string
+          p_keep: string
+        }
+        Returns: undefined
+      }
       search_deal_previews: {
         Args: {
           p_buyer_sector?: Database["public"]["Enums"]["buyer_sector"]

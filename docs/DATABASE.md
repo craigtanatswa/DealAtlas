@@ -274,6 +274,7 @@ At minimum:
 - freshness_label
 - leakage_risk
 - is_published
+- unpublished_by_admin (admin hold; never a public search field)
 - created_at
 - updated_at
 
@@ -298,7 +299,7 @@ Store a leakage risk state:
 - REVIEW
 - HIGH
 
-Only LOW may auto-publish. REVIEW/HIGH requires regeneration or admin review.
+Only LOW may auto-publish. REVIEW/HIGH requires regeneration or admin review. An administrator can set `unpublished_by_admin` to keep a preview unpublished even when risk is LOW.
 
 The application leak scanner in `lib/redaction` is the primary control. `private.detect_preview_leakage` / `enforce_preview_safety` are a database failsafe and must not lower an application REVIEW/HIGH result. Generation attempts and findings are stored on server-only `preview_generation_runs` for admin review.
 
@@ -360,7 +361,9 @@ Included in the build pack:
 - `0011_matching_pipeline.sql`
 - `0012_deal_match_column_privileges.sql`
 - `0013_alert_dedupe_and_digest.sql`
-- `0014_intelligence_query_indexes.sql
+- `0014_intelligence_query_indexes.sql`
+- `0015_export_usage_quota.sql`
+- `0016_admin_operations.sql`
 
 Apply in numeric order with the Supabase CLI (`npx supabase db reset` locally, or `npx supabase db push` to a linked project). Never reset or drop a linked production database.
 
@@ -383,6 +386,7 @@ This writes `lib/db/database.types.ts`. Do not edit that file by hand.
 - Protected canonical tables: `lib/db/canonical.ts` is `server-only` and uses the privileged admin client after an explicit Pro/admin access argument.
 - Paid buyer/supplier/contract intelligence: `lib/intelligence/load.ts` reads organisations, deals, awards, contracts, related processes, payments and performance after `getCurrentEntitlement` confirms Pro. Aggregation is query-time. There is no materialized history table; indexes in `0014_intelligence_query_indexes.sql` keep those lookups refreshable as source data changes.
 - Billing writes: `lib/billing/store.ts` is `server-only` and uses the admin client for `subscriptions` and `billing_events`. Ordinary client roles still have no grants on those tables.
+- Admin operations: `lib/admin` is `server-only` besides the `"use server"` action module. It uses the privileged admin client after `requireAdmin()`. Mutations write `admin_audit_events`. Ordinary client roles have no grants on that table. `deal_previews.unpublished_by_admin` keeps a preview unpublished even when leakage risk is LOW.
 
 ### Database tests
 ```bash
@@ -412,7 +416,7 @@ Server code:
 5. log security-relevant denial but do not log secrets/source payloads.
 
 ### Admin
-Check `profiles.role=ADMIN` server-side before trusted queries/mutations.
+Check `profiles.role=ADMIN` server-side before trusted queries/mutations. Meaningful mutations write `admin_audit_events`. `unpublished_by_admin` on `deal_previews` is the hold that prevents auto-publish after regeneration.
 
 ## 12. Database testing requirements
 Use Supabase database tests/pgTAP where practical.

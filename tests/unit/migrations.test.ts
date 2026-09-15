@@ -48,7 +48,7 @@ describe("supabase migrations", () => {
   const files = listMigrations();
   const sql = files.map(readMigration).join("\n");
 
-  it("are numbered 0001-0015 in order with no gaps", () => {
+  it("are numbered 0001-0016 in order with no gaps", () => {
     expect(files).toEqual([
       "0001_extensions_and_types.sql",
       "0002_core_schema.sql",
@@ -65,6 +65,7 @@ describe("supabase migrations", () => {
       "0013_alert_dedupe_and_digest.sql",
       "0014_intelligence_query_indexes.sql",
       "0015_export_usage_quota.sql",
+      "0016_admin_operations.sql",
     ]);
   });
 
@@ -133,6 +134,21 @@ describe("supabase migrations", () => {
     expect(exportUsage).toContain("1000");
     expect(exportUsage).not.toMatch(
       /grant (select|insert|update|delete) on table public\.export_usage to (anon|authenticated)/i,
+    );
+  });
+
+  it("keeps admin audit and organisation merge server-only and holds unpublished previews", () => {
+    const admin = readMigration("0016_admin_operations.sql");
+    expect(admin).toContain("unpublished_by_admin");
+    expect(admin).toContain("admin_audit_events");
+    expect(admin).toContain("private.merge_organizations");
+    expect(admin).toContain("public.admin_merge_organizations");
+    expect(admin).toContain("if new.unpublished_by_admin then");
+    expect(admin).not.toMatch(
+      /grant (select|insert|update|delete|all) on table public\.admin_audit_events to (anon|authenticated)/i,
+    );
+    expect(admin).not.toMatch(
+      /grant execute on function public\.admin_merge_organizations[\s\S]{0,80}to (anon|authenticated)/i,
     );
   });
 
