@@ -317,6 +317,21 @@ select throws_ok(
   'authenticated select on subscriptions is denied'
 );
 
+select throws_ok(
+  'select id from public.export_usage limit 1',
+  '42501',
+  NULL,
+  'authenticated select on export_usage is denied'
+);
+
+select throws_ok(
+  $$ insert into public.export_usage (user_id, row_count, billing_month)
+     values ('00000000-0000-4000-8000-000000000000', 1, '2026-09-01') $$,
+  '42501',
+  NULL,
+  'authenticated insert on export_usage is denied'
+);
+
 reset role;
 
 select * from finish();

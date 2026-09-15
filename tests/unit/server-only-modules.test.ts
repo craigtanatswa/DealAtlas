@@ -36,6 +36,9 @@ const SERVER_ONLY_MODULES = [
   "lib/alerts/preferences.ts",
   "lib/saves/queries.ts",
   "lib/email/send.ts",
+  "lib/exports/usage.ts",
+  "lib/exports/select.ts",
+  "lib/exports/load.ts",
 ];
 
 const CLIENT_GLOBS = ["components", "app"];
@@ -99,6 +102,9 @@ describe("server-only module boundary", () => {
       expect(source).not.toMatch(/from ["']@\/lib\/alerts\/preferences["']/);
       expect(source).not.toMatch(/from ["']@\/lib\/saves\/queries["']/);
       expect(source).not.toMatch(/from ["']@\/lib\/email\/send["']/);
+      expect(source).not.toMatch(/from ["']@\/lib\/exports\/usage["']/);
+      expect(source).not.toMatch(/from ["']@\/lib\/exports\/select["']/);
+      expect(source).not.toMatch(/from ["']@\/lib\/exports\/load["']/);
     }
   });
 });

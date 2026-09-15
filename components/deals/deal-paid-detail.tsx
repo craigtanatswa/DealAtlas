@@ -37,11 +37,13 @@ export function DealPaidDetail({
   history,
   match,
   save,
+  exportCsv,
 }: {
   deal: PaidDealDto;
   history?: DealHistoryDto | null;
   match?: ProMatchView | null;
   save?: ReactNode;
+  exportCsv?: ReactNode;
 }) {
   const withheld = deal.provenance.contentAccess === "withhold";
   const value = formatDealValueRange({
@@ -106,6 +108,7 @@ export function DealPaidDetail({
         </dl>
         <div className="flex flex-wrap gap-3">
           {save}
+          {exportCsv}
           <ExternalSourceLink href={deal.sourceUrl} variant="default">
             Open source notice
           </ExternalSourceLink>

@@ -16,8 +16,12 @@ describe("feature quotas", () => {
     expect(featureLimit(PLANS.FREE, "savedSearches")).toBe(1);
     expect(featureLimit(PLANS.PRO, "savedDeals")).toBe(UNLIMITED);
     expect(featureLimit(PLANS.PRO, "savedSearches")).toBe(50);
+    expect(featureLimit(PLANS.FREE, "exportRowsPerMonth")).toBe(0);
+    expect(featureLimit(PLANS.PRO, "exportRowsPerMonth")).toBe(1000);
     expect(FEATURE_LIMITS.FREE.savedDeals).toBe(5);
     expect(FEATURE_LIMITS.PRO.savedSearches).toBe(50);
+    expect(FEATURE_LIMITS.FREE.exportRowsPerMonth).toBe(0);
+    expect(FEATURE_LIMITS.PRO.exportRowsPerMonth).toBe(1000);
   });
 
   it("treats the fifth free saved deal as the last allowed slot", () => {
@@ -27,12 +31,17 @@ describe("feature quotas", () => {
     expect(isAtFeatureLimit(12, UNLIMITED)).toBe(false);
     expect(quotaLabel(2, 5)).toBe("2 of 5 saved");
     expect(quotaLabel(3, UNLIMITED)).toBe("3 saved");
+    expect(isAtFeatureLimit(0, 0)).toBe(true);
+    expect(remainingQuota(1000, 1000)).toBe(0);
+    expect(remainingQuota(250, 1000)).toBe(750);
   });
 
   it("maps database trigger messages to the same UX copy", () => {
     expect(mapQuotaError("saved deal limit reached")).toBe("savedDeals");
     expect(mapQuotaError("saved search limit reached")).toBe("savedSearches");
+    expect(mapQuotaError("export row limit reached")).toBe("exportRows");
     expect(QUOTA_ERROR_COPY.savedDeals).toContain("5 opportunities");
     expect(QUOTA_ERROR_COPY.savedSearches).toContain("up to 50");
+    expect(QUOTA_ERROR_COPY.exportRows).toContain("export allowance");
   });
 });

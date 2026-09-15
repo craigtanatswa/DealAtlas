@@ -410,6 +410,12 @@ Launch authentication is email/password with Supabase SSR helpers.
 - `fulfillProtectedDealRequest` rejects anonymous (401), FREE/expired/on-hold (403), and invalid IDs (400) before canonical reads.
 - `lib/deals/protected.ts` queries canonical tables and `lib/deals/paid-dto.ts` maps an explicit paid DTO without internal/raw/secret fields.
 
+### CSV export
+- `POST /api/exports` is authenticated. The server checks `getCurrentEntitlement`, then exports the current filtered search, saved deals, or selected Deal IDs.
+- Paid fields are loaded only after Pro is verified. CSV cells that begin with `=`, `+`, `-`, or `@` are apostrophe-prefixed. The file is UTF-8 with a BOM.
+- Pro launch quota is 1,000 rows per UTC billing month. Remaining quota is checked before canonical reads; `export_usage` is recorded through a transactional trigger so concurrent requests cannot exceed the cap.
+- `GET /api/exports` returns `{ used, limit, remaining, billingMonth }` for Pro users.
+
 ### Dodo billing
 - `/api/billing/checkout` is an authenticated POST. The browser may send only `planKey` (`PRO_MONTHLY` | `PRO_ANNUAL`). The server maps that to `DODO_PRO_*_PRODUCT_ID` and creates a Checkout Session through `@dodopayments/nextjs`.
 - Checkout metadata `user_id` and `plan_key` are generated from the authenticated session, never from the request body.
@@ -420,9 +426,6 @@ Launch authentication is email/password with Supabase SSR helpers.
 
 ### Ingestion
 Production ingestion lives under `/ingestion` with a source-neutral `SourceAdapter` (`discover` / `fetch` / `parse`), a compliance gate, immutable `raw_records`, and canonical persist for deals, notices, lots, organisations, requirements, awards and contracts. Find a Tender uses the official OCDS API (`/api/1.0/ocdsReleasePackages`), not HTML. Private/supply-chain sources use a reusable config-driven adapter (`ingestion/sources/private`). The first enabled mixed public/private infrastructure channel is the UK Infrastructure Pipeline (NISTA) via `GET /_dash-layout`. Run a source with `npm run ingest -- --source <source-key>`. Evidence and blocked sources are in `docs/SOURCE_COMPLIANCE_REPORT.md`. Routine tests use saved fixtures and do not call the live site.
-
-Deferred until later goals:
-- `/api/exports`
 
 Retention workflows: saved deals (free quota 5), saved searches (free 1 / Pro 50), notification preferences, `GET/POST /api/alerts` entitlement-safe DTOs, and `npm run send-alerts` for new-match, deal-changed, deadline, and renewal evaluation plus Resend-compatible digests. Alerts remain server-only; `protected_payload` is never returned to the browser.
 

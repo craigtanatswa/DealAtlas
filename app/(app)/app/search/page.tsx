@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 
 import { SaveSearchForm } from "@/components/saves/save-search-form";
+import { ExportDealsButton } from "@/components/exports/export-deals-button";
 import { DealKeywordForm } from "@/components/deals/deal-keyword-form";
 import {
   DealSearchFilterDrawer,
@@ -12,7 +13,9 @@ import { Heading, Text } from "@/components/layout/heading";
 import { Main } from "@/components/layout/container";
 import { Button } from "@/components/ui/button";
 import { requireUser, isEmailVerified } from "@/lib/auth/session";
+import { isProEntitlement } from "@/lib/entitlements/policy";
 import { getCurrentEntitlement } from "@/lib/entitlements/service";
+import { loadExportUsageForMonth } from "@/lib/exports/usage";
 import { featureLimit } from "@/lib/quotas";
 import { countSavedSearches } from "@/lib/saves/queries";
 import { searchDealPreviewsForUser } from "@/lib/matching/search";
@@ -34,6 +37,10 @@ export default async function AppSearchPage({ searchParams }: PageProps) {
   const params = await searchParams;
   const client = await createSupabaseServerClient();
   const entitlement = await getCurrentEntitlement(user.id);
+  const isPro = isProEntitlement(entitlement);
+  const exportUsage = isPro
+    ? await loadExportUsageForMonth(user.id)
+    : { used: 0 };
   const savedSearchCount = await countSavedSearches(client, user.id);
   const { filters, result, companyProfileId } = await searchDealPreviewsForUser({
     client,
@@ -72,12 +79,21 @@ export default async function AppSearchPage({ searchParams }: PageProps) {
           showRelevance={Boolean(companyProfileId)}
         />
       </div>
-      <SaveSearchForm
-        filters={filters}
-        used={savedSearchCount}
-        limit={featureLimit(entitlement.plan, "savedSearches")}
-        emailVerified={isEmailVerified(user)}
-      />
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <SaveSearchForm
+          filters={filters}
+          used={savedSearchCount}
+          limit={featureLimit(entitlement.plan, "savedSearches")}
+          emailVerified={isEmailVerified(user)}
+        />
+        <ExportDealsButton
+          source="filters"
+          filters={filters}
+          isPro={isPro}
+          used={exportUsage.used}
+          limit={featureLimit(entitlement.plan, "exportRowsPerMonth")}
+        />
+      </div>
       <div className="grid gap-8 lg:grid-cols-[17rem_minmax(0,1fr)]">
         <DealSearchFilterRail
           filters={filters}

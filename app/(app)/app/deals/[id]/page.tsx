@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 
 import { SaveDealButton } from "@/components/saves/save-deal-button";
+import { ExportDealsButton } from "@/components/exports/export-deals-button";
 import { DealPaidDetail } from "@/components/deals/deal-paid-detail";
 import { DealPreviewDetail } from "@/components/deals/deal-preview-detail";
 import { EmptyState } from "@/components/feedback/empty-state";
@@ -12,6 +13,7 @@ import { loadPaidDealDto } from "@/lib/deals/protected";
 import { loadDealHistory } from "@/lib/intelligence/protected";
 import { isProEntitlement } from "@/lib/entitlements/policy";
 import { getCurrentEntitlement } from "@/lib/entitlements/service";
+import { loadExportUsageForMonth } from "@/lib/exports/usage";
 import { featureLimit } from "@/lib/quotas";
 import { loadDealSaveState } from "@/lib/saves/queries";
 import { loadCompanyProfileIdForUser, loadProMatchForDeal } from "@/lib/matching/load";
@@ -42,6 +44,10 @@ export default async function AppDealPage({ params }: PageProps) {
 
   const { user } = await requireUser(appDealPath(dealId));
   const entitlement = await getCurrentEntitlement(user.id);
+  const isPro = isProEntitlement(entitlement);
+  const exportUsage = isPro
+    ? await loadExportUsageForMonth(user.id)
+    : { used: 0 };
   const client = await createSupabaseServerClient();
   const saveState = await loadDealSaveState(client, user.id, dealId);
   const saveControl = (
@@ -53,8 +59,17 @@ export default async function AppDealPage({ params }: PageProps) {
       signedIn
     />
   );
+  const exportControl = (
+    <ExportDealsButton
+      source="dealIds"
+      dealIds={[dealId]}
+      isPro={isPro}
+      used={exportUsage.used}
+      limit={featureLimit(entitlement.plan, "exportRowsPerMonth")}
+    />
+  );
 
-  if (isProEntitlement(entitlement)) {
+  if (isPro) {
     let dto = null;
     let history = null;
     let paidDataUnavailable = false;
@@ -102,7 +117,13 @@ export default async function AppDealPage({ params }: PageProps) {
 
     return (
       <Main>
-        <DealPaidDetail deal={dto} history={history} match={match} save={saveControl} />
+        <DealPaidDetail
+          deal={dto}
+          history={history}
+          match={match}
+          save={saveControl}
+          exportCsv={exportControl}
+        />
       </Main>
     );
   }

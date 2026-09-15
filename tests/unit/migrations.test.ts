@@ -48,7 +48,7 @@ describe("supabase migrations", () => {
   const files = listMigrations();
   const sql = files.map(readMigration).join("\n");
 
-  it("are numbered 0001-0014 in order with no gaps", () => {
+  it("are numbered 0001-0015 in order with no gaps", () => {
     expect(files).toEqual([
       "0001_extensions_and_types.sql",
       "0002_core_schema.sql",
@@ -64,6 +64,7 @@ describe("supabase migrations", () => {
       "0012_deal_match_column_privileges.sql",
       "0013_alert_dedupe_and_digest.sql",
       "0014_intelligence_query_indexes.sql",
+      "0015_export_usage_quota.sql",
     ]);
   });
 
@@ -121,6 +122,17 @@ describe("supabase migrations", () => {
     expect(indexes).not.toMatch(/materialized view/i);
     expect(indexes).not.toMatch(
       /grant (select|insert|update|delete|all) on table public\.(organizations|awards|contracts) to (anon|authenticated)/i,
+    );
+  });
+
+  it("enforces Pro CSV export quotas on export_usage without client grants", () => {
+    const exportUsage = readMigration("0015_export_usage_quota.sql");
+    expect(exportUsage).toContain("private.enforce_export_usage_limit");
+    expect(exportUsage).toContain("pg_advisory_xact_lock");
+    expect(exportUsage).toContain("export row limit reached");
+    expect(exportUsage).toContain("1000");
+    expect(exportUsage).not.toMatch(
+      /grant (select|insert|update|delete) on table public\.export_usage to (anon|authenticated)/i,
     );
   });
 

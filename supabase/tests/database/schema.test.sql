@@ -58,6 +58,12 @@ select has_function(
   'authenticated relevance search RPC exists'
 );
 
+select has_function(
+  'private',
+  'enforce_export_usage_limit',
+  'export usage quota trigger function exists'
+);
+
 select ok(
   has_column_privilege('authenticated', 'public.deal_matches', 'preview_reasons', 'SELECT')
   and not has_column_privilege('authenticated', 'public.deal_matches', 'detail_reasons', 'SELECT')

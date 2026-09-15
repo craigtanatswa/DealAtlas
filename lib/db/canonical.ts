@@ -489,6 +489,23 @@ export async function getCanonicalDataSourceById(
   });
 }
 
+export async function listCanonicalDataSourcesByIds(
+  sourceIds: string[],
+  access: CanonicalAccess,
+) {
+  requireCanonicalAccess(access);
+  return mapInChunks(sourceIds, async (chunk) => {
+    const { data, error } = await adminClient()
+      .from("data_sources")
+      .select(CANONICAL_DATA_SOURCE_COLUMNS.join(", "))
+      .in("id", chunk);
+    return throwIfQueryError("Failed to load canonical data sources", {
+      data: (data as unknown as CanonicalDataSource[]) ?? [],
+      error,
+    });
+  });
+}
+
 export async function listCanonicalLotsForDeal(
   dealId: string,
   access: CanonicalAccess,
@@ -655,6 +672,23 @@ export async function listCanonicalDealsByIds(
       .in("id", chunk);
     return throwIfQueryError("Failed to load canonical deals", {
       data: (data as unknown as CanonicalDealHistory[]) ?? [],
+      error,
+    });
+  });
+}
+
+export async function listCanonicalDealRecordsByIds(
+  dealIds: string[],
+  access: CanonicalAccess,
+) {
+  requireCanonicalAccess(access);
+  return mapInChunks(dealIds, async (chunk) => {
+    const { data, error } = await adminClient()
+      .from("deals")
+      .select(CANONICAL_DEAL_COLUMNS.join(", "))
+      .in("id", chunk);
+    return throwIfQueryError("Failed to load canonical deal records", {
+      data: (data as unknown as CanonicalDeal[]) ?? [],
       error,
     });
   });

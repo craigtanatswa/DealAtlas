@@ -19,6 +19,7 @@ describe("application constants", () => {
     expect(FEATURE_LIMITS.FREE.savedSearches).toBe(1);
     expect(FEATURE_LIMITS.PRO.savedDeals).toBe(UNLIMITED);
     expect(FEATURE_LIMITS.PRO.savedSearches).toBe(50);
+    expect(FEATURE_LIMITS.FREE.exportRowsPerMonth).toBe(0);
     expect(FEATURE_LIMITS.PRO.exportRowsPerMonth).toBe(1000);
     expect(FEATURE_LIMITS.PRO.watchedBuyers).toBe(50);
     expect(FEATURE_LIMITS.PRO.watchedSuppliers).toBe(50);

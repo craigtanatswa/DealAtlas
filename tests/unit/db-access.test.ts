@@ -104,5 +104,16 @@ describe("typed data-access boundaries", () => {
     expect(centre).toContain("protected_payload");
     expect(centre).not.toMatch(/select\(\s*["']\*["']\s*\)/);
     expect(read("lib/db/public-schema.ts")).not.toContain('"alerts"');
+    expect(read("lib/db/public-schema.ts")).not.toContain("export_usage");
+  });
+
+  it("records export usage with explicit columns behind server-only", () => {
+    const usage = read("lib/exports/usage.ts");
+    expect(usage).toMatch(/import ["']server-only["']/);
+    expect(usage).toContain('.from("export_usage")');
+    expect(usage).toContain("row_count");
+    expect(usage).toContain("billing_month");
+    expect(usage).not.toMatch(/select\(\s*["']\*["']\s*\)/);
+    expect(read("lib/db/public-schema.ts")).not.toContain('"export_usage"');
   });
 });

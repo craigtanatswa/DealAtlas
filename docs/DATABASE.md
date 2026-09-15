@@ -203,7 +203,7 @@ Buyer/supplier watch list.
 Generated notification items. Ordinary client roles have no grants. The application loads rows with a trusted server client and returns an entitlement-safe DTO. `title` and `message` are free-safe. Paid details live in `protected_payload` and are copied into the DTO only after `getCurrentEntitlement` confirms Pro at render/delivery time. `dedupe_key` is unique per user so duplicate generation is rejected by the database.
 
 ### export_usage
-Rows exported by user/month for limit enforcement.
+Rows exported by user/month for limit enforcement. Ordinary client roles have no grants. Trusted server code inserts a usage row after a Pro entitlement check. `private.enforce_export_usage_limit` serializes inserts per user and UTC calendar month with an advisory lock, rejects non-Pro users, forces `billing_month` to the current UTC month, and raises `export row limit reached` before a write that would exceed 1,000 rows.
 
 ### data_changes
 Material canonical changes used for alerts/history.
