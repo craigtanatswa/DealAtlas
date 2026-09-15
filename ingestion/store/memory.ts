@@ -6,6 +6,8 @@ import type {
   ContractRecord,
   DataChangeRecord,
   DataSourceRecord,
+  DealInsightRecord,
+  DealPreviewRecord,
   DealRecord,
   IngestionErrorRecord,
   IngestionRunRecord,
@@ -14,6 +16,7 @@ import type {
   NoticeRecord,
   NoticeVersionRecord,
   OrganizationRecord,
+  PreviewGenerationRunRecord,
   RawRecordRow,
 } from "@/ingestion/store/types";
 
@@ -29,8 +32,20 @@ export type MemoryIngestionState = {
   notices: NoticeRecord[];
   noticeVersions: NoticeVersionRecord[];
   lots: LotRecord[];
-  requirements: Array<{ dealId: string; sourceNoticeId: string | null; name: string }>;
-  awardCriteria: Array<{ dealId: string; sourceNoticeId: string | null; criterionName: string }>;
+  requirements: Array<{
+    dealId: string;
+    sourceNoticeId: string | null;
+    name: string;
+    description: string | null;
+    requirementType: string;
+    mandatory: boolean | null;
+  }>;
+  awardCriteria: Array<{
+    dealId: string;
+    sourceNoticeId: string | null;
+    criterionName: string;
+    criterionDescription: string | null;
+  }>;
   awards: AwardRecord[];
   awardSuppliers: Array<{ awardId: string; organizationId: string }>;
   contracts: ContractRecord[];
@@ -46,6 +61,9 @@ export type MemoryIngestionState = {
   relatedDeals: Array<{ dealId: string; relatedDealId: string; relationshipType: string }>;
   categories: Array<{ id: string; slug: string; name: string }>;
   cpvCodes: Array<{ code: string; description: string }>;
+  previews: DealPreviewRecord[];
+  insights: DealInsightRecord[];
+  previewRuns: PreviewGenerationRunRecord[];
 };
 
 export function createMemoryIngestionStore(seed?: {
@@ -80,6 +98,9 @@ export function createMemoryIngestionStore(seed?: {
       name: item.name,
     })),
     cpvCodes: [],
+    previews: [],
+    insights: [],
+    previewRuns: [],
   };
 
   const store: IngestionStore & MemoryIngestionState = {
@@ -87,6 +108,70 @@ export function createMemoryIngestionStore(seed?: {
 
     async getSourceByKey(sourceKey) {
       return state.sources.find((item) => item.sourceKey === sourceKey) ?? null;
+    },
+    async getSourceById(id) {
+      return state.sources.find((item) => item.id === id) ?? null;
+    },
+    async getOrganizationById(id) {
+      return state.organizations.find((item) => item.id === id) ?? null;
+    },
+    async listOrganizationAliases(organizationId) {
+      return state.aliases
+        .filter((item) => item.organizationId === organizationId)
+        .map((item) => item.alias);
+    },
+    async listDeals(limit = 100) {
+      return state.deals.slice(0, limit);
+    },
+    async getDealById(id) {
+      return state.deals.find((item) => item.id === id) ?? null;
+    },
+    async getDealPreview(dealId) {
+      return state.previews.find((item) => item.dealId === dealId) ?? null;
+    },
+    async upsertDealPreview(input) {
+      const index = state.previews.findIndex((item) => item.dealId === input.dealId);
+      if (index >= 0) {
+        state.previews[index] = input;
+      } else {
+        state.previews.push(input);
+      }
+      return input;
+    },
+    async upsertDealInsight(input) {
+      const index = state.insights.findIndex((item) => item.dealId === input.dealId);
+      if (index >= 0) {
+        state.insights[index] = input;
+      } else {
+        state.insights.push(input);
+      }
+    },
+    async getDealInsight(dealId) {
+      return state.insights.find((item) => item.dealId === dealId) ?? null;
+    },
+    async insertPreviewGenerationRun(input) {
+      state.previewRuns.push({ ...input, id: input.id ?? randomUUID() });
+    },
+    async listRequirementsForDeal(dealId) {
+      return state.requirements
+        .filter((item) => item.dealId === dealId)
+        .map((item) => ({
+          name: item.name,
+          description: item.description,
+          requirementType: item.requirementType,
+          mandatory: item.mandatory,
+        }));
+    },
+    async listAwardCriteriaForDeal(dealId) {
+      return state.awardCriteria
+        .filter((item) => item.dealId === dealId)
+        .map((item) => ({
+          name: item.criterionName,
+          description: item.criterionDescription,
+        }));
+    },
+    async countDocumentsForDeal(dealId) {
+      return state.documents.filter((item) => item.dealId === dealId).length;
     },
     async updateSource(id, patch) {
       const source = state.sources.find((item) => item.id === id);
@@ -349,6 +434,9 @@ export function createMemoryIngestionStore(seed?: {
         dealId: input.dealId,
         sourceNoticeId: input.sourceNoticeId ?? null,
         name: input.name,
+        description: input.description ?? null,
+        requirementType: input.requirementType,
+        mandatory: input.mandatory ?? null,
       });
     },
     async deleteAwardCriteriaForNotice(noticeId) {
@@ -362,6 +450,7 @@ export function createMemoryIngestionStore(seed?: {
         dealId: input.dealId,
         sourceNoticeId: input.sourceNoticeId ?? null,
         criterionName: input.criterionName,
+        criterionDescription: input.criterionDescription ?? null,
       });
     },
     async findAward(dealId, awardIdentifier) {

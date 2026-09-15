@@ -64,6 +64,7 @@ export const PAID_DEAL_DTO_KEYS = [
   "requirements",
   "awardCriteria",
   "timeline",
+  "intelligence",
 ] as const;
 
 export type PaidBuyerDto = {
@@ -166,6 +167,36 @@ export type PaidAwardCriterionDto = {
   orderOfImportance: number | null;
 };
 
+export type PaidIntelligenceFieldDto = {
+  kind: "inference";
+  value: string | string[] | null;
+  confidence: number | null;
+  method: string | null;
+  model: string | null;
+  version: string | null;
+  evidence: Array<{ source: string; field: string; note?: string }>;
+  generatedAt: string | null;
+};
+
+export type PaidIntelligenceDto = {
+  label: "DealAtlas analysis";
+  summary: PaidIntelligenceFieldDto;
+  buyerNeed: PaidIntelligenceFieldDto;
+  idealSupplier: PaidIntelligenceFieldDto;
+  keyDeliverables: PaidIntelligenceFieldDto;
+  smeAccessibility: PaidIntelligenceFieldDto;
+  bidComplexity: PaidIntelligenceFieldDto;
+  competitionLevel: PaidIntelligenceFieldDto;
+  competitionNotes: PaidIntelligenceFieldDto;
+  deadlineUrgency: PaidIntelligenceFieldDto;
+  riskFlags: PaidIntelligenceFieldDto;
+  estimatedRenewalDate: PaidIntelligenceFieldDto;
+  overallConfidence: number | null;
+  generationMethod: string | null;
+  modelVersion: string | null;
+  generatedAt: string | null;
+};
+
 export type PaidDealDto = {
   id: string;
   sourceTitle: string;
@@ -209,6 +240,7 @@ export type PaidDealDto = {
   requirements: PaidRequirementDto[];
   awardCriteria: PaidAwardCriterionDto[];
   timeline: PaidTimelineEventDto[];
+  intelligence: PaidIntelligenceDto | null;
 };
 
 export type PaidDealMappingInput = {
@@ -331,6 +363,25 @@ export type PaidDealMappingInput = {
     occurred_at: string;
     material: boolean;
   }>;
+  intelligence?: {
+    summary: string | null;
+    buyerNeed: string | null;
+    idealSupplier: string | null;
+    keyDeliverables: unknown;
+    mandatoryRequirements: unknown;
+    competitionNotes: string | null;
+    smeAccessibility: string | null;
+    bidComplexity: string | null;
+    competitionLevel: string | null;
+    deadlineUrgency: string | null;
+    riskFlags: unknown;
+    estimatedRenewalDate: string | null;
+    confidence: number | null;
+    generationMethod: string | null;
+    modelVersion: string | null;
+    fieldProvenance: unknown;
+    generatedAt: string | null;
+  } | null;
 };
 
 const OMITTED_INTERNAL_KEYS = [
@@ -568,6 +619,145 @@ function mapAwardCriteria(
     }));
 }
 
+function asStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value.filter((item): item is string => typeof item === "string");
+}
+
+function provenanceFor(
+  provenance: unknown,
+  field: string,
+): {
+  confidence: number | null;
+  method: string | null;
+  model: string | null;
+  version: string | null;
+  evidence: PaidIntelligenceFieldDto["evidence"];
+  generatedAt: string | null;
+} {
+  if (!provenance || typeof provenance !== "object") {
+    return {
+      confidence: null,
+      method: null,
+      model: null,
+      version: null,
+      evidence: [],
+      generatedAt: null,
+    };
+  }
+  const record = (provenance as Record<string, unknown>)[field];
+  if (!record || typeof record !== "object") {
+    return {
+      confidence: null,
+      method: null,
+      model: null,
+      version: null,
+      evidence: [],
+      generatedAt: null,
+    };
+  }
+  const item = record as Record<string, unknown>;
+  const evidence = Array.isArray(item.evidence)
+    ? item.evidence.flatMap((entry) => {
+        if (!entry || typeof entry !== "object") {
+          return [];
+        }
+        const row = entry as Record<string, unknown>;
+        if (typeof row.field !== "string") {
+          return [];
+        }
+        return [
+          {
+            source: typeof row.source === "string" ? row.source : "canonical",
+            field: row.field,
+            note: typeof row.note === "string" ? row.note : undefined,
+          },
+        ];
+      })
+    : [];
+  return {
+    confidence: typeof item.confidence === "number" ? item.confidence : null,
+    method: typeof item.method === "string" ? item.method : null,
+    model: typeof item.model === "string" ? item.model : null,
+    version: typeof item.version === "string" ? item.version : null,
+    evidence,
+    generatedAt: typeof item.generatedAt === "string" ? item.generatedAt : null,
+  };
+}
+
+function intelligenceField(
+  value: string | string[] | null,
+  provenance: unknown,
+  field: string,
+): PaidIntelligenceFieldDto {
+  const meta = provenanceFor(provenance, field);
+  return {
+    kind: "inference",
+    value,
+    ...meta,
+  };
+}
+
+function toPaidIntelligence(
+  intelligence: NonNullable<PaidDealMappingInput["intelligence"]>,
+): PaidIntelligenceDto {
+  const provenance = intelligence.fieldProvenance;
+  const riskFlags = Array.isArray(intelligence.riskFlags)
+    ? intelligence.riskFlags.map((flag) => {
+        if (!flag || typeof flag !== "object") {
+          return "";
+        }
+        const row = flag as Record<string, unknown>;
+        return typeof row.label === "string" ? row.label : "";
+      }).filter(Boolean)
+    : [];
+
+  return {
+    label: "DealAtlas analysis",
+    summary: intelligenceField(intelligence.summary, provenance, "summary"),
+    buyerNeed: intelligenceField(intelligence.buyerNeed, provenance, "buyerNeed"),
+    idealSupplier: intelligenceField(intelligence.idealSupplier, provenance, "idealSupplier"),
+    keyDeliverables: intelligenceField(
+      asStringArray(intelligence.keyDeliverables),
+      provenance,
+      "keyDeliverables",
+    ),
+    smeAccessibility: intelligenceField(
+      intelligence.smeAccessibility,
+      provenance,
+      "smeAccessibility",
+    ),
+    bidComplexity: intelligenceField(intelligence.bidComplexity, provenance, "bidComplexity"),
+    competitionLevel: intelligenceField(
+      intelligence.competitionLevel,
+      provenance,
+      "competitionLevel",
+    ),
+    competitionNotes: intelligenceField(
+      intelligence.competitionNotes,
+      provenance,
+      "competitionNotes",
+    ),
+    deadlineUrgency: intelligenceField(
+      intelligence.deadlineUrgency,
+      provenance,
+      "deadlineUrgency",
+    ),
+    riskFlags: intelligenceField(riskFlags, provenance, "riskFlags"),
+    estimatedRenewalDate: intelligenceField(
+      intelligence.estimatedRenewalDate,
+      provenance,
+      "estimatedRenewalDate",
+    ),
+    overallConfidence: intelligence.confidence,
+    generationMethod: intelligence.generationMethod,
+    modelVersion: intelligence.modelVersion,
+    generatedAt: intelligence.generatedAt,
+  };
+}
+
 export function toPaidDealDto(input: PaidDealMappingInput): PaidDealDto {
   const { deal } = input;
   const access = sourceContentAccess(input.source?.reuse_status);
@@ -647,6 +837,8 @@ export function toPaidDealDto(input: PaidDealMappingInput): PaidDealDto {
           changes,
         })
       : [],
+    intelligence:
+      showMetadata && input.intelligence ? toPaidIntelligence(input.intelligence) : null,
   };
 }
 

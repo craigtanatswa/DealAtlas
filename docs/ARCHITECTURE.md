@@ -187,17 +187,26 @@ Paid advanced search may query protected dimensions server-side but must return 
 ## 10. Preview generation/redaction
 Every canonical deal gets a separate `deal_previews` row.
 
+Preview generation lives in `ingestion/preview` and leak scanning in `lib/redaction`. The database trigger on `deal_previews` is a failsafe only; it must not be treated as the scanner.
+
 Preview generation rules:
 - create a non-verbatim DealAtlas title;
 - paraphrase descriptions;
-- generalise value into a band when exact value risks fingerprinting;
-- generalise deadline to a window where exact date/time risks fingerprinting;
-- generalise exact location to a broad region where required;
+- generalise value into a documented value band;
+- generalise deadline to a documented window;
+- generalise duration to a documented band;
+- generalise exact location to a broad UK region;
+- emit high-level requirements, SME suitability, bid complexity and competition level;
 - strip buyer names, source platform names, domains, email addresses, IDs and quoted phrases;
 - run deterministic leak checks before publishing;
-- optionally run AI-assisted redaction, but deterministic rules remain mandatory;
+- optionally rewrite title/summary through an isolated language-model interface, then leak-scan the result;
+- model output cannot override leak findings;
 - store a `leakage_risk` score/status;
-- do not publish previews marked HIGH risk until reviewed or regenerated.
+- publish only LOW-risk previews; REVIEW/HIGH regenerate once then stay unpublished for admin review.
+
+Paid intelligence is stored on `deal_insights` with per-field provenance, confidence and model/version. Source facts and inference stay separate in the paid DTO.
+
+Rebuild stale deadline bands with `npm run rebuild-previews`.
 
 ## 11. Source compliance gate
 Automated ingestion calls `canIngestSource(source)` before fetching.

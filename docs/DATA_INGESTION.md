@@ -201,6 +201,8 @@ Steps:
 10. Assign leakage risk.
 11. Publish only when LOW risk.
 
+The application scanner is the primary control. The database trigger is a failsafe and must not be the only check. REVIEW/HIGH drafts are regenerated once; if still not LOW they remain unpublished for admin review. Optional LLM rewrites are isolated behind `LanguageModelProvider` and cannot override leak findings.
+
 ## 17. Suggested bands
 Value bands, configurable:
 - Under £25k

@@ -6,6 +6,8 @@ import type {
   AwardRecord,
   ContractRecord,
   DataSourceRecord,
+  DealInsightRecord,
+  DealPreviewRecord,
   DealRecord,
   IngestionRunRecord,
   IngestionStore,
@@ -18,6 +20,8 @@ import type {
 import type { IngestionSupabaseClient } from "@/ingestion/store/worker-client";
 
 type SourceRow = Database["public"]["Tables"]["data_sources"]["Row"];
+type PreviewRow = Database["public"]["Tables"]["deal_previews"]["Row"];
+type InsightRow = Database["public"]["Tables"]["deal_insights"]["Row"];
 type DealRow = Database["public"]["Tables"]["deals"]["Row"];
 type OrgRow = Database["public"]["Tables"]["organizations"]["Row"];
 type NoticeRow = Database["public"]["Tables"]["notices"]["Row"];
@@ -137,6 +141,73 @@ function mapDeal(row: DealRow): DealRecord {
     dataQualityScore: row.data_quality_score,
     sourceCount: row.source_count,
     normalizedTitle: normalizeTitle(row.source_title),
+  };
+}
+
+function asLevel(
+  value: string | null,
+): DealPreviewRecord["smeSuitability"] {
+  if (value === "LOW" || value === "MEDIUM" || value === "HIGH" || value === "UNKNOWN") {
+    return value;
+  }
+  return null;
+}
+
+function mapPreview(row: PreviewRow): DealPreviewRecord {
+  const requirements = Array.isArray(row.requirements_preview)
+    ? row.requirements_preview.filter((item): item is string => typeof item === "string")
+    : [];
+  return {
+    dealId: row.deal_id,
+    slug: row.slug,
+    previewTitle: row.preview_title,
+    previewSummary: row.preview_summary,
+    dealType: row.deal_type,
+    buyerSector: row.buyer_sector,
+    stage: row.stage,
+    status: row.status,
+    mainCategory: row.main_category,
+    broadRegion: row.broad_region,
+    valueBand: row.value_band,
+    deadlineBand: row.deadline_band,
+    durationBand: row.duration_band,
+    smeSuitability: asLevel(row.sme_suitability),
+    bidComplexity: asLevel(row.bid_complexity),
+    competitionLevel: asLevel(row.competition_level),
+    requirementsPreview: requirements,
+    relevanceTags: row.relevance_tags ?? [],
+    freshnessLabel: row.freshness_label,
+    leakageRisk: row.leakage_risk,
+    isPublished: row.is_published,
+  };
+}
+
+function mapInsight(row: InsightRow): DealInsightRecord {
+  return {
+    dealId: row.deal_id,
+    summary: row.summary,
+    buyerNeed: row.buyer_need,
+    idealSupplier: row.ideal_supplier,
+    keyDeliverables: row.key_deliverables,
+    mandatoryRequirements: row.mandatory_requirements,
+    competitionNotes: row.competition_notes,
+    smeAccessibility: asLevel(row.sme_accessibility),
+    bidComplexity: asLevel(row.bid_complexity),
+    competitionLevel: asLevel(row.competition_level),
+    deadlineUrgency: row.deadline_urgency,
+    riskFlags: row.risk_flags,
+    estimatedRenewalDate: row.estimated_renewal_date,
+    incumbentOrganizationId: row.incumbent_organization_id,
+    confidence: asNumber(row.confidence),
+    generationMethod:
+      row.generation_method === "RULES" ||
+      row.generation_method === "LLM" ||
+      row.generation_method === "HYBRID"
+        ? row.generation_method
+        : null,
+    modelVersion: row.model_version,
+    fieldProvenance: row.field_provenance,
+    generatedAt: row.generated_at,
   };
 }
 
@@ -267,6 +338,175 @@ export function createSupabaseIngestionStore(
         .maybeSingle();
       const row = throwIfQueryError("Load data source", result);
       return row ? mapSource(row) : null;
+    },
+    async getSourceById(id) {
+      const result = await client.from("data_sources").select("*").eq("id", id).maybeSingle();
+      const row = throwIfQueryError("Load data source by id", result);
+      return row ? mapSource(row) : null;
+    },
+    async getOrganizationById(id) {
+      const result = await client.from("organizations").select("*").eq("id", id).maybeSingle();
+      const row = throwIfQueryError("Load organization", result);
+      return row ? mapOrg(row) : null;
+    },
+    async listOrganizationAliases(organizationId) {
+      const result = await client
+        .from("organization_aliases")
+        .select("alias")
+        .eq("organization_id", organizationId);
+      const rows = throwIfQueryError("List organization aliases", result) ?? [];
+      return rows.map((item) => item.alias);
+    },
+    async listDeals(limit = 100) {
+      const result = await client
+        .from("deals")
+        .select("*")
+        .order("updated_at", { ascending: false })
+        .limit(limit);
+      const rows = throwIfQueryError("List deals", result) ?? [];
+      return rows.map(mapDeal);
+    },
+    async getDealById(id) {
+      const result = await client.from("deals").select("*").eq("id", id).maybeSingle();
+      const row = throwIfQueryError("Load deal", result);
+      return row ? mapDeal(row) : null;
+    },
+    async getDealPreview(dealId) {
+      const result = await client
+        .from("deal_previews")
+        .select("*")
+        .eq("deal_id", dealId)
+        .maybeSingle();
+      const row = throwIfQueryError("Load deal preview", result);
+      return row ? mapPreview(row) : null;
+    },
+    async upsertDealPreview(input) {
+      const result = await client
+        .from("deal_previews")
+        .upsert(
+          {
+            deal_id: input.dealId,
+            slug: input.slug,
+            preview_title: input.previewTitle,
+            preview_summary: input.previewSummary,
+            deal_type: input.dealType,
+            buyer_sector: input.buyerSector,
+            stage: input.stage,
+            status: input.status,
+            main_category: input.mainCategory,
+            broad_region: input.broadRegion,
+            value_band: input.valueBand,
+            deadline_band: input.deadlineBand,
+            duration_band: input.durationBand,
+            sme_suitability: input.smeSuitability,
+            bid_complexity: input.bidComplexity,
+            competition_level: input.competitionLevel,
+            requirements_preview: input.requirementsPreview,
+            relevance_tags: input.relevanceTags,
+            freshness_label: input.freshnessLabel,
+            leakage_risk: input.leakageRisk,
+            is_published: input.isPublished,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "deal_id" },
+        )
+        .select("*")
+        .single();
+      return mapPreview(requireRow("Upsert deal preview", result));
+    },
+    async upsertDealInsight(input) {
+      const result = await client.from("deal_insights").upsert(
+        {
+          deal_id: input.dealId,
+          summary: input.summary,
+          buyer_need: input.buyerNeed,
+          ideal_supplier: input.idealSupplier,
+          key_deliverables: input.keyDeliverables as Json,
+          mandatory_requirements: input.mandatoryRequirements as Json,
+          competition_notes: input.competitionNotes,
+          sme_accessibility: input.smeAccessibility,
+          bid_complexity: input.bidComplexity,
+          competition_level: input.competitionLevel,
+          deadline_urgency: input.deadlineUrgency,
+          risk_flags: input.riskFlags as Json,
+          estimated_renewal_date: input.estimatedRenewalDate,
+          incumbent_organization_id: input.incumbentOrganizationId,
+          confidence: input.confidence,
+          generation_method: input.generationMethod,
+          model_version: input.modelVersion,
+          field_provenance: input.fieldProvenance,
+          generated_at: input.generatedAt,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "deal_id" },
+      );
+      throwIfQueryError("Upsert deal insight", {
+        data: result.data,
+        error: result.error,
+      });
+    },
+    async getDealInsight(dealId) {
+      const result = await client
+        .from("deal_insights")
+        .select("*")
+        .eq("deal_id", dealId)
+        .maybeSingle();
+      const row = throwIfQueryError("Load deal insight", result);
+      return row ? mapInsight(row) : null;
+    },
+    async insertPreviewGenerationRun(input) {
+      const result = await client.from("preview_generation_runs").insert({
+        id: input.id,
+        deal_id: input.dealId,
+        attempt_number: input.attemptNumber,
+        leakage_risk: input.leakageRisk,
+        is_published: input.isPublished,
+        findings: input.findings as Json,
+        generation_method: input.generationMethod,
+        model_version: input.modelVersion,
+        preview_title: input.previewTitle,
+        preview_summary: input.previewSummary,
+        created_at: input.createdAt,
+      });
+      throwIfQueryError("Insert preview generation run", {
+        data: result.data,
+        error: result.error,
+      });
+    },
+    async listRequirementsForDeal(dealId) {
+      const result = await client
+        .from("requirements")
+        .select("name, description, requirement_type, mandatory")
+        .eq("deal_id", dealId);
+      const rows = throwIfQueryError("List requirements", result) ?? [];
+      return rows.map((row) => ({
+        name: row.name,
+        description: row.description,
+        requirementType: row.requirement_type,
+        mandatory: row.mandatory,
+      }));
+    },
+    async listAwardCriteriaForDeal(dealId) {
+      const result = await client
+        .from("award_criteria")
+        .select("criterion_name, criterion_description")
+        .eq("deal_id", dealId);
+      const rows = throwIfQueryError("List award criteria", result) ?? [];
+      return rows.map((row) => ({
+        name: row.criterion_name,
+        description: row.criterion_description,
+      }));
+    },
+    async countDocumentsForDeal(dealId) {
+      const result = await client
+        .from("documents")
+        .select("id", { count: "exact", head: true })
+        .eq("deal_id", dealId);
+      throwIfQueryError("Count documents", {
+        data: result.data,
+        error: result.error,
+      });
+      return result.count ?? 0;
     },
     async updateSource(id, patch) {
       const update: Database["public"]["Tables"]["data_sources"]["Update"] = {

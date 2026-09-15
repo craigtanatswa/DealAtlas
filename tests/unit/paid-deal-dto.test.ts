@@ -161,6 +161,7 @@ describe("paid deal DTO", () => {
     expect(dto.documents[0]?.access).toBe("link");
     expect(dto.documents[0]?.sourceUrl).toContain("spec.pdf");
     expect(dto.timeline.some((event) => event.kind === "deadline")).toBe(true);
+    expect(dto.intelligence).toBeNull();
     expect(dto.provenance.contentAccess).toBe("redistribute");
     expect(json).toContain("CANARY-REF-987654");
     expect(SEEDED_PROTECTED_MARKERS.some((marker) => json.includes(marker))).toBe(
@@ -288,5 +289,45 @@ describe("paid deal DTO", () => {
 
     expect(dto.sourceUrl).toBeNull();
     expect(dto.applicationUrl).toBe("https://canary-source.example/apply");
+  });
+
+  it("keeps inferred intelligence visibly separate from source facts", () => {
+    const dto = toPaidDealDto({
+      ...mappingInput,
+      intelligence: {
+        summary: "DealAtlas inferred summary",
+        buyerNeed: "Need for software",
+        idealSupplier: "Software SME",
+        keyDeliverables: ["Build"],
+        mandatoryRequirements: ["Cyber Essentials"],
+        competitionNotes: "Open",
+        smeAccessibility: "HIGH",
+        bidComplexity: "MEDIUM",
+        competitionLevel: "LOW",
+        deadlineUrgency: "MEDIUM",
+        riskFlags: [{ code: "TIGHT_DEADLINE", label: "Short remaining response window" }],
+        estimatedRenewalDate: null,
+        confidence: 0.71,
+        generationMethod: "RULES",
+        modelVersion: "dealatlas-rules/1.0.0",
+        fieldProvenance: {
+          summary: {
+            method: "RULES",
+            model: "dealatlas-rules",
+            version: "1.0.0",
+            confidence: 0.71,
+            evidence: [{ source: "canonical", field: "source_title" }],
+            generatedAt: "2026-05-02T00:00:00.000Z",
+          },
+        },
+        generatedAt: "2026-05-02T00:00:00.000Z",
+      },
+    });
+
+    expect(dto.intelligence?.label).toBe("DealAtlas analysis");
+    expect(dto.intelligence?.summary.kind).toBe("inference");
+    expect(dto.intelligence?.summary.value).toBe("DealAtlas inferred summary");
+    expect(dto.intelligence?.summary.evidence[0]?.field).toBe("source_title");
+    expect(dto.sourceTitle).toContain("CANARY SOURCE TITLE NEVER FREE");
   });
 });

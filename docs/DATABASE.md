@@ -178,7 +178,7 @@ Framework/open framework/dynamic market records.
 Participating suppliers/buyers where appropriate.
 
 ### deal_insights
-DealAtlas-derived intelligence such as summary, ideal supplier, risk flags, incumbent inference and renewal signals.
+DealAtlas-derived intelligence such as summary, ideal supplier, risk flags, incumbent inference and renewal signals. Each inferred field should retain provenance, confidence and model/version in `field_provenance`. Never present these as official source facts.
 
 ### deal_matches
 Per-company-profile relevance score and match/mismatch reasons.
@@ -293,6 +293,10 @@ Store a leakage risk state:
 
 Only LOW may auto-publish. REVIEW/HIGH requires regeneration or admin review.
 
+The application leak scanner in `lib/redaction` is the primary control. `private.detect_preview_leakage` / `enforce_preview_safety` are a database failsafe and must not lower an application REVIEW/HIGH result. Generation attempts and findings are stored on server-only `preview_generation_runs` for admin review.
+
+Paid `deal_insights` rows store per-field provenance (`field_provenance`), `generation_method` and `competition_level`. These are inference, not official source facts.
+
 ## 7. Plan limits
 Keep commercial limits in application configuration, optionally mirrored in a `plan_features` table later. Do not use Dodo as the sole authorization database.
 
@@ -342,6 +346,8 @@ Included in the build pack:
 - `0006_seed_reference_data.sql`
 - `0007_search_preview_filters.sql`
 - `0008_find_a_tender_ocds.sql`
+- `0009_private_source_onboarding.sql`
+- `0010_intelligence_preview_pipeline.sql`
 
 Apply in numeric order with the Supabase CLI (`npx supabase db reset` locally, or `npx supabase db push` to a linked project). Never reset or drop a linked production database.
 

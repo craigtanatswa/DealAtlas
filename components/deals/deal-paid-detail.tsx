@@ -18,7 +18,13 @@ import {
   yesNoLabel,
 } from "@/lib/deals/format";
 import { reuseStatusLabel } from "@/lib/deals/licence";
-import type { PaidDealDto, PaidLotDto, PaidRequirementDto } from "@/lib/deals/paid-dto";
+import type {
+  PaidDealDto,
+  PaidIntelligenceDto,
+  PaidIntelligenceFieldDto,
+  PaidLotDto,
+  PaidRequirementDto,
+} from "@/lib/deals/paid-dto";
 import {
   DEAL_STAGE_LABELS,
   DEAL_TYPE_LABELS,
@@ -129,6 +135,8 @@ export function DealPaidDetail({ deal }: { deal: PaidDealDto }) {
               </div>
             )}
           </section>
+
+          {deal.intelligence ? <IntelligenceSection intelligence={deal.intelligence} /> : null}
 
           <section aria-labelledby="contact-heading" className="flex flex-col gap-3">
             <Heading id="contact-heading" level={2}>
@@ -432,6 +440,70 @@ function ProvenanceSection({ deal }: { deal: PaidDealDto }) {
           </div>
         </CardContent>
       </Card>
+    </section>
+  );
+}
+
+function formatIntelligenceValue(field: PaidIntelligenceFieldDto): string | null {
+  if (Array.isArray(field.value)) {
+    return field.value.length > 0 ? field.value.join("; ") : null;
+  }
+  return field.value;
+}
+
+function IntelligenceSection({ intelligence }: { intelligence: PaidIntelligenceDto }) {
+  const confidence =
+    intelligence.overallConfidence != null
+      ? `${Math.round(intelligence.overallConfidence * 100)}%`
+      : null;
+
+  return (
+    <section aria-labelledby="analysis-heading" className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <Heading id="analysis-heading" level={2}>
+          DealAtlas analysis
+        </Heading>
+        <Badge variant="secondary">Inferred</Badge>
+      </div>
+      <Text variant="muted" className="max-w-3xl">
+        These fields are DealAtlas inference, not official source facts. Source
+        title, description, value and dates remain in the sections above.
+      </Text>
+      <dl className="grid gap-3 sm:grid-cols-2">
+        <SnapshotItem label="Summary" value={formatIntelligenceValue(intelligence.summary)} />
+        <SnapshotItem label="Buyer need" value={formatIntelligenceValue(intelligence.buyerNeed)} />
+        <SnapshotItem
+          label="Ideal supplier"
+          value={formatIntelligenceValue(intelligence.idealSupplier)}
+        />
+        <SnapshotItem
+          label="SME accessibility"
+          value={formatIntelligenceValue(intelligence.smeAccessibility)}
+        />
+        <SnapshotItem
+          label="Bid complexity"
+          value={formatIntelligenceValue(intelligence.bidComplexity)}
+        />
+        <SnapshotItem
+          label="Competition"
+          value={formatIntelligenceValue(intelligence.competitionLevel)}
+        />
+        <SnapshotItem
+          label="Deadline urgency"
+          value={formatIntelligenceValue(intelligence.deadlineUrgency)}
+        />
+        <SnapshotItem
+          label="Model / confidence"
+          value={[intelligence.modelVersion, confidence].filter(Boolean).join(" · ") || null}
+        />
+      </dl>
+      {intelligence.riskFlags.value && Array.isArray(intelligence.riskFlags.value) ? (
+        <ul className="list-disc pl-5 text-[0.9375rem] leading-7 text-foreground">
+          {intelligence.riskFlags.value.map((flag) => (
+            <li key={flag}>{flag}</li>
+          ))}
+        </ul>
+      ) : null}
     </section>
   );
 }

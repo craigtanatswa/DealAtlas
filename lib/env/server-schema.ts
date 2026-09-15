@@ -13,6 +13,9 @@ export const serverEnvSchema = z.object({
   RESEND_API_KEY: z.string().min(1).optional(),
   DEALATLAS_EMAIL_FROM: z.string().min(1).optional(),
   SENTRY_DSN: z.url().optional(),
+  DEALATLAS_LLM_API_KEY: z.string().min(1).optional(),
+  DEALATLAS_LLM_BASE_URL: z.url().optional(),
+  DEALATLAS_LLM_MODEL: z.string().min(1).optional(),
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;
@@ -28,4 +31,7 @@ export const SERVER_ENV_KEYS = [
   "RESEND_API_KEY",
   "DEALATLAS_EMAIL_FROM",
   "SENTRY_DSN",
+  "DEALATLAS_LLM_API_KEY",
+  "DEALATLAS_LLM_BASE_URL",
+  "DEALATLAS_LLM_MODEL",
 ] as const satisfies ReadonlyArray<keyof ServerEnv>;

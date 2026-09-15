@@ -6,6 +6,8 @@ import {
 } from "@/ingestion/core/compliance";
 import { contentHash } from "@/ingestion/core/hash";
 import { persistCandidate } from "@/ingestion/core/persist";
+import { contextFromCandidate } from "@/ingestion/intelligence/types";
+import { persistIntelligenceAndPreview } from "@/ingestion/preview/publish";
 import { unwrapReleasePayload } from "@/ingestion/sources/find-a-tender/parse";
 import type {
   IngestionCounters,
@@ -39,6 +41,8 @@ function emptyCounters(): IngestionCounters {
     errorCount: 0,
     parseFailures: 0,
     duplicatesLinked: 0,
+    previewsPublished: 0,
+    previewsBlocked: 0,
     durationMs: 0,
   };
 }
@@ -215,6 +219,49 @@ export async function runIngestion(
             } else {
               counters.unchanged += 1;
             }
+
+            try {
+              const buyer = persisted.deal.buyerOrganizationId
+                ? await options.store.getOrganizationById(persisted.deal.buyerOrganizationId)
+                : null;
+              const buyerAliases = persisted.deal.buyerOrganizationId
+                ? await options.store.listOrganizationAliases(
+                    persisted.deal.buyerOrganizationId,
+                  )
+                : [];
+              const lots = await options.store.listLotsForDeal(persisted.deal.id);
+              const previewResult = await persistIntelligenceAndPreview({
+                store: options.store,
+                context: contextFromCandidate({
+                  deal: persisted.deal,
+                  source,
+                  buyer,
+                  buyerAliases,
+                  lots,
+                  candidate,
+                  now,
+                }),
+              });
+              if (previewResult.published) {
+                counters.previewsPublished += 1;
+              } else {
+                counters.previewsBlocked += 1;
+              }
+            } catch (previewError) {
+              counters.previewsBlocked += 1;
+              const ingestionError = asIngestionError(previewError, "preview");
+              await options.store.insertError({
+                sourceId: source.id,
+                ingestionRunId: run.id,
+                rawRecordId: snapshot.record.id,
+                externalRecordId: candidate.noticeIdentifier,
+                errorStage: "preview",
+                errorCode: ingestionError.code ?? "PREVIEW_FAILED",
+                message: ingestionError.message,
+                retryable: false,
+                details: { dealId: persisted.deal.id },
+              });
+            }
           }
         } catch (error) {
           const ingestionError = asIngestionError(error, "record");
@@ -269,6 +316,8 @@ export async function runIngestion(
       metadata: {
         parseFailures: counters.parseFailures,
         duplicatesLinked: counters.duplicatesLinked,
+        previewsPublished: counters.previewsPublished,
+        previewsBlocked: counters.previewsBlocked,
       },
     });
 

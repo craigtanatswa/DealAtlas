@@ -221,6 +221,66 @@ export type IngestionErrorRecord = {
   details: Record<string, unknown>;
 };
 
+export type DealPreviewRecord = {
+  dealId: string;
+  slug: string;
+  previewTitle: string;
+  previewSummary: string;
+  dealType: DealRecord["dealType"];
+  buyerSector: DealRecord["buyerSector"];
+  stage: DealRecord["stage"];
+  status: DealRecord["status"];
+  mainCategory: string | null;
+  broadRegion: string | null;
+  valueBand: string | null;
+  deadlineBand: string | null;
+  durationBand: string | null;
+  smeSuitability: "LOW" | "MEDIUM" | "HIGH" | "UNKNOWN" | null;
+  bidComplexity: "LOW" | "MEDIUM" | "HIGH" | "UNKNOWN" | null;
+  competitionLevel: "LOW" | "MEDIUM" | "HIGH" | "UNKNOWN" | null;
+  requirementsPreview: string[];
+  relevanceTags: string[];
+  freshnessLabel: string | null;
+  leakageRisk: Database["public"]["Enums"]["leakage_risk"];
+  isPublished: boolean;
+};
+
+export type DealInsightRecord = {
+  dealId: string;
+  summary: string | null;
+  buyerNeed: string | null;
+  idealSupplier: string | null;
+  keyDeliverables: unknown;
+  mandatoryRequirements: unknown;
+  competitionNotes: string | null;
+  smeAccessibility: "LOW" | "MEDIUM" | "HIGH" | "UNKNOWN" | null;
+  bidComplexity: "LOW" | "MEDIUM" | "HIGH" | "UNKNOWN" | null;
+  competitionLevel: "LOW" | "MEDIUM" | "HIGH" | "UNKNOWN" | null;
+  deadlineUrgency: string | null;
+  riskFlags: unknown;
+  estimatedRenewalDate: string | null;
+  incumbentOrganizationId: string | null;
+  confidence: number | null;
+  generationMethod: "RULES" | "LLM" | "HYBRID" | null;
+  modelVersion: string | null;
+  fieldProvenance: Json;
+  generatedAt: string;
+};
+
+export type PreviewGenerationRunRecord = {
+  id: string;
+  dealId: string;
+  attemptNumber: number;
+  leakageRisk: Database["public"]["Enums"]["leakage_risk"];
+  isPublished: boolean;
+  findings: unknown[];
+  generationMethod: string | null;
+  modelVersion: string | null;
+  previewTitle: string | null;
+  previewSummary: string | null;
+  createdAt: string;
+};
+
 export type CreateDealInput = Omit<
   DealRecord,
   "id" | "firstDiscoveredAt" | "sourceCount" | "normalizedTitle"
@@ -233,6 +293,30 @@ export type CreateDealInput = Omit<
 
 export type IngestionStore = {
   getSourceByKey(sourceKey: string): Promise<DataSourceRecord | null>;
+  getSourceById(id: string): Promise<DataSourceRecord | null>;
+  getOrganizationById(id: string): Promise<OrganizationRecord | null>;
+  listOrganizationAliases(organizationId: string): Promise<string[]>;
+  listDeals(limit?: number): Promise<DealRecord[]>;
+  getDealById(id: string): Promise<DealRecord | null>;
+  getDealPreview(dealId: string): Promise<DealPreviewRecord | null>;
+  upsertDealPreview(input: DealPreviewRecord): Promise<DealPreviewRecord>;
+  upsertDealInsight(input: DealInsightRecord): Promise<void>;
+  getDealInsight(dealId: string): Promise<DealInsightRecord | null>;
+  insertPreviewGenerationRun(
+    input: Omit<PreviewGenerationRunRecord, "id"> & { id?: string },
+  ): Promise<void>;
+  listRequirementsForDeal(dealId: string): Promise<
+    Array<{
+      name: string;
+      description: string | null;
+      requirementType: string;
+      mandatory: boolean | null;
+    }>
+  >;
+  listAwardCriteriaForDeal(
+    dealId: string,
+  ): Promise<Array<{ name: string; description: string | null }>>;
+  countDocumentsForDeal(dealId: string): Promise<number>;
   updateSource(
     id: string,
     patch: Partial<

@@ -171,6 +171,27 @@ const CANONICAL_AWARD_CRITERION_COLUMNS = [
   "order_of_importance",
 ] as const;
 
+const CANONICAL_INSIGHT_COLUMNS = [
+  "deal_id",
+  "summary",
+  "buyer_need",
+  "ideal_supplier",
+  "key_deliverables",
+  "mandatory_requirements",
+  "competition_notes",
+  "sme_accessibility",
+  "bid_complexity",
+  "competition_level",
+  "deadline_urgency",
+  "risk_flags",
+  "estimated_renewal_date",
+  "confidence",
+  "generation_method",
+  "model_version",
+  "field_provenance",
+  "generated_at",
+] as const;
+
 const CANONICAL_CHANGE_COLUMNS = [
   "id",
   "deal_id",
@@ -215,6 +236,10 @@ export type CanonicalAwardCriterion = Pick<
 export type CanonicalChange = Pick<
   Database["public"]["Tables"]["data_changes"]["Row"],
   (typeof CANONICAL_CHANGE_COLUMNS)[number]
+>;
+export type CanonicalInsight = Pick<
+  Database["public"]["Tables"]["deal_insights"]["Row"],
+  (typeof CANONICAL_INSIGHT_COLUMNS)[number]
 >;
 
 function requireCanonicalAccess(access: CanonicalAccess): CanonicalAccess {
@@ -383,6 +408,24 @@ export async function listCanonicalChangesForDeal(
 
   return throwIfQueryError("Failed to load canonical deal changes", {
     data: (data as unknown as CanonicalChange[]) ?? [],
+    error,
+  });
+}
+
+export async function getCanonicalDealInsights(
+  dealId: string,
+  access: CanonicalAccess,
+) {
+  requireCanonicalAccess(access);
+  const id = parseInput(uuidSchema, dealId, "Deal id");
+  const { data, error } = await adminClient()
+    .from("deal_insights")
+    .select(CANONICAL_INSIGHT_COLUMNS.join(", "))
+    .eq("deal_id", id)
+    .maybeSingle();
+
+  return throwIfQueryError("Failed to load canonical deal insights", {
+    data: (data as unknown as CanonicalInsight | null) ?? null,
     error,
   });
 }

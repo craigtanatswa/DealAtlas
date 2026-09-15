@@ -1007,12 +1007,15 @@ export type Database = {
         Row: {
           bid_complexity: string | null
           buyer_need: string | null
+          competition_level: string | null
           competition_notes: string | null
           confidence: number | null
           deadline_urgency: string | null
           deal_id: string
           estimated_renewal_date: string | null
+          field_provenance: Json
           generated_at: string
+          generation_method: string | null
           id: string
           ideal_supplier: string | null
           incumbent_organization_id: string | null
@@ -1028,12 +1031,15 @@ export type Database = {
         Insert: {
           bid_complexity?: string | null
           buyer_need?: string | null
+          competition_level?: string | null
           competition_notes?: string | null
           confidence?: number | null
           deadline_urgency?: string | null
           deal_id: string
           estimated_renewal_date?: string | null
+          field_provenance?: Json
           generated_at?: string
+          generation_method?: string | null
           id?: string
           ideal_supplier?: string | null
           incumbent_organization_id?: string | null
@@ -1049,12 +1055,15 @@ export type Database = {
         Update: {
           bid_complexity?: string | null
           buyer_need?: string | null
+          competition_level?: string | null
           competition_notes?: string | null
           confidence?: number | null
           deadline_urgency?: string | null
           deal_id?: string
           estimated_renewal_date?: string | null
+          field_provenance?: Json
           generated_at?: string
+          generation_method?: string | null
           id?: string
           ideal_supplier?: string | null
           incumbent_organization_id?: string | null
@@ -2244,6 +2253,56 @@ export type Database = {
           website?: string | null
         }
         Relationships: []
+      }
+      preview_generation_runs: {
+        Row: {
+          attempt_number: number
+          created_at: string
+          deal_id: string
+          findings: Json
+          generation_method: string | null
+          id: string
+          is_published: boolean
+          leakage_risk: Database["public"]["Enums"]["leakage_risk"]
+          model_version: string | null
+          preview_summary: string | null
+          preview_title: string | null
+        }
+        Insert: {
+          attempt_number: number
+          created_at?: string
+          deal_id: string
+          findings?: Json
+          generation_method?: string | null
+          id?: string
+          is_published?: boolean
+          leakage_risk: Database["public"]["Enums"]["leakage_risk"]
+          model_version?: string | null
+          preview_summary?: string | null
+          preview_title?: string | null
+        }
+        Update: {
+          attempt_number?: number
+          created_at?: string
+          deal_id?: string
+          findings?: Json
+          generation_method?: string | null
+          id?: string
+          is_published?: boolean
+          leakage_risk?: Database["public"]["Enums"]["leakage_risk"]
+          model_version?: string | null
+          preview_summary?: string | null
+          preview_title?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "preview_generation_runs_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       private_opportunity_details: {
         Row: {

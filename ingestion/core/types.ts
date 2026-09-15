@@ -212,6 +212,8 @@ export type IngestionCounters = {
   errorCount: number;
   parseFailures: number;
   duplicatesLinked: number;
+  previewsPublished: number;
+  previewsBlocked: number;
   durationMs: number;
 };
 

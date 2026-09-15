@@ -16,3 +16,5 @@ export {
   createMemoryIngestionStore,
   createSupabaseIngestionStore,
 } from "@/ingestion/store";
+export { persistIntelligenceAndPreview } from "@/ingestion/preview";
+export { extractDealIntelligence, createLanguageModelProvider } from "@/ingestion/intelligence";

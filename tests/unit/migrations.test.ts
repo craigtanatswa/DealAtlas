@@ -48,7 +48,7 @@ describe("supabase migrations", () => {
   const files = listMigrations();
   const sql = files.map(readMigration).join("\n");
 
-  it("are numbered 0001-0009 in order with no gaps", () => {
+  it("are numbered 0001-0010 in order with no gaps", () => {
     expect(files).toEqual([
       "0001_extensions_and_types.sql",
       "0002_core_schema.sql",
@@ -59,6 +59,7 @@ describe("supabase migrations", () => {
       "0007_search_preview_filters.sql",
       "0008_find_a_tender_ocds.sql",
       "0009_private_source_onboarding.sql",
+      "0010_intelligence_preview_pipeline.sql",
     ]);
   });
 

@@ -12,7 +12,7 @@ select ok(
       'awards','award_suppliers','contracts','contract_changes','contract_payments','contract_performance',
       'commercial_tools','commercial_tool_members','private_opportunity_details','deal_insights','related_deals',
       'data_changes','profiles','company_profiles','subscriptions','billing_events','deal_matches','saved_deals',
-      'saved_searches','watched_organizations','notification_preferences','alerts','export_usage'
+      'saved_searches','watched_organizations','notification_preferences','alerts','export_usage','preview_generation_runs'
     ]::text[]) as t
   ),
   'all DealAtlas application tables exist'
@@ -33,7 +33,7 @@ select ok(
         'awards','award_suppliers','contracts','contract_changes','contract_payments','contract_performance',
         'commercial_tools','commercial_tool_members','private_opportunity_details','deal_insights','related_deals',
         'data_changes','profiles','company_profiles','subscriptions','billing_events','deal_matches','saved_deals',
-        'saved_searches','watched_organizations','notification_preferences','alerts','export_usage'
+        'saved_searches','watched_organizations','notification_preferences','alerts','export_usage','preview_generation_runs'
       ]::text[])
   ),
   'RLS is enabled on every DealAtlas application table'

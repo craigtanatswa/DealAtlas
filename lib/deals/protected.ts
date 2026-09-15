@@ -3,6 +3,7 @@ import "server-only";
 import {
   getCanonicalDataSourceById,
   getCanonicalDealById,
+  getCanonicalDealInsights,
   getCanonicalOrganizationById,
   listCanonicalAwardCriteriaForDeal,
   listCanonicalChangesForDeal,
@@ -23,7 +24,7 @@ export async function loadPaidDealDto(
     return null;
   }
 
-  const [buyer, notices, documents, source, lots, requirements, awardCriteria, changes] =
+  const [buyer, notices, documents, source, lots, requirements, awardCriteria, changes, insights] =
     await Promise.all([
       deal.buyer_organization_id
         ? getCanonicalOrganizationById(deal.buyer_organization_id, access)
@@ -37,6 +38,7 @@ export async function loadPaidDealDto(
       listCanonicalRequirementsForDeal(dealId, access),
       listCanonicalAwardCriteriaForDeal(dealId, access),
       listCanonicalChangesForDeal(dealId, access),
+      getCanonicalDealInsights(dealId, access),
     ]);
 
   return toPaidDealDto({
@@ -49,5 +51,26 @@ export async function loadPaidDealDto(
     requirements,
     awardCriteria,
     changes,
+    intelligence: insights
+      ? {
+          summary: insights.summary,
+          buyerNeed: insights.buyer_need,
+          idealSupplier: insights.ideal_supplier,
+          keyDeliverables: insights.key_deliverables,
+          mandatoryRequirements: insights.mandatory_requirements,
+          competitionNotes: insights.competition_notes,
+          smeAccessibility: insights.sme_accessibility,
+          bidComplexity: insights.bid_complexity,
+          competitionLevel: insights.competition_level,
+          deadlineUrgency: insights.deadline_urgency,
+          riskFlags: insights.risk_flags,
+          estimatedRenewalDate: insights.estimated_renewal_date,
+          confidence: insights.confidence,
+          generationMethod: insights.generation_method,
+          modelVersion: insights.model_version,
+          fieldProvenance: insights.field_provenance,
+          generatedAt: insights.generated_at,
+        }
+      : null,
   });
 }

@@ -122,21 +122,27 @@ export const UK_REGION_OPTIONS = [
 ] as const;
 
 export const VALUE_BAND_OPTIONS = [
-  "Under £50k",
+  "Under £25k",
+  "£25k–£50k",
   "£50k–£100k",
   "£100k–£250k",
   "£250k–£500k",
   "£500k–£1m",
   "£1m–£5m",
-  "Over £5m",
+  "£5m–£10m",
+  "£10m+",
+  "Undisclosed",
 ] as const;
 
 export const DEADLINE_BAND_OPTIONS = [
+  "Closing today",
+  "Within 3 days",
   "Within 7 days",
-  "Within 3 weeks",
-  "Within 1 month",
-  "Closing soon",
-  "Upcoming",
+  "Within 14 days",
+  "Within 30 days",
+  "More than 30 days",
+  "Upcoming / date not yet fixed",
+  "Closed",
 ] as const;
 
 export const BUYER_SECTOR_OPTIONS = BUYER_SECTORS.map((value) => ({

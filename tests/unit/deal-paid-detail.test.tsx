@@ -118,7 +118,35 @@ const mappingInput: PaidDealMappingInput = {
       order_of_importance: 1,
     },
   ],
-};
+    intelligence: {
+      summary: "Inferred buyer need for specialised software.",
+      buyerNeed: "Software implementation capability.",
+      idealSupplier: "An experienced software supplier.",
+      keyDeliverables: ["Implementation"],
+      mandatoryRequirements: ["Cyber Essentials"],
+      competitionNotes: "Open procedure.",
+      smeAccessibility: "HIGH",
+      bidComplexity: "MEDIUM",
+      competitionLevel: "LOW",
+      deadlineUrgency: "MEDIUM",
+      riskFlags: [{ code: "TIGHT_DEADLINE", label: "Short remaining response window" }],
+      estimatedRenewalDate: null,
+      confidence: 0.7,
+      generationMethod: "RULES",
+      modelVersion: "dealatlas-rules/1.0.0",
+      fieldProvenance: {
+        summary: {
+          method: "RULES",
+          model: "dealatlas-rules",
+          version: "1.0.0",
+          confidence: 0.7,
+          evidence: [{ source: "canonical", field: "source_title" }],
+          generatedAt: "2026-05-02T00:00:00.000Z",
+        },
+      },
+      generatedAt: "2026-05-02T00:00:00.000Z",
+    },
+  };
 
 describe("paid deal detail", () => {
   it("renders entitled source identity, lots, criteria, documents, and provenance", () => {
@@ -132,6 +160,8 @@ describe("paid deal detail", () => {
     expect(html).toContain("Cyber Essentials");
     expect(html).toContain("Quality");
     expect(html).toContain("Source provenance");
+    expect(html).toContain("DealAtlas analysis");
+    expect(html).toContain("Inferred");
     expect(html).not.toMatch(/blur/);
     expect(findProtectedMarkerLeaks(html).length).toBeGreaterThan(0);
 
