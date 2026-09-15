@@ -200,7 +200,7 @@ Stored filter JSON plus alert cadence.
 Buyer/supplier watch list.
 
 ### alerts
-Generated notification items.
+Generated notification items. Ordinary client roles have no grants. The application loads rows with a trusted server client and returns an entitlement-safe DTO. `title` and `message` are free-safe. Paid details live in `protected_payload` and are copied into the DTO only after `getCurrentEntitlement` confirms Pro at render/delivery time. `dedupe_key` is unique per user so duplicate generation is rejected by the database.
 
 ### export_usage
 Rows exported by user/month for limit enforcement.

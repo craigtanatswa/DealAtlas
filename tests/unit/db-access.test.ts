@@ -91,4 +91,13 @@ describe("typed data-access boundaries", () => {
     expect(load).not.toContain("select(\"*\")");
     expect(load).toContain("detail_reasons");
   });
+
+  it("loads alerts with an explicit server-only column list and never selects star", () => {
+    const centre = read("lib/alerts/centre.ts");
+    expect(centre).toMatch(/import ["']server-only["']/);
+    expect(centre).toContain('.from("alerts")');
+    expect(centre).toContain("protected_payload");
+    expect(centre).not.toMatch(/select\(\s*["']\*["']\s*\)/);
+    expect(read("lib/db/public-schema.ts")).not.toContain('"alerts"');
+  });
 });

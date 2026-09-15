@@ -29,10 +29,15 @@ export const EMPTY_STATE_COPY = {
     title: "Export limit reached",
     description: "This workspace has used its export allowance for the current period.",
   },
+  savedDealLimitReached: {
+    title: "Saved opportunity limit reached",
+    description:
+      "Free accounts can save 5 opportunities. Upgrade to Pro for additional saved deals.",
+  },
   savedSearchLimitReached: {
     title: "Saved search limit reached",
     description:
-      "Free accounts can save one search. Upgrade to Pro for additional saved searches.",
+      "Free accounts can save one search. Upgrade to Pro for up to 50 saved searches.",
   },
 } as const;
 

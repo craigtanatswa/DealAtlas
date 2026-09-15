@@ -48,7 +48,7 @@ describe("supabase migrations", () => {
   const files = listMigrations();
   const sql = files.map(readMigration).join("\n");
 
-  it("are numbered 0001-0012 in order with no gaps", () => {
+  it("are numbered 0001-0013 in order with no gaps", () => {
     expect(files).toEqual([
       "0001_extensions_and_types.sql",
       "0002_core_schema.sql",
@@ -62,6 +62,7 @@ describe("supabase migrations", () => {
       "0010_intelligence_preview_pipeline.sql",
       "0011_matching_pipeline.sql",
       "0012_deal_match_column_privileges.sql",
+      "0013_alert_dedupe_and_digest.sql",
     ]);
   });
 
@@ -99,6 +100,16 @@ describe("supabase migrations", () => {
     expect(privileges).toContain("on table public.deal_matches to authenticated");
     expect(privileges).not.toMatch(
       /grant select \([\s\S]*detail_reasons[\s\S]*\) on table public\.deal_matches to authenticated/,
+    );
+  });
+
+  it("keeps alerts server-only and unique per user dedupe key", () => {
+    const alerts = readMigration("0013_alert_dedupe_and_digest.sql");
+    expect(alerts).toContain("dedupe_key");
+    expect(alerts).toContain("alerts_user_dedupe_key_uidx");
+    expect(alerts).toContain("last_digest_sent_at");
+    expect(alerts).not.toMatch(
+      /grant (select|insert|update|delete) on table public\.alerts to (anon|authenticated)/i,
     );
   });
 

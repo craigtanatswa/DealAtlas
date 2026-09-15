@@ -282,7 +282,7 @@ MVP scheduled jobs:
 - daily stale-source checks
 - daily preview regeneration for changed deals
 - match recalculation for new/changed previews and edited company profiles (`npm run rebuild-matches`)
-- daily alert matching/delivery
+- daily alert matching/delivery (`npm run send-alerts`)
 - nightly data-quality rollup
 - weekly contract-renewal recalculation
 
@@ -415,10 +415,9 @@ Launch authentication is email/password with Supabase SSR helpers.
 Production ingestion lives under `/ingestion` with a source-neutral `SourceAdapter` (`discover` / `fetch` / `parse`), a compliance gate, immutable `raw_records`, and canonical persist for deals, notices, lots, organisations, requirements, awards and contracts. Find a Tender uses the official OCDS API (`/api/1.0/ocdsReleasePackages`), not HTML. Private/supply-chain sources use a reusable config-driven adapter (`ingestion/sources/private`). The first enabled mixed public/private infrastructure channel is the UK Infrastructure Pipeline (NISTA) via `GET /_dash-layout`. Run a source with `npm run ingest -- --source <source-key>`. Evidence and blocked sources are in `docs/SOURCE_COMPLIANCE_REPORT.md`. Routine tests use saved fixtures and do not call the live site.
 
 Deferred until later goals:
-- Paid Deal UI reveal on `/app/deals/[id]` (API boundary exists; page is still a placeholder)
-- Preview generation / leak scanning (canonical ingest stops before that)
-- `scripts/rebuild-previews.ts`, `scripts/send-alerts.ts`
 - `/api/exports`
+
+Retention workflows: saved deals (free quota 5), saved searches (free 1 / Pro 50), notification preferences, `GET/POST /api/alerts` entitlement-safe DTOs, and `npm run send-alerts` for new-match, deal-changed, deadline, and renewal evaluation plus Resend-compatible digests. Alerts remain server-only; `protected_payload` is never returned to the browser.
 
 `/api/health` is an extra operational endpoint for the web runtime.
 

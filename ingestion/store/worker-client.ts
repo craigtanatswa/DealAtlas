@@ -8,29 +8,9 @@ import {
   serverEnvSchema,
 } from "@/lib/env/server-schema";
 import { formatEnvError, pickEnv } from "@/lib/env/shared";
+import { ensureNodeWebSocket } from "@/lib/supabase/node-websocket";
 
 export type IngestionSupabaseClient = SupabaseClient<Database>;
-
-function ensureNodeWebSocket() {
-  if (typeof globalThis.WebSocket !== "undefined") {
-    return;
-  }
-
-  class IngestionNoopWebSocket {
-    url = "";
-    readyState = 3;
-    close() {}
-    send() {}
-    addEventListener() {}
-    removeEventListener() {}
-    dispatchEvent() {
-      return false;
-    }
-  }
-
-  globalThis.WebSocket =
-    IngestionNoopWebSocket as unknown as typeof WebSocket;
-}
 
 export function createIngestionSupabaseClient(
   env: Record<string, string | undefined> = process.env,

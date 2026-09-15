@@ -5,8 +5,10 @@ import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/db/database.types";
 import { getPublicEnv } from "@/lib/env/public";
 import { getServerEnv } from "@/lib/env/server";
+import { ensureNodeWebSocket } from "@/lib/supabase/node-websocket";
 
 export function createSupabaseAdminClient() {
+  ensureNodeWebSocket();
   const publicEnv = getPublicEnv();
   const serverEnv = getServerEnv();
 

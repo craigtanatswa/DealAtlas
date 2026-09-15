@@ -19,6 +19,7 @@ export type Database = {
           alert_type: Database["public"]["Enums"]["alert_type"]
           created_at: string
           deal_id: string | null
+          dedupe_key: string
           id: string
           message: string
           organization_id: string | null
@@ -34,6 +35,7 @@ export type Database = {
           alert_type: Database["public"]["Enums"]["alert_type"]
           created_at?: string
           deal_id?: string | null
+          dedupe_key: string
           id?: string
           message: string
           organization_id?: string | null
@@ -49,6 +51,7 @@ export type Database = {
           alert_type?: Database["public"]["Enums"]["alert_type"]
           created_at?: string
           deal_id?: string | null
+          dedupe_key?: string
           id?: string
           message?: string
           organization_id?: string | null
@@ -2074,6 +2077,7 @@ export type Database = {
           deal_change_enabled: boolean
           digest_cadence: string
           email_enabled: boolean
+          last_digest_sent_at: string | null
           new_match_enabled: boolean
           renewal_enabled: boolean
           updated_at: string
@@ -2085,6 +2089,7 @@ export type Database = {
           deal_change_enabled?: boolean
           digest_cadence?: string
           email_enabled?: boolean
+          last_digest_sent_at?: string | null
           new_match_enabled?: boolean
           renewal_enabled?: boolean
           updated_at?: string
@@ -2096,6 +2101,7 @@ export type Database = {
           deal_change_enabled?: boolean
           digest_cadence?: string
           email_enabled?: boolean
+          last_digest_sent_at?: string | null
           new_match_enabled?: boolean
           renewal_enabled?: boolean
           updated_at?: string

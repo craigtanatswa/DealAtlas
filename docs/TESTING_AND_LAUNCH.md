@@ -74,7 +74,7 @@ After deployment:
 10. open customer portal
 11. run one controlled ingestion
 12. view admin ingestion result
-13. verify alert generation
+13. verify alert generation (`npm run send-alerts`)
 14. verify CSV export
 
 ## Data launch minimum

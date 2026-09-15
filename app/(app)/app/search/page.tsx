@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 
+import { SaveSearchForm } from "@/components/saves/save-search-form";
 import { DealKeywordForm } from "@/components/deals/deal-keyword-form";
 import {
   DealSearchFilterDrawer,
@@ -10,7 +11,10 @@ import { DealSearchResults } from "@/components/deals/deal-search-results";
 import { Heading, Text } from "@/components/layout/heading";
 import { Main } from "@/components/layout/container";
 import { Button } from "@/components/ui/button";
-import { requireUser } from "@/lib/auth/session";
+import { requireUser, isEmailVerified } from "@/lib/auth/session";
+import { getCurrentEntitlement } from "@/lib/entitlements/service";
+import { featureLimit } from "@/lib/quotas";
+import { countSavedSearches } from "@/lib/saves/queries";
 import { searchDealPreviewsForUser } from "@/lib/matching/search";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -29,6 +33,8 @@ export default async function AppSearchPage({ searchParams }: PageProps) {
   const { user } = await requireUser("/app/search");
   const params = await searchParams;
   const client = await createSupabaseServerClient();
+  const entitlement = await getCurrentEntitlement(user.id);
+  const savedSearchCount = await countSavedSearches(client, user.id);
   const { filters, result, companyProfileId } = await searchDealPreviewsForUser({
     client,
     searchParams: params,
@@ -66,6 +72,12 @@ export default async function AppSearchPage({ searchParams }: PageProps) {
           showRelevance={Boolean(companyProfileId)}
         />
       </div>
+      <SaveSearchForm
+        filters={filters}
+        used={savedSearchCount}
+        limit={featureLimit(entitlement.plan, "savedSearches")}
+        emailVerified={isEmailVerified(user)}
+      />
       <div className="grid gap-8 lg:grid-cols-[17rem_minmax(0,1fr)]">
         <DealSearchFilterRail
           filters={filters}

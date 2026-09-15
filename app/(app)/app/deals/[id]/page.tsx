@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 
+import { SaveDealButton } from "@/components/saves/save-deal-button";
 import { DealPaidDetail } from "@/components/deals/deal-paid-detail";
 import { DealPreviewDetail } from "@/components/deals/deal-preview-detail";
 import { EmptyState } from "@/components/feedback/empty-state";
@@ -10,6 +11,8 @@ import { appDealPath, parseDealIdParam } from "@/lib/deals/paths";
 import { loadPaidDealDto } from "@/lib/deals/protected";
 import { isProEntitlement } from "@/lib/entitlements/policy";
 import { getCurrentEntitlement } from "@/lib/entitlements/service";
+import { featureLimit } from "@/lib/quotas";
+import { loadDealSaveState } from "@/lib/saves/queries";
 import { loadCompanyProfileIdForUser, loadProMatchForDeal } from "@/lib/matching/load";
 import { loadMatchForPreviewPage } from "@/lib/matching/search";
 import { getPublicDealPreviewPageByDealId } from "@/lib/search/public";
@@ -39,6 +42,16 @@ export default async function AppDealPage({ params }: PageProps) {
   const { user } = await requireUser(appDealPath(dealId));
   const entitlement = await getCurrentEntitlement(user.id);
   const client = await createSupabaseServerClient();
+  const saveState = await loadDealSaveState(client, user.id, dealId);
+  const saveControl = (
+    <SaveDealButton
+      dealId={dealId}
+      saved={saveState.saved}
+      used={saveState.used}
+      limit={featureLimit(entitlement.plan, "savedDeals")}
+      signedIn
+    />
+  );
 
   if (isProEntitlement(entitlement)) {
     let dto = null;
@@ -74,7 +87,7 @@ export default async function AppDealPage({ params }: PageProps) {
 
     return (
       <Main>
-        <DealPaidDetail deal={dto} match={match} />
+        <DealPaidDetail deal={dto} match={match} save={saveControl} />
       </Main>
     );
   }
@@ -95,6 +108,7 @@ export default async function AppDealPage({ params }: PageProps) {
       <DealPreviewDetail
         deal={previewPage.preview}
         match={match}
+        save={saveControl}
         unlock={{
           mode: "free",
           returnTo: appDealPath(dealId),

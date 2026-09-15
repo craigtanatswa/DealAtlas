@@ -12,6 +12,14 @@ describe("feedback patterns", () => {
     expect(
       screen.getByRole("heading", { name: "No deals match these filters" }),
     ).toBeTruthy();
+    render(<EmptyState kind="savedDealLimitReached" />);
+    expect(
+      screen.getByText(/Free accounts can save 5 opportunities/i),
+    ).toBeTruthy();
+    render(<EmptyState kind="savedSearchLimitReached" />);
+    expect(
+      screen.getByText(/Upgrade to Pro for up to 50 saved searches/i),
+    ).toBeTruthy();
   });
 
   it("exposes a retry control on error states", () => {

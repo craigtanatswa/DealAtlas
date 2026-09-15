@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { cache } from "react";
 
+import { SaveDealButton } from "@/components/saves/save-deal-button";
 import { DealPreviewDetail } from "@/components/deals/deal-preview-detail";
 import { Main } from "@/components/layout/container";
 import { getAuthUser } from "@/lib/auth/session";
@@ -10,6 +11,8 @@ import { appDealPath } from "@/lib/deals/paths";
 import { getPublicEnv } from "@/lib/env/public";
 import { isProEntitlement } from "@/lib/entitlements/policy";
 import { getCurrentEntitlement } from "@/lib/entitlements/service";
+import { featureLimit } from "@/lib/quotas";
+import { loadDealSaveState } from "@/lib/saves/queries";
 import { publicDealPreviewMetadata } from "@/lib/search/metadata";
 import { getPublicDealPreviewPageBySlug } from "@/lib/search/public";
 import { loadMatchForPreviewPage } from "@/lib/matching/search";
@@ -73,12 +76,25 @@ export default async function DealPreviewPage({ params }: PageProps) {
     userId: user?.id ?? null,
     dealId: page.dealId,
   });
+  const saveState = user
+    ? await loadDealSaveState(client, user.id, page.dealId)
+    : { saved: false, used: 0 };
 
   return (
     <Main>
       <DealPreviewDetail
         deal={page.preview}
         match={match}
+        save={
+          <SaveDealButton
+            dealId={page.dealId}
+            saved={saveState.saved}
+            used={saveState.used}
+            limit={featureLimit(entitlement?.plan ?? "FREE", "savedDeals")}
+            signedIn={Boolean(user)}
+            loginHref={loginPathWithNext(`/deals/${page.preview.slug}`)}
+          />
+        }
         unlock={{
           mode,
           loginHref: loginPathWithNext(`/deals/${page.preview.slug}`),

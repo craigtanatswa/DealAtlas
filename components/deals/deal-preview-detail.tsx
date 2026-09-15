@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import { MatchReasons } from "@/components/deals/match-reasons";
 import { DeadlineBand } from "@/components/deals/deadline-band";
 import { DealStatusBadge } from "@/components/deals/deal-status";
@@ -20,10 +22,12 @@ import {
 export function DealPreviewDetail({
   deal,
   match,
+  save,
   unlock,
 }: {
   deal: PublicDealPreview;
   match?: SafeMatchView | null;
+  save?: ReactNode;
   unlock?: {
     mode?: UnlockCtaMode;
     loginHref?: string;
@@ -54,6 +58,7 @@ export function DealPreviewDetail({
           Sanitised preview. Buyer identity, original title, and source remain
           locked.
         </Text>
+        {save}
       </header>
 
       <section aria-labelledby="opportunity-snapshot-heading" className="flex flex-col gap-4">

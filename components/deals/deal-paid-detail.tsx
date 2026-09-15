@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import { DealStatusBadge } from "@/components/deals/deal-status";
 import { ExternalSourceLink } from "@/components/deals/external-source-link";
 import { MatchReasons } from "@/components/deals/match-reasons";
@@ -35,9 +37,11 @@ import {
 export function DealPaidDetail({
   deal,
   match,
+  save,
 }: {
   deal: PaidDealDto;
   match?: ProMatchView | null;
+  save?: ReactNode;
 }) {
   const withheld = deal.provenance.contentAccess === "withhold";
   const value = formatDealValueRange({
@@ -99,6 +103,7 @@ export function DealPaidDetail({
           ) : null}
         </dl>
         <div className="flex flex-wrap gap-3">
+          {save}
           <ExternalSourceLink href={deal.sourceUrl} variant="default">
             Open source notice
           </ExternalSourceLink>
