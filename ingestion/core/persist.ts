@@ -307,6 +307,12 @@ export async function persistCandidate(options: {
         relationshipType: "related_process",
         confidence: 1,
       });
+      await store.addRelatedDeal({
+        dealId: relatedDeal.id,
+        relatedDealId: deal.id,
+        relationshipType: "related_process",
+        confidence: 1,
+      });
     }
   }
 

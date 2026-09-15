@@ -13,9 +13,12 @@ describe("checkout return path", () => {
     expect(parseCheckoutReturnTo(appDealPath(DEAL_ID))).toBe(
       `/app/deals/${DEAL_ID}`,
     );
-    expect(parseCheckoutReturnTo("/deals/cloud-contact-centre-platform-opportunity")).toBe(
-      "/deals/cloud-contact-centre-platform-opportunity",
-    );
+    expect(parseCheckoutReturnTo("/app/buyers")).toBe("/app/buyers");
+    expect(parseCheckoutReturnTo("/app/suppliers")).toBe("/app/suppliers");
+    expect(parseCheckoutReturnTo("/app/renewals")).toBe("/app/renewals");
+    expect(
+      parseCheckoutReturnTo(`/app/buyers/${DEAL_ID}`),
+    ).toBe(`/app/buyers/${DEAL_ID}`);
   });
 
   it("drops open redirects instead of falling back to /app", () => {

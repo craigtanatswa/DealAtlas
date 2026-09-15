@@ -1,4 +1,5 @@
 import { sanitizeRedirectPath } from "@/lib/auth/redirect";
+import { APP_BUYER_PATH, APP_SUPPLIER_PATH } from "@/lib/intelligence/paths";
 import { uuidSchema } from "@/lib/validation";
 
 const INVALID_FALLBACK = "/__invalid_checkout_return__";
@@ -8,6 +9,10 @@ const STATIC_RETURN_PATHS = new Set([
   "/app/billing",
   "/pricing",
   "/checkout/success",
+  "/app/buyers",
+  "/app/suppliers",
+  "/app/contracts",
+  "/app/renewals",
 ]);
 
 const APP_DEAL_PATH =
@@ -26,6 +31,8 @@ export function isAllowedCheckoutReturnTo(pathname: string): boolean {
   return (
     STATIC_RETURN_PATHS.has(pathname) ||
     APP_DEAL_PATH.test(pathname) ||
+    APP_BUYER_PATH.test(pathname) ||
+    APP_SUPPLIER_PATH.test(pathname) ||
     PUBLIC_DEAL_PATH.test(pathname)
   );
 }

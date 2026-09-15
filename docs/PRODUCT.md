@@ -337,7 +337,9 @@ Store provenance, confidence and model/version for derived intelligence.
 - `/app/billing`
 
 ### Pro intelligence
+- `/app/buyers`
 - `/app/buyers/[id]`
+- `/app/suppliers`
 - `/app/suppliers/[id]`
 - `/app/contracts`
 - `/app/renewals`

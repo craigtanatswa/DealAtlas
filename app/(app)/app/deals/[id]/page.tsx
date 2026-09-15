@@ -9,6 +9,7 @@ import { requireUser } from "@/lib/auth/session";
 import { DatabaseQueryError } from "@/lib/db/errors";
 import { appDealPath, parseDealIdParam } from "@/lib/deals/paths";
 import { loadPaidDealDto } from "@/lib/deals/protected";
+import { loadDealHistory } from "@/lib/intelligence/protected";
 import { isProEntitlement } from "@/lib/entitlements/policy";
 import { getCurrentEntitlement } from "@/lib/entitlements/service";
 import { featureLimit } from "@/lib/quotas";
@@ -55,6 +56,7 @@ export default async function AppDealPage({ params }: PageProps) {
 
   if (isProEntitlement(entitlement)) {
     let dto = null;
+    let history = null;
     let paidDataUnavailable = false;
     try {
       dto = await loadPaidDealDto(dealId, {
@@ -66,6 +68,19 @@ export default async function AppDealPage({ params }: PageProps) {
         throw error;
       }
       paidDataUnavailable = true;
+    }
+
+    if (dto) {
+      try {
+        history = await loadDealHistory(dealId, {
+          kind: "pro",
+          userId: user.id,
+        });
+      } catch (error) {
+        if (!(error instanceof DatabaseQueryError)) {
+          throw error;
+        }
+      }
     }
 
     if (paidDataUnavailable) {
@@ -87,7 +102,7 @@ export default async function AppDealPage({ params }: PageProps) {
 
     return (
       <Main>
-        <DealPaidDetail deal={dto} match={match} save={saveControl} />
+        <DealPaidDetail deal={dto} history={history} match={match} save={saveControl} />
       </Main>
     );
   }

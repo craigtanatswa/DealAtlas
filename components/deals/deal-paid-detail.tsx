@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
+import Link from "next/link";
 
+import { DealHistorySections } from "@/components/intelligence/deal-history";
 import { DealStatusBadge } from "@/components/deals/deal-status";
 import { ExternalSourceLink } from "@/components/deals/external-source-link";
 import { MatchReasons } from "@/components/deals/match-reasons";
@@ -21,13 +23,9 @@ import {
   yesNoLabel,
 } from "@/lib/deals/format";
 import { reuseStatusLabel } from "@/lib/deals/licence";
-import type {
-  PaidDealDto,
-  PaidIntelligenceDto,
-  PaidIntelligenceFieldDto,
-  PaidLotDto,
-  PaidRequirementDto,
-} from "@/lib/deals/paid-dto";
+import type { PaidDealDto, PaidIntelligenceDto, PaidIntelligenceFieldDto, PaidLotDto, PaidRequirementDto } from "@/lib/deals/paid-dto";
+import type { DealHistoryDto } from "@/lib/intelligence/types";
+import { appBuyerPath } from "@/lib/intelligence/paths";
 import type { ProMatchView } from "@/lib/matching/types";
 import {
   DEAL_STAGE_LABELS,
@@ -36,10 +34,12 @@ import {
 
 export function DealPaidDetail({
   deal,
+  history,
   match,
   save,
 }: {
   deal: PaidDealDto;
+  history?: DealHistoryDto | null;
   match?: ProMatchView | null;
   save?: ReactNode;
 }) {
@@ -63,7 +63,9 @@ export function DealPaidDetail({
         <Heading>{deal.sourceTitle}</Heading>
         {deal.buyer ? (
           <Text variant="muted" className="max-w-3xl">
-            {deal.buyer.name}
+            <Link className="hover:underline" href={appBuyerPath(deal.buyer.id)}>
+              {deal.buyer.name}
+            </Link>
             {deal.buyer.city ? ` · ${deal.buyer.city}` : null}
             {deal.buyer.region ? ` · ${deal.buyer.region}` : null}
           </Text>
@@ -188,6 +190,7 @@ export function DealPaidDetail({
           <LotsSection lots={deal.lots} />
           <AwardCriteriaSection deal={deal} />
           <DocumentsSection deal={deal} />
+          {history ? <DealHistorySections history={history} /> : null}
           <TimelineSection deal={deal} />
         </>
       )}

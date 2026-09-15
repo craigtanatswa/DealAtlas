@@ -61,6 +61,8 @@ export const APP_NAV = [
   { href: "/app/searches", label: "Searches" },
   { href: "/app/alerts", label: "Alerts" },
   { href: "/app/buyers", label: "Buyers", pro: true },
+  { href: "/app/suppliers", label: "Suppliers", pro: true },
+  { href: "/app/contracts", label: "Contracts", pro: true },
   { href: "/app/renewals", label: "Renewals", pro: true },
 ] as const;
 

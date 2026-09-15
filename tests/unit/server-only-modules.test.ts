@@ -15,6 +15,10 @@ const SERVER_ONLY_MODULES = [
   "lib/entitlements/service.ts",
   "lib/entitlements/store.ts",
   "lib/deals/protected.ts",
+  "lib/intelligence/load.ts",
+  "lib/intelligence/protected.ts",
+  "lib/intelligence/page.ts",
+  "lib/intelligence/http.ts",
   "lib/billing/config.ts",
   "lib/billing/store.ts",
   "lib/billing/process.ts",
@@ -74,6 +78,10 @@ describe("server-only module boundary", () => {
       expect(source).not.toMatch(/from ["']@\/lib\/entitlements\/service["']/);
       expect(source).not.toMatch(/from ["']@\/lib\/entitlements\/store["']/);
       expect(source).not.toMatch(/from ["']@\/lib\/deals\/protected["']/);
+      expect(source).not.toMatch(/from ["']@\/lib\/intelligence\/load["']/);
+      expect(source).not.toMatch(/from ["']@\/lib\/intelligence\/protected["']/);
+      expect(source).not.toMatch(/from ["']@\/lib\/intelligence\/page["']/);
+      expect(source).not.toMatch(/from ["']@\/lib\/intelligence\/http["']/);
       expect(source).not.toMatch(/from ["']@\/lib\/billing\/config["']/);
       expect(source).not.toMatch(/from ["']@\/lib\/billing\/store["']/);
       expect(source).not.toMatch(/from ["']@\/lib\/billing\/process["']/);

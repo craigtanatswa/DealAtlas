@@ -56,6 +56,8 @@ Authenticated:
 - Searches
 - Alerts
 - Buyers (Pro)
+- Suppliers (Pro)
+- Contracts (Pro)
 - Renewals (Pro)
 - Billing/Account
 

@@ -358,6 +358,9 @@ Included in the build pack:
 - `0009_private_source_onboarding.sql`
 - `0010_intelligence_preview_pipeline.sql`
 - `0011_matching_pipeline.sql`
+- `0012_deal_match_column_privileges.sql`
+- `0013_alert_dedupe_and_digest.sql`
+- `0014_intelligence_query_indexes.sql
 
 Apply in numeric order with the Supabase CLI (`npx supabase db reset` locally, or `npx supabase db push` to a linked project). Never reset or drop a linked production database.
 
@@ -378,6 +381,7 @@ This writes `lib/db/database.types.ts`. Do not edit that file by hand.
 - Signed-in relevance: `lib/matching/search.ts` may join `deal_matches` for the caller’s company profile. `lib/matching/persist.ts` writes matches with the admin client. `detail_reasons` is never selected on the user client.
 - Browser and cookie-based SSR clients are typed with the granted public surface only (`lib/db/public-schema.ts`).
 - Protected canonical tables: `lib/db/canonical.ts` is `server-only` and uses the privileged admin client after an explicit Pro/admin access argument.
+- Paid buyer/supplier/contract intelligence: `lib/intelligence/load.ts` reads organisations, deals, awards, contracts, related processes, payments and performance after `getCurrentEntitlement` confirms Pro. Aggregation is query-time. There is no materialized history table; indexes in `0014_intelligence_query_indexes.sql` keep those lookups refreshable as source data changes.
 - Billing writes: `lib/billing/store.ts` is `server-only` and uses the admin client for `subscriptions` and `billing_events`. Ordinary client roles still have no grants on those tables.
 
 ### Database tests

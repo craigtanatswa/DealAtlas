@@ -56,7 +56,9 @@ Never use CSS blur or client-side conditional rendering as the protection mechan
       /profile
       /settings
       /billing
+      /buyers
       /buyers/[id]
+      /suppliers
       /suppliers/[id]
       /contracts
       /renewals
@@ -65,6 +67,10 @@ Never use CSS blur or client-side conditional rendering as the protection mechan
   /api
     /deals/[id]
     /search
+    /buyers
+    /suppliers
+    /contracts
+    /renewals
     /exports
     /billing/checkout
     /billing/portal
@@ -79,6 +85,7 @@ Never use CSS blur or client-side conditional rendering as the protection mechan
   /redaction
   /email
   /matching
+  /intelligence
   /monitoring
   /validation
 /ingestion
@@ -362,7 +369,7 @@ The application foundation was added to this repository on top of the specificat
 - Public marketing routes include `/`, `/deals`, `/deals/[slug]`, `/pricing`, `/how-it-works`.
 - Authenticated search at `/app/search` sorts and filters by company-profile relevance when a profile exists. Public `/deals` can show scores for signed-in users without revealing source identity.
 - Saving `/app/profile` queues `match_jobs` and recalculates `deal_matches` for published previews.
-- `lib/` contains `auth`, `billing`, `db`, `entitlements`, `search`, `matching`, `redaction`, `email`, `monitoring`, and `validation`.
+- `lib/` contains `auth`, `billing`, `db`, `entitlements`, `search`, `matching`, `intelligence`, `redaction`, `email`, `monitoring`, and `validation`.
 - Privileged Supabase access is isolated in `lib/supabase/admin.ts` with `import "server-only"`. Browser and cookie-based SSR clients use the publishable key only.
 - Environment validation splits `NEXT_PUBLIC_*` (`lib/env/public.ts`) from server secrets (`lib/env/server.ts`).
 - Feature limits live in `lib/constants.ts` and must be enforced server-side when those features are implemented.
@@ -372,8 +379,8 @@ These public/admin routes are specified in `docs/PRODUCT.md` and were added even
 - `/privacy`, `/terms`, `/cookies`, `/contact`
 - `/admin/deals`, `/admin/sources`, `/admin/ingestion`, `/admin/organisations`, `/admin/deduplication`, `/admin/data-quality`, `/admin/billing-events`
 
-### Deferred on purpose
-Business features are not implemented in the foundation. Placeholder pages prove the route tree only.
+### Paid intelligence
+Pro routes `/app/buyers`, `/app/buyers/[id]`, `/app/suppliers`, `/app/suppliers/[id]`, `/app/contracts`, and `/app/renewals` load canonical organisations, awards, contracts, related processes, payments, and performance only after `getCurrentEntitlement` confirms Pro. Free signed-in users receive an upgrade panel and no organisation names. Matching JSON lives at `/api/buyers`, `/api/suppliers`, `/api/contracts`, and `/api/renewals` with the same gate. Inferred incumbent and renewal fields are labelled DealAtlas analysis. Category/value activity is aggregated at query time; `0014_intelligence_query_indexes.sql` adds refreshable lookup indexes rather than materialized history.
 
 ### Database integration
 Committed migrations in `supabase/migrations` remain the schema source of truth. Local `supabase/config.toml` is configured so new public tables are not auto-exposed to `anon`/`authenticated`. Database TypeScript types are generated with `npm run db:types` into `lib/db/database.types.ts`.

@@ -47,10 +47,14 @@ describe("application constants", () => {
       "Searches",
       "Alerts",
       "Buyers",
+      "Suppliers",
+      "Contracts",
       "Renewals",
     ]);
     expect(APP_NAV.filter((item) => "pro" in item && item.pro).map((item) => item.label)).toEqual([
       "Buyers",
+      "Suppliers",
+      "Contracts",
       "Renewals",
     ]);
     expect(ACCOUNT_NAV.map((item) => item.label)).toEqual([

@@ -156,6 +156,9 @@ describe("paid deal detail", () => {
 
     expect(screen.getByRole("heading", { name: dto.sourceTitle })).toBeTruthy();
     expect(html).toContain("CANARY BUYER NEVER FREE");
+    expect(screen.getByRole("link", { name: "CANARY BUYER NEVER FREE" }).getAttribute("href")).toBe(
+      "/app/buyers/11111111-1111-4111-8111-111111111111",
+    );
     expect(html).toContain("CANARY-REF-987654");
     expect(html).toContain("Cyber Essentials");
     expect(html).toContain("Quality");
