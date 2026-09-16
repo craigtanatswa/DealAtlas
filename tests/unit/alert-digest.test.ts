@@ -67,4 +67,31 @@ describe("alert digest paywall", () => {
     expect(digest.text).toContain("/app/deals/22222222-2222-4222-8222-222222222222");
     expect(digest.html).toContain("Open in DealAtlas");
   });
+
+  it("does not emit javascript: hrefs from scraped source URLs", () => {
+    const dto = toAlertDto(
+      {
+        ...RECORD,
+        protected_payload: {
+          ...RECORD.protected_payload as Record<string, unknown>,
+          sourceUrl: "javascript:alert(1)",
+          applicationUrl: "javascript:alert(document.cookie)",
+          sourceTitle: "<script>alert(1)</script>",
+          buyerName: "<img src=x onerror=alert(1)>",
+        },
+      },
+      PRO,
+    );
+    const digest = renderAlertDigest({
+      plan: PLANS.PRO,
+      alerts: [dto],
+      appUrl: "http://localhost:3000",
+    });
+
+    expect(digest.html).not.toMatch(/javascript:/i);
+    expect(digest.html).not.toMatch(/<script[\s>]/i);
+    expect(digest.html).not.toMatch(/<img [^>]*onerror=/i);
+    expect(digest.html).toContain("&lt;script&gt;alert(1)&lt;/script&gt;");
+    expect(digest.html).toContain("&lt;img src=x onerror=alert(1)&gt;");
+  });
 });

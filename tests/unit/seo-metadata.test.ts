@@ -335,6 +335,19 @@ describe("JSON-LD and analytics hooks", () => {
     expect(config.gaMeasurementId).toBeUndefined();
     expect(JSON.stringify(config)).not.toContain("canary");
   });
+
+  it("escapes script breakouts in JSON-LD HTML payloads", () => {
+    const serialized = serializeJsonLd(
+      webPageJsonLd({
+        origin: ORIGIN,
+        path: "/deals",
+        name: "Find deals",
+        description: "</script><script>alert(1)</script>",
+      }),
+    );
+    expect(serialized).toContain("\\u003c/script>");
+    expect(serialized).not.toContain("</script>");
+  });
 });
 
 describe("internal routes and legal review markers", () => {

@@ -40,6 +40,8 @@ describe("billing anti-bypass boundary", () => {
     expect(portal).toContain('url.search = ""');
     expect(portal).toContain("customer_id");
     expect(portal).not.toContain("searchParams.get(\"customer_id\")");
+    expect(portal).toContain("Billing portal is temporarily unavailable.");
+    expect(portal).toContain("response.status >= 500");
   });
 
   it("verifies Dodo webhooks with the official adapter before applying state", () => {

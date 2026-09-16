@@ -216,4 +216,28 @@ describe("paid deal detail", () => {
     );
     expect(screen.getByText("(opens original source in a new tab)")).toBeTruthy();
   });
+
+  it("renders scraped HTML as text and drops javascript: source links", () => {
+    cleanup();
+    const dto = toPaidDealDto({
+      ...mappingInput,
+      deal: {
+        ...mappingInput.deal,
+        source_title: "<img src=x onerror=alert(1)> XSS title",
+        source_description: "<script>alert(1)</script><img src=x onerror=alert(1)>",
+        source_url: "javascript:alert(1)",
+        application_url: "javascript:alert(document.cookie)",
+      },
+    });
+    const { container } = render(<DealPaidDetail deal={dto} />);
+    const html = container.innerHTML;
+
+    expect(html).not.toMatch(/<script[\s>]/i);
+    expect(html).not.toMatch(/<img [^>]*onerror=/i);
+    expect(html).toContain("&lt;script&gt;alert(1)&lt;/script&gt;");
+    expect(html).toContain("&lt;img src=x onerror=alert(1)&gt;");
+    expect(dto.sourceUrl).toBeNull();
+    expect(dto.applicationUrl).toBeNull();
+    expect(screen.queryByRole("link", { name: /Open source notice/i })).toBeNull();
+  });
 });

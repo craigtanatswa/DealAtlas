@@ -1,6 +1,15 @@
 export const CSV_UTF8_BOM = "\uFEFF";
 
 const FORMULA_LEADING = /^[=+\-@\t\r]/;
+const LEADING_SPACE = /^[\u0000-\u0020\u00a0\u2028\u2029]+/;
+
+function needsFormulaEscape(value: string): boolean {
+  if (FORMULA_LEADING.test(value)) {
+    return true;
+  }
+  const trimmed = value.replace(LEADING_SPACE, "");
+  return trimmed !== value && FORMULA_LEADING.test(trimmed);
+}
 
 /**
  * Escape a CSV field for spreadsheet clients.
@@ -8,7 +17,7 @@ const FORMULA_LEADING = /^[=+\-@\t\r]/;
  */
 export function escapeCsvCell(value: string): string {
   let cell = value.normalize("NFC");
-  if (FORMULA_LEADING.test(cell)) {
+  if (needsFormulaEscape(cell)) {
     cell = `'${cell}`;
   }
 

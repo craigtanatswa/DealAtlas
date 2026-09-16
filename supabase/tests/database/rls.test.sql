@@ -222,16 +222,52 @@ select is(
 -- ---------------------------------------------------------------------------
 set local role anon;
 
+select ok(
+  exists (
+    select 1
+    from public.deal_previews
+    where slug = 'published-low-risk-preview'
+  ),
+  'anon can see the published LOW-risk fixture preview'
+);
+
 select is(
-  (select count(*)::integer from public.deal_previews),
-  1,
+  (
+    select count(*)::integer
+    from public.deal_previews
+    where slug in (
+      'unpublished-low-risk-preview',
+      'high-risk-unpublished-preview'
+    )
+  ),
+  0,
+  'anon cannot see unpublished or HIGH-risk fixture previews'
+);
+
+select is(
+  (
+    select count(*)::integer
+    from public.deal_previews
+    where leakage_risk <> 'LOW'
+       or is_published is not true
+  ),
+  0,
   'anon sees only published LOW-risk deal_previews'
 );
 
 select is(
-  (select slug from public.deal_previews),
-  'published-low-risk-preview',
-  'anon published preview is the safe LOW-risk row'
+  (
+    select count(*)::integer
+    from public.deal_previews
+    where preview_title ilike '%CANARY%'
+       or preview_summary ilike '%CANARY%'
+       or preview_title ilike '%canary-protected%'
+       or preview_summary ilike '%canary-protected%'
+       or preview_title ilike '%canary-source%'
+       or preview_summary ilike '%canary-source%'
+  ),
+  0,
+  'anon previews do not contain canary source markers'
 );
 
 select throws_ok(
@@ -267,6 +303,34 @@ select throws_ok(
   '42501',
   NULL,
   'anon select on data_sources is denied'
+);
+
+select throws_ok(
+  'select id from public.lots limit 1',
+  '42501',
+  NULL,
+  'anon select on lots is denied'
+);
+
+select throws_ok(
+  'select id from public.contracts limit 1',
+  '42501',
+  NULL,
+  'anon select on contracts is denied'
+);
+
+select throws_ok(
+  'select id from public.organization_contacts limit 1',
+  '42501',
+  NULL,
+  'anon select on organization_contacts is denied'
+);
+
+select throws_ok(
+  'select id from public.raw_records limit 1',
+  '42501',
+  NULL,
+  'anon select on raw_records is denied'
 );
 
 select isnt_empty(

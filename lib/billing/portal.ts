@@ -38,5 +38,19 @@ export async function createCustomerPortalResponse(input: {
   url.search = "";
   url.searchParams.set("customer_id", customerId);
 
-  return portal(new NextRequest(url, { method: "GET" }));
+  try {
+    const response = await portal(new NextRequest(url, { method: "GET" }));
+    if (response.status >= 500) {
+      return NextResponse.json(
+        { error: "Billing portal is temporarily unavailable." },
+        { status: 502 },
+      );
+    }
+    return response;
+  } catch {
+    return NextResponse.json(
+      { error: "Billing portal is temporarily unavailable." },
+      { status: 502 },
+    );
+  }
 }

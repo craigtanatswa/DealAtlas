@@ -13,6 +13,16 @@ const CANONICAL_TABLES = [
   "notices",
   "documents",
   "data_sources",
+  "lots",
+  "contracts",
+  "organization_contacts",
+  "raw_records",
+  "ingestion_runs",
+  "alerts",
+  "subscriptions",
+  "billing_events",
+  "export_usage",
+  "admin_audit_events",
 ] as const;
 
 type Json = Record<string, unknown> | Record<string, unknown>[] | null;
@@ -261,6 +271,135 @@ describe.skipIf(!configured)("PostgREST RLS smoke tests", () => {
       expect(status, table).toBeGreaterThanOrEqual(400);
       expect(Array.isArray(body), table).toBe(false);
       expect(errorCode(body), table).toMatch(/42501|PGRST301|PGRST105/);
+    }
+  });
+
+  it("blocks authenticated writes to billing, alerts, and export usage", async () => {
+    expect(userAccessToken).toBeTruthy();
+    const attempts = [
+      {
+        table: "subscriptions",
+        body: {
+          user_id: userId,
+          plan_key: "PRO",
+          status: "ACTIVE",
+          is_current: true,
+        },
+      },
+      {
+        table: "billing_events",
+        body: {
+          provider_event_id: `evt-forged-${publishedDealId.slice(0, 8)}`,
+          event_type: "subscription.active",
+          payload_hash: "abc",
+          payload: {},
+        },
+      },
+      {
+        table: "alerts",
+        body: {
+          user_id: userId,
+          deal_id: publishedDealId,
+          alert_type: "NEW_MATCH",
+          title: "forged",
+          message: "forged",
+          protected_payload: { sourceTitle: "CANARY SOURCE TITLE NEVER FREE" },
+          dedupe_key: `forged:${publishedDealId}`,
+        },
+      },
+      {
+        table: "export_usage",
+        body: {
+          user_id: userId,
+          row_count: 1,
+          billing_month: "2026-09-01",
+        },
+      },
+    ] as const;
+
+    for (const attempt of attempts) {
+      const { status, body } = await restRequest(
+        anonKey!,
+        `/rest/v1/${attempt.table}`,
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${userAccessToken}` },
+          body: JSON.stringify(attempt.body),
+        },
+      );
+      expect(status, attempt.table).toBeGreaterThanOrEqual(400);
+      expect(Array.isArray(body), attempt.table).toBe(false);
+    }
+  });
+
+  it("rejects free organization watches and saved-deal quota bypass via the Data API", async () => {
+    expect(userAccessToken).toBeTruthy();
+    const watch = await restRequest(anonKey!, "/rest/v1/watched_organizations", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${userAccessToken}` },
+      body: JSON.stringify({
+        user_id: userId,
+        organization_id: organizationId,
+        watch_type: "BUYER",
+      }),
+    });
+    expect(watch.status).toBeGreaterThanOrEqual(400);
+
+    const extraDealIds = [randomUUID(), randomUUID(), randomUUID(), randomUUID()];
+    const extraDeals = await restRequest(secretKey!, "/rest/v1/deals", {
+      method: "POST",
+      headers: { Prefer: "return=minimal" },
+      body: JSON.stringify(
+        extraDealIds.map((id) => ({
+          id,
+          primary_source_id: sourceId,
+          external_primary_id: `ext-${id.slice(0, 8)}`,
+          source_title: "Protected extra canonical title",
+          deal_type: "PUBLIC_TENDER",
+          buyer_sector: "PUBLIC",
+          stage: "LIVE",
+          status: "OPEN",
+        })),
+      ),
+    });
+    expect(extraDeals.status).toBeLessThan(300);
+
+    const quotaIds = [publishedDealId, unpublishedDealId, ...extraDealIds];
+    for (let index = 0; index < 5; index += 1) {
+      const saved = await restRequest(anonKey!, "/rest/v1/saved_deals", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${userAccessToken}` },
+        body: JSON.stringify({ user_id: userId, deal_id: quotaIds[index] }),
+      });
+      expect(saved.status, `saved deal ${index}`).toBeLessThan(300);
+    }
+
+    const sixth = await restRequest(anonKey!, "/rest/v1/saved_deals", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${userAccessToken}` },
+      body: JSON.stringify({ user_id: userId, deal_id: extraDealIds[3] }),
+    });
+    expect(sixth.status).toBeGreaterThanOrEqual(400);
+
+    await restRequest(secretKey!, `/rest/v1/deals?id=in.(${extraDealIds.join(",")})`, {
+      method: "DELETE",
+    });
+  });
+
+  it("does not return canonical deals through GraphQL", async () => {
+    const { status, body } = await restRequest(anonKey!, "/graphql/v1", {
+      method: "POST",
+      body: JSON.stringify({
+        query: "{ dealsCollection { edges { node { id source_title } } } }",
+      }),
+    });
+    const payload = JSON.stringify(body ?? "");
+    expect(payload).not.toContain("CANARY SOURCE TITLE NEVER FREE");
+    expect(payload).not.toContain("CANARY BUYER NEVER FREE");
+    if (status < 400 && body && typeof body === "object" && !Array.isArray(body)) {
+      const data = (body as { data?: Record<string, unknown> }).data;
+      const collection = data?.dealsCollection as { edges?: unknown[] } | undefined;
+      expect(collection?.edges ?? []).toEqual([]);
     }
   });
 });

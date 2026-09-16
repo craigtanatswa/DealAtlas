@@ -38,6 +38,9 @@ yarn-error.log*
 .env*
 !.env.example
 
+# e2e seed snapshot
+/tests/e2e/.seed.json
+
 # vercel
 .vercel
 

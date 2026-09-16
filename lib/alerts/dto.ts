@@ -1,4 +1,5 @@
 import { appDealPath } from "@/lib/deals/paths";
+import { safeHttpUrl } from "@/lib/deals/urls";
 import { isProEntitlement } from "@/lib/entitlements/policy";
 import type { EntitlementSnapshot } from "@/lib/entitlements/types";
 import { freeAlertCopy, proAlertCopy } from "@/lib/alerts/content";
@@ -113,8 +114,8 @@ export function toAlertDto(
   if (entitled) {
     dto.sourceTitle = payload.sourceTitle;
     dto.buyerName = payload.buyerName;
-    dto.sourceUrl = payload.sourceUrl;
-    dto.applicationUrl = payload.applicationUrl;
+    dto.sourceUrl = safeHttpUrl(payload.sourceUrl);
+    dto.applicationUrl = safeHttpUrl(payload.applicationUrl);
     dto.reference = payload.reference;
     dto.exactDeadline = payload.exactDeadline;
     dto.exactValue = payload.exactValue;

@@ -5,6 +5,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, Json } from "@/lib/db/database.types";
 import { throwIfQueryError } from "@/lib/db/errors";
 import { DEAL_PREVIEW_PUBLIC_SELECT } from "@/lib/db/preview-columns";
+import { safeHttpUrl } from "@/lib/deals/urls";
 import { isProEntitlement } from "@/lib/entitlements/policy";
 import { getCurrentEntitlement } from "@/lib/entitlements/service";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -251,8 +252,8 @@ async function loadCanonicalContext(
         dealId: deal.id,
         sourceTitle: deal.source_title ?? current.sourceTitle,
         reference: deal.reference,
-        sourceUrl: deal.source_url,
-        applicationUrl: deal.application_url,
+        sourceUrl: safeHttpUrl(deal.source_url),
+        applicationUrl: safeHttpUrl(deal.application_url),
         exactDeadline: deal.submission_deadline,
         exactValue: deal.exact_value_text,
         estimatedRenewalDate: deal.estimated_renewal_date,

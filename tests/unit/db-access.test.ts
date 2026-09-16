@@ -137,4 +137,10 @@ describe("typed data-access boundaries", () => {
     expect(read("lib/db/public-schema.ts")).not.toContain("admin_audit_events");
     expect(read("lib/admin/actions.ts")).toContain("requireAdminAction");
   });
+
+  it("does not expose graphql_public through the local Data API config", () => {
+    const config = read("supabase/config.toml");
+    expect(config).toMatch(/schemas\s*=\s*\["public"\]/);
+    expect(config).not.toMatch(/schemas\s*=\s*\[[^\]]*graphql_public/);
+  });
 });

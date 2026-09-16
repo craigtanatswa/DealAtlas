@@ -1,5 +1,6 @@
 import { PLANS, type Plan } from "@/lib/constants";
 import { appDealPath } from "@/lib/deals/paths";
+import { safeHttpUrl } from "@/lib/deals/urls";
 import type { AlertDto } from "@/lib/alerts/types";
 
 export type EmailMessage = {
@@ -31,10 +32,15 @@ function originFrom(appUrl: string): string {
 }
 
 function absoluteHref(appUrl: string, href: string): string {
-  if (href.startsWith("http://") || href.startsWith("https://")) {
-    return href;
+  const origin = originFrom(appUrl);
+  if (href.startsWith("/") && !href.startsWith("//")) {
+    return `${origin}${href}`;
   }
-  return `${originFrom(appUrl)}${href}`;
+  return safeHttpUrl(href) ?? `${origin}/app/alerts`;
+}
+
+function safeExternalHref(value: string | null | undefined): string | null {
+  return safeHttpUrl(value);
 }
 
 export function renderAlertDigest(input: {
@@ -87,8 +93,9 @@ export function renderAlertDigest(input: {
       if (alert.exactDeadline) {
         lines.push(`Deadline: ${alert.exactDeadline}`);
       }
-      if (alert.sourceUrl) {
-        lines.push(`Source: ${alert.sourceUrl}`);
+      const sourceUrl = safeExternalHref(alert.sourceUrl);
+      if (sourceUrl) {
+        lines.push(`Source: ${sourceUrl}`);
       }
       lines.push(`Open: ${href}`);
       return lines.join("\n");
@@ -99,16 +106,18 @@ export function renderAlertDigest(input: {
   const html = input.alerts
     .map((alert) => {
       const href = absoluteHref(input.appUrl, alert.href || "/app/alerts");
+      const sourceUrl = safeExternalHref(alert.sourceUrl);
+      const applicationUrl = safeExternalHref(alert.applicationUrl);
       const extras = [
         alert.buyerName ? `<p>Buyer: ${escapeHtml(alert.buyerName)}</p>` : "",
         alert.exactDeadline
           ? `<p>Deadline: ${escapeHtml(alert.exactDeadline)}</p>`
           : "",
-        alert.sourceUrl
-          ? `<p><a href="${escapeHtml(alert.sourceUrl)}">Open source notice</a></p>`
+        sourceUrl
+          ? `<p><a href="${escapeHtml(sourceUrl)}">Open source notice</a></p>`
           : "",
-        alert.applicationUrl
-          ? `<p><a href="${escapeHtml(alert.applicationUrl)}">Open application</a></p>`
+        applicationUrl
+          ? `<p><a href="${escapeHtml(applicationUrl)}">Open application</a></p>`
           : "",
       ].join("");
       return `

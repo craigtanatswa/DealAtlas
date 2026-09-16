@@ -81,4 +81,20 @@ describe("alert DTO entitlement boundary", () => {
       }),
     ).toThrow(/protected_payload/);
   });
+
+  it("drops javascript: source URLs from Pro alert DTOs", () => {
+    const dto = toAlertDto(
+      {
+        ...CANARY_RECORD,
+        protected_payload: {
+          ...CANARY_RECORD.protected_payload as Record<string, unknown>,
+          sourceUrl: "javascript:alert(1)",
+          applicationUrl: "javascript:alert(document.cookie)",
+        },
+      },
+      PRO_ENTITLEMENT,
+    );
+    expect(dto.sourceUrl).toBeNull();
+    expect(dto.applicationUrl).toBeNull();
+  });
 });
