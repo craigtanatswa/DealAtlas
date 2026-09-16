@@ -54,9 +54,13 @@ export function createFindATenderAdapter(
 
       const url = new URL(FIND_A_TENDER_RELEASE_API);
       url.searchParams.set("limit", String(limit));
-      url.searchParams.set("updatedFrom", updatedFrom);
-      url.searchParams.set("updatedTo", updatedTo);
-      if (discoverOptions?.stages) {
+      const resumedWindow = cursor ? parseFindATenderCursorWindow(cursor) : null;
+      // Find a Tender rejects a cursor unless it is sent with the same
+      // updatedFrom/updatedTo window that created it. A new 24h window plus an
+      // old cursor, or a cursor with no window, both return HTTP 400.
+      url.searchParams.set("updatedFrom", resumedWindow?.updatedFrom ?? updatedFrom);
+      url.searchParams.set("updatedTo", resumedWindow?.updatedTo ?? updatedTo);
+      if (!resumedWindow && discoverOptions?.stages) {
         url.searchParams.set("stages", discoverOptions.stages);
       }
       if (cursor) {
@@ -145,6 +149,28 @@ export function createFindATenderAdapter(
       return parseFindATenderRaw(raw.payload, now());
     },
   };
+}
+
+function parseFindATenderCursorWindow(
+  cursor: string,
+): { updatedFrom: string; updatedTo: string } | null {
+  const fromEncoded = (text: string) => {
+    const match = /^updatedFrom=([^|]+)\|updatedTo=([^|]+)\|nextCursor=/.exec(
+      text,
+    );
+    return match?.[1] && match[2]
+      ? { updatedFrom: match[1], updatedTo: match[2] }
+      : null;
+  };
+  const direct = fromEncoded(cursor);
+  if (direct) {
+    return direct;
+  }
+  try {
+    return fromEncoded(Buffer.from(cursor, "base64").toString("utf8"));
+  } catch {
+    return null;
+  }
 }
 
 function cursorFromNextLink(next?: string): string | undefined {

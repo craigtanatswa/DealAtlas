@@ -1,18 +1,31 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 
 import { DesignSystemCatalog } from "@/components/design-system/catalog";
 import { Heading } from "@/components/layout/heading";
 import { Main } from "@/components/layout/container";
-import { isVercelProduction } from "@/lib/env/production";
+import { shouldHideDesignSystem } from "@/lib/env/production";
 
 export const metadata: Metadata = {
   title: "Component fixtures",
   robots: { index: false, follow: false },
 };
 
-export default function DesignSystemPage() {
-  if (isVercelProduction()) {
+export const dynamic = "force-dynamic";
+
+export default async function DesignSystemPage() {
+  const host = (await headers()).get("host");
+  if (
+    shouldHideDesignSystem(
+      {
+        NODE_ENV: process.env.NODE_ENV,
+        VERCEL: process.env.VERCEL,
+        VERCEL_ENV: process.env.VERCEL_ENV,
+      },
+      host,
+    )
+  ) {
     notFound();
   }
 

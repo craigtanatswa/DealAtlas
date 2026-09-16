@@ -58,12 +58,14 @@ describe("design-system anti-bypass guards", () => {
     expect(serialized).not.toMatch(/\d[\d,]+\s+(live|opportunities|deals)/i);
   });
 
-  it("hides dummy stories on Vercel production", () => {
+  it("hides dummy stories on Vercel and the public hostname", () => {
     const page = fs.readFileSync(
       path.join(ROOT, "app/(marketing)/design-system/page.tsx"),
       "utf8",
     );
-    expect(page).toContain("isVercelProduction");
+    expect(page).toContain("shouldHideDesignSystem");
     expect(page).toContain("notFound");
+    expect(page).toContain("process.env.NODE_ENV");
+    expect(page).toContain("process.env.VERCEL");
   });
 });

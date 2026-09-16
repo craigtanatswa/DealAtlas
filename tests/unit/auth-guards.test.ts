@@ -30,6 +30,7 @@ describe("auth source guards", () => {
     expect(read("lib/auth/session.ts")).toContain("forbidden()");
     expect(read("lib/auth/session.ts")).toContain("isAdminRole(account.profile.role)");
     expect(read("proxy.ts")).toContain("updateSession");
+    expect(read("proxy.ts")).toContain("shouldHideDesignSystem");
   });
 
   it("does not expose a self-promotion endpoint", () => {

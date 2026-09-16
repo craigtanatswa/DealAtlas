@@ -9,6 +9,7 @@ import { getPublicEnv } from "@/lib/env/public";
 import {
   liveDodoConfigErrors,
   looksLikeTestDodoApiKey,
+  shouldHideDesignSystem,
 } from "@/lib/env/production";
 import { assertPublicEnvHasNoSecrets, pickEnv } from "@/lib/env/shared";
 
@@ -89,6 +90,16 @@ describe("environment schemas", () => {
 });
 
 describe("production environment fail-safes", () => {
+  it("hides the design-system catalog on hosted hostnames", () => {
+    expect(shouldHideDesignSystem({ NODE_ENV: "production" })).toBe(true);
+    expect(shouldHideDesignSystem({ VERCEL: "1" })).toBe(true);
+    expect(shouldHideDesignSystem({ VERCEL_ENV: "preview" })).toBe(true);
+    expect(shouldHideDesignSystem({ NODE_ENV: "development" }, "www.dealatlas.uk")).toBe(true);
+    expect(shouldHideDesignSystem({ NODE_ENV: "development" }, "dealatlas-six.vercel.app")).toBe(true);
+    expect(shouldHideDesignSystem({ NODE_ENV: "development" }, "localhost:3000")).toBe(false);
+    expect(shouldHideDesignSystem({ NODE_ENV: "development" }, null)).toBe(false);
+  });
+
   it("rejects loopback public URLs on Vercel production", () => {
     expect(() =>
       getPublicEnv({

@@ -12,7 +12,33 @@ export const LIVE_FORBIDDEN_WEBHOOK_KEYS = new Set([
 export function isVercelProduction(
   env: Record<string, string | undefined> = process.env,
 ): boolean {
-  return env.VERCEL_ENV === "production";
+  return (
+    env.VERCEL_ENV === "production" || process.env.VERCEL_ENV === "production"
+  );
+}
+
+export function shouldHideDesignSystem(
+  env: Record<string, string | undefined> = {},
+  host?: string | null,
+): boolean {
+  const nodeEnv = env.NODE_ENV ?? process.env.NODE_ENV;
+  if (nodeEnv === "production") {
+    return true;
+  }
+  const vercel = env.VERCEL ?? process.env.VERCEL;
+  const vercelEnv = env.VERCEL_ENV ?? process.env.VERCEL_ENV;
+  if (vercel || vercelEnv === "production" || vercelEnv === "preview") {
+    return true;
+  }
+  const hostname = (host ?? "").split(":")[0]?.toLowerCase() ?? "";
+  if (!hostname || LOOPBACK_HOST.test(hostname)) {
+    return false;
+  }
+  return (
+    hostname === "dealatlas.uk" ||
+    hostname.endsWith(".dealatlas.uk") ||
+    hostname.endsWith(".vercel.app")
+  );
 }
 
 export function looksLikeTestDodoApiKey(value: string): boolean {

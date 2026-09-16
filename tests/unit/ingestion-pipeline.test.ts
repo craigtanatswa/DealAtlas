@@ -150,4 +150,52 @@ describe("Find a Tender fixture ingestion pipeline", () => {
     expect(fetched).toBe(0);
     expect(store.deals).toHaveLength(0);
   });
+
+  it("resumes Find a Tender with the stored cursor and no new date window", async () => {
+    const requested: string[] = [];
+    const adapter = createFindATenderAdapter({
+      http: {
+        async getJson(url) {
+          requested.push(url);
+          return {
+            url,
+            status: 200,
+            contentType: "application/json",
+            body: packageFromFixtures(["normal.json"]),
+            rawText: "{}",
+          };
+        },
+      },
+      now: () => NOW,
+    });
+
+    await adapter.discover(
+      "updatedFrom=2026-09-15T09:37:39|updatedTo=2026-09-16T09:37:39|nextCursor=740122",
+      { limit: 20, updatedFrom: "2026-09-15T14:36:47Z", updatedTo: "2026-09-16T14:36:47Z" },
+    );
+    await adapter.discover(
+      "dXBkYXRlZEZyb209MjAyNi0wOS0xNVQwOTozNzozOXx1cGRhdGVkVG89MjAyNi0wOS0xNlQwOTozNzozOXxuZXh0Q3Vyc29yPTc0MDEyMg==",
+      { limit: 20, updatedFrom: "2026-09-15T14:36:47Z", updatedTo: "2026-09-16T14:36:47Z" },
+    );
+    await adapter.discover(undefined, {
+      limit: 20,
+      updatedFrom: "2026-09-15T14:36:47Z",
+      updatedTo: "2026-09-16T14:36:47Z",
+    });
+
+    const resumed = new URL(requested[0] ?? "");
+    expect(resumed.searchParams.get("cursor")).toContain("nextCursor=740122");
+    expect(resumed.searchParams.get("updatedFrom")).toBe("2026-09-15T09:37:39");
+    expect(resumed.searchParams.get("updatedTo")).toBe("2026-09-16T09:37:39");
+
+    const encoded = new URL(requested[1] ?? "");
+    expect(encoded.searchParams.get("updatedFrom")).toBe("2026-09-15T09:37:39");
+    expect(encoded.searchParams.get("updatedTo")).toBe("2026-09-16T09:37:39");
+    expect(encoded.searchParams.has("cursor")).toBe(true);
+
+    const fresh = new URL(requested[2] ?? "");
+    expect(fresh.searchParams.get("cursor")).toBeNull();
+    expect(fresh.searchParams.get("updatedFrom")).toBe("2026-09-15T14:36:47Z");
+    expect(fresh.searchParams.get("updatedTo")).toBe("2026-09-16T14:36:47Z");
+  });
 });
