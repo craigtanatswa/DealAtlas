@@ -40,6 +40,9 @@ export function DealCard({
               {BUYER_SECTOR_LABELS[deal.buyerSector]}
             </Badge>
           ) : null}
+          {deal.freshnessLabel ? (
+            <Badge variant="ghost">{deal.freshnessLabel}</Badge>
+          ) : null}
         </div>
         <h3 className="font-heading text-lg leading-snug font-semibold">
           <Link

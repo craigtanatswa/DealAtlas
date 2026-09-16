@@ -211,7 +211,9 @@ describe("sitemaps, robots and category architecture", () => {
       : [];
     expect(disallow).toEqual(
       expect.arrayContaining([
+        "/app",
         "/app/",
+        "/admin",
         "/admin/",
         "/api/",
         "/auth/",

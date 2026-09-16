@@ -2,6 +2,7 @@ import "server-only";
 
 import { prettifyError } from "zod";
 
+import { liveDodoConfigErrors } from "@/lib/env/production";
 import {
   SERVER_ENV_KEYS,
   serverEnvSchema,
@@ -24,6 +25,14 @@ export function getServerEnv(
 
   if (!parsed.success) {
     throw formatEnvError("Server", prettifyError(parsed.error));
+  }
+
+  const liveErrors = liveDodoConfigErrors(parsed.data);
+  if (liveErrors.length > 0) {
+    throw formatEnvError(
+      "Server",
+      liveErrors.map((line) => `✖ ${line}`).join("\n"),
+    );
   }
 
   if (env === process.env) {

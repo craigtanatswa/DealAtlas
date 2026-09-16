@@ -1,5 +1,6 @@
 import { prettifyError } from "zod";
 
+import { productionPublicUrlError } from "@/lib/env/production";
 import {
   PUBLIC_ENV_KEYS,
   publicEnvSchema,
@@ -28,6 +29,11 @@ export function getPublicEnv(
 
   if (!parsed.success) {
     throw formatEnvError("Public", prettifyError(parsed.error));
+  }
+
+  const productionUrlError = productionPublicUrlError(env);
+  if (productionUrlError) {
+    throw formatEnvError("Public", productionUrlError);
   }
 
   if (env === process.env) {

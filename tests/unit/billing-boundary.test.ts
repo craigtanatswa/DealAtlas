@@ -22,8 +22,13 @@ describe("billing anti-bypass boundary", () => {
     expect(checkout).toContain("from \"@dodopayments/nextjs\"");
     expect(checkout).toContain("checkoutMetadata");
     expect(checkout).toContain("userId: input.user.id");
+    expect(checkout).toContain("email_confirmed_at");
+    expect(checkout).toContain("Verify your email before starting checkout.");
     expect(checkout).toContain("parseCheckoutReturnTo");
     expect(checkout).toContain("checkoutReturnUrl");
+    expect(read("lib/billing/config.ts")).toMatch(
+      /requireDodoCheckoutConfig[\s\S]*DODO_PAYMENTS_WEBHOOK_KEY/,
+    );
     expect(plans).toContain("productId");
     expect(plans).toContain("user_id");
   });
@@ -53,7 +58,10 @@ describe("billing anti-bypass boundary", () => {
     expect(handler).toContain("Webhooks");
     expect(handler).toContain("from \"@dodopayments/nextjs\"");
     expect(handler).toContain("webhook-id");
+    expect(handler).toContain("requirePlanProductMap");
     expect(process).toContain("applyBillingEvent");
+    expect(process).toContain("requirePlanProductMap");
+    expect(process).not.toContain("UNCONFIGURED_PRODUCTS");
     expect(process).not.toMatch(/grantPro|forcePro|\?success=true/);
   });
 

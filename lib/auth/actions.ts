@@ -25,7 +25,7 @@ import { getProfileForUser } from "@/lib/auth/profile";
 import { getAuthUser } from "@/lib/auth/session";
 import { mapAuthError, type ActionState } from "@/lib/auth/messages";
 import { PASSWORD_RESET_COOKIE } from "@/lib/auth/cookies";
-import { authCallbackUrl } from "@/lib/auth/urls";
+import { authCallbackUrl, authResetCallbackUrl } from "@/lib/auth/urls";
 import { queueCompanyProfileMatches } from "@/lib/matching/recalculate";
 import { parseInputSafe } from "@/lib/validation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -132,7 +132,7 @@ export async function forgotPasswordAction(
 
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.auth.resetPasswordForEmail(parsed.data.email, {
-    redirectTo: authCallbackUrl(),
+    redirectTo: authResetCallbackUrl(),
   });
 
   if (error) {

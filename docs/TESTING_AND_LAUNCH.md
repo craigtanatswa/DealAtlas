@@ -88,24 +88,6 @@ Before traffic, ensure:
 - preview leakage queue is under control
 - subscribers can consistently reach original opportunity/action path
 
-## Manual launch checklist template
-- [ ] Supabase production project linked
-- [ ] migrations applied
-- [ ] RLS tests pass
-- [ ] Vercel production env configured
-- [ ] production domain configured
-- [ ] Supabase production auth URLs configured
-- [ ] production email delivery configured
-- [ ] Dodo merchant live approval complete
-- [ ] Dodo live products created
-- [ ] Dodo live webhook created
-- [ ] controlled live billing smoke test complete
-- [ ] permitted sources active
-- [ ] scheduled ingestion active
-- [ ] monitoring active
-- [ ] backups/recovery documented
-- [ ] privacy/terms/cookie wording reviewed for actual business
-- [ ] support/contact inbox working
-- [ ] no demo data
-- [ ] no critical/high security finding
-- [ ] technical SEO smoke test complete
+## Manual launch checklist
+
+Remaining account, DNS, legal, and live-credential work lives in [`docs/LAUNCH_CHECKLIST.md`](./LAUNCH_CHECKLIST.md). Do not tick those items from the codebase. Keep the production smoke test above for the human pass after deploy.

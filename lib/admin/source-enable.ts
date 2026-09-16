@@ -6,8 +6,10 @@ import {
   type ReuseStatus,
   type SourceComplianceInput,
 } from "@/ingestion/core/compliance";
+import { listRegisteredSourceKeys } from "@/ingestion/sources/registry";
 
 export type SourceEnableInput = {
+  sourceKey?: string;
   reuseStatus: ReuseStatus;
   accessMethod: AccessMethod;
   scrapingPermitted: boolean;
@@ -22,6 +24,13 @@ export function sourceEnableBlockReason(source: SourceEnableInput): string | nul
 
   if (isScrapingAccessMethod(source.accessMethod) && !source.scrapingPermitted) {
     return "HTML/PDF discovery source cannot be enabled until scraping_permitted=true";
+  }
+
+  if (
+    source.sourceKey &&
+    !listRegisteredSourceKeys().includes(source.sourceKey)
+  ) {
+    return `source cannot be enabled without a registered adapter (${source.sourceKey})`;
   }
 
   return null;

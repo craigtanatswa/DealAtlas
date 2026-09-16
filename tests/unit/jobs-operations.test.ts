@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { redactLogValue } from "@/lib/observability/log";
 import { parseSentryDsn, createErrorReporter } from "@/lib/monitoring";
 import { isSourceDue, isSourceStale, parseCronExpression } from "@/lib/jobs/schedule";
-import { parseJobArgs } from "@/lib/jobs/cli";
+import { parseJobArgs, ingestLimitForMode } from "@/lib/jobs/cli";
 import { runIsolated } from "@/lib/jobs/isolate";
 import { runScheduledIngestion } from "@/lib/jobs/ingest";
 import { rebuildChangedPreviews } from "@/lib/jobs/previews";
@@ -31,6 +31,9 @@ describe("monitoring abstraction", () => {
     const parsed = parseSentryDsn("https://abc123def456@o1.ingest.sentry.io/99");
     expect(parsed?.projectId).toBe("99");
     expect(parsed?.envelopeUrl).toContain("/api/99/envelope/");
+    expect(
+      parseSentryDsn("https://AbC_key.123-xyz@o1.ingest.sentry.io/99")?.publicKey,
+    ).toBe("AbC_key.123-xyz");
     const reporter = createErrorReporter({ dsn: null });
     expect(reporter.configured).toBe(false);
     await reporter.captureException(new Error("boom"), { job: "ingest" });
@@ -76,6 +79,15 @@ describe("job CLI", () => {
     expect(args.mode).toBe("test");
     expect(args.smoke).toBe(true);
     expect(args.due).toBe(true);
+  });
+
+  it("caps live ingest so scheduled runs drain instead of stopping at 20 records", () => {
+    expect(ingestLimitForMode("test")).toBe(3);
+    expect(ingestLimitForMode("dry-run")).toBe(3);
+    expect(ingestLimitForMode("live", undefined, true)).toBe(3);
+    expect(ingestLimitForMode("live")).toBe(500);
+    expect(ingestLimitForMode("live", 12)).toBe(12);
+    expect(ingestLimitForMode("live", 50_000)).toBe(2000);
   });
 });
 
@@ -126,6 +138,43 @@ describe("source failure isolation", () => {
     expect(result.results).toHaveLength(2);
     expect(result.results.some((item) => item.ok)).toBe(true);
     expect(result.results.some((item) => !item.ok)).toBe(true);
+  });
+
+  it("resumes live ingest from the latest stored cursor", async () => {
+    const seen: Array<string | undefined> = [];
+    const ok: SourceAdapter = {
+      sourceKey: "find-a-tender",
+      async discover(cursor) {
+        seen.push(cursor);
+        return { items: [] };
+      },
+      async fetch() {
+        throw new Error("not used");
+      },
+      async parse() {
+        return [];
+      },
+    };
+    const store = createMemoryIngestionStore({
+      sources: [findATenderSourceRecord({ id: "source-fat" })],
+    });
+    await store.createRun({
+      sourceId: "source-fat",
+      status: "PARTIAL",
+      triggerType: "SCHEDULED",
+      cursorValue: "page-2",
+      startedAt: "2026-09-16T08:00:00.000Z",
+    });
+    const result = await runScheduledIngestion({
+      store,
+      mode: "live",
+      force: true,
+      all: true,
+      adapters: { "find-a-tender": ok },
+      sleep: async () => undefined,
+    });
+    expect(result.status).toBe("SUCCEEDED");
+    expect(seen[0]).toBe("page-2");
   });
 
   it("runs isolated tasks independently", async () => {

@@ -28,7 +28,11 @@ export function requirePlanProductMap(): PlanProductMap {
 export function requireDodoCheckoutConfig() {
   const env = getServerEnv();
   const products = requirePlanProductMap();
-  if (!env.DODO_PAYMENTS_API_KEY || !env.DODO_PAYMENTS_RETURN_URL) {
+  if (
+    !env.DODO_PAYMENTS_API_KEY ||
+    !env.DODO_PAYMENTS_RETURN_URL ||
+    !env.DODO_PAYMENTS_WEBHOOK_KEY
+  ) {
     throw new BillingConfigError("Dodo checkout is not configured.");
   }
   return {

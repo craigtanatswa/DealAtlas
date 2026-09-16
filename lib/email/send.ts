@@ -4,6 +4,7 @@ import { Resend } from "resend";
 
 import { getServerEnv } from "@/lib/env/server";
 import { getPublicEnv } from "@/lib/env/public";
+import { isUnsafeTransactionalFrom } from "@/lib/env/production";
 import { structuredLog } from "@/lib/observability/log";
 import { renderAlertDigest } from "@/lib/email/render";
 import { PLANS } from "@/lib/constants";
@@ -12,16 +13,17 @@ import type { EmailMessage, EmailSendResult, EmailSender } from "@/lib/email/ren
 export type { EmailMessage, EmailSendResult, EmailSender } from "@/lib/email/render";
 export { renderAlertDigest } from "@/lib/email/render";
 
-const DEFAULT_FROM = "DealAtlas <alerts@localhost>";
-
 export function emailProviderConfigured(
-  env: { RESEND_API_KEY?: string | null } | null = null,
+  env: {
+    RESEND_API_KEY?: string | null;
+    DEALATLAS_EMAIL_FROM?: string | null;
+  } | null = null,
 ): boolean {
-  const apiKey =
-    env && "RESEND_API_KEY" in env
-      ? env.RESEND_API_KEY
-      : getServerEnv().RESEND_API_KEY;
-  return Boolean(apiKey);
+  const resolved = env ?? getServerEnv();
+  return (
+    Boolean(resolved.RESEND_API_KEY) &&
+    !isUnsafeTransactionalFrom(resolved.DEALATLAS_EMAIL_FROM)
+  );
 }
 
 export function createEmailSender(options?: {
@@ -31,8 +33,7 @@ export function createEmailSender(options?: {
   const env = options && "apiKey" in options ? null : getServerEnv();
   const apiKey =
     options && "apiKey" in options ? (options.apiKey ?? null) : (env?.RESEND_API_KEY ?? null);
-  const from =
-    options?.from ?? env?.DEALATLAS_EMAIL_FROM ?? DEFAULT_FROM;
+  const fromAddress = (options?.from ?? env?.DEALATLAS_EMAIL_FROM)?.trim() ?? "";
 
   if (!apiKey) {
     return {
@@ -47,11 +48,24 @@ export function createEmailSender(options?: {
     };
   }
 
+  if (isUnsafeTransactionalFrom(fromAddress)) {
+    return {
+      async send(message) {
+        structuredLog({
+          job: "email",
+          msg: "email_skipped_unsafe_from",
+          subject: message.subject,
+        });
+        return { id: null, skipped: true };
+      },
+    };
+  }
+
   const resend = new Resend(apiKey);
   return {
     async send(message: EmailMessage): Promise<EmailSendResult> {
       const result = await resend.emails.send({
-        from,
+        from: fromAddress,
         to: message.to,
         subject: message.subject,
         text: message.text,

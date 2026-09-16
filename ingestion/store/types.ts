@@ -345,6 +345,7 @@ export type IngestionStore = {
       Omit<IngestionRunRecord, "id" | "sourceId" | "triggerType">
     >,
   ): Promise<void>;
+  latestIncompleteCursor(sourceId: string): Promise<string | null>;
 
   findRawRecord(
     sourceId: string,

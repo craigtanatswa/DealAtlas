@@ -113,18 +113,22 @@ export function parseJobArgs(argv: string[]): JobCliArgs {
   return result;
 }
 
+export const SMOKE_INGEST_LIMIT = 3;
+export const LIVE_INGEST_DEFAULT_LIMIT = 500;
+export const LIVE_INGEST_HARD_CAP = 2000;
+
 export function ingestLimitForMode(
   mode: JobMode,
   explicit?: number,
   smoke?: boolean,
 ): number {
   if (explicit != null && Number.isFinite(explicit)) {
-    return explicit;
+    return Math.min(Math.max(1, Math.floor(explicit)), LIVE_INGEST_HARD_CAP);
   }
   if (mode === "test" || mode === "dry-run" || smoke) {
-    return 3;
+    return SMOKE_INGEST_LIMIT;
   }
-  return 20;
+  return LIVE_INGEST_DEFAULT_LIMIT;
 }
 
 export function triggerTypeFor(

@@ -50,6 +50,7 @@ export async function setSourceEnabled(input: {
   const source = await loadSourceForEnable(input.sourceId);
   if (input.enabled) {
     const blocked = sourceEnableBlockReason({
+      sourceKey: source.source_key,
       reuseStatus: source.reuse_status,
       accessMethod: source.access_method,
       scrapingPermitted: source.scraping_permitted,

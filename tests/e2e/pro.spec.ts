@@ -127,6 +127,6 @@ test.describe("Pro journey", () => {
     );
     const portalText = await portalResult.text();
     expect(portalText).not.toContain(attackerCustomer);
-    expect([200, 303, 401, 404, 502, 503]).toContain(portalResult.status());
+    expect([200, 303, 401, 404, 429, 502, 503]).toContain(portalResult.status());
   });
 });

@@ -96,6 +96,19 @@ Migrations execute in this order:
 4. `0004_security_and_rls.sql`
 5. `0005_functions_and_indexes.sql`
 6. `0006_seed_reference_data.sql`
+7. `0007_search_preview_filters.sql`
+8. `0008_find_a_tender_ocds.sql`
+9. `0009_private_source_onboarding.sql`
+10. `0010_intelligence_preview_pipeline.sql`
+11. `0011_matching_pipeline.sql`
+12. `0012_deal_match_column_privileges.sql`
+13. `0013_alert_dedupe_and_digest.sql`
+14. `0014_intelligence_query_indexes.sql`
+15. `0015_export_usage_quota.sql`
+16. `0016_admin_operations.sql`
+17. `0017_job_runs.sql`
+
+The CLI applies every numbered file. Do not skip files when pasting in the SQL Editor.`
 
 ### Alternative: Supabase SQL Editor
 Open each migration file and paste/run it in numeric order. Do not skip ahead.
@@ -275,6 +288,8 @@ Only after test mode passes:
 11. verify Customer Portal/cancellation flow.
 
 ## Phase P — Production readiness
+Manual account, DNS, legal, and live-credential work is tracked in `docs/LAUNCH_CHECKLIST.md`. Do not mark those items complete from the repository alone.
+
 Before marketing traffic:
 - production DB migrations complete
 - auth email delivery tested
@@ -285,7 +300,7 @@ Before marketing traffic:
 - private-source adapters enabled only where permitted
 - admin can inspect source/data quality
 - monitoring is live
-- backup/recovery procedure documented
+- backup/recovery procedure documented (`docs/DATABASE.md` and the checklist)
 - privacy/terms/cookie pages reviewed
 - technical SEO checks pass
 - no placeholder/demo records visible

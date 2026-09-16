@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { PUBLIC_PREVIEW_DTO_KEYS, toPublicDealPreview } from "@/lib/search/dto";
+import { PUBLIC_PREVIEW_DTO_KEYS, toDealCardData, toPublicDealPreview } from "@/lib/search/dto";
 import { publicDealPreviewMetadata } from "@/lib/search/metadata";
 import type { DealPreviewPublic } from "@/lib/db/previews";
 import {
@@ -44,6 +44,7 @@ describe("public preview DTO", () => {
     const json = JSON.stringify(dto);
 
     expect(Object.keys(dto).sort()).toEqual([...PUBLIC_PREVIEW_DTO_KEYS].sort());
+    expect(dto.freshnessLabel).toBe("Open opportunity");
     expect(findForbiddenPublicKeys(dto)).toEqual([]);
     expect(findProtectedMarkerLeaks(json)).toEqual([]);
     expect(json).not.toContain(sanitisedRow.deal_id);
@@ -108,5 +109,16 @@ describe("public preview DTO", () => {
 
   it("knows the seeded canary markers used by leak tests", () => {
     expect(SEEDED_PROTECTED_MARKERS.length).toBeGreaterThan(3);
+  });
+
+  it("computes freshness at read time and passes it to cards", () => {
+    const recent = toPublicDealPreview({
+      ...sanitisedRow,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      freshness_label: "Recently added",
+    });
+    expect(recent.freshnessLabel).toBe("New this week");
+    expect(toDealCardData(recent).freshnessLabel).toBe("New this week");
   });
 });

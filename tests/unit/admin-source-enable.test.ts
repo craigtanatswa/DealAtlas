@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { FIND_A_TENDER_SOURCE_KEY } from "@/ingestion/sources/find-a-tender/constants";
 import { canEnableSource, sourceEnableBlockReason } from "@/lib/admin/source-enable";
 
 describe("admin source enablement gates", () => {
@@ -45,5 +46,26 @@ describe("admin source enablement gates", () => {
         scrapingPermitted: false,
       }),
     ).toBe(true);
+    expect(
+      canEnableSource({
+        sourceKey: FIND_A_TENDER_SOURCE_KEY,
+        reuseStatus: "OPEN_LICENSE",
+        accessMethod: "OCDS_API",
+        scrapingPermitted: false,
+      }),
+    ).toBe(true);
+  });
+
+  it("blocks sources that do not have a registered adapter", () => {
+    expect(
+      sourceEnableBlockReason({
+        sourceKey: "not-a-registered-adapter",
+        reuseStatus: "OPEN_LICENSE",
+        accessMethod: "OCDS_API",
+        scrapingPermitted: false,
+      }),
+    ).toBe(
+      "source cannot be enabled without a registered adapter (not-a-registered-adapter)",
+    );
   });
 });

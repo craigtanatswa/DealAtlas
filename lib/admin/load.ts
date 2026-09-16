@@ -273,6 +273,7 @@ function truncateJson(value: unknown, limit = 8000): string {
 
 function mapSource(row: SourceRow): AdminSourceRow {
   const enableBlockedReason = sourceEnableBlockReason({
+    sourceKey: row.source_key,
     reuseStatus: row.reuse_status,
     accessMethod: row.access_method,
     scrapingPermitted: row.scraping_permitted,

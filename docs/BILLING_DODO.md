@@ -148,6 +148,8 @@ Test mode must cover:
 - product ID tampering rejected
 
 ## 16. Go-live checklist
+Follow `docs/LAUNCH_CHECKLIST.md` for merchant activation, live keys, and the controlled live purchase. Code-side:
+
 - switch Dodo environment to live_mode
 - add live API/webhook keys to Vercel
 - use live monthly/annual product IDs

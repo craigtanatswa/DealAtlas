@@ -160,6 +160,8 @@ describe("paid deal detail", () => {
       "/app/buyers/11111111-1111-4111-8111-111111111111",
     );
     expect(html).toContain("CANARY-REF-987654");
+    expect(html).toContain("First published");
+    expect(html).toContain("Source updated");
     expect(html).toContain("Cyber Essentials");
     expect(html).toContain("Quality");
     expect(html).toContain("Source provenance");

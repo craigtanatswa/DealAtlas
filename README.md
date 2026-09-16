@@ -55,6 +55,7 @@ Never run `db reset` against a linked production database. Never expose `SUPABAS
 - `docs/DESIGN.md` — UI design system
 - `docs/TECHNICAL_SEO.md` — technical SEO
 - `docs/TESTING_AND_LAUNCH.md` — test and launch gates
+- `docs/LAUNCH_CHECKLIST.md` — remaining manual production steps (credentials, Dodo live, DNS, legal)
 - `supabase/migrations/*.sql` — executable database migrations
 
 ## Core security rule

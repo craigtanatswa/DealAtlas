@@ -45,7 +45,7 @@ function wantsJson(request: NextRequest): boolean {
 
 export async function createAuthenticatedCheckoutResponse(input: {
   request: NextRequest;
-  user: { id: string; email?: string | null };
+  user: { id: string; email?: string | null; email_confirmed_at?: string | null };
   profile: AppProfile;
 }): Promise<NextResponse> {
   const email = input.user.email?.trim();
@@ -53,6 +53,13 @@ export async function createAuthenticatedCheckoutResponse(input: {
     return NextResponse.json(
       { error: "A verified email is required to start checkout." },
       { status: 400 },
+    );
+  }
+
+  if (!input.user.email_confirmed_at) {
+    return NextResponse.json(
+      { error: "Verify your email before starting checkout." },
+      { status: 403 },
     );
   }
 

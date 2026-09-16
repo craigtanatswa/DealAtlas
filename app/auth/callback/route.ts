@@ -32,10 +32,24 @@ export async function GET(request: NextRequest) {
     cookieStore.delete(PASSWORD_RESET_COOKIE);
   }
 
-  const fallback = pendingReset
+  const signupFlow =
+    type === "signup" ||
+    type === "invite" ||
+    type === "email" ||
+    type === "email_change" ||
+    type === "magiclink";
+  const requestedNext = request.nextUrl.searchParams.get("next");
+  const honorReset =
+    type === "recovery" ||
+    requestedNext === RESET_PASSWORD_PATH ||
+    (Boolean(pendingReset) && !signupFlow);
+  const fallback = honorReset
     ? RESET_PASSWORD_PATH
     : defaultPathForAuthType(type);
-  const next = safeNext(request, fallback);
+  const next =
+    requestedNext === RESET_PASSWORD_PATH && honorReset
+      ? RESET_PASSWORD_PATH
+      : safeNext(request, fallback);
 
   if (request.nextUrl.searchParams.get("error")) {
     return errorRedirect(

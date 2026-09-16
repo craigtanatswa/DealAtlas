@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 
 import { DesignSystemCatalog } from "@/components/design-system/catalog";
 import { Heading } from "@/components/layout/heading";
 import { Main } from "@/components/layout/container";
+import { isVercelProduction } from "@/lib/env/production";
 
 export const metadata: Metadata = {
   title: "Component fixtures",
@@ -10,6 +12,10 @@ export const metadata: Metadata = {
 };
 
 export default function DesignSystemPage() {
+  if (isVercelProduction()) {
+    notFound();
+  }
+
   return (
     <Main className="gap-8">
       <p className="text-sm font-medium text-muted-foreground">Design system</p>

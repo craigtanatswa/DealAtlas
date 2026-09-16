@@ -2,12 +2,20 @@ export async function register() {
   if (process.env.NEXT_RUNTIME !== "nodejs") {
     return;
   }
-  const { createErrorReporter } = await import("@/lib/monitoring");
-  const reporter = createErrorReporter();
-  process.on("unhandledRejection", (reason) => {
-    void reporter.captureException(reason, { job: "web", kind: "unhandledRejection" });
-  });
-  process.on("uncaughtException", (error) => {
-    void reporter.captureException(error, { job: "web", kind: "uncaughtException" });
-  });
+  const { registerNodeInstrumentation } = await import(
+    "./instrumentation.node"
+  );
+  await registerNodeInstrumentation();
+}
+
+export async function onRequestError(
+  error: unknown,
+  request: { path?: string; method?: string },
+  context: Record<string, unknown>,
+) {
+  if (process.env.NEXT_RUNTIME !== "nodejs") {
+    return;
+  }
+  const { reportRequestError } = await import("./instrumentation.node");
+  await reportRequestError(error, request, context);
 }

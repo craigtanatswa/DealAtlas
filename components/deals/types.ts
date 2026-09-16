@@ -17,6 +17,7 @@ export type DealCardData = {
   smeSuitability: SuitabilityLevel | null;
   bidComplexity: SuitabilityLevel | null;
   status: DealStatus;
+  freshnessLabel?: string | null;
   matchScore?: number | null;
   matchReasons?: string[];
 };

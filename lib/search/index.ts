@@ -13,6 +13,7 @@ export {
   type PublicDealSearchResult,
   type RankedDealSearchResult,
 } from "@/lib/search/dto";
+export { freshnessLabelAtRead } from "@/lib/search/freshness";
 export {
   getPublicDealPreviewBySlug,
   getPublicDealPreviewPageByDealId,

@@ -368,6 +368,7 @@ Included in the build pack:
 - `0014_intelligence_query_indexes.sql`
 - `0015_export_usage_quota.sql`
 - `0016_admin_operations.sql`
+- `0017_job_runs.sql`
 
 Apply in numeric order with the Supabase CLI (`npx supabase db reset` locally, or `npx supabase db push` to a linked project). Never reset or drop a linked production database.
 
@@ -406,6 +407,34 @@ Before destructive migrations:
 - document rollback
 - test against a staging/local clone
 - verify row counts and foreign-key impact
+
+### Backups and recovery
+
+This is the operator procedure. Enabling backups on the hosted project is a dashboard action; see `docs/LAUNCH_CHECKLIST.md`. Do not treat this section as proof that production PITR is already on.
+
+### What to enable
+- Use a Supabase plan that includes daily backups. Turn on **Point in Time Recovery** for production if the plan offers it.
+- Record the project ref, the AWS region, and who can restore (Dashboard → Project Settings → Infrastructure).
+- Keep Vercel, Dodo, Resend, and GitHub secrets outside Git. A database restore does not restore those.
+
+### What this repository must never do
+- Do not run `npx supabase db reset` against a linked production database.
+- Do not rewrite applied production migrations. Add a new numbered file.
+- Do not restore by copying local E2E/canary seed data into production.
+
+### Restore outline
+1. Stop ingestion/alert GitHub Actions (disable the workflow or cancel runs) so workers do not write into a half-restored database.
+2. In Supabase, restore the backup or PITR timestamp into the existing project **or** restore into a new project if you need a side-by-side check.
+3. If you restored into a new project: update Vercel and GitHub Actions `NEXT_PUBLIC_SUPABASE_*` / `SUPABASE_SECRET_KEY`, then redeploy.
+4. Re-confirm Data API schemas (`public` only) and that canonical table grants were not widened.
+5. Run a production smoke: anonymous `/deals` has no source identity; a known Pro user still has webhook-backed entitlement; admin overview loads.
+6. Re-enable scheduled jobs only after those checks.
+
+### Application-only recovery
+If the database is intact but the web app is bad: redeploy a previous Vercel production deployment. Entitlement still comes from `subscriptions` + verified webhooks, not from the checkout redirect.
+
+### RPO/RTO
+Pick values you can actually honour (for example: PITR with hourly granularity, restore measured in hours, ingestion gap until the next scheduled job). Write them next to the backup owner when you enable the hosted feature.
 
 ## 11. Query patterns
 ### Public/free

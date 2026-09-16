@@ -19,7 +19,7 @@ export type ParsedSentryDsn = {
 };
 
 const SENTRY_DSN =
-  /^(https?):\/\/([a-f0-9]+)(?::[^@]+)?@([^/]+)\/(\d+)$/i;
+  /^(https?):\/\/([A-Za-z0-9._-]+)(?::[^@]+)?@([^/]+)\/(\d+)$/i;
 
 export function parseSentryDsn(dsn: string): ParsedSentryDsn | null {
   const match = SENTRY_DSN.exec(dsn.trim());

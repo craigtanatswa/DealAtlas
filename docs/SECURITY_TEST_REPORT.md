@@ -4,7 +4,7 @@ Checked: **16 September 2026**.
 
 This report is the evidence pack for an adversarial launch pass against source leakage, entitlement bypass, billing tampering, and the four critical product journeys. Product changes were limited to closing defects found in that pass. Security was not weakened to make tests pass.
 
-**Verdict:** no known critical or high source-leak path remains in the current tree. Anonymous, Free, Pro and Admin journeys pass on a production `next start` build. Required automated gates pass.
+**Verdict:** no known critical or high source-leak path remains in the current tree. Anonymous, Free, Pro and Admin journeys pass on a production `next start` build. Required automated gates pass. Remaining work for real customers is external (credentials, Dodo live approval, DNS, legal) and is listed only in `docs/LAUNCH_CHECKLIST.md`.
 
 ---
 
@@ -21,17 +21,17 @@ This report is the evidence pack for an adversarial launch pass against source l
 
 | Gate | Command | Result |
 | --- | --- | --- |
-| Unit + integration | `npm test` (Vitest) | **74 files passed**, 1 skipped. **323 tests passed**, 2 skipped. |
+| Unit + integration | `npm test` (Vitest, local Supabase env bound) | **75 files passed**, 1 skipped. **339 tests passed**, 2 skipped. |
 | Database / pgTAP | `npm run test:db` | **PASS.** `rls.test.sql` + `schema.test.sql`, **69 tests**. Vitest integration re-run: **14 passed**, 2 skipped. |
-| Playwright E2E | `npm run test:e2e` | **8 passed** (Chromium, 1 worker, ~1.6 min). |
+| Playwright E2E | `npm run test:e2e` | **8 passed** (Chromium, 1 worker). |
 | Lint | `npm run lint` | **0 errors.** 2 pre-existing unused-variable warnings in `lib/billing/memory-store.ts` and `scripts/run-job.ts`. |
 | Typecheck | `npm run typecheck` | **PASS** (`tsc --noEmit`). |
-| Production build | `npm run build` | **PASS.** Next.js 16.3.5 Turbopack, TypeScript, 37 static pages. |
+| Production build | `npm run build` | **PASS.** Next.js 16.3.5 Turbopack, TypeScript. |
 
 Skipped Vitest cases (not launch-blocking for this pass):
 
 - `Find a Tender live smoke` — requires `INGEST_LIVE_SMOKE=1` and the live OCDS API. Admin Playwright still triggered a controlled ingestion run.
-- `public discovery HTTP responses` — skipped when `NEXT_PUBLIC_APP_URL` is unset during Vitest. The same HTML/JSON/RSC leak checks ran in Playwright against `http://127.0.0.1:3100`.
+- `public discovery HTTP responses` — skipped unless `DEALATLAS_APP_URL` is set. The same HTML/JSON/RSC leak checks ran in Playwright against `http://127.0.0.1:3100`.
 
 ---
 
@@ -78,6 +78,9 @@ These were launch-blocking or high enough to close in this pass. None of the fix
 | Local Data API exposed `graphql_public` by default. | High (extra query surface on canonical schema) | `supabase/config.toml` `schemas = ["public"]`. Restart local API for this to apply; **hosted projects must be set the same way**. |
 | pgTAP assumed a globally empty `deal_previews` table (`count(*) = 1`). After E2E/ingestion the count is larger, so a correct policy looked like a failure. | Test reliability (would block CI, not a product leak) | Anon assertions now check: published LOW fixture visible; unpublished/HIGH fixtures hidden; **no** non-LOW / unpublished rows; **no** canary text in visible preview columns. |
 | Signup used `CardTitle` rather than `<h1>`, breaking the Anonymous heading contract. | Low product, blocking for the journey spec | `components/auth/auth-card.tsx`. |
+| Live ingest defaulted to 20 records with no cursor resume, so scheduled jobs could never fill a real catalogue. | High (data-launch blocker, not a leak) | `ingestLimitForMode` live default 500 (hard cap 2,000); scheduled live runs resume `ingestion_runs.cursor_value`. |
+| Checkout could start without `DODO_PAYMENTS_WEBHOOK_KEY`, so a live card could succeed with no way to grant Pro. | High (pay-without-Pro) | `requireDodoCheckoutConfig` requires the webhook signing key; missing config still 503. |
+| Verified webhooks applied with placeholder product IDs when env product IDs were missing. | High (wrong entitlement mapping) | `handleDodoWebhook` / `processVerifiedDodoWebhook` require the plan product map or return 503. |
 
 ---
 
@@ -87,11 +90,11 @@ None of the following is a known Free/anonymous source-identity leak. They shoul
 
 1. **In-memory rate limits.** `lib/security/rate-limit.ts` is per-process. On multiple serverless instances, limits are weaker than a shared store. Abuse volume is the risk, not entitlement bypass.
 2. **`forbidden()` HTTP status.** Next.js `authInterrupts` renders `app/forbidden.tsx` (“Access denied”) while `page.goto` / some `GET`s still report **200**. Authorization is the missing Source registry / canonical data, not the status code. Operators should not treat HTTP 200 on `/admin` as “admin allowed”.
-3. **Live Dodo checkout/portal.** Local E2E uses the webhook fixture and a test/placeholder API key. Dodo Checkout Session and Customer Portal APIs returned `401 Unauthorized` against fixture customer ids. Checkout is mapped to a client error by the official adapter; portal 5xx is mapped to **502**. Production still needs a real Dodo customer, live/test API key, and webhook-sourced `dodo_customer_id` for a 303 portal redirect. Redirect/`?success=true` remains non-authoritative.
+3. **Live Dodo checkout/portal.** Local E2E uses the webhook fixture and a test/placeholder API key. Dodo Checkout Session APIs return `422` for fixture product IDs; portal 5xx is mapped to **502**, and HTTP **429** is a fail-closed rate limit. Production still needs a real Dodo customer, live API key, and webhook-sourced `dodo_customer_id` for a 303 portal redirect. Redirect/`?success=true` remains non-authoritative. `live_mode` now refuses test/placeholder keys at env load.
 4. **Hosted GraphQL / Data API config.** Local `schemas = ["public"]` is not automatically applied to the hosted Supabase project. Confirm the production API does not expose `graphql_public` or canonical tables before launch.
 5. **Kong `/graphql/v1` route.** The CLI may still advertise the URL even when the schema is not in `schemas`. The attack POST returned no canaries; keep it disabled in hosted API settings.
-6. **Find a Tender live ingest volume.** Admin E2E “Run ingestion” can write additional published LOW previews into the shared local DB. That is expected and is why pgTAP no longer asserts a global row count of 1.
-7. **Build warnings.** `instrumentation.ts` `process.on` is flagged as unsupported in the Edge runtime. Node 20 is deprecated by `@supabase/supabase-js`. Neither is a leak path.
+6. **Find a Tender live ingest volume.** Live jobs default to 500 records per source and resume the last stored cursor. Admin E2E “Run ingestion” still uses the small admin cap. pgTAP no longer asserts a global preview row count of 1.
+7. **Build warnings.** Node 20 is deprecated by `@supabase/supabase-js`. Production should use Node 22 (`.nvmrc`). Neither is a leak path.
 8. **Lint warnings.** Unused `processingError` / `finishJobRun` bindings. Clean up later; they are not security defects.
 9. **Private-source coverage.** `docs/SOURCE_COMPLIANCE_REPORT.md` still records only one automated private/supply-chain source at the OPEN_LICENSE bar. That is a data-launch gap, not an anti-leak gap.
 
@@ -99,13 +102,15 @@ None of the following is a known Free/anonymous source-identity leak. They shoul
 
 ## 7. Production follow-up (outside this pass)
 
-From `docs/TESTING_AND_LAUNCH.md`, still required on the deployed environment (not claimed here):
+Hosted credentials, DNS, Dodo merchant activation, and legal sign-off are **not** claimed here. Track them in `docs/LAUNCH_CHECKLIST.md`. From `docs/TESTING_AND_LAUNCH.md`, still required on the deployed environment:
 
 - hosted API schema matches local (`public` only, canonical grants revoked)
 - live Dodo products, webhook, and one controlled checkout → webhook → Pro reveal
 - scheduled ingestion + `npm run send-alerts` on production data
 - privacy/terms/support inboxes and monitoring
+- backups/PITR enabled on the hosted Supabase project
 
+This launch-audit pass added fail-safes only: Vercel production requires HTTPS `NEXT_PUBLIC_APP_URL`; `live_mode` requires live Dodo credentials; Node boot validates env; unsafe `DEALATLAS_EMAIL_FROM` values do not send; `/design-system` is hidden on Vercel production; checkout requires a verified email and a webhook signing key; webhooks return 503 without product IDs; live ingest drains with cursor resume. None of that completes the external checklist.
 ---
 
 ## 8. Definition of done
@@ -115,4 +120,6 @@ From `docs/TESTING_AND_LAUNCH.md`, still required on the deployed environment (n
 | No known critical/high source-leak path | **Met** — canonical tables closed to the client; Free/anon paid APIs 401/403; canaries absent from public HTML/JSON/RSC/SEO; XSS/SSRF/CSV/admin escalation covered. |
 | All critical journeys pass | **Met** — 8/8 Playwright. |
 | All required checks pass | **Met** — unit, integration (configured cases), pgTAP, Playwright, lint (errors), typecheck, production build. |
+| Production config fails safely if secrets are missing | **Met** — public/server env throw; `live_mode` rejects test keys; billing routes 503; email skips unsafe from-addresses. |
 | This report | **Met** — `docs/SECURITY_TEST_REPORT.md`. |
+| External launch actions | **Not claimed** — `docs/LAUNCH_CHECKLIST.md`. |

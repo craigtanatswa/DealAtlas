@@ -350,10 +350,17 @@ At minimum:
 
 Never reuse production secret keys in local fixtures or committed files.
 
-## 19. Deployment
-Vercel deploys web application.
+Production fail-safes:
+- `getPublicEnv()` requires `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_SUPABASE_URL`, and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`. On `VERCEL_ENV=production` the app origin must be HTTPS and not loopback.
+- `getServerEnv()` requires `SUPABASE_SECRET_KEY`. Dodo keys are optional in `test_mode` (checkout/webhook/portal then return HTTP 503). Checkout also requires the webhook signing key so a card cannot succeed without a way to grant Pro. `live_mode` requires live API/webhook keys, HTTPS return URL, and live product IDs, and rejects test/placeholder credentials and local fixture product IDs.
+- Node instrumentation (`instrumentation.node.ts`) validates public and server env when a Node server starts, and `onRequestError` reports request failures.
+- Transactional email will not send from localhost or `@example.com` from-addresses even if a Resend key is present.
+- Live scheduled ingest defaults to 500 records per source and resumes the last stored cursor until the discovery window is drained.
 
-Production environment variables are configured in Vercel.
+## 19. Deployment
+Vercel deploys the web application. `.nvmrc` selects Node 22.
+
+Production environment variables are configured in Vercel. The remaining human steps are `docs/LAUNCH_CHECKLIST.md`.
 
 Supabase migrations are source-controlled and applied deliberately.
 
@@ -463,4 +470,4 @@ Retention workflows: saved deals (free quota 5), saved searches (free 1 / Pro 50
 - Display pricing copy in `lib/constants.ts` is not a billing entitlement. Dodo product IDs remain environment-only.
 - Inter is the application sans-serif (`next/font/google`), with Geist Mono for code. Semantic colour tokens in `app/globals.css` follow `docs/DESIGN.md`.
 - Visual primitives live in `components/ui`, layout in `components/layout`, shells in `components/navigation`, deal display in `components/deals`, and empty/loading/error patterns in `components/feedback`.
-- Dummy Deal card stories live in `components/deals/fixtures.ts` and `/design-system` (noindex). They are not live product statistics. Locked-field components accept labels/benefits only and must not receive protected values.
+- Dummy Deal card stories live in `components/deals/fixtures.ts` and `/design-system` (noindex, not in public nav, and `notFound()` when `VERCEL_ENV=production`). They are not live product statistics. Locked-field components accept labels/benefits only and must not receive protected values.

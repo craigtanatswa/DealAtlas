@@ -3,6 +3,8 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
+import { productionAuthRedirectUrls } from "@/lib/auth/urls";
+
 const ROOT = path.resolve(__dirname, "../..");
 
 function read(relativePath: string) {
@@ -63,5 +65,23 @@ describe("auth source guards", () => {
     expect(callback).toContain("sanitizeRedirectPath");
     expect(callback).toContain("exchangeCodeForSession");
     expect(callback).toContain("verifyOtp");
+  });
+
+  it("sends password reset links to the callback with next=/reset-password", () => {
+    expect(read("lib/auth/actions.ts")).toContain("authResetCallbackUrl");
+    expect(read("lib/auth/urls.ts")).toContain("?next=${RESET_PASSWORD_PATH}");
+    const callback = read("app/auth/callback/route.ts");
+    expect(callback).toContain("honorReset");
+    expect(callback).toContain('type === "recovery"');
+    expect(callback).toContain("signupFlow");
+  });
+
+  it("lists production auth redirect URLs from the public origin", () => {
+    expect(productionAuthRedirectUrls("https://app.example")).toEqual([
+      "https://app.example/auth/callback",
+      "https://app.example/auth/callback?next=/app",
+      "https://app.example/auth/callback?next=/reset-password",
+      "https://app.example/auth/confirm",
+    ]);
   });
 });

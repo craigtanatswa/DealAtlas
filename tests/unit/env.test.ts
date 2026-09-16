@@ -1,9 +1,18 @@
+import fs from "node:fs";
+import path from "node:path";
+
 import { describe, expect, it } from "vitest";
 
 import { PUBLIC_ENV_KEYS, publicEnvSchema } from "@/lib/env/public-schema";
 import { SERVER_ENV_KEYS, serverEnvSchema } from "@/lib/env/server-schema";
 import { getPublicEnv } from "@/lib/env/public";
+import {
+  liveDodoConfigErrors,
+  looksLikeTestDodoApiKey,
+} from "@/lib/env/production";
 import { assertPublicEnvHasNoSecrets, pickEnv } from "@/lib/env/shared";
+
+const ROOT = path.resolve(__dirname, "../..");
 
 const validPublicEnv = {
   NEXT_PUBLIC_APP_URL: "http://localhost:3000",
@@ -69,10 +78,6 @@ describe("environment schemas", () => {
     expect(getPublicEnv(validPublicEnv)).toMatchObject(validPublicEnv);
   });
 
-  it("loads public env through the shared helper", () => {
-    expect(getPublicEnv(validPublicEnv)).toMatchObject(validPublicEnv);
-  });
-
   it("treats blank env values as missing", () => {
     const picked = pickEnv(
       { NEXT_PUBLIC_APP_URL: "   " },
@@ -80,5 +85,99 @@ describe("environment schemas", () => {
     );
 
     expect(picked.NEXT_PUBLIC_APP_URL).toBeUndefined();
+  });
+});
+
+describe("production environment fail-safes", () => {
+  it("rejects loopback public URLs on Vercel production", () => {
+    expect(() =>
+      getPublicEnv({
+        ...validPublicEnv,
+        VERCEL_ENV: "production",
+      }),
+    ).toThrow(/HTTPS/);
+  });
+
+  it("accepts an HTTPS public origin on Vercel production", () => {
+    expect(
+      getPublicEnv({
+        NEXT_PUBLIC_APP_URL: "https://www.dealatlas.example",
+        NEXT_PUBLIC_SUPABASE_URL: "https://example.supabase.co",
+        NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "publishable-key",
+        VERCEL_ENV: "production",
+      }).NEXT_PUBLIC_APP_URL,
+    ).toBe("https://www.dealatlas.example");
+  });
+
+  it("allows missing Dodo keys in test_mode", () => {
+    expect(
+      liveDodoConfigErrors({
+        DODO_PAYMENTS_ENVIRONMENT: "test_mode",
+      }),
+    ).toEqual([]);
+  });
+
+  it("rejects live_mode without live Dodo credentials", () => {
+    const errors = liveDodoConfigErrors({
+      DODO_PAYMENTS_ENVIRONMENT: "live_mode",
+    });
+    expect(errors.join("\n")).toMatch(/DODO_PAYMENTS_API_KEY/);
+    expect(errors.join("\n")).toMatch(/WEBHOOK_KEY/);
+    expect(errors.join("\n")).toMatch(/PRODUCT_ID/);
+  });
+
+  it("rejects live_mode when the API key looks like a test credential", () => {
+    expect(looksLikeTestDodoApiKey("dodo_test_not_for_production")).toBe(true);
+    expect(looksLikeTestDodoApiKey("dodo_live_prod_key")).toBe(false);
+    expect(
+      liveDodoConfigErrors({
+        DODO_PAYMENTS_ENVIRONMENT: "live_mode",
+        DODO_PAYMENTS_API_KEY: "dodo_test_not_for_production",
+        DODO_PAYMENTS_WEBHOOK_KEY: "whsec_live_example_secret",
+        DODO_PAYMENTS_RETURN_URL: "https://www.dealatlas.example/checkout/success",
+        DODO_PRO_MONTHLY_PRODUCT_ID: "pdt_live_monthly",
+        DODO_PRO_ANNUAL_PRODUCT_ID: "pdt_live_annual",
+      }).join("\n"),
+    ).toMatch(/test or placeholder/);
+  });
+
+  it("accepts complete live_mode Dodo configuration", () => {
+    expect(
+      liveDodoConfigErrors({
+        DODO_PAYMENTS_ENVIRONMENT: "live_mode",
+        DODO_PAYMENTS_API_KEY: "dodo_live_prod_key",
+        DODO_PAYMENTS_WEBHOOK_KEY: "whsec_live_example_secret",
+        DODO_PAYMENTS_RETURN_URL: "https://www.dealatlas.example/checkout/success",
+        DODO_PRO_MONTHLY_PRODUCT_ID: "pdt_live_monthly",
+        DODO_PRO_ANNUAL_PRODUCT_ID: "pdt_live_annual",
+      }),
+    ).toEqual([]);
+  });
+
+  it("applies live_mode checks when loading server env", () => {
+    const source = fs.readFileSync(
+      path.join(ROOT, "lib/env/server.ts"),
+      "utf8",
+    );
+    expect(source).toContain("liveDodoConfigErrors");
+  });
+
+  it("validates env on the Node instrumentation path, not Edge", () => {
+    const entry = fs.readFileSync(
+      path.join(ROOT, "instrumentation.ts"),
+      "utf8",
+    );
+    const node = fs.readFileSync(
+      path.join(ROOT, "instrumentation.node.ts"),
+      "utf8",
+    );
+    expect(entry).toContain('NEXT_RUNTIME !== "nodejs"');
+    expect(entry).toContain("instrumentation.node");
+    expect(entry).toContain("onRequestError");
+    expect(entry).not.toContain("process.on");
+    expect(node).toContain("getServerEnv");
+    expect(node).toContain("getPublicEnv");
+    expect(node).toContain("process.on");
+    expect(node).toContain("reportRequestError");
   });
 });

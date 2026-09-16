@@ -591,6 +591,18 @@ export function createSupabaseIngestionStore(
         metadata: (row.metadata ?? {}) as Record<string, unknown>,
       } satisfies IngestionRunRecord;
     },
+    async latestIncompleteCursor(sourceId) {
+      const result = await client
+        .from("ingestion_runs")
+        .select("cursor_value")
+        .eq("source_id", sourceId)
+        .not("cursor_value", "is", null)
+        .order("started_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      const row = throwIfQueryError("Load latest ingestion cursor", result);
+      return row?.cursor_value ?? null;
+    },
     async updateRun(id, patch) {
       const update: Database["public"]["Tables"]["ingestion_runs"]["Update"] = {};
       if (patch.status !== undefined) update.status = patch.status;

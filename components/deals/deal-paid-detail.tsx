@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/card";
 import { BUYER_SECTOR_LABELS } from "@/lib/constants";
 import {
+  formatDealDate,
   formatDealDateTime,
   formatDealMoney,
   formatDealValueRange,
@@ -105,6 +106,14 @@ export function DealPaidDetail({
           {deal.mainCategory ? (
             <SnapshotItem label="Category" value={deal.mainCategory} />
           ) : null}
+          <SnapshotItem
+            label="First published"
+            value={formatDealDate(deal.firstPublishedAt)}
+          />
+          <SnapshotItem
+            label="Source updated"
+            value={formatDealDate(deal.latestSourceAt)}
+          />
         </dl>
         <div className="flex flex-wrap gap-3">
           {save}

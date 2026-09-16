@@ -15,7 +15,9 @@ export const PUBLIC_INDEXABLE_PATHS = [
 export type PublicIndexablePath = (typeof PUBLIC_INDEXABLE_PATHS)[number];
 
 export const ROBOTS_DISALLOW = [
+  "/app",
   "/app/",
+  "/admin",
   "/admin/",
   "/api/",
   "/auth/",

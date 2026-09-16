@@ -7,7 +7,7 @@ import { Heading, Text } from "@/components/layout/heading";
 import { Main } from "@/components/layout/container";
 import { Button } from "@/components/ui/button";
 import { listAlertCentre } from "@/lib/alerts/centre";
-import { assertAlertDto } from "@/lib/alerts/dto";
+import { assertAlertDto, assertFreeAlertDto } from "@/lib/alerts/dto";
 import { isEmailVerified, requireUser } from "@/lib/auth/session";
 import { PLANS } from "@/lib/constants";
 
@@ -21,7 +21,13 @@ export const metadata: Metadata = {
 export default async function AlertsPage() {
   const { user } = await requireUser("/app/alerts");
   const centre = await listAlertCentre({ userId: user.id });
-  centre.items.forEach((item) => assertAlertDto(item));
+  centre.items.forEach((item) => {
+    if (centre.plan === PLANS.PRO) {
+      assertAlertDto(item);
+    } else {
+      assertFreeAlertDto(item);
+    }
+  });
   const verified = isEmailVerified(user);
 
   return (

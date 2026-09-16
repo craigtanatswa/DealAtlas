@@ -227,6 +227,16 @@ export function createMemoryIngestionStore(seed?: {
         Object.assign(run, patch);
       }
     },
+    async latestIncompleteCursor(sourceId) {
+      const ranked = state.runs
+        .filter((run) => run.sourceId === sourceId && Boolean(run.cursorValue))
+        .sort((left, right) => {
+          const leftStarted = Date.parse(left.startedAt ?? "") || 0;
+          const rightStarted = Date.parse(right.startedAt ?? "") || 0;
+          return rightStarted - leftStarted;
+        });
+      return ranked[0]?.cursorValue ?? null;
+    },
     async findRawRecord(sourceId, externalRecordId, contentHash) {
       return (
         state.rawRecords.find(

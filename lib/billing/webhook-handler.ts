@@ -3,7 +3,10 @@ import "server-only";
 import { Webhooks } from "@dodopayments/nextjs";
 import { NextRequest, NextResponse } from "next/server";
 
-import { requireDodoWebhookKey } from "@/lib/billing/config";
+import {
+  requireDodoWebhookKey,
+  requirePlanProductMap,
+} from "@/lib/billing/config";
 import { BillingConfigError } from "@/lib/billing/errors";
 import { processVerifiedDodoWebhook } from "@/lib/billing/process";
 
@@ -13,6 +16,7 @@ export async function handleDodoWebhook(
   let webhookKey: string;
   try {
     webhookKey = requireDodoWebhookKey();
+    requirePlanProductMap();
   } catch (error) {
     if (error instanceof BillingConfigError) {
       return new NextResponse(error.message, { status: 503 });

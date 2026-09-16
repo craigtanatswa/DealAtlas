@@ -11,6 +11,7 @@ import {
   type DealStatus,
   type DealType,
 } from "@/lib/search/filters";
+import { freshnessLabelAtRead } from "@/lib/search/freshness";
 
 const SUITABILITY_LEVELS = ["LOW", "MEDIUM", "HIGH", "UNKNOWN"] as const;
 
@@ -148,6 +149,14 @@ function parseBuyerSector(value: unknown): BuyerSector {
   return "OTHER";
 }
 
+function rowTimestamp(
+  row: DealPreviewPublic | DealPreviewSearchRow,
+  key: "created_at" | "updated_at",
+): string | null {
+  const value = (row as Partial<DealPreviewPublic>)[key];
+  return typeof value === "string" ? value : null;
+}
+
 export function toPublicDealPreview(
   row: DealPreviewPublic | DealPreviewSearchRow,
 ): PublicDealPreview {
@@ -171,7 +180,11 @@ export function toPublicDealPreview(
     relevanceTags: Array.isArray(row.relevance_tags)
       ? row.relevance_tags.filter((tag): tag is string => typeof tag === "string").slice(0, 12)
       : [],
-    freshnessLabel: row.freshness_label,
+    freshnessLabel: freshnessLabelAtRead({
+      createdAt: rowTimestamp(row, "created_at"),
+      updatedAt: rowTimestamp(row, "updated_at"),
+      stored: row.freshness_label,
+    }),
   };
 }
 
@@ -192,6 +205,7 @@ export function toDealCardData(
     smeSuitability: preview.smeSuitability,
     bidComplexity: preview.bidComplexity,
     status: preview.status,
+    freshnessLabel: preview.freshnessLabel,
     matchScore: matchScore ?? null,
     matchReasons: (matchReasons ?? []).slice(0, 3),
   };

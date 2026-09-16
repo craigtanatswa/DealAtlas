@@ -162,13 +162,18 @@ export async function runScheduledIngestion(options: {
     async (source) => {
       const adapter =
         options.adapters?.[source.sourceKey] ?? getSourceAdapter(source.sourceKey);
+      const cursor =
+        options.cursor ??
+        (mode === "live" && !options.smoke
+          ? ((await options.store.latestIncompleteCursor(source.id)) ?? undefined)
+          : undefined);
       const result = await runIngestion({
         sourceKey: source.sourceKey,
         store: options.store,
         adapter,
         triggerType: triggerTypeFor(mode, Boolean(options.due), options.smoke),
         limit: ingestLimitForMode(mode, options.limit, options.smoke),
-        cursor: options.cursor,
+        cursor,
         updatedFrom: options.updatedFrom,
         updatedTo: options.updatedTo,
         now,
