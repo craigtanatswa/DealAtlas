@@ -8,7 +8,7 @@ import {
   sanitizeRedirectPath,
 } from "@/lib/auth/redirect";
 import { parseEmailOtpType } from "@/lib/auth/otp";
-import { PASSWORD_RESET_COOKIE } from "@/lib/auth/cookies";
+import { OAUTH_NEXT_COOKIE, PASSWORD_RESET_COOKIE } from "@/lib/auth/cookies";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 function errorRedirect(request: NextRequest, code: string) {
@@ -31,6 +31,10 @@ export async function GET(request: NextRequest) {
   if (pendingReset) {
     cookieStore.delete(PASSWORD_RESET_COOKIE);
   }
+  const pendingOAuthNext = cookieStore.get(OAUTH_NEXT_COOKIE);
+  if (pendingOAuthNext) {
+    cookieStore.delete(OAUTH_NEXT_COOKIE);
+  }
 
   const signupFlow =
     type === "signup" ||
@@ -43,18 +47,26 @@ export async function GET(request: NextRequest) {
     type === "recovery" ||
     requestedNext === RESET_PASSWORD_PATH ||
     (Boolean(pendingReset) && !signupFlow);
+  const oauthError = request.nextUrl.searchParams.get("error");
   const fallback = honorReset
     ? RESET_PASSWORD_PATH
-    : defaultPathForAuthType(type);
+    : pendingOAuthNext
+      ? sanitizeRedirectPath(pendingOAuthNext.value)
+      : defaultPathForAuthType(type);
   const next =
     requestedNext === RESET_PASSWORD_PATH && honorReset
       ? RESET_PASSWORD_PATH
       : safeNext(request, fallback);
 
-  if (request.nextUrl.searchParams.get("error")) {
+  if (oauthError) {
+    const cancelled = oauthError === "access_denied";
     return errorRedirect(
       request,
-      type === "recovery" ? "reset_failed" : "auth_callback_failed",
+      type === "recovery"
+        ? "reset_failed"
+        : cancelled
+          ? "oauth_denied"
+          : "auth_callback_failed",
     );
   }
 

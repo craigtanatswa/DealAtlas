@@ -127,6 +127,24 @@ In Supabase:
 4. Enable email/password sign-up.
 5. Require email verification for production.
 6. Configure production SMTP/email delivery before launch if Supabase default email limits are insufficient.
+7. Auth emails: branded HTML lives in `supabase/templates/` and is wired in `config.toml` for local GoTrue. After changing copy, run `node supabase/templates/generate.mjs`. On the hosted project, paste the same HTML into Authentication → Email Templates (or PATCH `mailer_templates_*` / `mailer_subjects_*` via the Management API). Links must use `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=…` so PKCE `verifyOtp` runs on the server; do not make `{{ .ConfirmationURL }}` the primary button (email scanners prefetch and consume it).
+8. Optional Google sign-in (`Sign up / Sign in with Google` on `/login` and `/signup`).
+   Google’s account picker shows the **OAuth redirect hostname**. The hosted Auth URL is `wdcanzikysdsvdlqbrbd.supabase.co`, which looks untrusted. Do **not** pay for a Supabase custom domain to fix this. The free approach is to send Google back to DealAtlas (`/auth/google` on the live origin), then pass the ID token into Supabase.
+   1. In [Google Auth Platform](https://console.cloud.google.com/auth/clients) use the existing **Web application** client (same client ID as Authentication → Providers → Google).
+   2. Authorized JavaScript origins (include both hosts; the app uses `window.location.origin`):
+      - `http://localhost:3000`
+      - `https://dealatlas.uk`
+      - `https://www.dealatlas.uk`
+   3. Authorized redirect URIs (this is the **DealAtlas** return URL, not `*.supabase.co`):
+      - `http://localhost:3000/auth/google`
+      - `https://dealatlas.uk/auth/google`
+      - `https://www.dealatlas.uk/auth/google`
+   4. Branding / consent screen: app name **DealAtlas**, authorised domain **dealatlas.uk**, homepage `https://www.dealatlas.uk`. That is free. Brand verification is optional.
+   5. Paste the **client ID only** into Vercel / `.env.local` as `NEXT_PUBLIC_GOOGLE_CLIENT_ID`. The client secret stays in the Supabase Google provider. Never put the secret in Next.js.
+   6. Keep the Google provider enabled in hosted Authentication → Providers → Google with that same client ID and secret, so `signInWithIdToken` can verify the token.
+   7. If password accounts should continue with the same Gmail address, enable automatic linking of identities that share a verified email.
+   8. Cloudflare already hosts `dealatlas.uk` for the Next.js app. You do **not** need a new Cloudflare DNS record for this. A CNAME to `*.supabase.co` without Supabase’s paid custom-domain add-on will not get a valid certificate and will not change the Google screen.
+   9. Paid alternative only if you later want the API itself on `api.dealatlas.uk`: Supabase custom domains (paid add-on). A vanity `dealatlas.supabase.co` subdomain still shows `supabase.co` to Google.
 
 Create your own account after auth is implemented. Promote your account to ADMIN manually in Supabase SQL Editor only after signup:
 ```sql

@@ -129,7 +129,7 @@ Launch authentication:
 - email/password
 - verified email before using saved searches/alerts
 - password reset
-- optional Google OAuth only after core auth is stable
+- optional Google OAuth (`Sign up / Sign in with Google`) using an ID token returned to `dealatlas.uk`, so Google’s account picker does not show `*.supabase.co`
 
 `profiles.id` equals `auth.users.id`.
 
@@ -422,7 +422,7 @@ Anonymous and free visitors search and view `/deals` and `/deals/[slug]` through
 Protected Deal JSON lives at `/api/deals/[id]`. The route authenticates with `getAuthUser()`, resolves FREE/PRO via `getCurrentEntitlement()` from the local `subscriptions` mirror, then loads canonical rows with the server-only admin client and maps an explicit paid DTO. Query parameters and client plan labels cannot grant Pro. `/app/deals/[id]` shows the paid UI for entitled users and the sanitised preview plus limited match reasons for free users.
 
 ### Authentication
-Launch authentication is email/password with Supabase SSR helpers.
+Launch authentication is email/password plus optional Google OAuth with Supabase SSR helpers. When `NEXT_PUBLIC_GOOGLE_CLIENT_ID` is set, Google sign-in uses an OpenID ID token returned to `/auth/google` on the DealAtlas origin, then `signInWithIdToken`. That keeps Google’s “continue to” hostname on `dealatlas.uk`. The older `signInWithOAuth` redirect through `*.supabase.co` remains a fallback when the public client ID is unset. Google client secrets stay in the Supabase provider config, not in Next.js env.
 
 - `proxy.ts` refreshes the Auth session on each matched request and redirects unauthenticated users away from `/app` and `/admin`.
 - `lib/auth/session.ts` loads the user with `getUser()` and authorizes from `profiles.role` only. Client metadata is not trusted.

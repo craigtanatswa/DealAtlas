@@ -38,4 +38,18 @@ describe("application role resolution", () => {
       ROLES.USER,
     );
   });
+
+  it("uses Google full_name metadata for display name recovery", () => {
+    const insert = profileInsertFromAuthUser({
+      id: "11111111-1111-4111-8111-111111111111",
+      email: "user@example.com",
+      user_metadata: {
+        full_name: "Ada Lovelace",
+        role: "ADMIN",
+      },
+    });
+
+    expect(insert.display_name).toBe("Ada Lovelace");
+    expect(insert.role).toBe(ROLES.USER);
+  });
 });

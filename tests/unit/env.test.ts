@@ -70,13 +70,24 @@ describe("environment schemas", () => {
       ...validPublicEnv,
       NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION: "token",
       NEXT_PUBLIC_GA_MEASUREMENT_ID: "G-ABC123DEF",
+      NEXT_PUBLIC_GOOGLE_CLIENT_ID: "123-abc.apps.googleusercontent.com",
     });
     expect(parsed.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION).toBe("token");
     expect(parsed.NEXT_PUBLIC_GA_MEASUREMENT_ID).toBe("G-ABC123DEF");
+    expect(parsed.NEXT_PUBLIC_GOOGLE_CLIENT_ID).toBe(
+      "123-abc.apps.googleusercontent.com",
+    );
   });
 
   it("loads public env through the shared helper", () => {
     expect(getPublicEnv(validPublicEnv)).toMatchObject(validPublicEnv);
+  });
+
+  it("statically reads public process.env keys so Next can inline them for the browser", () => {
+    const source = fs.readFileSync(path.join(ROOT, "lib/env/public.ts"), "utf8");
+    for (const key of PUBLIC_ENV_KEYS) {
+      expect(source).toContain(`process.env.${key}`);
+    }
   });
 
   it("treats blank env values as missing", () => {

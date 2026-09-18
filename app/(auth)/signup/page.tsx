@@ -19,7 +19,7 @@ export default async function SignupPage({
   return (
     <AuthCard
       title="Create your account"
-      description="Sign up with email and password. We will send a verification link when email confirmation is enabled."
+      description="Sign up with Google, or with email and password. Email sign-up sends a verification link when confirmation is enabled."
     >
       <SignupForm nextPath={nextPath} />
     </AuthCard>

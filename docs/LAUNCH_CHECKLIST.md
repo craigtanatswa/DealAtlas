@@ -33,14 +33,14 @@ Required for the app to boot and serve public pages:
 
 Required before paid checkout, webhooks, or the customer portal will succeed (missing values fail closed with HTTP 503 in `test_mode`; `live_mode` refuses to start without them). Checkout is also refused until the webhook signing key is present, so a live card cannot succeed without a way to grant Pro.
 
-These keys are present on Vercel Production. They are still **test-mode** credentials and a **USD** test catalogue until Dodo live KYC is done.
+These keys are present on Vercel Production as **live_mode** credentials and the live GBP catalogue.
 
-- [x] `DODO_PAYMENTS_API_KEY` (present; still test until live KYC)
-- [x] `DODO_PAYMENTS_WEBHOOK_KEY` (present; still test until live KYC)
-- [ ] `DODO_PAYMENTS_ENVIRONMENT=live_mode` when taking real payments (`test_mode` is the code default and is for test keys only)
+- [x] `DODO_PAYMENTS_API_KEY` (live)
+- [x] `DODO_PAYMENTS_WEBHOOK_KEY` (live signing secret for `ep_3JTPyp2kdKIwRxBwOhSrb1XCPa7`)
+- [x] `DODO_PAYMENTS_ENVIRONMENT=live_mode`
 - [x] `DODO_PAYMENTS_RETURN_URL` (`https://www.dealatlas.uk/checkout/success`)
-- [x] `DODO_PRO_MONTHLY_PRODUCT_ID` (test product `pdt_0NnaKYk02MWx8vLeGYwrZ`)
-- [x] `DODO_PRO_ANNUAL_PRODUCT_ID` (test product `pdt_0NnaRg8xH5ktJLs6YBiVu`)
+- [x] `DODO_PRO_MONTHLY_PRODUCT_ID` (`pdt_0Nnp8ZnCM98P6NiDSCtYn`; temporarily priced at £2 for the owner test)
+- [x] `DODO_PRO_ANNUAL_PRODUCT_ID` (`pdt_0Nnp8Zck9m8BRHsg2JaHm`; £399.90)
 
 Required before DealAtlas can send alert/transactional email (a Resend key with a localhost/`example.com` from-address is treated as unconfigured and will not send):
 
@@ -65,16 +65,18 @@ After changing Production env vars, redeploy.
 - [x] Link the CLI (`npx supabase link`) and apply migrations with `npx supabase db push`. Do **not** run `db reset` against production. (migrations `0001`–`0017` applied)
 - [x] Confirm Table Editor shows the migrated schema, including `deal_previews`, `subscriptions`, `billing_events`, `data_sources`, and `admin_audit_events`.
 - [x] Data API: exposed schemas must be `public` only. Disable `graphql_public` / GraphQL if the hosted project still lists it. Canonical tables must have no `anon` / `authenticated` grants. (anon REST on `deals` / `notices` / `organizations` is HTTP 401 / `42501`; `deal_previews` SELECT succeeds; `/graphql/v1` is not a working GraphQL API)
-- [ ] Auth URL configuration:
-  - Site URL = production origin
-  - Redirect allowlist must include every URL from `productionAuthRedirectUrls(origin)`:
-    - `https://<host>/auth/callback`
-    - `https://<host>/auth/callback?next=/app`
-    - `https://<host>/auth/callback?next=/reset-password`
-    - `https://<host>/auth/confirm`
+- [x] Auth URL configuration:
+  - Site URL = `https://www.dealatlas.uk`
+  - Redirect allowlist includes:
+    - `https://www.dealatlas.uk/auth/callback`
+    - `https://www.dealatlas.uk/auth/callback?next=/app`
+    - `https://www.dealatlas.uk/auth/callback?next=/reset-password`
+    - `https://www.dealatlas.uk/auth/confirm`
+- [ ] Google OAuth (optional): enable Authentication → Providers → Google with the web client ID/secret. Set `NEXT_PUBLIC_GOOGLE_CLIENT_ID` (public client ID only) on Vercel and locally. In Google Cloud, authorized JavaScript origins and redirect URIs must include localhost plus both `https://dealatlas.uk/auth/google` and `https://www.dealatlas.uk/auth/google` so the account picker says DealAtlas / dealatlas.uk, not `wdcanzikysdsvdlqbrbd.supabase.co`. Enable automatic linking of identities that share a verified email if existing password accounts should use Google. Do not store the Google client secret in Vercel/Next.js env. Do not rebuild production until those Google URIs are saved (the public client ID is already on Vercel).
 - [ ] Enable email/password sign-up.
-- [ ] **Require email confirmation** for production (local Supabase auto-confirms; hosted must not).
-- [ ] Configure production SMTP if Supabase built-in email limits are insufficient. Send one sign-up and one password-reset mail to a real inbox.
+- [x] **Require email confirmation** for production (hosted `enable_confirmations` is on; local Docker still auto-confirms).
+- [ ] Production SMTP is already Resend (`info@dealatlas.uk`, `smtp.resend.com`). Send one sign-up and one password-reset mail to a real inbox to confirm delivery.
+- [x] Hosted Auth email templates match `supabase/templates/` (confirm, invite, magic link, email change, recovery, reauthentication). Links use `/auth/confirm?token_hash=…`, not `{{ .ConfirmationURL }}` as the primary button.
 - [ ] Create your operator account through `/signup`, then promote it only with SQL (no public admin endpoint). Production currently has **one `USER` profile and no `ADMIN`**.
 
 ```sql
@@ -93,19 +95,20 @@ where email = 'YOUR_OPERATOR_EMAIL';
 
 Code reads product IDs and keys only from the environment. Checkout, `/api/webhooks/dodo`, and `/api/billing/portal` are ready for live keys. A checkout redirect is still not entitlement.
 
-**Test-mode already done (not customer-ready):** webhook `ep_3JJyV3HnFcz0dTvnSlsacX9AipO` posts to `https://www.dealatlas.uk/api/webhooks/dodo` and is subscribed to `subscription.active`, `renewed`, `updated`, `plan_changed`, `on_hold`, `cancelled`, `failed`, `expired`, plus `payment.succeeded` / `payment.failed`. Test products sit in collection `pdc_0NnaRiSBqARLvwDXLlsJD` at **USD** $39.99 / $399.90, not GBP £39 / £390.
+**Live catalogue (ready for a controlled purchase):** webhook `ep_3JTPyp2kdKIwRxBwOhSrb1XCPa7` posts to `https://www.dealatlas.uk/api/webhooks/dodo` with the subscription lifecycle events plus `payment.succeeded` / `payment.failed`. Products are in collection `pdc_0NnpDoWju38skQPknYs1f`. Monthly is **temporarily £2.00** (`pdt_0Nnp8ZnCM98P6NiDSCtYn`) for an owner test; restore to **£39.99** (10% inline discount as created) after that purchase. Annual is still **£399.90** (`pdt_0Nnp8Zck9m8BRHsg2JaHm`) with a 20% inline discount. Test-mode remains a separate USD catalogue and webhook.
 
-- [ ] Complete Dodo merchant / KYC / live-mode approval.
-- [ ] Create live GBP products: DealAtlas Pro Monthly and DealAtlas Pro Annual (display copy is £39 / £390; live catalogue prices are what customers pay).
-- [ ] Put both products in the same Product Collection if portal plan-switching is required.
-- [ ] Copy **live** product IDs into Vercel (not `pdt_dealatlas_pro_*` fixtures).
-- [ ] Copy the **live** API key and webhook signing secret.
-- [ ] Point the live webhook at `https://www.dealatlas.uk/api/webhooks/dodo` and subscribe to the same subscription lifecycle events (the test endpoint already uses this URL).
-- [ ] Set `DODO_PAYMENTS_ENVIRONMENT=live_mode` and redeploy. The app refuses live_mode with test/placeholder keys.
-- [ ] One controlled live purchase: checkout → signed webhook → local `subscriptions` row → Pro source reveal on a real Deal.
-- [ ] Confirm a forged/unsigned webhook is rejected.
+- [x] Complete Dodo merchant / KYC / live-mode approval. (live GBP products and live API access are active)
+- [x] Create live GBP products: DealAtlas Pro Monthly and DealAtlas Pro Annual (site copy still says £39 / £390; live amounts are what customers pay).
+- [x] Put both products in the same Product Collection (`pdc_0NnpDoWju38skQPknYs1f`).
+- [x] Copy **live** product IDs into Vercel (not `pdt_dealatlas_pro_*` fixtures).
+- [x] Copy the **live** API key and webhook signing secret.
+- [x] Point the live webhook at `https://www.dealatlas.uk/api/webhooks/dodo` and subscribe to the same subscription lifecycle events (`ep_3JTPyp2kdKIwRxBwOhSrb1XCPa7`).
+- [x] Set `DODO_PAYMENTS_ENVIRONMENT=live_mode` and redeploy. The app refuses live_mode with test/placeholder keys.
+- [ ] One controlled live purchase: checkout → signed webhook → local `subscriptions` row → Pro source reveal on a real Deal. **Use monthly while it is £2, then cancel in the Dodo portal.** Restoring the catalogue price does not change an already-created subscription.
+- [x] Confirm a forged/unsigned webhook is rejected. (`POST /api/webhooks/dodo` without Standard Webhooks headers returns HTTP 401 `Missing required headers`)
 - [ ] Open **Manage billing** and confirm the Dodo customer portal (payment method / cancel) for that customer.
 - [ ] Confirm cancellation UX shows access-until the paid-through date and that protected reveal stops when entitlement ends.
+- [ ] After the owner test, restore monthly to £39.99 (or the intended launch price) so public checkout is not left at £2.
 
 ---
 

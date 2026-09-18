@@ -13,6 +13,7 @@ const QUERY_ERROR_MESSAGES: Record<string, string> = {
   reset_failed: "That password reset link is invalid or has expired.",
   auth_callback_failed: "We could not complete sign-in from that link.",
   invalid_link: "That link is invalid or has expired.",
+  oauth_denied: "Google sign-in was cancelled. You can try again or use email.",
 };
 
 export function messageFromAuthQueryError(code: string | null | undefined): string | null {
@@ -32,6 +33,12 @@ export function mapAuthError(error: { message?: string; code?: string } | null):
 
   if (code.includes("over_email_send_rate_limit") || message.includes("rate limit")) {
     return "Too many attempts. Please wait a minute and try again.";
+  }
+  if (
+    message.includes("provider is not enabled") ||
+    message.includes("unsupported provider")
+  ) {
+    return "Google sign-in is not available yet. Use email and password.";
   }
   if (message.includes("email address") && message.includes("invalid")) {
     return "Enter a valid email address.";

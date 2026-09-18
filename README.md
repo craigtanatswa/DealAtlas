@@ -20,7 +20,7 @@ npm run dev
 
 Fill `.env.local` with local Supabase values (`npx supabase start` prints the API URL and keys). Never prefix server secrets with `NEXT_PUBLIC_`.
 
-Email/password auth is available at `/signup`, `/login`, `/forgot-password`, and `/reset-password`. Local Supabase currently auto-confirms email; hosted production should require verification. Auth emails from the local stack appear in Mailpit/Inbucket (`npx supabase status` prints the URL).
+Email/password auth is available at `/signup`, `/login`, `/forgot-password`, and `/reset-password`. Those pages also offer **Sign up / Sign in with Google**. Set `NEXT_PUBLIC_GOOGLE_CLIENT_ID` so Google’s account picker shows `dealatlas.uk` instead of `*.supabase.co` (`SETUP_STEPS.md` Phase G). Local Supabase currently auto-confirms email; hosted production should require verification. Auth emails from the local stack appear in Mailpit/Inbucket (`npx supabase status` prints the URL).
 
 ## Scripts
 | Command | Purpose |

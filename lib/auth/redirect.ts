@@ -6,6 +6,7 @@ export const RESET_PASSWORD_PATH = "/reset-password";
 export const VERIFY_EMAIL_PATH = "/verify-email";
 export const AUTH_CALLBACK_PATH = "/auth/callback";
 export const AUTH_CONFIRM_PATH = "/auth/confirm";
+export const AUTH_GOOGLE_PATH = "/auth/google";
 
 const MAX_REDIRECT_LENGTH = 256;
 
@@ -18,6 +19,7 @@ const AUTH_ENTRY_PATHS = new Set([
 const BLOCKED_REDIRECT_PATHS = new Set([
   AUTH_CALLBACK_PATH,
   AUTH_CONFIRM_PATH,
+  AUTH_GOOGLE_PATH,
   LOGIN_PATH,
   SIGNUP_PATH,
   FORGOT_PASSWORD_PATH,
@@ -61,8 +63,10 @@ export function isAuthCallbackPath(pathname: string): boolean {
   return (
     pathname === AUTH_CALLBACK_PATH ||
     pathname === AUTH_CONFIRM_PATH ||
+    pathname === AUTH_GOOGLE_PATH ||
     pathname.startsWith(`${AUTH_CALLBACK_PATH}/`) ||
-    pathname.startsWith(`${AUTH_CONFIRM_PATH}/`)
+    pathname.startsWith(`${AUTH_CONFIRM_PATH}/`) ||
+    pathname.startsWith(`${AUTH_GOOGLE_PATH}/`)
   );
 }
 

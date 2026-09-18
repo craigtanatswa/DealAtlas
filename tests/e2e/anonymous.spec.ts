@@ -52,6 +52,9 @@ test.describe("Anonymous journey", () => {
     await page.getByRole("link", { name: "Get Started" }).first().click();
     await page.waitForURL(/\/signup/);
     await expect(page.getByRole("heading", { name: "Create your account" })).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Sign up / Sign in with Google" }),
+    ).toBeVisible();
     await expectNoProtectedLeaks(page);
   });
 });

@@ -24,6 +24,7 @@ describe("auth redirect sanitization", () => {
     expect(sanitizeRedirectPath("javascript:alert(1)")).toBe(AUTH_HOME_PATH);
     expect(sanitizeRedirectPath("/app@evil.example")).toBe(AUTH_HOME_PATH);
     expect(sanitizeRedirectPath("/auth/callback")).toBe(AUTH_HOME_PATH);
+    expect(sanitizeRedirectPath("/auth/google")).toBe(AUTH_HOME_PATH);
     expect(sanitizeRedirectPath("/login")).toBe(AUTH_HOME_PATH);
   });
 

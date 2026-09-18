@@ -21,7 +21,7 @@ export default async function LoginPage({
   return (
     <AuthCard
       title="Sign in"
-      description="Use your email and password to open your DealAtlas workspace."
+      description="Sign in with Google, or use the email and password for your DealAtlas workspace."
     >
       <LoginForm nextPath={nextPath} initialError={initialError} />
     </AuthCard>

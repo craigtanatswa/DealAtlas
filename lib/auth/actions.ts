@@ -1,6 +1,6 @@
 "use server";
 
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -24,8 +24,12 @@ import {
 import { getProfileForUser } from "@/lib/auth/profile";
 import { getAuthUser } from "@/lib/auth/session";
 import { mapAuthError, type ActionState } from "@/lib/auth/messages";
-import { PASSWORD_RESET_COOKIE } from "@/lib/auth/cookies";
-import { authCallbackUrl, authResetCallbackUrl } from "@/lib/auth/urls";
+import {
+  OAUTH_NEXT_COOKIE,
+  OAUTH_NEXT_COOKIE_MAX_AGE_SECONDS,
+  PASSWORD_RESET_COOKIE,
+} from "@/lib/auth/cookies";
+import { authCallbackUrl, authCallbackUrlForRequest, authResetCallbackUrl } from "@/lib/auth/urls";
 import { queueCompanyProfileMatches } from "@/lib/matching/recalculate";
 import { parseInputSafe } from "@/lib/validation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -62,6 +66,37 @@ export async function signInAction(
   }
 
   redirect(next);
+}
+
+export async function signInWithGoogleAction(
+  _previous: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const next = sanitizeRedirectPath(formString(formData, "next") || AUTH_HOME_PATH);
+  const cookieStore = await cookies();
+  cookieStore.set(OAUTH_NEXT_COOKIE, next, {
+    httpOnly: true,
+    sameSite: "lax",
+    path: "/",
+    maxAge: OAUTH_NEXT_COOKIE_MAX_AGE_SECONDS,
+  });
+
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: {
+      redirectTo: authCallbackUrlForRequest((await headers()).get("origin")),
+      queryParams: {
+        prompt: "select_account",
+      },
+    },
+  });
+
+  if (error || !data.url) {
+    return { error: mapAuthError(error), success: null };
+  }
+
+  redirect(data.url);
 }
 
 export async function signUpAction(

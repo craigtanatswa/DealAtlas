@@ -66,6 +66,25 @@ describe("auth source guards", () => {
     expect(callback).toContain("sanitizeRedirectPath");
     expect(callback).toContain("exchangeCodeForSession");
     expect(callback).toContain("verifyOtp");
+    expect(callback).toContain("OAUTH_NEXT_COOKIE");
+  });
+
+  it("starts Google OAuth on the server and keeps the client secret out of Next.js", () => {
+    const actions = read("lib/auth/actions.ts");
+    expect(actions).toContain("signInWithGoogleAction");
+    expect(actions).toContain('provider: "google"');
+    expect(actions).toContain("signInWithOAuth");
+    expect(actions).toContain("authCallbackUrlForRequest");
+    expect(actions).toContain('sameSite: "lax"');
+    expect(read("components/auth/login-form.tsx")).toContain("GoogleSignInButton");
+    expect(read("components/auth/signup-form.tsx")).toContain("GoogleSignInButton");
+    expect(read("supabase/config.toml")).toContain("[auth.external.google]");
+    expect(read("supabase/config.toml")).toContain(
+      'secret = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_SECRET)"',
+    );
+    expect(read("lib/env/public-schema.ts")).toContain("NEXT_PUBLIC_GOOGLE_CLIENT_ID");
+    expect(read("lib/env/public-schema.ts")).not.toContain("GOOGLE_CLIENT_SECRET");
+    expect(read("lib/env/server-schema.ts")).not.toContain("GOOGLE_CLIENT");
   });
 
   it("sends password reset links to the callback with next=/reset-password", () => {
