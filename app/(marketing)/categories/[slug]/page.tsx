@@ -88,6 +88,13 @@ export default async function CategoryLandingPage({ params }: PageProps) {
         </p>
         <Heading>{landing.title}</Heading>
         <Text variant="muted">{landing.summary}</Text>
+        <p>
+          <Button asChild>
+            <Link href={`/deals?category=${encodeURIComponent(landing.name)}`}>
+              Search this category
+            </Link>
+          </Button>
+        </p>
       </div>
       {landing.body.map((paragraph) => (
         <Text key={paragraph.slice(0, 24)} variant="muted" className="max-w-3xl">
@@ -130,7 +137,7 @@ export default async function CategoryLandingPage({ params }: PageProps) {
         <p>
           <Button asChild variant="outline">
             <Link href={`/deals?category=${encodeURIComponent(landing.name)}`}>
-              Open this category in Find deals
+              View all in Find deals
             </Link>
           </Button>
         </p>

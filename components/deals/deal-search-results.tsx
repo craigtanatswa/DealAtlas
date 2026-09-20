@@ -1,10 +1,10 @@
 import Link from "next/link";
 
-import { DealCard } from "@/components/deals/deal-card";
+import { DealList } from "@/components/deals/deal-list";
 import { PaginationNav } from "@/components/deals/pagination-nav";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { Button } from "@/components/ui/button";
-import { toDealCardData, type RankedDealSearchResult } from "@/lib/search/dto";
+import type { RankedDealSearchResult } from "@/lib/search/dto";
 import type { PublicSearchFilters } from "@/lib/search/params";
 
 export function DealSearchResults({
@@ -28,27 +28,12 @@ export function DealSearchResults({
 
   return (
     <div className="flex flex-col gap-6">
-      <p
-        className="text-sm text-muted-foreground"
-        aria-live="polite"
-      >
+      <p className="text-sm text-muted-foreground tabular-nums" aria-live="polite">
         {result.total === 1
           ? "1 opportunity matches these filters."
           : `${result.total} opportunities match these filters.`}
       </p>
-      <ul className="grid gap-4">
-        {result.items.map((item) => (
-          <li key={item.preview.slug}>
-            <DealCard
-              deal={toDealCardData(
-                item.preview,
-                item.match?.score,
-                item.match?.reasons.map((reason) => reason.label),
-              )}
-            />
-          </li>
-        ))}
-      </ul>
+      <DealList items={result.items} />
       <PaginationNav
         page={result.page}
         pageSize={result.pageSize}

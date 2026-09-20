@@ -6,6 +6,11 @@ import { publicCanonicalUrl } from "@/lib/seo/urls";
 
 export const NOINDEX_ROBOTS = { index: false, follow: false } as const;
 
+export const BRAND_OPENGRAPH_IMAGE = {
+  url: "/brand/dealatlas-logo.png",
+  alt: APP_NAME,
+} as const;
+
 export function robotsFromDecision(
   decision: PublicIndexDecision,
 ): NonNullable<Metadata["robots"]> {
@@ -42,11 +47,13 @@ export function marketingPageMetadata(input: {
       type: "website",
       locale: "en_GB",
       siteName: APP_NAME,
+      images: [BRAND_OPENGRAPH_IMAGE],
     },
     twitter: {
       card: "summary",
       title: openGraphTitle,
       description: input.description,
+      images: [BRAND_OPENGRAPH_IMAGE.url],
     },
   };
 }

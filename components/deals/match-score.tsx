@@ -6,7 +6,7 @@ export function MatchScore({ score }: { score: number }) {
       className="flex items-center gap-2"
       aria-label={`Match score ${clamped} out of 100`}
     >
-      <span className="text-[0.8125rem] leading-5 font-medium text-foreground">
+      <span className="text-[0.8125rem] leading-5 font-medium text-foreground tabular-nums">
         Match {clamped}
       </span>
       <span

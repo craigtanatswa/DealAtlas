@@ -4,7 +4,7 @@ import { IntelligencePaywall } from "@/components/intelligence/paywall";
 import { ContractList } from "@/components/intelligence/lists";
 import { SimplePagination } from "@/components/intelligence/simple-pagination";
 import { EmptyState } from "@/components/feedback/empty-state";
-import { Heading, Text } from "@/components/layout/heading";
+import { PageHeader } from "@/components/layout/page-header";
 import { Main } from "@/components/layout/container";
 import { readIntelligence, requireProIntelligence } from "@/lib/intelligence/page";
 import { listContractIntelligence } from "@/lib/intelligence/protected";
@@ -51,13 +51,10 @@ export default async function ContractsPage({ searchParams }: PageProps) {
   const list = loaded.data;
   return (
     <Main className="gap-8">
-      <div className="flex flex-col gap-2">
-        <Heading>Contracts</Heading>
-        <Text variant="muted" className="max-w-3xl">
-          Dates and values come from recorded contract rows. Missing payment or
-          performance data is left blank rather than estimated.
-        </Text>
-      </div>
+      <PageHeader
+        title="Contracts"
+        description="Dates and values come from recorded contract rows. Missing payment or performance data is left blank rather than estimated."
+      />
       {list.items.length === 0 ? (
         <EmptyState
           title="No contracts recorded"

@@ -11,12 +11,12 @@ import {
 import Link from "next/link";
 
 export const LOCKED_INTELLIGENCE_FIELDS = [
-  { label: "Buyer identity", benefit: "See who is buying" },
-  { label: "Exact deadline and value", benefit: "Exact deadline/value" },
-  { label: "Source and application", benefit: "Source and application link" },
+  { label: "Buyer identity", benefit: "Available to subscribers" },
+  { label: "Original source", benefit: "Unlock source" },
+  { label: "Official notice", benefit: "Subscription required" },
+  { label: "Reference number", benefit: "Unlock full details" },
   { label: "Documents and requirements", benefit: "Documents and requirements" },
   { label: "Buyer and competitor intelligence", benefit: "Buyer/competitor intelligence" },
-  { label: "Similar opportunity alerts", benefit: "Alerts for similar opportunities" },
 ] as const;
 
 export type UnlockCtaMode = "anonymous" | "free" | "pro";
@@ -64,11 +64,11 @@ export function UnlockPanel({
           {heading}
         </h2>
         <CardDescription>
-          Pro reveals paid intelligence after a verified subscription. This panel
-          never receives protected source values.
+          You already have the commercial context. Pro reveals who is buying,
+          the original notice, and how to apply after a verified subscription.
         </CardDescription>
       </CardHeader>
-      <CardContent className="grid gap-2">
+      <CardContent className="grid gap-2 sm:grid-cols-2">
         {fields.map((field) => (
           <LockedField
             key={field.label}

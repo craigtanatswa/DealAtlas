@@ -4,12 +4,6 @@ import Link from "next/link";
 import { Heading, Text } from "@/components/layout/heading";
 import { Main } from "@/components/layout/container";
 import { JsonLd } from "@/components/seo/json-ld";
-import {
-  Card,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { getAppOrigin } from "@/lib/auth/urls";
 import { breadcrumbJsonLd, webPageJsonLd } from "@/lib/seo/json-ld";
 import { marketingPageMetadata } from "@/lib/seo/metadata";
@@ -50,22 +44,20 @@ export default function CategoriesIndexPage() {
           keyword combination.
         </Text>
       </div>
-      <ul className="grid gap-4 md:grid-cols-2">
+      <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {landings.map((landing) => (
           <li key={landing.slug}>
-            <Card className="h-full">
-              <CardHeader>
-                <CardTitle>
-                  <Link
-                    href={landing.path}
-                    className="rounded-sm hover:underline focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
-                  >
-                    {landing.name}
-                  </Link>
-                </CardTitle>
-                <CardDescription>{landing.summary}</CardDescription>
-              </CardHeader>
-            </Card>
+            <Link
+              href={landing.path}
+              className="flex h-full flex-col gap-2 rounded-lg border border-border bg-background p-5 transition-colors hover:border-primary/30 hover:bg-muted/20 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+            >
+              <h2 className="font-heading text-base font-semibold leading-snug">
+                {landing.name}
+              </h2>
+              <p className="text-sm leading-6 text-muted-foreground">
+                {landing.summary}
+              </p>
+            </Link>
           </li>
         ))}
       </ul>

@@ -18,7 +18,7 @@ export default function AuthRouteLayout({
     <div className="flex min-h-full flex-1 flex-col">
       <header className="border-b border-border bg-background">
         <div className="mx-auto flex h-16 w-full max-w-[80rem] items-center px-4 sm:px-6 lg:px-8">
-          <BrandMark href="/" />
+          <BrandMark href="/" priority />
         </div>
       </header>
       <main

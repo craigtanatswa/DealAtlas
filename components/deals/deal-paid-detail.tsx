@@ -56,14 +56,14 @@ export function DealPaidDetail({
 
   return (
     <article className="flex flex-col gap-10">
-      <header className="flex flex-col gap-4">
-        <div className="flex flex-wrap items-center gap-2">
+      <header className="flex flex-col gap-4 border-b border-border pb-8">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
           <DealStatusBadge status={deal.status} />
-          <Badge variant="secondary">{DEAL_TYPE_LABELS[deal.dealType]}</Badge>
-          <Badge variant="outline">{BUYER_SECTOR_LABELS[deal.buyerSector]}</Badge>
-          <Badge variant="ghost">{DEAL_STAGE_LABELS[deal.stage]}</Badge>
+          <span>{DEAL_TYPE_LABELS[deal.dealType]}</span>
+          <span>{BUYER_SECTOR_LABELS[deal.buyerSector]}</span>
+          <span>{DEAL_STAGE_LABELS[deal.stage]}</span>
         </div>
-        <Heading>{deal.sourceTitle}</Heading>
+        <Heading className="max-w-4xl">{deal.sourceTitle}</Heading>
         {deal.buyer ? (
           <Text variant="muted" className="max-w-3xl">
             <Link className="hover:underline" href={appBuyerPath(deal.buyer.id)}>
@@ -83,7 +83,7 @@ export function DealPaidDetail({
 
       <section
         aria-labelledby="paid-actions-heading"
-        className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4 shadow-sm"
+        className="flex flex-col gap-4 rounded-lg border border-border bg-card p-5"
       >
         <Heading id="paid-actions-heading" level={2} className="text-xl md:text-xl">
           Status, value, and source

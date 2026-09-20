@@ -32,7 +32,7 @@ export function DealHistoryList({ deals }: { deals: IntelligenceDealRef[] }) {
   return (
     <ul className="grid gap-3">
       {deals.map((deal) => (
-        <li key={deal.id} className="rounded-lg border border-border bg-card p-4 shadow-sm">
+        <li key={deal.id} className="rounded-lg border border-border bg-card p-4">
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant="outline">{DEAL_TYPE_LABELS[deal.dealType as keyof typeof DEAL_TYPE_LABELS] ?? deal.dealType}</Badge>
             <Badge variant="secondary">
@@ -159,7 +159,7 @@ export function ContractList({
   return (
     <ul className="grid gap-3">
       {contracts.map((contract) => (
-        <li key={contract.id} className="rounded-lg border border-border bg-card p-4 shadow-sm">
+        <li key={contract.id} className="rounded-lg border border-border bg-card p-4">
           <p className="text-sm font-semibold text-foreground">
             <Link className="hover:underline" href={appDealPath(contract.dealId)}>
               {contract.dealTitle}
@@ -271,7 +271,7 @@ export function RenewalList({
   return (
     <ul className="grid gap-3">
       {items.map((item) => (
-        <li key={`${item.dealId}:${item.date ?? "undated"}`} className="rounded-lg border border-border bg-card p-4 shadow-sm">
+        <li key={`${item.dealId}:${item.date ?? "undated"}`} className="rounded-lg border border-border bg-card p-4">
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant={item.window === "upcoming" ? "warning" : "secondary"}>
               {item.window === "undated" ? "Date not stated" : item.window}

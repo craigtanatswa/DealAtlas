@@ -56,26 +56,39 @@ export function DealRelevanceFields({
 export function DealKeywordFields({
   filters,
   idPrefix,
+  label = "Keyword",
+  hint,
+  placeholder = "Search opportunities",
+  inputClassName,
+  labelClassName,
 }: {
   filters: PublicSearchFilters;
   idPrefix: string;
+  label?: string;
+  hint?: string;
+  placeholder?: string;
+  inputClassName?: string;
+  labelClassName?: string;
 }) {
   const keywordId = `${idPrefix}-q`;
 
   return (
     <Field
       id={keywordId}
-      label="Keyword"
-      hint="Search DealAtlas titles and summaries only."
+      label={label}
+      hint={hint}
+      className="min-w-0 flex-1"
+      labelClassName={labelClassName}
     >
       <Input
         id={keywordId}
         name="q"
         type="search"
         defaultValue={filters.query ?? ""}
-        placeholder="Search opportunities"
+        placeholder={placeholder}
         maxLength={200}
         autoComplete="off"
+        className={inputClassName}
       />
     </Field>
   );

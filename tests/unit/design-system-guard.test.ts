@@ -58,6 +58,74 @@ describe("design-system anti-bypass guards", () => {
     expect(serialized).not.toMatch(/\d[\d,]+\s+(live|opportunities|deals)/i);
   });
 
+  it("spaces the public header into a wordmark, search, text links, and pill CTA", () => {
+    const source = fs.readFileSync(
+      path.join(ROOT, "components/navigation/site-header.tsx"),
+      "utf8",
+    );
+    expect(source).toContain("HeaderSearch");
+    expect(source).toContain('path="/deals"');
+    expect(source).toContain("HEADER_NAV_CLASS");
+    expect(source).toContain('tone="bar"');
+    expect(source).toContain("rounded-full");
+    expect(source).toContain("HEADER_BAR_CLASS");
+    const shell = fs.readFileSync(
+      path.join(ROOT, "components/navigation/header-shell.ts"),
+      "utf8",
+    );
+    expect(shell).toContain("HEADER_SEARCH_CLASS");
+    expect(shell).toContain("gap-x-7");
+    const search = fs.readFileSync(
+      path.join(ROOT, "components/navigation/header-search.tsx"),
+      "utf8",
+    );
+    expect(search).toContain('name="q"');
+    expect(search).toContain('method="get"');
+  });
+
+  it("ships the DealAtlas wordmark through BrandMark", () => {
+    const source = fs.readFileSync(
+      path.join(ROOT, "components/navigation/brand-mark.tsx"),
+      "utf8",
+    );
+    expect(source).toContain("/brand/dealatlas-logo.png");
+    expect(
+      fs.existsSync(path.join(ROOT, "public/brand/dealatlas-logo.png")),
+    ).toBe(true);
+  });
+
+  it("applies interface polish tokens in the existing Tailwind system", () => {
+    const heading = fs.readFileSync(
+      path.join(ROOT, "components/layout/heading.tsx"),
+      "utf8",
+    );
+    const button = fs.readFileSync(
+      path.join(ROOT, "components/ui/button.tsx"),
+      "utf8",
+    );
+    const badge = fs.readFileSync(
+      path.join(ROOT, "components/ui/badge.tsx"),
+      "utf8",
+    );
+    const matchScore = fs.readFileSync(
+      path.join(ROOT, "components/deals/match-score.tsx"),
+      "utf8",
+    );
+    const searchForm = fs.readFileSync(
+      path.join(ROOT, "components/deals/deal-keyword-form.tsx"),
+      "utf8",
+    );
+
+    expect(heading).toContain("text-balance");
+    expect(heading).toContain("text-pretty");
+    expect(button).toContain("scale-[0.96]");
+    expect(button).not.toContain("transition-all");
+    expect(badge).not.toContain("transition-all");
+    expect(matchScore).toContain("tabular-nums");
+    expect(searchForm).toContain("rounded-[1rem]");
+    expect(searchForm).toContain("rounded-[1.25rem]");
+  });
+
   it("hides dummy stories on Vercel and the public hostname", () => {
     const page = fs.readFileSync(
       path.join(ROOT, "app/(marketing)/design-system/page.tsx"),

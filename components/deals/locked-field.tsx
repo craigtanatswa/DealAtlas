@@ -13,17 +13,17 @@ export function LockedField({
 }) {
   return (
     <div
-      className="rounded-lg border border-dashed border-border bg-muted/40 p-3"
+      className="rounded-lg border border-dashed border-border bg-muted/30 px-3 py-3"
       aria-label={`${label} is locked. ${benefit}`}
     >
-      <div className="flex items-start gap-2">
+      <div className="flex items-start gap-3">
         <LockIcon
           className="mt-0.5 size-4 shrink-0 text-muted-foreground"
           aria-hidden="true"
         />
         <div className="min-w-0">
           <p className="text-sm font-medium text-foreground">{label}</p>
-          <p className="text-[0.8125rem] leading-5 text-muted-foreground">
+          <p className="mt-0.5 text-pretty text-[0.8125rem] leading-5 text-muted-foreground">
             {benefit}
           </p>
           <p className="sr-only">

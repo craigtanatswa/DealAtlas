@@ -7,12 +7,14 @@ export function DeadlineBand({ value }: { value: string | null }) {
   return (
     <span
       className={cn(
-        "inline-flex max-w-full items-center gap-1 rounded-full px-2 py-0.5 text-[0.8125rem] leading-5 text-foreground",
-        closingSoon ? "bg-warning/15" : "bg-muted",
+        "inline-flex max-w-full items-baseline gap-1 text-[0.8125rem] leading-5",
+        closingSoon ? "text-warning-foreground" : "text-foreground",
       )}
     >
-      <span className="font-medium">Closing</span>
-      <span>{value ?? "Not stated"}</span>
+      <span className="font-medium text-muted-foreground">Closing</span>
+      <span className={closingSoon ? "font-medium" : undefined}>
+        {value ?? "Not stated"}
+      </span>
     </span>
   );
 }

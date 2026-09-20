@@ -3,7 +3,9 @@
 import { MenuIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
+import { BrandLogo } from "@/components/navigation/brand-mark";
 import { Button } from "@/components/ui/button";
+import { APP_NAME } from "@/lib/constants";
 import {
   Sheet,
   SheetContent,
@@ -40,6 +42,7 @@ export function MobileNav({
       </SheetTrigger>
       <SheetContent side="right" className="w-full max-w-xs">
         <SheetHeader>
+          <BrandLogo alt={APP_NAME} className="h-7 w-auto max-w-[11rem]" />
           <SheetTitle>{title}</SheetTitle>
           <SheetDescription>{description}</SheetDescription>
         </SheetHeader>

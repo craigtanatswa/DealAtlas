@@ -105,7 +105,7 @@
   --chart-3: var(--amber);
   --chart-4: var(--navy);
   --chart-5: var(--slate-700);
-  --radius: 0.625rem;
+  --radius: 0.5rem;
   --sidebar: var(--navy);
   --sidebar-foreground: #ffffff;
   --sidebar-primary: var(--atlas-blue);
@@ -170,10 +170,21 @@
   html {
     @apply font-sans;
   }
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
   body {
     @apply bg-background text-foreground text-[0.9375rem] leading-6 md:text-base;
   }
   :focus-visible {
     @apply outline-none;
+  }
+}
+
+@layer utilities {
+  .surface-hero {
+    background-color: color-mix(in srgb, var(--slate-50) 88%, white);
   }
 }

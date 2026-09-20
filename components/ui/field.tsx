@@ -15,6 +15,7 @@ export function Field({
   hint,
   error,
   className,
+  labelClassName,
   children,
 }: {
   id: string;
@@ -22,6 +23,7 @@ export function Field({
   hint?: string;
   error?: string | null;
   className?: string;
+  labelClassName?: string;
   children: ReactNode;
 }) {
   const hintId = hint ? `${id}-hint` : undefined;
@@ -42,7 +44,9 @@ export function Field({
 
   return (
     <div className={cn("flex flex-col gap-1.5", className)}>
-      <Label htmlFor={id}>{label}</Label>
+      <Label htmlFor={id} className={labelClassName}>
+        {label}
+      </Label>
       <div
         data-slot="field-control"
         data-describedby={describedBy}
@@ -51,7 +55,7 @@ export function Field({
         {control}
       </div>
       {hint ? (
-        <p id={hintId} className="text-[0.8125rem] leading-5 text-muted-foreground">
+        <p id={hintId} className="text-pretty text-[0.8125rem] leading-5 text-muted-foreground">
           {hint}
         </p>
       ) : null}

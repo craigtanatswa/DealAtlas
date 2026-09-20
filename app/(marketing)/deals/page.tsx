@@ -2,11 +2,12 @@ import type { Metadata } from "next";
 
 import { DealKeywordForm } from "@/components/deals/deal-keyword-form";
 import {
+  DealActiveFilters,
   DealSearchFilterDrawer,
   DealSearchFilterRail,
 } from "@/components/deals/deal-search-filters";
 import { DealSearchResults } from "@/components/deals/deal-search-results";
-import { Heading, Text } from "@/components/layout/heading";
+import { PageHeader } from "@/components/layout/page-header";
 import { Main } from "@/components/layout/container";
 import { getAuthUser } from "@/lib/auth/session";
 import { searchDealPreviewsForUser } from "@/lib/matching/search";
@@ -47,15 +48,12 @@ export default async function DealsIndexPage({ searchParams }: PageProps) {
 
   return (
     <Main className="gap-8">
-      <div className="flex flex-col gap-3">
-        <p className="text-sm font-medium text-muted-foreground">Find deals</p>
-        <Heading>Discover sanitised opportunities</Heading>
-        <Text variant="muted" className="max-w-3xl">
-          Browse useful commercial context without buyer names, source titles,
-          or original documents. Unlock those details with DealAtlas Pro.
-        </Text>
-      </div>
-      <div className="sticky top-0 z-20 flex flex-col gap-3 bg-background py-3 lg:flex-row lg:items-end">
+      <PageHeader
+        eyebrow="Find deals"
+        title="Discover sanitised opportunities"
+        description="Browse useful commercial context without buyer names, source titles, or original documents. Unlock those details with DealAtlas Pro."
+      />
+      <div className="sticky top-16 z-20 flex flex-col gap-3 border-b border-border bg-background py-3 lg:flex-row lg:items-end">
         <div className="min-w-0 flex-1">
           <DealKeywordForm filters={filters} />
         </div>
@@ -64,6 +62,7 @@ export default async function DealsIndexPage({ searchParams }: PageProps) {
           showRelevance={Boolean(companyProfileId)}
         />
       </div>
+      <DealActiveFilters filters={filters} />
       <div className="grid gap-8 lg:grid-cols-[17rem_minmax(0,1fr)]">
         <DealSearchFilterRail
           filters={filters}

@@ -53,7 +53,7 @@ function SavedSearchItem({ search }: { search: SavedSearchView }) {
   );
 
   return (
-    <article className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4 shadow-sm">
+    <article className="flex flex-col gap-4 rounded-lg border border-border bg-card p-4">
       <div className="flex flex-col gap-1">
         <h2 className="font-heading text-lg font-semibold">{search.name}</h2>
         <p className="text-sm text-muted-foreground">

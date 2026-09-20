@@ -4,7 +4,7 @@ import { IntelligencePaywall } from "@/components/intelligence/paywall";
 import { RenewalList } from "@/components/intelligence/lists";
 import { SimplePagination } from "@/components/intelligence/simple-pagination";
 import { EmptyState } from "@/components/feedback/empty-state";
-import { Heading, Text } from "@/components/layout/heading";
+import { PageHeader } from "@/components/layout/page-header";
 import { Main } from "@/components/layout/container";
 import { readIntelligence, requireProIntelligence } from "@/lib/intelligence/page";
 import { listRenewalIntelligence } from "@/lib/intelligence/protected";
@@ -51,15 +51,10 @@ export default async function RenewalsPage({ searchParams }: PageProps) {
   const list = loaded.data;
   return (
     <Main className="gap-8">
-      <div className="flex flex-col gap-2">
-        <Heading>Renewals</Heading>
-        <Text variant="muted" className="max-w-3xl">
-          Upcoming opportunities are ranked from recorded contract ends,
-          extensions, source estimated renewal dates, next procurement dates,
-          and renewal notices. Inferred dates are labelled DealAtlas analysis.
-          DealAtlas does not invent expiry dates from contract duration.
-        </Text>
-      </div>
+      <PageHeader
+        title="Renewals"
+        description="Upcoming opportunities are ranked from recorded contract ends, extensions, source estimated renewal dates, next procurement dates, and renewal notices. Inferred dates are labelled DealAtlas analysis. DealAtlas does not invent expiry dates from contract duration."
+      />
       <RenewalList
         items={list.items}
         empty="No evidenced renewal window falls in the current look-ahead. Dates appear after contracts or source renewal fields are ingested."

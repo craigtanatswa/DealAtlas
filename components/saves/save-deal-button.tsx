@@ -45,7 +45,7 @@ export function SaveDealButton({
           <Button asChild>
             <Link href="/pricing">Upgrade to Pro</Link>
           </Button>
-          <p className="self-center text-sm text-muted-foreground">
+          <p className="self-center text-sm text-muted-foreground tabular-nums">
             {quotaLabel(used, limit)}
           </p>
         </div>
@@ -60,7 +60,7 @@ export function SaveDealButton({
         <Button type="submit" variant={saved ? "outline" : "default"} disabled={pending}>
           {pending ? "Saving…" : saved ? "Unsave" : "Save opportunity"}
         </Button>
-        <p className="text-sm text-muted-foreground">{quotaLabel(used, limit)}</p>
+        <p className="text-sm text-muted-foreground tabular-nums">{quotaLabel(used, limit)}</p>
       </div>
       <FormStatus error={state.error} success={state.success} />
     </form>

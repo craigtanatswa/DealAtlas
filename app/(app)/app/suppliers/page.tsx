@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { IntelligencePaywall } from "@/components/intelligence/paywall";
 import { OrganizationDirectory } from "@/components/intelligence/org-directory";
 import { EmptyState } from "@/components/feedback/empty-state";
-import { Heading, Text } from "@/components/layout/heading";
+import { PageHeader } from "@/components/layout/page-header";
 import { Main } from "@/components/layout/container";
 import { appSupplierPath } from "@/lib/intelligence/paths";
 import { readIntelligence, requireProIntelligence } from "@/lib/intelligence/page";
@@ -55,12 +55,10 @@ export default async function SuppliersIndexPage({ searchParams }: PageProps) {
 
   return (
     <Main className="gap-8">
-      <div className="flex flex-col gap-2">
-        <Heading>Suppliers</Heading>
-        <Text variant="muted" className="max-w-3xl">
-          Organisations appear here only when they are named on a recorded award.
-        </Text>
-      </div>
+      <PageHeader
+        title="Suppliers"
+        description="Organisations appear here only when they are named on a recorded award."
+      />
       <OrganizationDirectory
         list={loaded.data}
         path="/app/suppliers"

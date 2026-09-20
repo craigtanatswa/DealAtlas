@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 import { BillingSummary } from "@/components/billing/billing-summary";
 import { CheckoutPlanForm } from "@/components/billing/checkout-plan-form";
-import { Heading } from "@/components/layout/heading";
+import { PageHeader } from "@/components/layout/page-header";
 import { Main } from "@/components/layout/container";
 import {
   Card,
@@ -29,14 +29,10 @@ export default async function BillingPage() {
 
   return (
     <Main className="gap-10">
-      <div className="flex flex-col gap-2">
-        <Heading>Billing</Heading>
-        <p className="max-w-2xl text-[0.9375rem] leading-7 text-muted-foreground md:text-base">
-          Manage DealAtlas Pro. Invoices, payment methods, and cancellation are
-          handled in the Dodo customer portal. Access is not granted from a
-          checkout redirect.
-        </p>
-      </div>
+      <PageHeader
+        title="Billing"
+        description="Manage DealAtlas Pro. Invoices, payment methods, and cancellation are handled in the Dodo customer portal. Access is not granted from a checkout redirect."
+      />
       <BillingSummary
         entitlement={entitlement}
         hasCustomerPortal={Boolean(customerId)}

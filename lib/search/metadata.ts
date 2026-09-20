@@ -6,7 +6,7 @@ import {
   evaluatePublicIndexability,
   signalsFromPublicPreview,
 } from "@/lib/seo/indexability";
-import { robotsFromDecision } from "@/lib/seo/metadata";
+import { BRAND_OPENGRAPH_IMAGE, robotsFromDecision } from "@/lib/seo/metadata";
 import { PUBLIC_PAGE_COPY } from "@/lib/seo/pages";
 
 function clip(text: string, max: number) {
@@ -42,11 +42,13 @@ export function publicDealsIndexMetadata(input: {
       type: "website",
       locale: "en_GB",
       siteName: APP_NAME,
+      images: [BRAND_OPENGRAPH_IMAGE],
     },
     twitter: {
       card: "summary",
       title: `${PUBLIC_PAGE_COPY.deals.title} · ${APP_NAME}`,
       description,
+      images: [BRAND_OPENGRAPH_IMAGE.url],
     },
   };
 }
@@ -77,11 +79,13 @@ export function publicDealPreviewMetadata(
       type: "article",
       locale: "en_GB",
       siteName: APP_NAME,
+      images: [BRAND_OPENGRAPH_IMAGE],
     },
     twitter: {
       card: "summary",
       title: preview.previewTitle,
       description,
+      images: [BRAND_OPENGRAPH_IMAGE.url],
     },
   };
 }

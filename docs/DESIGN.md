@@ -32,14 +32,17 @@ Hierarchy:
 - H3 20–24px
 - body 15–16px
 - dense metadata 13–14px
+- headings use `text-wrap: balance`; supporting copy uses `text-pretty`
+- dynamic counts (quotas, match scores, unread totals) use tabular numerals
 
 ## 4. Layout
 - max content width around 1200–1320px
 - generous whitespace
 - 8px spacing grid
-- cards with subtle border and restrained shadow
+- listing cards with a 1px border, no heavy shadow
 - sticky search/filter controls where useful
 - mobile-first responsive behaviour
+- homepage hero on a light surface, database content on white
 
 ## 5. Main navigation
 Public:
@@ -49,6 +52,10 @@ Public:
 - Pricing
 - Sign In
 - Get Started
+
+The public bar is four zones: wordmark on the left, a compact keyword search that submits to `/deals`, text links centred in the remaining bar, then Sign In and a pill Get Started on the right. Links are text, not packed chips. Keep every working destination.
+
+The workspace bar uses the same search control against `/app/search`. Both header searches are GET forms with `q` only; they do not add a second search architecture.
 
 Authenticated:
 - Discover
@@ -61,33 +68,37 @@ Authenticated:
 - Renewals (Pro)
 - Billing/Account
 
+Keep every working destination. Cleaner chrome is not a reason to drop navigation.
+
 ## 6. Deal card — free
-Show:
+Listing-style cards, scannable like a professional B2B directory:
+
 - DealAtlas preview title
-- public/private badge
-- main category
+- sanitised summary with enough commercial detail to judge fit
+- status
+- public/private buyer
+- category
+- opportunity type
 - broad region
 - value band
 - deadline band
 - SME suitability
-- bid complexity
-- optional relevance score
-- 1–2 sentence sanitised preview
+- optional tags and relevance score
 - "View opportunity" CTA
 
-Do not show protected source identity.
+Use typography and spacing for hierarchy. Use badges only where they help scanning (status). Do not show protected source identity.
 
 ## 7. Deal detail — free
 Sections:
 1. Preview heading
-2. Opportunity snapshot
-3. Sanitised summary
-4. General requirements
-5. DealAtlas fit indicators
-6. Locked intelligence panel
+2. Summary
+3. Products and services required
+4. Opportunity details (category, location band, value, deadline, term, stage)
+5. Eligibility and fit
+6. Locked source fields
 7. Upgrade CTA
 
-Locked fields should be clearly labelled rather than blurred source text already sent to browser.
+Free users should already understand the commercial value before the subscription CTA. Locked fields are labelled placeholders. Do not blur source text.
 
 ## 8. Deal detail — Pro
 Sections:
@@ -110,13 +121,13 @@ Sections:
 Headline example:
 **Unlock the buyer and pursue this opportunity**
 
-Benefits:
-- see who is buying
-- exact deadline/value
-- source and application link
-- documents and requirements
-- buyer/competitor intelligence
-- alerts for similar opportunities
+Locked fields:
+- Buyer identity — Available to subscribers
+- Original source — Unlock source
+- Official notice — Subscription required
+- Reference number — Unlock full details
+- Documents and requirements
+- Buyer/competitor intelligence
 
 CTA:
 **Unlock with DealAtlas Pro**
@@ -124,29 +135,27 @@ CTA:
 Secondary link:
 View pricing
 
-## 10. Dashboard
-Widgets:
-- New matches
-- Closing soon
-- Saved deals changed
-- New buyer activity
-- Upcoming renewals
+## 10. Homepage and workspace
+The public homepage is marketing + search + live opportunity discovery + conversion. Visitors can search immediately and browse real `deal_previews`. Do not hide product value behind sign-up.
 
-Avoid vanity metrics that do not help a supplier act.
+Authenticated `/app` leads with search and live opportunities, then quotas and alerts.
+
+Do not invent live opportunity counts, users, or contract values.
 
 ## 11. Search UX
 Desktop:
-- search bar top
-- left filter rail or top filter controls depending density
+- large search bar as the primary CTA
+- category shortcuts into existing filters
+- left filter rail
+- active filter chips
 - results count
-- sort
-- result cards/table toggle only if both are genuinely useful
+- listing cards
 
 Mobile:
 - full-width search
-- filter drawer
-- cards
-- sticky upgrade/save action where appropriate
+- filter drawer/sheet
+- listing cards
+- no permanently stacked filter column
 
 ## 12. Empty/loading/error states
 Every data surface needs intentional states.
@@ -167,6 +176,8 @@ Examples:
 - buttons not divs
 - no colour-only status communication
 - meaningful screen-reader labels for locked fields
+- prefer 44px touch targets; at least 40px on dense desktop controls
+- nested search and filter surfaces use concentric radii (`outer = inner + padding`)
 
 ## 14. Design anti-patterns
 Do not:
@@ -177,6 +188,13 @@ Do not:
 - blur protected source text
 - show fake live counts
 - use artificial urgency
+- add extra conversion popups beyond the delayed anonymous signup prompt
 
 ## 15. Implementation notes
-Semantic tokens, Inter typography, shells, and Deal display components are implemented in the Next.js app. Reusable Deal cards use dummy fixtures/stories only. Locked fields render labelled placeholders and benefits; they do not accept protected values and must not blur source text.
+Semantic tokens, Inter typography, shells, listing cards, and Deal display components are implemented in the Next.js app. The homepage and signed-in workspace lead with live sanitised previews from existing search helpers. Reusable Deal cards use dummy fixtures/stories only. Locked fields render labelled placeholders and benefits; they do not accept protected values and must not blur source text.
+
+Interactive controls use interruptible color and transform transitions, `scale(0.96)` on press, and 40px-tall default fields. Icon buttons expand their hit area with a pseudo-element rather than enlarging visible chrome. Listing cards keep a 1px border without heavy shadows.
+
+The DealAtlas wordmark is `/brand/dealatlas-logo.png`, rendered through `BrandMark` / `BrandLogo` in public, workspace, admin, and auth chrome. Do not replace header logos with text-only wordmarks.
+
+Anonymous visitors on public pages see a dismissible signup dialog after one minute of visible time in the current browser session. It does not appear for signed-in users, auth routes, or automated browsers. Dismissal is stored in `sessionStorage` only.

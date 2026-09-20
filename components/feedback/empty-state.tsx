@@ -61,14 +61,14 @@ export function EmptyState({
   return (
     <div
       className={cn(
-        "rounded-xl border border-dashed border-border bg-muted/30 px-6 py-10",
+        "rounded-lg border border-dashed border-border bg-muted/20 px-6 py-10",
         className,
       )}
     >
       <Heading level={2} className="text-xl md:text-xl">
         {title ?? copy?.title}
       </Heading>
-      <p className="mt-2 max-w-2xl text-[0.9375rem] leading-7 text-muted-foreground">
+      <p className="mt-2 max-w-2xl text-pretty text-[0.9375rem] leading-7 text-muted-foreground">
         {description ?? copy?.description}
       </p>
       {children ? <div className="mt-6 flex flex-wrap gap-3">{children}</div> : null}
@@ -90,7 +90,7 @@ export function ErrorState({
   return (
     <div className="flex flex-col gap-4">
       <Heading level={1}>{title}</Heading>
-      <p className="max-w-2xl text-[0.9375rem] leading-7 text-muted-foreground">
+      <p className="max-w-2xl text-pretty text-[0.9375rem] leading-7 text-muted-foreground">
         {description}
       </p>
       <div className="flex flex-wrap gap-3">

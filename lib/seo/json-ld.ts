@@ -53,6 +53,7 @@ export function organizationJsonLd(origin: string): JsonLdRecord {
     name: APP_NAME,
     url: origin,
     description: APP_DESCRIPTION,
+    logo: `${origin}/brand/dealatlas-logo.png`,
   };
 }
 

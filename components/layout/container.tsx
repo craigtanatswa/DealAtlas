@@ -46,7 +46,7 @@ export function Main({
     <Container
       as="main"
       id="main-content"
-      className={cn("flex flex-1 flex-col gap-6 py-10 md:py-16", className)}
+      className={cn("flex flex-1 flex-col gap-8 py-10 md:py-14", className)}
       {...props}
     >
       {children}

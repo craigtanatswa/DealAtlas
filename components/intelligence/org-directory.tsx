@@ -41,7 +41,7 @@ export function OrganizationDirectory({
       ) : (
         <ul className="grid gap-3">
           {list.items.map((item) => (
-            <li key={item.id} className="rounded-lg border border-border bg-card p-4 shadow-sm">
+            <li key={item.id} className="rounded-lg border border-border bg-card p-4">
               <p className="text-sm font-semibold">
                 <Link className="hover:underline" href={itemHref(item.id)}>
                   {item.name}

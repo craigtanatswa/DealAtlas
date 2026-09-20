@@ -1,16 +1,14 @@
 import type { ReactNode } from "react";
 
 import { MatchReasons } from "@/components/deals/match-reasons";
-import { DeadlineBand } from "@/components/deals/deadline-band";
 import { DealStatusBadge } from "@/components/deals/deal-status";
 import { UnlockPanel, type UnlockCtaMode } from "@/components/deals/unlock-panel";
 import {
   buyerVisibilityLabel,
   levelLabel,
 } from "@/components/deals/types";
-import { ValueBand } from "@/components/deals/value-band";
+import { MetaItem } from "@/components/intelligence/meta-item";
 import { Heading, Text } from "@/components/layout/heading";
-import { Badge } from "@/components/ui/badge";
 import { BUYER_SECTOR_LABELS } from "@/lib/constants";
 import type { PublicDealPreview } from "@/lib/search/dto";
 import type { SafeMatchView } from "@/lib/matching/types";
@@ -37,21 +35,15 @@ export function DealPreviewDetail({
 }) {
   return (
     <article className="flex flex-col gap-10">
-      <header className="flex flex-col gap-4">
-        <div className="flex flex-wrap items-center gap-2">
+      <header className="flex flex-col gap-4 border-b border-border pb-8">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
           <DealStatusBadge status={deal.status} />
-          <Badge variant="outline">
-            {buyerVisibilityLabel(deal.buyerSector)} buyer
-          </Badge>
-          <Badge variant="secondary">{DEAL_TYPE_LABELS[deal.dealType]}</Badge>
+          <span>{buyerVisibilityLabel(deal.buyerSector)} buyer</span>
+          <span>{DEAL_TYPE_LABELS[deal.dealType]}</span>
           {deal.buyerSector !== "PUBLIC" && deal.buyerSector !== "PRIVATE" ? (
-            <Badge variant="secondary">
-              {BUYER_SECTOR_LABELS[deal.buyerSector]}
-            </Badge>
+            <span>{BUYER_SECTOR_LABELS[deal.buyerSector]}</span>
           ) : null}
-          {deal.freshnessLabel ? (
-            <Badge variant="ghost">{deal.freshnessLabel}</Badge>
-          ) : null}
+          {deal.freshnessLabel ? <span>{deal.freshnessLabel}</span> : null}
         </div>
         <Heading>{deal.previewTitle}</Heading>
         <Text variant="muted" className="max-w-3xl">
@@ -61,43 +53,9 @@ export function DealPreviewDetail({
         {save}
       </header>
 
-      <section aria-labelledby="opportunity-snapshot-heading" className="flex flex-col gap-4">
-        <Heading id="opportunity-snapshot-heading" level={2}>
-          Opportunity snapshot
-        </Heading>
-        <dl className="grid gap-3 sm:grid-cols-2">
-          <SnapshotItem label="Category" value={deal.mainCategory} />
-          <SnapshotItem label="Region" value={deal.broadRegion} />
-          <div>
-            <dt className="text-[0.8125rem] font-medium text-muted-foreground">
-              Value
-            </dt>
-            <dd className="mt-1">
-              <ValueBand value={deal.valueBand} />
-            </dd>
-          </div>
-          <div>
-            <dt className="text-[0.8125rem] font-medium text-muted-foreground">
-              Closing
-            </dt>
-            <dd className="mt-1">
-              <DeadlineBand value={deal.deadlineBand} />
-            </dd>
-          </div>
-          <SnapshotItem
-            label="Contract term"
-            value={deal.durationBand}
-          />
-          <SnapshotItem
-            label="Stage"
-            value={DEAL_STAGE_LABELS[deal.stage]}
-          />
-        </dl>
-      </section>
-
       <section aria-labelledby="summary-heading" className="flex flex-col gap-3">
         <Heading id="summary-heading" level={2}>
-          Sanitised summary
+          Summary
         </Heading>
         <Text variant="body" className="max-w-3xl">
           {deal.previewSummary}
@@ -106,7 +64,7 @@ export function DealPreviewDetail({
 
       <section aria-labelledby="requirements-heading" className="flex flex-col gap-3">
         <Heading id="requirements-heading" level={2}>
-          General requirements
+          Products and services required
         </Heading>
         {deal.requirementsPreview.length > 0 ? (
           <ul className="max-w-3xl list-disc space-y-2 pl-5 text-[0.9375rem] leading-7">
@@ -121,23 +79,37 @@ export function DealPreviewDetail({
         )}
       </section>
 
+      <section aria-labelledby="opportunity-snapshot-heading" className="flex flex-col gap-4">
+        <Heading id="opportunity-snapshot-heading" level={2}>
+          Opportunity details
+        </Heading>
+        <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <MetaItem label="Category" value={deal.mainCategory} />
+          <MetaItem label="Location" value={deal.broadRegion} />
+          <MetaItem label="Value" value={deal.valueBand} />
+          <MetaItem label="Deadline" value={deal.deadlineBand} />
+          <MetaItem label="Contract term" value={deal.durationBand} />
+          <MetaItem label="Stage" value={DEAL_STAGE_LABELS[deal.stage]} />
+        </dl>
+      </section>
+
       <section aria-labelledby="fit-heading" className="flex flex-col gap-3">
         <Heading id="fit-heading" level={2}>
-          DealAtlas fit indicators
+          Eligibility and fit
         </Heading>
         <p className="text-[0.8125rem] leading-5 text-muted-foreground">
           These labels are DealAtlas analysis, not official procurement facts.
         </p>
         <dl className="grid gap-3 sm:grid-cols-3">
-          <SnapshotItem
+          <MetaItem
             label="SME suitability"
             value={levelLabel(deal.smeSuitability, "Not stated")}
           />
-          <SnapshotItem
+          <MetaItem
             label="Bid complexity"
             value={levelLabel(deal.bidComplexity, "Not stated")}
           />
-          <SnapshotItem
+          <MetaItem
             label="Competition"
             value={levelLabel(deal.competitionLevel, "Not stated")}
           />
@@ -145,8 +117,11 @@ export function DealPreviewDetail({
         {deal.relevanceTags.length > 0 ? (
           <ul className="flex flex-wrap gap-2">
             {deal.relevanceTags.map((tag) => (
-              <li key={tag}>
-                <Badge variant="outline">{tag}</Badge>
+              <li
+                key={tag}
+                className="rounded-md bg-muted px-2 py-0.5 text-[0.8125rem] leading-5 text-muted-foreground"
+              >
+                {tag}
               </li>
             ))}
           </ul>
@@ -162,8 +137,12 @@ export function DealPreviewDetail({
 
       <section aria-labelledby="locked-heading" className="flex flex-col gap-3">
         <Heading id="locked-heading" level={2}>
-          Locked source and buyer intelligence
+          Source information
         </Heading>
+        <Text variant="muted" className="max-w-3xl">
+          The commercial picture above is available without an account. Buyer,
+          notice, and application details stay locked until Pro is verified.
+        </Text>
         <UnlockPanel
           mode={unlock?.mode}
           loginHref={unlock?.loginHref}
@@ -172,24 +151,5 @@ export function DealPreviewDetail({
         />
       </section>
     </article>
-  );
-}
-
-function SnapshotItem({
-  label,
-  value,
-}: {
-  label: string;
-  value: string | null;
-}) {
-  return (
-    <div className="rounded-lg border border-border bg-muted/30 px-3 py-2">
-      <dt className="text-[0.8125rem] font-medium text-muted-foreground">
-        {label}
-      </dt>
-      <dd className="mt-1 text-sm font-medium text-foreground">
-        {value ?? "Not stated"}
-      </dd>
-    </div>
   );
 }

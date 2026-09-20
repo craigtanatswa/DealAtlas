@@ -18,7 +18,7 @@ export function AlertArticle({
   const entitled = plan === PLANS.PRO;
 
   return (
-    <article className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4 shadow-sm">
+    <article className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4">
       <div className="flex flex-wrap items-center gap-2">
         <Badge variant="outline">{ALERT_TYPE_LABELS[alert.alertType]}</Badge>
         {alert.status === "UNREAD" ? <Badge>Unread</Badge> : null}

@@ -1,5 +1,6 @@
 import type { BuyerSector } from "@/lib/constants";
 import type { Database } from "@/lib/db/database.types";
+import type { DealType } from "@/lib/search/filters";
 
 export type DealStatus = Database["public"]["Enums"]["deal_status"];
 
@@ -17,6 +18,8 @@ export type DealCardData = {
   smeSuitability: SuitabilityLevel | null;
   bidComplexity: SuitabilityLevel | null;
   status: DealStatus;
+  dealType?: DealType;
+  relevanceTags?: string[];
   freshnessLabel?: string | null;
   matchScore?: number | null;
   matchReasons?: string[];

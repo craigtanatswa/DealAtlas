@@ -3,7 +3,7 @@ import Link from "next/link";
 
 import { AlertCentre } from "@/components/alerts/alert-centre";
 import { EmptyState } from "@/components/feedback/empty-state";
-import { Heading, Text } from "@/components/layout/heading";
+import { PageHeader } from "@/components/layout/page-header";
 import { Main } from "@/components/layout/container";
 import { Button } from "@/components/ui/button";
 import { listAlertCentre } from "@/lib/alerts/centre";
@@ -32,13 +32,15 @@ export default async function AlertsPage() {
 
   return (
     <Main className="gap-8">
-      <div className="flex flex-col gap-2">
-        <Heading>Alert centre</Heading>
-        <Text variant="muted" className="max-w-3xl">
-          {centre.plan === PLANS.PRO
+      <PageHeader
+        title="Alert centre"
+        description={
+          centre.plan === PLANS.PRO
             ? "Pro alerts include paid details after server entitlement checks. Open an opportunity to act on the source."
-            : "Free alerts say that a match or change exists. Buyer identity, original titles, and source links stay locked."}
-        </Text>
+            : "Free alerts say that a match or change exists. Buyer identity, original titles, and source links stay locked."
+        }
+      />
+      <div className="flex flex-col gap-2">
         <p className="text-sm text-muted-foreground">
           {centre.unreadCount === 1
             ? "1 unread alert."

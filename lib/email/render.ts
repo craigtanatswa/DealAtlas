@@ -43,6 +43,11 @@ function safeExternalHref(value: string | null | undefined): string | null {
   return safeHttpUrl(value);
 }
 
+function brandEmailHeader(origin: string): string {
+  const src = escapeHtml(`${origin}/brand/dealatlas-logo.png`);
+  return `<p><img src="${src}" alt="DealAtlas" width="180" height="60" /></p>`;
+}
+
 export function renderAlertDigest(input: {
   plan: Plan;
   alerts: AlertDto[];
@@ -71,6 +76,7 @@ export function renderAlertDigest(input: {
       .map((title) => `<li>${escapeHtml(title)}</li>`)
       .join("");
     const html = `
+      ${brandEmailHeader(origin)}
       <p>${count === 1 ? "A new matching opportunity is available in DealAtlas." : `${count} matching opportunities are available in DealAtlas.`}</p>
       ${htmlItems ? `<ul>${htmlItems}</ul>` : ""}
       <p>Sign in to review sanitised previews. Buyer identity, original titles, and source links stay locked on Free.</p>
@@ -134,6 +140,6 @@ export function renderAlertDigest(input: {
   return {
     subject,
     text,
-    html: `${html}<p><a href="${escapeHtml(`${origin}/app/alerts`)}">Alert centre</a></p>`,
+    html: `${brandEmailHeader(origin)}${html}<p><a href="${escapeHtml(`${origin}/app/alerts`)}">Alert centre</a></p>`,
   };
 }

@@ -3,7 +3,7 @@ import Link from "next/link";
 
 import { SavedSearchList } from "@/components/saves/saved-search-list";
 import { EmptyState } from "@/components/feedback/empty-state";
-import { Heading, Text } from "@/components/layout/heading";
+import { PageHeader } from "@/components/layout/page-header";
 import { Main } from "@/components/layout/container";
 import { Button } from "@/components/ui/button";
 import { isEmailVerified, requireUser } from "@/lib/auth/session";
@@ -29,16 +29,13 @@ export default async function SearchesPage() {
 
   return (
     <Main className="gap-8">
-      <div className="flex flex-col gap-2">
-        <Heading>Saved searches</Heading>
-        <Text variant="muted" className="max-w-3xl">
-          Free accounts can save one search. Pro accounts can save 50. Alerts
-          from saved searches never reveal source identity on Free.
-        </Text>
-        <p className="text-sm text-muted-foreground">
-          {quotaLabel(searches.length, limit)}
-        </p>
-      </div>
+      <PageHeader
+        title="Saved searches"
+        description="Free accounts can save one search. Pro accounts can save 50. Alerts from saved searches never reveal source identity on Free."
+      />
+      <p className="text-sm text-muted-foreground tabular-nums">
+        {quotaLabel(searches.length, limit)}
+      </p>
       {!verified ? (
         <EmptyState
           title="Confirm your email"

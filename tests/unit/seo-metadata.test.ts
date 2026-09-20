@@ -294,6 +294,9 @@ describe("JSON-LD and analytics hooks", () => {
     });
     const serialized = serializeJsonLd(jsonLd);
     expect(serialized).toContain(DEAL_PREVIEW_DETAIL_FIXTURE.previewTitle);
+    expect(organizationJsonLd(ORIGIN).logo).toBe(
+      `${ORIGIN}/brand/dealatlas-logo.png`,
+    );
     expect(serialized).not.toContain("JobPosting");
     expect(serialized).not.toContain("source_url");
     expect(findProtectedMarkerLeaks(serialized)).toEqual([]);

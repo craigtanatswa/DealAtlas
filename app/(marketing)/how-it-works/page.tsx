@@ -5,12 +5,6 @@ import { Heading, Text } from "@/components/layout/heading";
 import { Main } from "@/components/layout/container";
 import { JsonLd } from "@/components/seo/json-ld";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { getAppOrigin } from "@/lib/auth/urls";
 import { webPageJsonLd } from "@/lib/seo/json-ld";
 import { marketingPageMetadata } from "@/lib/seo/metadata";
@@ -43,22 +37,21 @@ export default function HowItWorksPage() {
           verified on the server.
         </Text>
       </div>
-      <ol className="grid gap-4">
+      <ol className="grid gap-4 md:grid-cols-2">
         {HOW_IT_WORKS_STEPS.map((step, index) => (
-          <li key={step.title}>
-            <Card>
-              <CardHeader>
-                <p className="text-sm font-medium text-muted-foreground">
-                  {index + 1}
-                </p>
-                <CardTitle>{step.title}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-[0.9375rem] leading-7 text-muted-foreground">
-                  {step.body}
-                </p>
-              </CardContent>
-            </Card>
+          <li
+            key={step.title}
+            className="flex h-full flex-col gap-3 rounded-lg border border-border bg-background p-5"
+          >
+            <p className="text-sm font-medium text-muted-foreground">
+              Step {index + 1}
+            </p>
+            <h2 className="font-heading text-lg font-semibold leading-snug">
+              {step.title}
+            </h2>
+            <p className="text-[0.9375rem] leading-7 text-muted-foreground">
+              {step.body}
+            </p>
           </li>
         ))}
       </ol>

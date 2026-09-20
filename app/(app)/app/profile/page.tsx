@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 import { CompanyProfileForm } from "@/components/account/company-profile-form";
 import { ProfileForm } from "@/components/account/profile-form";
-import { Heading } from "@/components/layout/heading";
+import { PageHeader } from "@/components/layout/page-header";
 import { Main } from "@/components/layout/container";
 import {
   Card,
@@ -31,12 +31,10 @@ export default async function ProfilePage() {
 
   return (
     <Main className="gap-10">
-      <div className="flex flex-col gap-2">
-        <Heading>Profile</Heading>
-        <p className="max-w-2xl text-[0.9375rem] leading-7 text-muted-foreground md:text-base">
-          Manage your account details and the company profile used for matching.
-        </p>
-      </div>
+      <PageHeader
+        title="Profile"
+        description="Manage your account details and the company profile used for matching."
+      />
       <Card>
         <CardHeader>
           <CardTitle className="text-xl font-semibold tracking-tight">

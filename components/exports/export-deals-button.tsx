@@ -67,7 +67,7 @@ export function ExportDealsButton(props: ExportDealsButtonProps) {
     return (
       <div className="flex flex-col gap-2">
         <p className="text-sm text-muted-foreground">{QUOTA_ERROR_COPY.exportRows}</p>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-muted-foreground tabular-nums">
           {exportQuotaLabel(props.used, props.limit)}
         </p>
       </div>
@@ -120,7 +120,7 @@ export function ExportDealsButton(props: ExportDealsButtonProps) {
         >
           {exportActionLabel(pending)}
         </Button>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-muted-foreground tabular-nums">
           {exportQuotaLabel(props.used, props.limit)}
         </p>
       </div>

@@ -205,6 +205,8 @@ export function toDealCardData(
     smeSuitability: preview.smeSuitability,
     bidComplexity: preview.bidComplexity,
     status: preview.status,
+    dealType: preview.dealType,
+    relevanceTags: preview.relevanceTags.slice(0, 4),
     freshnessLabel: preview.freshnessLabel,
     matchScore: matchScore ?? null,
     matchReasons: (matchReasons ?? []).slice(0, 3),

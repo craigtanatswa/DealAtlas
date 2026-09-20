@@ -34,7 +34,7 @@ export function PaginationNav({
       className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
       aria-label="Pagination"
     >
-      <p className="text-[0.8125rem] leading-5 text-muted-foreground">
+      <p className="text-[0.8125rem] leading-5 text-muted-foreground tabular-nums">
         Showing {from}–{to} of {total} {total === 1 ? "opportunity" : "opportunities"}
       </p>
       <div className="flex flex-wrap items-center gap-2">
@@ -64,11 +64,12 @@ export function PaginationNav({
                     size="sm"
                     variant="secondary"
                     aria-current="page"
+                    className="tabular-nums"
                   >
                     {item}
                   </Button>
                 ) : (
-                  <Button asChild size="sm" variant="ghost">
+                  <Button asChild size="sm" variant="ghost" className="tabular-nums">
                     <Link href={searchHref(filters, item, path)}>{item}</Link>
                   </Button>
                 )}

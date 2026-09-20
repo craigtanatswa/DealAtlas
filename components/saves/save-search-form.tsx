@@ -48,14 +48,14 @@ export function SaveSearchForm({
 
   if (atLimit) {
     return (
-      <p className="text-sm text-muted-foreground">
+      <p className="text-sm text-muted-foreground tabular-nums">
         {limit === 1 ? QUOTA_ERROR_COPY.savedSearches : `Saved search limit reached (${quotaLabel(used, limit)}).`}
       </p>
     );
   }
 
   return (
-    <form action={action} className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4">
+    <form action={action} className="flex flex-col gap-3 rounded-[1.5rem] border border-border bg-card p-4">
       <input type="hidden" name="q" value={filters.query ?? ""} />
       <input type="hidden" name="category" value={filters.category ?? ""} />
       <input type="hidden" name="buyerSector" value={filters.buyerSector ?? ""} />
@@ -90,7 +90,7 @@ export function SaveSearchForm({
         <Button type="submit" disabled={pending}>
           {pending ? "Saving…" : "Save search"}
         </Button>
-        <p className="text-sm text-muted-foreground">{quotaLabel(used, limit)}</p>
+        <p className="text-sm text-muted-foreground tabular-nums">{quotaLabel(used, limit)}</p>
       </div>
       <FormStatus error={state.error} success={state.success} />
     </form>

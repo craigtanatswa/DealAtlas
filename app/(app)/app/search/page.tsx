@@ -5,11 +5,12 @@ import { SaveSearchForm } from "@/components/saves/save-search-form";
 import { ExportDealsButton } from "@/components/exports/export-deals-button";
 import { DealKeywordForm } from "@/components/deals/deal-keyword-form";
 import {
+  DealActiveFilters,
   DealSearchFilterDrawer,
   DealSearchFilterRail,
 } from "@/components/deals/deal-search-filters";
 import { DealSearchResults } from "@/components/deals/deal-search-results";
-import { Heading, Text } from "@/components/layout/heading";
+import { PageHeader } from "@/components/layout/page-header";
 import { Main } from "@/components/layout/container";
 import { Button } from "@/components/ui/button";
 import { requireUser, isEmailVerified } from "@/lib/auth/session";
@@ -51,25 +52,24 @@ export default async function AppSearchPage({ searchParams }: PageProps) {
 
   return (
     <Main className="gap-8">
-      <div className="flex flex-col gap-3">
-        <p className="text-sm font-medium text-muted-foreground">Discover</p>
-        <Heading>Search matching opportunities</Heading>
-        <Text variant="muted" className="max-w-3xl">
-          Signed-in search still uses sanitised previews. Relevance scores come
-          from your company profile and never include buyer or source identity.
-        </Text>
-        {!companyProfileId ? (
-          <div className="flex flex-wrap items-center gap-3">
-            <p className="text-sm text-muted-foreground">
-              Save a company profile to sort and filter by relevance.
-            </p>
+      <PageHeader
+        eyebrow="Discover"
+        title="Search matching opportunities"
+        description="Signed-in search still uses sanitised previews. Relevance scores come from your company profile and never include buyer or source identity."
+        actions={
+          !companyProfileId ? (
             <Button asChild variant="outline" size="sm">
               <Link href="/app/profile">Add company profile</Link>
             </Button>
-          </div>
-        ) : null}
-      </div>
-      <div className="sticky top-0 z-20 flex flex-col gap-3 bg-background py-3 lg:flex-row lg:items-end">
+          ) : undefined
+        }
+      />
+      {!companyProfileId ? (
+        <p className="text-sm text-muted-foreground">
+          Save a company profile to sort and filter by relevance.
+        </p>
+      ) : null}
+      <div className="sticky top-16 z-20 flex flex-col gap-3 border-b border-border bg-background py-3 lg:flex-row lg:items-end">
         <div className="min-w-0 flex-1">
           <DealKeywordForm filters={filters} path="/app/search" />
         </div>
@@ -79,6 +79,7 @@ export default async function AppSearchPage({ searchParams }: PageProps) {
           showRelevance={Boolean(companyProfileId)}
         />
       </div>
+      <DealActiveFilters filters={filters} path="/app/search" />
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <SaveSearchForm
           filters={filters}

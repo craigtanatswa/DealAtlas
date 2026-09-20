@@ -5,15 +5,15 @@ import { APP_DESCRIPTION, FOOTER_NAV } from "@/lib/constants";
 
 export function SiteFooter() {
   return (
-    <footer className="mt-auto border-t border-border bg-muted/50">
-      <div className="mx-auto flex w-full max-w-[80rem] flex-col gap-8 px-4 py-10 sm:px-6 lg:flex-row lg:items-start lg:justify-between lg:px-8">
+    <footer className="mt-auto border-t border-border bg-muted/40">
+      <div className="mx-auto flex w-full max-w-[80rem] flex-col gap-10 px-4 py-12 sm:px-6 lg:flex-row lg:items-start lg:justify-between lg:px-8">
         <div className="max-w-sm">
           <BrandMark href="/" />
           <p className="mt-3 text-[0.9375rem] leading-7 text-muted-foreground">
             {APP_DESCRIPTION}
           </p>
         </div>
-        <nav aria-label="Footer" className="flex flex-wrap gap-x-5 gap-y-2">
+        <nav aria-label="Footer" className="flex flex-wrap gap-x-6 gap-y-2">
           {FOOTER_NAV.map((item) => (
             <Link
               key={item.href}

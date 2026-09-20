@@ -1,6 +1,13 @@
 // @vitest-environment jsdom
+/* eslint-disable @next/next/no-img-element */
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("next/image", () => ({
+  default: ({ alt, src }: { alt: string; src: string }) => (
+    <img alt={alt} src={src} />
+  ),
+}));
 
 import { EmptyState, ErrorState } from "@/components/feedback/empty-state";
 import { LoadingState } from "@/components/feedback/loading-state";
@@ -47,6 +54,7 @@ describe("public footer", () => {
     const { container } = render(<SiteFooter />);
 
     expect(screen.getByRole("navigation", { name: "Footer" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "DealAtlas" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "Privacy" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "Find Deals" })).toBeTruthy();
     expect(container.textContent).not.toMatch(/\d[\d,]+\s+opportunities/i);

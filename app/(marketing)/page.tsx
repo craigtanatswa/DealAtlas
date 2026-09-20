@@ -1,25 +1,32 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 
-import { Heading, Text } from "@/components/layout/heading";
-import { Main } from "@/components/layout/container";
-import { JsonLd } from "@/components/seo/json-ld";
-import { Button } from "@/components/ui/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+  HomeHero,
+  HomeOpportunitySections,
+  HomeValueSections,
+} from "@/components/marketing/home-sections";
+import { Container } from "@/components/layout/container";
+import { JsonLd } from "@/components/seo/json-ld";
+import { getAuthUser } from "@/lib/auth/session";
 import { getAppOrigin } from "@/lib/auth/urls";
-import { APP_NAME } from "@/lib/constants";
+import { DatabaseQueryError } from "@/lib/db/errors";
+import { searchDealPreviewsForUser } from "@/lib/matching/search";
 import { organizationJsonLd, webPageJsonLd } from "@/lib/seo/json-ld";
 import { marketingPageMetadata } from "@/lib/seo/metadata";
-import { HOW_IT_WORKS_STEPS, PUBLIC_PAGE_COPY } from "@/lib/seo/pages";
-import { indexableCategoryLandings } from "@/lib/seo/category-landings";
+import { PUBLIC_PAGE_COPY } from "@/lib/seo/pages";
+import type { RankedDealSearchResult } from "@/lib/search/dto";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+
+export const dynamic = "force-dynamic";
 
 const origin = getAppOrigin();
+
+const EMPTY_RESULT: RankedDealSearchResult = {
+  items: [],
+  total: 0,
+  page: 1,
+  pageSize: 8,
+};
 
 export const metadata: Metadata = marketingPageMetadata({
   title: PUBLIC_PAGE_COPY.home.title,
@@ -29,11 +36,41 @@ export const metadata: Metadata = marketingPageMetadata({
   absoluteTitle: true,
 });
 
-export default function HomePage() {
-  const categories = indexableCategoryLandings();
+async function loadHomeOpportunities() {
+  try {
+    const client = await createSupabaseServerClient();
+    const user = await getAuthUser();
+    const [latest, closingSoon] = await Promise.all([
+      searchDealPreviewsForUser({
+        client,
+        searchParams: { limit: "8" },
+        userId: user?.id,
+        defaultSort: "updated",
+      }),
+      searchDealPreviewsForUser({
+        client,
+        searchParams: { status: "CLOSING_SOON", limit: "6" },
+        userId: user?.id,
+        defaultSort: "updated",
+      }),
+    ]);
+    return {
+      latest: latest.result,
+      closingSoon: closingSoon.result,
+    };
+  } catch (error) {
+    if (error instanceof DatabaseQueryError) {
+      return { latest: EMPTY_RESULT, closingSoon: EMPTY_RESULT };
+    }
+    throw error;
+  }
+}
+
+export default async function HomePage() {
+  const { latest, closingSoon } = await loadHomeOpportunities();
 
   return (
-    <Main className="gap-16">
+    <main id="main-content" className="flex flex-1 flex-col">
       <JsonLd
         data={[
           organizationJsonLd(origin),
@@ -45,114 +82,11 @@ export default function HomePage() {
           }),
         ]}
       />
-      <section className="flex max-w-3xl flex-col gap-6">
-        <p className="text-sm font-medium text-muted-foreground">{APP_NAME}</p>
-        <Heading>
-          Find contracts worth pursuing, then unlock who is buying.
-        </Heading>
-        <Text variant="muted" className="max-w-2xl">
-          DealAtlas is UK-first B2B opportunity intelligence. Browse sanitised
-          public and private-sector opportunities, judge fit, and reveal buyer
-          identity only after a verified Pro subscription.
-        </Text>
-        <div className="flex flex-wrap gap-3">
-          <Button asChild size="lg">
-            <Link href="/deals">Find deals</Link>
-          </Button>
-          <Button asChild variant="outline" size="lg">
-            <Link href="/how-it-works">How it works</Link>
-          </Button>
-        </div>
-      </section>
-
-      <section className="flex flex-col gap-6" aria-labelledby="how-heading">
-        <Heading id="how-heading" level={2}>
-          How DealAtlas works
-        </Heading>
-        <ol className="grid gap-4 md:grid-cols-2">
-          {HOW_IT_WORKS_STEPS.map((step, index) => (
-            <li key={step.title}>
-              <Card className="h-full">
-                <CardHeader>
-                  <p className="text-sm font-medium text-muted-foreground">
-                    Step {index + 1}
-                  </p>
-                  <CardTitle>{step.title}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <CardDescription className="text-[0.9375rem] leading-6">
-                    {step.body}
-                  </CardDescription>
-                </CardContent>
-              </Card>
-            </li>
-          ))}
-        </ol>
-      </section>
-
-      <section className="flex flex-col gap-6" aria-labelledby="trust-heading">
-        <Heading id="trust-heading" level={2}>
-          Source identity stays locked on free pages
-        </Heading>
-        <Text variant="muted" className="max-w-3xl">
-          Anonymous and free visitors only receive sanitised deal_previews.
-          Buyer names, exact source titles, notice identifiers, and source URLs
-          are not sent to the browser, metadata, or sitemaps. That is a
-          product-security rule, not a CSS hide.
-        </Text>
-      </section>
-
-      <section className="flex flex-col gap-6" aria-labelledby="categories-heading">
-        <div className="flex flex-col gap-2">
-          <Heading id="categories-heading" level={2}>
-            Browse by category
-          </Heading>
-          <Text variant="muted" className="max-w-3xl">
-            A small set of curated landings — not a page for every search
-            filter. Each category explains the work you will see in anonymised
-            form.
-          </Text>
-        </div>
-        <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {categories.map((category) => (
-            <li key={category.slug}>
-              <Card className="h-full">
-                <CardHeader>
-                  <CardTitle>
-                    <Link
-                      href={category.path}
-                      className="rounded-sm hover:underline focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
-                    >
-                      {category.name}
-                    </Link>
-                  </CardTitle>
-                  <CardDescription>{category.summary}</CardDescription>
-                </CardHeader>
-              </Card>
-            </li>
-          ))}
-        </ul>
-        <p>
-          <Button asChild variant="outline">
-            <Link href="/categories">All category landings</Link>
-          </Button>
-        </p>
-      </section>
-
-      <section className="flex flex-col gap-4" aria-labelledby="pricing-heading">
-        <Heading id="pricing-heading" level={2}>
-          Unlock the source when a deal is worth it
-        </Heading>
-        <Text variant="muted" className="max-w-3xl">
-          Pro reveals who is buying, the original source, deadlines, contacts,
-          and documents after the billing provider confirms the subscription.
-        </Text>
-        <div>
-          <Button asChild>
-            <Link href="/pricing">View pricing</Link>
-          </Button>
-        </div>
-      </section>
-    </Main>
+      <HomeHero />
+      <Container className="flex flex-col gap-16 py-12 md:py-16">
+        <HomeOpportunitySections latest={latest} closingSoon={closingSoon} />
+        <HomeValueSections />
+      </Container>
+    </main>
   );
 }

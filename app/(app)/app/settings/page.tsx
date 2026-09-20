@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { NotificationPreferencesForm } from "@/components/alerts/notification-preferences-form";
-import { Heading } from "@/components/layout/heading";
+import { PageHeader } from "@/components/layout/page-header";
 import { Main } from "@/components/layout/container";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,13 +28,10 @@ export default async function SettingsPage() {
 
   return (
     <Main className="gap-10">
-      <div className="flex flex-col gap-2">
-        <Heading>Settings</Heading>
-        <p className="max-w-2xl text-[0.9375rem] leading-7 text-muted-foreground md:text-base">
-          Control which alerts DealAtlas generates and whether they are emailed.
-          Display name and company matching details are on your profile.
-        </p>
-      </div>
+      <PageHeader
+        title="Settings"
+        description="Control which alerts DealAtlas generates and whether they are emailed. Display name and company matching details are on your profile."
+      />
       <Card>
         <CardHeader>
           <CardTitle className="text-xl font-semibold tracking-tight">

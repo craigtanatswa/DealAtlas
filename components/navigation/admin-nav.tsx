@@ -16,7 +16,7 @@ export function AdminSidebar({ className }: { className?: string }) {
       )}
     >
       <div className="flex h-16 items-center px-4">
-        <BrandMark href="/admin" suffix="Admin" className="text-sidebar-foreground" />
+        <BrandMark href="/admin" suffix="Admin" tone="onDark" className="text-sidebar-foreground" />
       </div>
       <nav aria-label="Admin" className="flex flex-1 flex-col gap-1 px-3 py-4">
         {ADMIN_NAV.map((item) => (

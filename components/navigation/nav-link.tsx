@@ -38,7 +38,7 @@ export function NavLink({
   className?: string;
   onClick?: () => void;
   end?: boolean;
-  tone?: "default" | "sidebar";
+  tone?: "default" | "sidebar" | "bar";
 }) {
   const pathname = usePathname();
   const active = end ? pathname === href : isActivePath(pathname, href);
@@ -49,14 +49,27 @@ export function NavLink({
       onClick={onClick}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "rounded-md px-2 py-1.5 text-sm font-medium transition-colors focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none",
+        "inline-flex min-h-10 items-center text-sm font-medium transition-colors duration-150 ease-out focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none",
         tone === "sidebar"
-          ? active
-            ? "bg-sidebar-accent text-sidebar-accent-foreground"
-            : "text-sidebar-foreground/85 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-          : active
-            ? "bg-muted text-foreground"
-            : "text-muted-foreground hover:bg-muted/70 hover:text-foreground",
+          ? cn(
+              "rounded-md px-2 py-1.5",
+              active
+                ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                : "text-sidebar-foreground/85 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+            )
+          : tone === "bar"
+            ? cn(
+                "rounded-sm px-0.5",
+                active
+                  ? "text-foreground"
+                  : "text-muted-foreground hover:text-foreground",
+              )
+            : cn(
+                "rounded-md px-2 py-1.5",
+                active
+                  ? "bg-muted text-foreground"
+                  : "text-muted-foreground hover:bg-muted/70 hover:text-foreground",
+              ),
         className,
       )}
     >

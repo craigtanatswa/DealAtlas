@@ -7,6 +7,7 @@ import { MeasurementScripts } from "@/components/seo/measurement-scripts";
 import { APP_DESCRIPTION, APP_NAME } from "@/lib/constants";
 import { getMeasurementConfig } from "@/lib/seo/analytics";
 import { getPublicEnv } from "@/lib/env/public";
+import { BRAND_OPENGRAPH_IMAGE } from "@/lib/seo/metadata";
 
 import "./globals.css";
 
@@ -44,11 +45,13 @@ function buildRootMetadata(): Metadata {
       title: APP_NAME,
       description: APP_DESCRIPTION,
       url: origin,
+      images: [BRAND_OPENGRAPH_IMAGE],
     },
     twitter: {
       card: "summary",
       title: APP_NAME,
       description: APP_DESCRIPTION,
+      images: [BRAND_OPENGRAPH_IMAGE.url],
     },
   };
 }
