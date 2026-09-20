@@ -4,6 +4,7 @@ import { CategoryShortcuts } from "@/components/deals/category-shortcuts";
 import { DealList } from "@/components/deals/deal-list";
 import { HeroSearchForm } from "@/components/deals/hero-search-form";
 import { HeroCategoryCloud } from "@/components/marketing/hero-category-cloud";
+import { TestimonialCarousel } from "@/components/marketing/testimonial-carousel";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { Container } from "@/components/layout/container";
 import { Heading, Text } from "@/components/layout/heading";
@@ -112,6 +113,36 @@ export function HomeOpportunitySections({
         </section>
       ) : null}
     </div>
+  );
+}
+
+export function HomeTestimonialsSection() {
+  return (
+    <section
+      className="border-y border-border bg-muted/40 py-12 md:py-16"
+      aria-labelledby="testimonials-heading"
+    >
+      <Container className="flex flex-col gap-8">
+        <div className="flex max-w-3xl flex-col gap-3">
+          <Heading id="testimonials-heading" level={2}>
+            Built for businesses looking for their next opportunity
+          </Heading>
+          <Text variant="muted">
+            Discover relevant opportunities without spending hours searching
+            across different sources.
+          </Text>
+          <Text variant="meta" className="text-muted-foreground">
+            Helping SMEs discover relevant business opportunities faster.
+          </Text>
+        </div>
+        <TestimonialCarousel />
+        <div>
+          <Button asChild>
+            <Link href="/deals">Find opportunities for your business</Link>
+          </Button>
+        </div>
+      </Container>
+    </section>
   );
 }
 

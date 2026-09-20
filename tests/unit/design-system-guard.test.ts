@@ -158,4 +158,40 @@ describe("design-system anti-bypass guards", () => {
     expect(cloud).toContain("DEAL_CATEGORY_CATALOG");
     expect(cloud).not.toMatch(/supabase|searchDealPreviews|fetch\(/);
   });
+
+  it("keeps homepage testimonials as replaceable placeholders below opportunities", () => {
+    const page = fs.readFileSync(
+      path.join(ROOT, "app/(marketing)/page.tsx"),
+      "utf8",
+    );
+    const data = fs.readFileSync(
+      path.join(ROOT, "components/marketing/testimonial-data.ts"),
+      "utf8",
+    );
+    const carousel = fs.readFileSync(
+      path.join(ROOT, "components/marketing/testimonial-carousel.tsx"),
+      "utf8",
+    );
+    const hero = fs.readFileSync(
+      path.join(ROOT, "components/marketing/home-sections.tsx"),
+      "utf8",
+    );
+
+    expect(page).toContain("HomeOpportunitySections");
+    expect(page).toContain("HomeTestimonialsSection");
+    expect(page.indexOf("HomeOpportunitySections")).toBeLessThan(
+      page.indexOf("HomeTestimonialsSection"),
+    );
+    expect(data).toContain(
+      "Placeholder testimonial content — replace with verified customer",
+    );
+    expect(data).toContain("Daniel Mercer");
+    expect(data).not.toMatch(/10,000\+|£50M|4\.9\/5/);
+    expect(carousel).toContain('"use client"');
+    expect(carousel).toContain("useReducedMotion");
+    expect(carousel).not.toMatch(/supabase|searchDealPreviews|fetch\(/);
+    expect(hero).toContain('href="/deals"');
+    expect(hero).toContain("Find opportunities for your business");
+    expect(hero).not.toContain("use client");
+  });
 });

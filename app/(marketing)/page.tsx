@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import {
   HomeHero,
   HomeOpportunitySections,
+  HomeTestimonialsSection,
   HomeValueSections,
 } from "@/components/marketing/home-sections";
 import { Container } from "@/components/layout/container";
@@ -85,6 +86,9 @@ export default async function HomePage() {
       <HomeHero />
       <Container className="flex flex-col gap-16 py-12 md:py-16">
         <HomeOpportunitySections latest={latest} closingSoon={closingSoon} />
+      </Container>
+      <HomeTestimonialsSection />
+      <Container className="flex flex-col gap-16 py-12 md:py-16">
         <HomeValueSections />
       </Container>
     </main>
