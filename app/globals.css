@@ -186,5 +186,17 @@
 @layer utilities {
   .surface-hero {
     background-color: color-mix(in srgb, var(--slate-50) 88%, white);
+    background-image:
+      radial-gradient(
+        ellipse 70% 50% at 50% 28%,
+        color-mix(in srgb, white 72%, transparent),
+        transparent 70%
+      ),
+      radial-gradient(
+        circle at 1px 1px,
+        color-mix(in srgb, var(--navy) 6%, transparent) 1px,
+        transparent 0
+      );
+    background-size: auto, 22px 22px;
   }
 }

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { CategoryShortcuts } from "@/components/deals/category-shortcuts";
 import { DealList } from "@/components/deals/deal-list";
 import { HeroSearchForm } from "@/components/deals/hero-search-form";
+import { HeroCategoryCloud } from "@/components/marketing/hero-category-cloud";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { Container } from "@/components/layout/container";
 import { Heading, Text } from "@/components/layout/heading";
@@ -34,8 +35,9 @@ const VALUE_PROPS = [
 
 export function HomeHero() {
   return (
-    <section className="surface-hero border-b border-border">
-      <Container className="flex flex-col items-center gap-8 py-12 text-center md:py-20">
+    <section className="surface-hero relative overflow-hidden border-b border-border">
+      <HeroCategoryCloud />
+      <Container className="relative z-10 flex flex-col items-center gap-8 py-14 text-center md:py-24">
         <div className="flex max-w-3xl flex-col items-center gap-4">
           <BrandLogo alt={APP_NAME} className="h-10 w-auto md:h-12" priority />
           <Heading>

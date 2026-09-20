@@ -136,4 +136,26 @@ describe("design-system anti-bypass guards", () => {
     expect(page).toContain("process.env.NODE_ENV");
     expect(page).toContain("process.env.VERCEL");
   });
+
+  it("keeps the public hero search and decorative category cloud separate from deal data", () => {
+    const hero = fs.readFileSync(
+      path.join(ROOT, "components/marketing/home-sections.tsx"),
+      "utf8",
+    );
+    const cloud = fs.readFileSync(
+      path.join(ROOT, "components/marketing/hero-category-cloud.tsx"),
+      "utf8",
+    );
+
+    expect(hero).toContain("Find contracts worth pursuing, then unlock who is buying.");
+    expect(hero).toContain("HeroSearchForm");
+    expect(hero).toContain("HeroCategoryCloud");
+    expect(hero).not.toContain("use client");
+    expect(cloud).toContain('"use client"');
+    expect(cloud).toContain("pointer-events-none");
+    expect(cloud).toContain('aria-hidden="true"');
+    expect(cloud).toContain("useReducedMotion");
+    expect(cloud).toContain("DEAL_CATEGORY_CATALOG");
+    expect(cloud).not.toMatch(/supabase|searchDealPreviews|fetch\(/);
+  });
 });
