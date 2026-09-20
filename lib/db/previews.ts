@@ -100,6 +100,23 @@ const previewListSchema = paginationSchema.extend({
       "WITHDRAWN",
     ])
     .optional(),
+  statuses: z
+    .array(
+      z.enum([
+        "UPCOMING",
+        "OPEN",
+        "CLOSING_SOON",
+        "CLOSED",
+        "AWARDED",
+        "CANCELLED",
+        "ACTIVE",
+        "EXPIRED",
+        "WITHDRAWN",
+      ]),
+    )
+    .min(1)
+    .max(9)
+    .optional(),
 });
 
 const previewSearchSchema = previewListSchema.extend({
@@ -139,7 +156,9 @@ export async function listPublishedDealPreviews(
   if (filters.region) {
     query = query.eq("broad_region", filters.region);
   }
-  if (filters.status) {
+  if (filters.statuses?.length) {
+    query = query.in("status", filters.statuses);
+  } else if (filters.status) {
     query = query.eq("status", filters.status);
   }
   if (filters.valueBand) {

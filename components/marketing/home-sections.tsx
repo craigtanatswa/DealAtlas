@@ -76,7 +76,7 @@ export function HomeOpportunitySections({
         <SectionHeader
           id="latest-heading"
           title="Latest opportunities"
-          description="Recently published opportunities. Join DealAtlas Pro to unlock buyer and source details."
+          description="Open and upcoming opportunities first. Awarded listings appear when fewer live opportunities are published. Join DealAtlas Pro to unlock buyer and source details."
           action={
             <Button asChild variant="outline">
               <Link href="/deals">View all opportunities</Link>

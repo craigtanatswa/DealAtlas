@@ -2,7 +2,9 @@ import "server-only";
 
 import {
   getPublishedDealPreviewByDealId,
+  listPublishedDealPreviews,
   searchPublishedDealPreviews,
+  type DealPreviewPublic,
   type PublicSupabaseClient,
 } from "@/lib/db/previews";
 import { throwIfQueryError } from "@/lib/db/errors";
@@ -19,6 +21,12 @@ import {
   type RankedDealSearchResult,
 } from "@/lib/search/dto";
 import {
+  HOME_FALLBACK_STATUS,
+  HOME_LATEST_LIMIT,
+  HOME_PRIMARY_STATUSES,
+  takeHomeLatestItems,
+} from "@/lib/search/home-latest";
+import {
   parseSignedInSearchParams,
   publicSearchOffset,
   type SearchParamRecord,
@@ -34,6 +42,75 @@ type ProfileSearchRow = {
 
 function usesRelevanceQuery(filters: SignedInSearchFilters): boolean {
   return filters.sort === "relevance" || filters.minScore != null;
+}
+
+async function rankedResultFromPreviewRows(input: {
+  client: PublicSupabaseClient;
+  userId?: string | null;
+  rows: DealPreviewPublic[];
+  pageSize: number;
+}): Promise<{
+  companyProfileId: string | null;
+  result: RankedDealSearchResult;
+}> {
+  const companyProfileId = input.userId
+    ? await loadCompanyProfileIdForUser(input.client, input.userId)
+    : null;
+  const matches = companyProfileId
+    ? await loadSafeMatchesForDeals({
+        client: input.client,
+        companyProfileId,
+        dealIds: input.rows.map((row) => row.deal_id),
+      })
+    : new Map<string, SafeMatchView>();
+
+  return {
+    companyProfileId,
+    result: {
+      items: input.rows.map((row) => ({
+        preview: toPublicDealPreview(row),
+        match: matches.get(row.deal_id) ?? null,
+      })),
+      total: input.rows.length,
+      page: 1,
+      pageSize: input.pageSize,
+    },
+  };
+}
+
+export async function searchHomeLatestDealPreviews(input: {
+  client: PublicSupabaseClient;
+  userId?: string | null;
+  limit?: number;
+}): Promise<{
+  companyProfileId: string | null;
+  result: RankedDealSearchResult;
+}> {
+  const limit = input.limit ?? HOME_LATEST_LIMIT;
+  const primaryRows = await listPublishedDealPreviews(input.client, {
+    statuses: [...HOME_PRIMARY_STATUSES],
+    limit,
+  });
+  const awardedRows =
+    primaryRows.length < limit
+      ? await listPublishedDealPreviews(input.client, {
+          status: HOME_FALLBACK_STATUS,
+          limit: limit - primaryRows.length,
+        })
+      : [];
+  const rows = takeHomeLatestItems(
+    primaryRows,
+    awardedRows,
+    (row) => row.deal_id,
+    limit,
+  );
+
+  return rankedResultFromPreviewRows({
+    client: input.client,
+    userId: input.userId,
+    rows,
+    pageSize: limit,
+  });
 }
 
 function profileSearchArgs(

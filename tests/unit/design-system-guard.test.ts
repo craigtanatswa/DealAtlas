@@ -178,6 +178,7 @@ describe("design-system anti-bypass guards", () => {
     );
 
     expect(page).toContain("HomeOpportunitySections");
+    expect(page).toContain("searchHomeLatestDealPreviews");
     expect(page).toContain("HomeTestimonialsSection");
     expect(page.indexOf("HomeOpportunitySections")).toBeLessThan(
       page.indexOf("HomeTestimonialsSection"),
@@ -192,6 +193,7 @@ describe("design-system anti-bypass guards", () => {
     expect(carousel).not.toMatch(/supabase|searchDealPreviews|fetch\(/);
     expect(hero).toContain('href="/deals"');
     expect(hero).toContain("Find opportunities for your business");
+    expect(hero).toContain("Open and upcoming opportunities first");
     expect(hero).not.toContain("use client");
   });
 });

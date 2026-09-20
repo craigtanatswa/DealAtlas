@@ -136,7 +136,7 @@ Secondary link:
 View pricing
 
 ## 10. Homepage and workspace
-The public homepage is marketing + search + live opportunity discovery + conversion. Visitors can search immediately and browse real `deal_previews`. Do not hide product value behind sign-up. The public hero may show decorative, non-interactive category chips around the search column; they use the existing category catalogue only, fetch nothing, and must not cover the headline, copy, or search. A testimonial carousel may sit below the opportunity listings; its quotes are development placeholders and must be replaced with verified customer testimonials before production use. Do not invent live counts, ratings, or win figures.
+The public homepage is marketing + search + live opportunity discovery + conversion. Visitors can search immediately and browse real `deal_previews`. Latest opportunities prefer open and upcoming status and only include awarded listings when fewer live opportunities are published. Do not hide product value behind sign-up. The public hero may show decorative, non-interactive category chips around the search column; they use the existing category catalogue only, fetch nothing, and must not cover the headline, copy, or search. A testimonial carousel may sit below the opportunity listings; its quotes are development placeholders and must be replaced with verified customer testimonials before production use. Do not invent live counts, ratings, or win figures.
 
 Authenticated `/app` leads with search and live opportunities, then quotas and alerts.
 

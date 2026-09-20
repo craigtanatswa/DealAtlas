@@ -18,6 +18,7 @@ describe("typed data-access boundaries", () => {
     expect(source).toContain("p_deadline_band");
     expect(source).toContain("DEAL_PREVIEW_PUBLIC_SELECT");
     expect(source).toContain("DEAL_PREVIEW_SITEMAP_SELECT");
+    expect(source).toContain('.in("status"');
     expect(source).not.toMatch(/select\(\s*["']\*["']\s*\)/);
     expect(source).not.toContain('.from("deals")');
     expect(source).not.toContain('.from("organizations")');

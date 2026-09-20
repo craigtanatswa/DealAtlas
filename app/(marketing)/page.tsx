@@ -11,7 +11,10 @@ import { JsonLd } from "@/components/seo/json-ld";
 import { getAuthUser } from "@/lib/auth/session";
 import { getAppOrigin } from "@/lib/auth/urls";
 import { DatabaseQueryError } from "@/lib/db/errors";
-import { searchDealPreviewsForUser } from "@/lib/matching/search";
+import {
+  searchDealPreviewsForUser,
+  searchHomeLatestDealPreviews,
+} from "@/lib/matching/search";
 import { organizationJsonLd, webPageJsonLd } from "@/lib/seo/json-ld";
 import { marketingPageMetadata } from "@/lib/seo/metadata";
 import { PUBLIC_PAGE_COPY } from "@/lib/seo/pages";
@@ -42,11 +45,9 @@ async function loadHomeOpportunities() {
     const client = await createSupabaseServerClient();
     const user = await getAuthUser();
     const [latest, closingSoon] = await Promise.all([
-      searchDealPreviewsForUser({
+      searchHomeLatestDealPreviews({
         client,
-        searchParams: { limit: "8" },
         userId: user?.id,
-        defaultSort: "updated",
       }),
       searchDealPreviewsForUser({
         client,
