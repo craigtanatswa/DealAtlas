@@ -95,8 +95,8 @@ export function DealSearchFilterRail({
         <h2 className="font-heading text-base font-semibold text-balance">Filters</h2>
         <p className="mt-1 text-pretty text-[0.8125rem] leading-5 text-muted-foreground">
           {showRelevance
-            ? "Search sanitised previews and sort by your company profile relevance."
-            : "Free search uses sanitised preview fields only."}
+            ? "Search opportunities and sort by your company profile relevance."
+            : "Filter by category, region, value and closing window. Join Pro to unlock full details."}
         </p>
         <FilterForm
           filters={filters}
@@ -132,8 +132,7 @@ export function DealSearchFilterDrawer({
           <SheetHeader>
             <SheetTitle>Filters</SheetTitle>
             <SheetDescription>
-              Narrow sanitised opportunities. Buyer and source identity are not
-              included.
+              Narrow results by category, region, value and closing window.
             </SheetDescription>
           </SheetHeader>
           <FilterForm

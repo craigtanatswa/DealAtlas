@@ -51,7 +51,7 @@ test.describe("Free account journey", () => {
 
     await page.goto(`/app/deals/${seed.publishedDealId}`);
     await expect(
-      page.getByText("Sanitised preview. Buyer identity", { exact: false }),
+      page.getByText("Join DealAtlas Pro to unlock the buyer", { exact: false }),
     ).toBeVisible();
     await expect(
       page.getByRole("button", { name: "Unlock with DealAtlas Pro" }),
@@ -70,7 +70,7 @@ test.describe("Free account journey", () => {
     expect(findProtectedMarkerLeaks(await checkout.text())).toEqual([]);
 
     await page.goto("/app/alerts");
-    await expect(page.getByText(/stay locked/i).first()).toBeVisible();
+    await expect(page.getByText(/Join DealAtlas Pro/i).first()).toBeVisible();
     await expectNoProtectedLeaks(page);
   });
 });

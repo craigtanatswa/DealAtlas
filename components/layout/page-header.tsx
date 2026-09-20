@@ -4,13 +4,11 @@ import { Heading, Text } from "@/components/layout/heading";
 import { cn } from "@/lib/utils";
 
 export function PageHeader({
-  eyebrow,
   title,
   description,
   actions,
   className,
 }: {
-  eyebrow?: string;
   title: ReactNode;
   description?: ReactNode;
   actions?: ReactNode;
@@ -18,9 +16,6 @@ export function PageHeader({
 }) {
   return (
     <div className={cn("flex flex-col gap-3", className)}>
-      {eyebrow ? (
-        <p className="text-sm font-medium text-muted-foreground">{eyebrow}</p>
-      ) : null}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div className="min-w-0 max-w-3xl">
           <Heading>{title}</Heading>

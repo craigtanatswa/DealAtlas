@@ -30,7 +30,7 @@ export default function PrivacyPage() {
       />
       <LegalDocument
         title="Privacy"
-        intro="This draft explains how DealAtlas intends to handle account data, sanitised opportunity previews, and protected buyer or source identity. It is not the final privacy notice."
+        intro="This draft explains how DealAtlas intends to handle account data, opportunity previews, and buyer or source details available on Pro. It is not the final privacy notice."
         reviewNote="Counsel must confirm controller identity, lawful bases, retention periods, international transfers, and the live Dodo / Supabase / email / analytics processors before this page is treated as a customer-facing policy."
       >
         <LegalSection title="Who we are" review>
@@ -52,11 +52,10 @@ export default function PrivacyPage() {
         </LegalSection>
         <LegalSection title="Opportunity data">
           <p>
-            Free and anonymous product surfaces only use sanitised{" "}
-            <code>deal_previews</code>. Buyer names, source titles, source URLs,
-            notice identifiers, and procurement contacts are not sent to unpaid
-            clients, public metadata, JSON-LD, or sitemaps. Protected Deal data
-            is loaded only after a server-side entitlement check.
+            Free and anonymous product pages show opportunity overviews. Buyer
+            names, original titles, source URLs, notice identifiers, and
+            procurement contacts are unlocked on Pro after a server-side
+            entitlement check.
           </p>
         </LegalSection>
         <LegalSection title="Cookies and measurement" review>

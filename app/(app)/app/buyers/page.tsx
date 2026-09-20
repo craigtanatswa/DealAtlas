@@ -30,7 +30,7 @@ export default async function BuyersIndexPage({ searchParams }: PageProps) {
     return (
       <IntelligencePaywall
         title="Buyers"
-        description="The buyer directory is Pro-only. Free accounts cannot enumerate organisation identity."
+        description="Join DealAtlas Pro to unlock the buyer directory."
         returnTo="/app/buyers"
       />
     );

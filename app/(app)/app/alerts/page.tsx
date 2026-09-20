@@ -37,7 +37,7 @@ export default async function AlertsPage() {
         description={
           centre.plan === PLANS.PRO
             ? "Pro alerts include paid details after server entitlement checks. Open an opportunity to act on the source."
-            : "Free alerts say that a match or change exists. Buyer identity, original titles, and source links stay locked."
+            : "Free alerts tell you that a match or change exists. Join DealAtlas Pro to unlock buyer identity, original titles, and source links."
         }
       />
       <div className="flex flex-col gap-2">

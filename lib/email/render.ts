@@ -69,7 +69,7 @@ export function renderAlertDigest(input: {
         ? "A new matching opportunity is available in DealAtlas."
         : `${count} matching opportunities are available in DealAtlas.`,
       ...previewLines.map((title) => `- ${title}`),
-      "Sign in to review sanitised previews. Buyer identity, original titles, and source links stay locked on Free.",
+      "Sign in to review matching opportunities. Join DealAtlas Pro to unlock buyer identity, original titles, and source links.",
       `${origin}/app/alerts`,
     ].join("\n");
     const htmlItems = previewLines
@@ -79,7 +79,7 @@ export function renderAlertDigest(input: {
       ${brandEmailHeader(origin)}
       <p>${count === 1 ? "A new matching opportunity is available in DealAtlas." : `${count} matching opportunities are available in DealAtlas.`}</p>
       ${htmlItems ? `<ul>${htmlItems}</ul>` : ""}
-      <p>Sign in to review sanitised previews. Buyer identity, original titles, and source links stay locked on Free.</p>
+      <p>Sign in to review matching opportunities. Join DealAtlas Pro to unlock buyer identity, original titles, and source links.</p>
       <p><a href="${escapeHtml(`${origin}/app/alerts`)}">Open alert centre</a></p>
     `.trim();
     return { subject, text, html };

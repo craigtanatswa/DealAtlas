@@ -8,7 +8,7 @@ export const EMPTY_STATE_COPY = {
   noDealsMatchFilters: {
     title: "No deals match these filters",
     description:
-      "Try a broader region, category, or closing window. Free search never includes source identity.",
+      "Try a broader region, category, or closing window.",
   },
   ingestionStale: {
     title: "Listings are catching up",
@@ -18,7 +18,7 @@ export const EMPTY_STATE_COPY = {
   paidDataUnavailable: {
     title: "Paid details are not available for this opportunity",
     description:
-      "The sanitised preview remains available. Buyer and source data require a verified Pro subscription.",
+      "This opportunity overview remains available. Join DealAtlas Pro to unlock buyer and source details.",
   },
   paymentConfirming: {
     title: "Payment is still confirming",

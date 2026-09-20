@@ -57,7 +57,7 @@ export function DealKeywordForm({
           filters={filters}
           idPrefix={isHero ? "hero" : "search"}
           label={isHero ? "Search opportunities" : "Keyword"}
-          hint={isHero ? undefined : "Search DealAtlas titles and summaries only."}
+          hint={isHero ? undefined : "Search by products, services, industries or locations."}
           placeholder={
             isHero
               ? "Search products, services, industries or locations"

@@ -49,7 +49,7 @@ describe("alert digest paywall", () => {
     const blob = `${digest.subject}\n${digest.text}\n${digest.html}`;
     expect(findProtectedMarkerLeaks(blob)).toEqual([]);
     expect(blob).toMatch(/matching opportunit/i);
-    expect(blob).toContain("stay locked on Free");
+    expect(blob).toContain("Join DealAtlas Pro");
     expect(blob).toContain("Managed IT support for a public organisation");
     expect(blob).not.toContain("https://canary-source.example/notice");
   });

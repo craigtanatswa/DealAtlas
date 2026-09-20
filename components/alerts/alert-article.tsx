@@ -39,7 +39,7 @@ export function AlertArticle({
       <div className="flex flex-wrap gap-3">
         <Button asChild>
           <Link href={alert.href}>
-            {entitled ? "Open opportunity" : "Review sanitised preview"}
+            {entitled ? "Open opportunity" : "View opportunity"}
           </Link>
         </Button>
         {entitled && alert.sourceUrl ? (

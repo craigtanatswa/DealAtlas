@@ -31,7 +31,7 @@ export default async function SearchesPage() {
     <Main className="gap-8">
       <PageHeader
         title="Saved searches"
-        description="Free accounts can save one search. Pro accounts can save 50. Alerts from saved searches never reveal source identity on Free."
+        description="Free accounts can save one search. Pro accounts can save 50. Join Pro to unlock buyer and source details in alerts."
       />
       <p className="text-sm text-muted-foreground tabular-nums">
         {quotaLabel(searches.length, limit)}

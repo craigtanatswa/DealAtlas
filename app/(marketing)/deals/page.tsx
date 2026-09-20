@@ -49,9 +49,8 @@ export default async function DealsIndexPage({ searchParams }: PageProps) {
   return (
     <Main className="gap-8">
       <PageHeader
-        eyebrow="Find deals"
-        title="Discover sanitised opportunities"
-        description="Browse useful commercial context without buyer names, source titles, or original documents. Unlock those details with DealAtlas Pro."
+        title="Discover opportunities"
+        description="Browse contracts, supply requests and deals. Join DealAtlas Pro to unlock buyer identity, original notices, and how to apply."
       />
       <div className="sticky top-16 z-20 flex flex-col gap-3 border-b border-border bg-background py-3 lg:flex-row lg:items-end">
         <div className="min-w-0 flex-1">

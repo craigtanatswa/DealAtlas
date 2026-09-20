@@ -78,6 +78,7 @@ export default async function CategoryLandingPage({ params }: PageProps) {
         ]}
       />
       <div className="flex max-w-3xl flex-col gap-3">
+        <Heading>{landing.title}</Heading>
         <p className="text-sm font-medium text-muted-foreground">
           <Link
             href="/categories"
@@ -86,7 +87,6 @@ export default async function CategoryLandingPage({ params }: PageProps) {
             Categories
           </Link>
         </p>
-        <Heading>{landing.title}</Heading>
         <Text variant="muted">{landing.summary}</Text>
         <p>
           <Button asChild>
@@ -117,7 +117,7 @@ export default async function CategoryLandingPage({ params }: PageProps) {
       </section>
       <section className="flex flex-col gap-4" aria-labelledby="samples-heading">
         <Heading id="samples-heading" level={2}>
-          Recent sanitised previews
+          Recent opportunities
         </Heading>
         {cards.length === 0 ? (
           <Text variant="muted">
@@ -137,13 +137,13 @@ export default async function CategoryLandingPage({ params }: PageProps) {
         <p>
           <Button asChild variant="outline">
             <Link href={`/deals?category=${encodeURIComponent(landing.name)}`}>
-              View all in Find deals
+              View all opportunities
             </Link>
           </Button>
         </p>
         <Text variant="meta" className="text-muted-foreground">
-          Filtered Find deals URLs are noindex. This category landing is the
-          indexable page.
+          This category page is the main landing. Filtered search URLs are not
+          indexed.
         </Text>
       </section>
     </Main>

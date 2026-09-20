@@ -57,13 +57,13 @@ export default async function AppHomePage() {
     <Main className="gap-10">
       <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-2">
+          <Heading>Discover opportunities</Heading>
           <p className="text-sm font-medium text-muted-foreground">
             Welcome, {firstName}
           </p>
-          <Heading>Discover opportunities</Heading>
           <p className="max-w-2xl text-[0.9375rem] leading-7 text-muted-foreground md:text-base">
-            Search and browse live previews first. Source identity stays locked
-            until Pro is verified.
+            Search and browse opportunities first. Join DealAtlas Pro to unlock
+            who is buying and how to apply.
           </p>
         </div>
         <HeroSearchForm path="/app/search" />
@@ -74,7 +74,7 @@ export default async function AppHomePage() {
         <SectionHeader
           id="workspace-latest-heading"
           title="Opportunities for you"
-          description="Newest sanitised previews, ranked by your company profile when one is saved."
+          description="Newest opportunities, ranked by your company profile when one is saved."
           action={
             <Button asChild variant="outline">
               <Link href="/app/search">View all opportunities</Link>

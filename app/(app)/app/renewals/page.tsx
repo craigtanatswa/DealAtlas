@@ -26,7 +26,7 @@ export default async function RenewalsPage({ searchParams }: PageProps) {
     return (
       <IntelligencePaywall
         title="Renewals"
-        description="Upcoming renewal windows are Pro-only and are shown only when contract or notice dates exist."
+        description="Join DealAtlas Pro to unlock upcoming renewal windows."
         returnTo="/app/renewals"
       />
     );

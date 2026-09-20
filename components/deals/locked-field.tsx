@@ -27,8 +27,7 @@ export function LockedField({
             {benefit}
           </p>
           <p className="sr-only">
-            Placeholder only. Protected buyer and source values are not included
-            in this component.
+            Join DealAtlas Pro to unlock this field.
           </p>
         </div>
       </div>

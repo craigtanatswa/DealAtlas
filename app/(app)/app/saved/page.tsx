@@ -37,7 +37,7 @@ export default async function SavedPage() {
     <Main className="gap-8">
       <PageHeader
         title="Saved opportunities"
-        description="Free accounts can save 5 sanitised previews. Saved items never include source identity until a verified Pro subscription unlocks the Deal."
+        description="Free accounts can save 5 opportunities. Join DealAtlas Pro to unlock buyer and source details on saved items."
       />
       <div className="flex flex-col gap-2">
         <p className="text-sm text-muted-foreground">
@@ -55,7 +55,7 @@ export default async function SavedPage() {
       {items.length === 0 ? (
         <EmptyState
           title="No saved opportunities yet"
-          description="Save a sanitised preview from search or a Deal page. Free accounts can keep 5."
+          description="Save an opportunity from search or a Deal page. Free accounts can keep 5."
         >
           <Button asChild>
             <Link href="/app/search">Find opportunities</Link>

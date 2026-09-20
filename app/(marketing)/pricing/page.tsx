@@ -22,10 +22,10 @@ export const metadata: Metadata = marketingPageMetadata({
 });
 
 const FREE_FEATURES = [
-  "Browse sanitised active opportunities",
-  "Search preview titles and summaries",
+  "Browse active opportunities",
+  "Search by keyword",
   "Filter by category, sector, region, value and closing window",
-  "Save a limited number of locked previews",
+  "Save a limited number of opportunities",
 ];
 
 const PRO_FEATURES = [
@@ -61,7 +61,7 @@ export default async function PricingPage() {
         <section className="flex flex-col rounded-lg border border-border bg-background p-6">
           <h2 className="font-heading text-xl font-semibold">Free</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Useful commercial context without source identity.
+            Useful commercial context. Join Pro to unlock who is buying.
           </p>
           <ul className="mt-6 flex flex-col gap-3 text-[0.9375rem] leading-6 text-muted-foreground">
             {FREE_FEATURES.map((item) => (

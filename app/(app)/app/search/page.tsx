@@ -53,9 +53,8 @@ export default async function AppSearchPage({ searchParams }: PageProps) {
   return (
     <Main className="gap-8">
       <PageHeader
-        eyebrow="Discover"
         title="Search matching opportunities"
-        description="Signed-in search still uses sanitised previews. Relevance scores come from your company profile and never include buyer or source identity."
+        description="Search live opportunities and sort by your company profile. Join DealAtlas Pro to unlock buyer identity, source links, and documents."
         actions={
           !companyProfileId ? (
             <Button asChild variant="outline" size="sm">

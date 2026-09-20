@@ -39,7 +39,7 @@ function SavedDealItem({ item }: { item: SavedDealView }) {
         <article className="rounded-xl border border-border bg-card p-4">
           <h2 className="font-heading text-lg font-semibold">Saved opportunity</h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            The sanitised preview is not published. Open the opportunity from your
+            The opportunity is no longer published. Open it from your
             workspace to check its current status.
           </p>
           <Button asChild className="mt-4">

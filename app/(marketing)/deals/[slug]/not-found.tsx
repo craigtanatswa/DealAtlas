@@ -9,7 +9,7 @@ export default function DealPreviewNotFound() {
     <Main>
       <ErrorState
         title="Opportunity preview not found"
-        description="That preview is unpublished, was removed, or the link is incorrect. Free pages only show sanitised deal_previews."
+        description="That opportunity is unpublished, was removed, or the link is incorrect."
       >
         <Button asChild>
           <Link href="/deals">Back to deals</Link>

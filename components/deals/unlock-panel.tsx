@@ -45,7 +45,7 @@ export function UnlockPanel({
           </h2>
           <CardDescription>
             Open the Pro workspace view for buyer identity, source links,
-            documents, and provenance. This public page stays a sanitised preview.
+            documents, and provenance.
           </CardDescription>
         </CardHeader>
         <CardFooter className="flex flex-wrap items-center gap-3">

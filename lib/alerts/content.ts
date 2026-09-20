@@ -9,22 +9,22 @@ export const FREE_ALERT_COPY: Record<
   NEW_MATCH: {
     title: "New matching opportunity",
     message:
-      "A new opportunity matches your profile or a saved search. Review the sanitised preview in DealAtlas. Buyer and source identity stay locked on Free.",
+      "A new opportunity matches your profile or a saved search. Open it in DealAtlas, then join Pro to unlock buyer and source details.",
   },
   DEAL_CHANGED: {
     title: "Saved opportunity updated",
     message:
-      "A saved opportunity changed. The sanitised preview is available; source identity stays locked on Free.",
+      "A saved opportunity changed. Open it in DealAtlas. Join Pro to unlock source details.",
   },
   DEADLINE: {
     title: "Closing window approaching",
     message:
-      "A saved opportunity is entering a closing window. Exact dates stay locked on Free.",
+      "A saved opportunity is entering a closing window. Join Pro to unlock exact dates.",
   },
   RENEWAL: {
     title: "Upcoming renewal window",
     message:
-      "A saved opportunity has an upcoming renewal or contract-end window. Buyer identity stays locked on Free.",
+      "A saved opportunity has an upcoming renewal or contract-end window. Join Pro to unlock buyer identity.",
   },
 };
 

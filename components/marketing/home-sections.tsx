@@ -25,11 +25,11 @@ const VALUE_PROPS = [
   },
   {
     title: "Judge commercial fit first",
-    body: "Free previews show what is being requested, the category, region band, value band and closing window.",
+    body: "See what is being requested, the category, region band, value band and closing window before you subscribe.",
   },
   {
     title: "Unlock the source when ready",
-    body: "Buyer identity, original notices and application links stay protected until a verified Pro subscription.",
+    body: "Join DealAtlas Pro to unlock buyer identity, original notices and application links after a verified subscription.",
   },
 ] as const;
 
@@ -75,7 +75,7 @@ export function HomeOpportunitySections({
         <SectionHeader
           id="latest-heading"
           title="Latest opportunities"
-          description="Published DealAtlas previews. Titles and summaries are sanitised; buyer and source identity stay locked."
+          description="Recently published opportunities. Join DealAtlas Pro to unlock buyer and source details."
           action={
             <Button asChild variant="outline">
               <Link href="/deals">View all opportunities</Link>
@@ -85,10 +85,10 @@ export function HomeOpportunitySections({
         {latest.items.length === 0 ? (
           <EmptyState
             title="No published opportunities yet"
-            description="When sanitised previews are available they will appear here. This is not a live opportunity count."
+            description="Published opportunities will appear here when they are available. This is not a live opportunity count."
           >
             <Button asChild variant="outline">
-              <Link href="/deals">Open Find deals</Link>
+              <Link href="/deals">Browse opportunities</Link>
             </Button>
           </EmptyState>
         ) : (
@@ -101,7 +101,7 @@ export function HomeOpportunitySections({
           <SectionHeader
             id="closing-heading"
             title="Closing soon"
-            description="Opportunities already marked as closing soon in the sanitised preview set."
+            description="Opportunities already marked as closing soon."
             action={
               <Button asChild variant="outline">
                 <Link href="/deals?status=CLOSING_SOON">View closing soon</Link>

@@ -101,7 +101,7 @@ export type ProMatchView = SafeMatchView & {
 export const PREVIEW_REASON_LABELS: Record<MatchReasonCode, string> = {
   CATEGORY_OVERLAP: "Category overlap with your profile",
   CPV_OVERLAP: "Classification overlap with your profile",
-  KEYWORD_OVERLAP: "Keyword overlap with the sanitised preview",
+  KEYWORD_OVERLAP: "Keyword overlap with the opportunity preview",
   NEGATIVE_KEYWORD: "Reduced by a negative keyword",
   REGION_MATCH: "Region overlap with areas you serve",
   REGION_MISMATCH: "Region is outside your stated coverage",

@@ -51,8 +51,8 @@ export function CompanyProfileForm({
     <form action={action} className="flex flex-col gap-4">
       <p className="text-sm leading-6 text-muted-foreground">
         Free accounts can save one matching profile. Saving recalculates relevance
-        scores for published opportunities. Scores and preview reasons stay
-        sanitised; exact source identity is never included.
+        scores for published opportunities. Join DealAtlas Pro to unlock buyer
+        and source details.
       </p>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="company_name">Company name</Label>

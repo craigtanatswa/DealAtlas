@@ -38,9 +38,9 @@ export const PUBLIC_PAGE_COPY = {
     path: "/",
   },
   deals: {
-    title: "Find deals",
+    title: "Discover opportunities",
     description:
-      "Browse sanitised UK contract opportunities. Buyer identity and original sources stay locked until you subscribe.",
+      "Browse UK contract opportunities, supply requests and deals. Join DealAtlas Pro to unlock buyer identity and original sources.",
     path: "/deals",
   },
   pricing: {
@@ -52,7 +52,7 @@ export const PUBLIC_PAGE_COPY = {
   howItWorks: {
     title: "How it works",
     description:
-      "Discover sanitised opportunities, assess fit, then unlock buyer and source details after a verified Pro subscription.",
+      "Discover opportunities, assess fit, then unlock buyer and source details after a verified Pro subscription.",
     path: "/how-it-works",
   },
   contact: {
@@ -64,13 +64,13 @@ export const PUBLIC_PAGE_COPY = {
   privacy: {
     title: "Privacy",
     description:
-      "How DealAtlas handles account data, sanitised opportunity previews, and protected buyer or source identity. Draft wording pending legal review.",
+      "How DealAtlas handles account data, opportunity previews, and protected buyer or source identity. Draft wording pending legal review.",
     path: "/privacy",
   },
   terms: {
     title: "Terms",
     description:
-      "Terms of use for DealAtlas accounts, subscriptions, and sanitised opportunity intelligence. Draft wording pending legal review.",
+      "Terms of use for DealAtlas accounts, subscriptions, and opportunity intelligence. Draft wording pending legal review.",
     path: "/terms",
   },
   cookies: {
@@ -90,11 +90,11 @@ export const PUBLIC_PAGE_COPY = {
 export const HOW_IT_WORKS_STEPS = [
   {
     title: "Discover the opportunity",
-    body: "Search sanitised DealAtlas previews by category, region, value band, and closing window. Free results never include buyer names, original titles, or source URLs.",
+    body: "Search by category, region, value band, and closing window. Join DealAtlas Pro when an opportunity is worth unlocking.",
   },
   {
     title: "Understand commercial fit",
-    body: "Use the anonymised summary, requirement themes, SME suitability, and bid complexity to decide whether the opportunity is worth pursuing.",
+    body: "Use the summary, requirement themes, SME suitability, and bid complexity to decide whether the opportunity is worth pursuing.",
   },
   {
     title: "Subscribe to reveal the source",
@@ -102,6 +102,6 @@ export const HOW_IT_WORKS_STEPS = [
   },
   {
     title: "Act, save, and monitor",
-    body: "Save deals, keep searches, and receive alerts for new matches and material changes. Protected identity stays off free and anonymous surfaces.",
+    body: "Save deals, keep searches, and receive alerts for new matches and material changes. Join DealAtlas Pro to unlock buyer and source details.",
   },
 ] as const;

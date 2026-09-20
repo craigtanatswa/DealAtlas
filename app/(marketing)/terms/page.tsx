@@ -30,15 +30,15 @@ export default function TermsPage() {
       />
       <LegalDocument
         title="Terms"
-        intro="These draft terms describe how DealAtlas accounts, subscriptions, and sanitised opportunity intelligence are intended to work. They are not the final customer contract."
+        intro="These draft terms describe how DealAtlas accounts, subscriptions, and opportunity intelligence are intended to work. They are not the final customer contract."
         reviewNote="Governing law, limitation of liability, acceptable-use, and the live merchant-of-record terms must be signed off by counsel. Display prices are not a contractual offer until the live Dodo catalogue is attached."
       >
         <LegalSection title="The service">
           <p>
             DealAtlas provides UK-first B2B opportunity intelligence. Free
-            users may browse sanitised previews. Pro users may unlock protected
-            buyer and source details after the billing provider confirms
-            entitlement. A checkout redirect is not proof of payment.
+            users may browse opportunities. Pro users may unlock buyer and
+            source details after the billing provider confirms entitlement. A
+            checkout redirect is not proof of payment.
           </p>
         </LegalSection>
         <LegalSection title="Accounts">

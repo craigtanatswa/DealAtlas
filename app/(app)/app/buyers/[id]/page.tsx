@@ -36,7 +36,7 @@ export default async function BuyerIntelligencePage({ params }: PageProps) {
     return (
       <IntelligencePaywall
         title="Buyer intelligence"
-        description="Buyer identity, procurement history, awards, incumbents, and renewal signals stay locked until Pro is verified. This page does not load organisation names for free accounts."
+        description="Join DealAtlas Pro to unlock buyer identity, procurement history, awards, incumbents, and renewal signals."
         returnTo={returnTo}
       />
     );

@@ -28,7 +28,7 @@ const FREE_CENTRE: AlertCentreDto = {
 describe("alert centre UI", () => {
   it("keeps free alerts on the sanitised path", () => {
     render(<AlertArticle alert={FREE_CENTRE.items[0]!} plan={FREE_CENTRE.plan} />);
-    expect(screen.getByRole("link", { name: "Review sanitised preview" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "View opportunity" })).toBeTruthy();
     expect(screen.queryByRole("link", { name: "Open source" })).toBeNull();
     expect(screen.queryByText(/CANARY/)).toBeNull();
   });

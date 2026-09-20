@@ -33,7 +33,7 @@ test.describe("Anonymous journey", () => {
 
     await page.getByRole("link", { name: seed.previewTitle }).click();
     await page.waitForURL(new RegExp(`/deals/${seed.publishedSlug}`));
-    await expect(page.getByText(/Sanitised preview/i)).toBeVisible();
+    await expect(page.getByText(/Join DealAtlas Pro to unlock the buyer/i)).toBeVisible();
     await expect(page.getByText("Buyer identity", { exact: true })).toBeVisible();
     await expect(
       page.getByRole("link", { name: "Unlock with DealAtlas Pro" }),

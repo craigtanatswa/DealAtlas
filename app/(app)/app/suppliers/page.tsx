@@ -30,7 +30,7 @@ export default async function SuppliersIndexPage({ searchParams }: PageProps) {
     return (
       <IntelligencePaywall
         title="Suppliers"
-        description="The supplier directory is Pro-only. Free accounts cannot enumerate organisation identity."
+        description="Join DealAtlas Pro to unlock the supplier directory."
         returnTo="/app/suppliers"
       />
     );

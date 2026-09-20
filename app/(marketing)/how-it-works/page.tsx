@@ -31,10 +31,9 @@ export default function HowItWorksPage() {
       <div className="flex max-w-3xl flex-col gap-3">
         <Heading>How it works</Heading>
         <Text variant="muted">
-          DealAtlas is built so you can discover and assess opportunities
-          without receiving enough source-identifying data to bypass the
-          product. The original buyer and notice stay locked until Pro is
-          verified on the server.
+          DealAtlas lets you discover and assess opportunities first. Join
+          DealAtlas Pro to unlock buyer identity, source links, and documents
+          after a verified subscription.
         </Text>
       </div>
       <ol className="grid gap-4 md:grid-cols-2">

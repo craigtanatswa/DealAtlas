@@ -41,7 +41,7 @@ export const DEAL_CARD_STORIES = [
   {
     id: "free-preview",
     name: "Free preview card",
-    description: "Sanitised public/private preview with no source identity.",
+    description: "Public/private opportunity card with no source identity.",
     deal: DEAL_CARD_FIXTURES.freePreview,
   },
   {

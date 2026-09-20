@@ -26,7 +26,7 @@ export default async function ContractsPage({ searchParams }: PageProps) {
     return (
       <IntelligencePaywall
         title="Contracts"
-        description="Contract start, end, extension, payment, and performance records are Pro-only."
+        description="Join DealAtlas Pro to unlock contract dates, extensions, payments, and performance records."
         returnTo="/app/contracts"
       />
     );

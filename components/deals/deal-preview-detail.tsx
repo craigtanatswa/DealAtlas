@@ -47,8 +47,8 @@ export function DealPreviewDetail({
         </div>
         <Heading>{deal.previewTitle}</Heading>
         <Text variant="muted" className="max-w-3xl">
-          Sanitised preview. Buyer identity, original title, and source remain
-          locked.
+          Join DealAtlas Pro to unlock the buyer, original title, and source for
+          this opportunity.
         </Text>
         {save}
       </header>
@@ -74,7 +74,7 @@ export function DealPreviewDetail({
           </ul>
         ) : (
           <Text variant="muted">
-            No general requirements are listed for this preview.
+            No general requirements are listed for this opportunity.
           </Text>
         )}
       </section>
@@ -130,7 +130,7 @@ export function DealPreviewDetail({
           <MatchReasons
             score={match.score}
             reasons={match.reasons}
-            caption="Limited relevance based on your company profile and sanitised preview fields."
+            caption="Relevance based on your company profile."
           />
         ) : null}
       </section>
@@ -140,8 +140,7 @@ export function DealPreviewDetail({
           Source information
         </Heading>
         <Text variant="muted" className="max-w-3xl">
-          The commercial picture above is available without an account. Buyer,
-          notice, and application details stay locked until Pro is verified.
+          Join DealAtlas Pro to unlock buyer, notice, and application details.
         </Text>
         <UnlockPanel
           mode={unlock?.mode}

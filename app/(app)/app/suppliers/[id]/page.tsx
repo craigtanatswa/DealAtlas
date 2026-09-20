@@ -36,7 +36,7 @@ export default async function SupplierIntelligencePage({ params }: PageProps) {
     return (
       <IntelligencePaywall
         title="Supplier intelligence"
-        description="Supplier identity, awards, competitors, and incumbent signals stay locked until Pro is verified. This page does not load organisation names for free accounts."
+        description="Join DealAtlas Pro to unlock supplier identity, awards, competitors, and incumbent signals."
         returnTo={returnTo}
       />
     );
