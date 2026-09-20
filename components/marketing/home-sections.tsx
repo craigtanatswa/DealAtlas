@@ -40,13 +40,10 @@ export function HomeHero() {
       <Container className="relative z-10 flex flex-col items-center gap-8 py-14 text-center md:py-24">
         <div className="flex max-w-3xl flex-col items-center gap-4">
           <BrandLogo alt={APP_NAME} className="h-10 w-auto md:h-12" priority />
-          <Heading>
-            Find contracts worth pursuing, then unlock who is buying.
-          </Heading>
+          <Heading>Find opportunities worth pursuing.</Heading>
           <Text variant="muted" className="max-w-2xl">
-            Search real business opportunities, contracts, supply requests and
-            deals. Browse useful free context first, then reveal the source when
-            an opportunity is worth pursuing.
+            The #1 destination for finding the right business opportunities,
+            contracts, supply requests and deals.
           </Text>
         </div>
         <div className="w-full max-w-3xl text-left">

@@ -147,7 +147,7 @@ describe("design-system anti-bypass guards", () => {
       "utf8",
     );
 
-    expect(hero).toContain("Find contracts worth pursuing, then unlock who is buying.");
+    expect(hero).toContain("Find opportunities worth pursuing.");
     expect(hero).toContain("HeroSearchForm");
     expect(hero).toContain("HeroCategoryCloud");
     expect(hero).not.toContain("use client");
