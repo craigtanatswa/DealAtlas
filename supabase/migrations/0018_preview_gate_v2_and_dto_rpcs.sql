@@ -313,41 +313,65 @@ insert into private.leak_gate_terms (kind, term) values
   ('generic_proper_word', 'applicants'),
   ('generic_proper_word', 'april'),
   ('generic_proper_word', 'august'),
+  ('generic_proper_word', 'avenue'),
+  ('generic_proper_word', 'barn'),
   ('generic_proper_word', 'bidder'),
   ('generic_proper_word', 'bidders'),
+  ('generic_proper_word', 'bridge'),
   ('generic_proper_word', 'britain'),
   ('generic_proper_word', 'british'),
   ('generic_proper_word', 'building'),
+  ('generic_proper_word', 'business'),
   ('generic_proper_word', 'buyer'),
   ('generic_proper_word', 'buyers'),
+  ('generic_proper_word', 'centre'),
   ('generic_proper_word', 'client'),
+  ('generic_proper_word', 'close'),
   ('generic_proper_word', 'consultant'),
   ('generic_proper_word', 'contractor'),
   ('generic_proper_word', 'contractors'),
   ('generic_proper_word', 'contracts'),
+  ('generic_proper_word', 'court'),
+  ('generic_proper_word', 'crescent'),
   ('generic_proper_word', 'customer'),
   ('generic_proper_word', 'cyber'),
   ('generic_proper_word', 'data'),
   ('generic_proper_word', 'december'),
+  ('generic_proper_word', 'depot'),
+  ('generic_proper_word', 'dock'),
+  ('generic_proper_word', 'drive'),
   ('generic_proper_word', 'east'),
   ('generic_proper_word', 'employer'),
   ('generic_proper_word', 'england'),
   ('generic_proper_word', 'english'),
   ('generic_proper_word', 'essentials'),
+  ('generic_proper_word', 'estate'),
   ('generic_proper_word', 'european'),
+  ('generic_proper_word', 'farm'),
   ('generic_proper_word', 'february'),
+  ('generic_proper_word', 'field'),
+  ('generic_proper_word', 'fields'),
   ('generic_proper_word', 'friday'),
+  ('generic_proper_word', 'gardens'),
+  ('generic_proper_word', 'gate'),
   ('generic_proper_word', 'goods'),
   ('generic_proper_word', 'google'),
   ('generic_proper_word', 'great'),
+  ('generic_proper_word', 'green'),
+  ('generic_proper_word', 'hall'),
   ('generic_proper_word', 'health'),
+  ('generic_proper_word', 'hill'),
+  ('generic_proper_word', 'house'),
   ('generic_proper_word', 'humber'),
+  ('generic_proper_word', 'industrial'),
   ('generic_proper_word', 'ireland'),
   ('generic_proper_word', 'january'),
   ('generic_proper_word', 'july'),
   ('generic_proper_word', 'june'),
   ('generic_proper_word', 'kingdom'),
+  ('generic_proper_word', 'lane'),
   ('generic_proper_word', 'living'),
+  ('generic_proper_word', 'lodge'),
   ('generic_proper_word', 'london'),
   ('generic_proper_word', 'lot'),
   ('generic_proper_word', 'lots'),
@@ -355,6 +379,7 @@ insert into private.leak_gate_terms (kind, term) values
   ('generic_proper_word', 'may'),
   ('generic_proper_word', 'microsoft'),
   ('generic_proper_word', 'midlands'),
+  ('generic_proper_word', 'mill'),
   ('generic_proper_word', 'modern'),
   ('generic_proper_word', 'monday'),
   ('generic_proper_word', 'nationwide'),
@@ -365,6 +390,8 @@ insert into private.leak_gate_terms (kind, term) values
   ('generic_proper_word', 'october'),
   ('generic_proper_word', 'of'),
   ('generic_proper_word', 'office'),
+  ('generic_proper_word', 'park'),
+  ('generic_proper_word', 'place'),
   ('generic_proper_word', 'plus'),
   ('generic_proper_word', 'private'),
   ('generic_proper_word', 'procurement'),
@@ -373,6 +400,7 @@ insert into private.leak_gate_terms (kind, term) values
   ('generic_proper_word', 'providers'),
   ('generic_proper_word', 'public'),
   ('generic_proper_word', 'purchaser'),
+  ('generic_proper_word', 'quay'),
   ('generic_proper_word', 'real'),
   ('generic_proper_word', 'regulations'),
   ('generic_proper_word', 'remote'),
@@ -382,28 +410,38 @@ insert into private.leak_gate_terms (kind, term) values
   ('generic_proper_word', 'scottish'),
   ('generic_proper_word', 'sector'),
   ('generic_proper_word', 'september'),
+  ('generic_proper_word', 'site'),
   ('generic_proper_word', 'slavery'),
   ('generic_proper_word', 'social'),
   ('generic_proper_word', 'south'),
   ('generic_proper_word', 'specification'),
+  ('generic_proper_word', 'square'),
+  ('generic_proper_word', 'station'),
+  ('generic_proper_word', 'store'),
+  ('generic_proper_word', 'street'),
   ('generic_proper_word', 'sunday'),
   ('generic_proper_word', 'supplier'),
   ('generic_proper_word', 'suppliers'),
   ('generic_proper_word', 'tenderer'),
   ('generic_proper_word', 'tenderers'),
+  ('generic_proper_word', 'terrace'),
   ('generic_proper_word', 'the'),
   ('generic_proper_word', 'thursday'),
   ('generic_proper_word', 'tuesday'),
   ('generic_proper_word', 'union'),
+  ('generic_proper_word', 'unit'),
   ('generic_proper_word', 'united'),
+  ('generic_proper_word', 'units'),
   ('generic_proper_word', 'value'),
   ('generic_proper_word', 'wage'),
   ('generic_proper_word', 'wales'),
   ('generic_proper_word', 'wednesday'),
   ('generic_proper_word', 'welsh'),
   ('generic_proper_word', 'west'),
+  ('generic_proper_word', 'wharf'),
   ('generic_proper_word', 'works'),
   ('generic_proper_word', 'workspace'),
+  ('generic_proper_word', 'yard'),
   ('generic_proper_word', 'yorkshire'),
   ('generic_proper_word', 'zero'),
   ('broad_location', 'britain'),
@@ -965,6 +1003,21 @@ begin
     then
       return query select 'LOCATION_EXACT'::text, 'HIGH'::public.leakage_risk, v_term;
     end if;
+
+    -- Single distinctive words of a location ("Brindlequay" from
+    -- "Brindlequay, Ostbury Fenmoor"), in any case and in the slug.
+    return query select 'LOCATION_TOKEN'::text,
+        (case when length(w) >= 5 then 'HIGH' else 'REVIEW' end)::public.leakage_risk,
+        w
+      from unnest(string_to_array(btrim(v_norm), ' ')) as w
+      where length(w) >= 4
+        and w !~ '[0-9]'
+        and w <> all(v_generic_org)
+        and w <> all(v_generic_proper)
+        and w <> all(v_broad)
+        and w <> all(v_stop)
+        and position(' ' || w || ' ' in coalesce(private.leak_norm(p_broad_region), '')) = 0
+        and position(' ' || w || ' ' in v_all_norm) > 0;
   end loop;
 
   -- Buyer identity -----------------------------------------------------------
@@ -1202,6 +1255,42 @@ begin
       w
     from unnest(v_source_names) as w
     where position(' ' || w || ' ' in v_all_norm) > 0;
+
+  -- Capitalised source words in any position (Title-Case titles, sentence
+  -- starts, ALL-CAPS headings) that the source never writes in lowercase and
+  -- that fewer than three other deals use. Per-word form of COMBINATION, so
+  -- REVIEW only; common words are filtered out by the corpus count.
+  for v_term in
+    select c.w
+    from (
+      select distinct lower(m[1]) as w
+      from unnest(v_source_parts) as part
+      cross join lateral regexp_matches(part, '\m([A-Z][a-z]{3,}|[A-Z]{4,})\M', 'g') as m
+    ) c
+    where c.w <> all(v_generic_org)
+      and c.w <> all(v_generic_proper)
+      and c.w <> all(v_broad)
+      and c.w <> all(v_stop)
+      and c.w <> all(v_source_names)
+      and c.w <> all(v_source_acronyms)
+      and v_source_raw !~ ('\m' || c.w || '\M')
+      and position(' ' || c.w || ' ' in v_all_norm) > 0
+    order by length(c.w) desc, c.w
+    limit 20
+  loop
+    select count(*) into v_k
+    from (
+      select 1
+      from public.deals x
+      where x.id <> d.id
+        and to_tsvector('simple'::regconfig, coalesce(x.source_title, '') || ' ' || coalesce(x.source_description, ''))
+            @@ plainto_tsquery('simple'::regconfig, v_term)
+      limit 3
+    ) others;
+    if v_k < 3 then
+      return query select 'SOURCE_RARE_WORD'::text, 'REVIEW'::public.leakage_risk, v_term;
+    end if;
+  end loop;
 
   -- Similarity and copied phrases -------------------------------------------
   if length(btrim(coalesce(d.source_title, ''))) >= 4 then

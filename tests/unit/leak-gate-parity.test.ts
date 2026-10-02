@@ -26,6 +26,13 @@ describe("leak gate parity fixtures (TypeScript scanner)", () => {
     });
   }
 
+  for (const testCase of fixture.cases.filter((item) => item.sqlOnly && item.tsExpectRisk)) {
+    it(`${testCase.id}: TypeScript alone returns ${testCase.tsExpectRisk} (database rule)`, () => {
+      const result = scanPreviewLeaks(leakScanInputForCase(fixture, testCase));
+      expect(result.risk, JSON.stringify(result.findings)).toBe(testCase.tsExpectRisk);
+    });
+  }
+
   it("keeps synthetic fixtures covering every brief pattern", () => {
     const ids = new Set(fixture.cases.map((item) => item.id));
     for (const id of [
@@ -67,6 +74,21 @@ describe("leak gate parity fixtures (TypeScript scanner)", () => {
       "date-yearless-hyphen",
       "date-yearless-space",
       "date-yearless-decimal",
+      "location-token-slug",
+      "location-token-word",
+      "location-token-lowercase",
+      "location-token-buyer-city",
+      "initial-site-slug",
+      "initial-site-word",
+      "initial-site-lowercase",
+      "heading-site-slug",
+      "heading-site-word",
+      "heading-site-lowercase",
+      "title-site-slug",
+      "title-site-word",
+      "title-site-lowercase",
+      "common-title-word",
+      "common-heading-word",
     ]) {
       expect(ids, id).toContain(id);
     }

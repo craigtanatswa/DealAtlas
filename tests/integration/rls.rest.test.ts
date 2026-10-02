@@ -151,7 +151,7 @@ describe.skipIf(!configured)("PostgREST RLS smoke tests", () => {
           slug: publishedSlug,
           preview_title: "Managed IT support for a public organisation",
           preview_summary:
-            "A public organisation needs ongoing technology support without exposing source identity.",
+            "A public organisation needs ongoing technology support from an experienced provider.",
           deal_type: "PUBLIC_TENDER",
           buyer_sector: "PUBLIC",
           stage: "LIVE",

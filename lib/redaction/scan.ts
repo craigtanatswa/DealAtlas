@@ -28,7 +28,8 @@ export type LeakageRisk = "LOW" | "REVIEW" | "HIGH";
 
 /**
  * Finding codes shared with `private.preview_leak_findings` (migration 0018).
- * `COMBINATION` and `DEAL_MISSING` need the whole corpus and are database-only.
+ * `COMBINATION`, `SOURCE_RARE_WORD` and `DEAL_MISSING` need the whole corpus and
+ * are database-only.
  */
 export type LeakFindingCode =
   | "DEAL_MISSING"
@@ -45,6 +46,7 @@ export type LeakFindingCode =
   | "POSTCODE_KNOWN_OUTWARD"
   | "POSTCODE_OUTWARD"
   | "LOCATION_EXACT"
+  | "LOCATION_TOKEN"
   | "BUYER_NAME"
   | "BUYER_ALIAS"
   | "BUYER_ACRONYM"
@@ -57,6 +59,7 @@ export type LeakFindingCode =
   | "ACRONYM"
   | "PROPER_NOUN_RUN"
   | "SOURCE_NAME_TOKEN"
+  | "SOURCE_RARE_WORD"
   | "TITLE_SIMILARITY"
   | "SLUG_SIMILARITY"
   | "DESCRIPTION_SIMILARITY"
@@ -372,6 +375,22 @@ export function scanPreviewLeaks(input: LeakScanInput): LeakScanResult {
       allNorm.includes(norm)
     ) {
       push("LOCATION_EXACT", "HIGH", "Preview contains an exact source location", part);
+    }
+    for (const word of tokens) {
+      if (
+        word.length >= 4 &&
+        !/[0-9]/.test(word) &&
+        !isGenericWord(word) &&
+        !wordIn(regionNorm, word) &&
+        wordIn(allNorm, word)
+      ) {
+        push(
+          "LOCATION_TOKEN",
+          word.length >= 5 ? "HIGH" : "REVIEW",
+          "Preview contains a word of an exact source location",
+          word,
+        );
+      }
     }
   }
 
