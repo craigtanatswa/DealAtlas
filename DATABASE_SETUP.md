@@ -20,7 +20,7 @@ The migrations run in this order:
 On an existing production project, `0018` and `0019` must be rolled out as separate steps: apply `0018`, deploy the app release that reads previews through the DTO RPCs, verify it, then apply `0019`. `db push` applies every pending migration at once, so push from a checkout that does not yet contain `0019` (or apply the files manually) for the first step. A fresh project with no deployed app can apply everything in one pass.
 
 ### Rolling back 0018/0019
-Rollback SQL lives in `supabase/rollback/`. Run it in the SQL Editor (or `psql`) as the role that applied the migrations, in this order:
+Rollback SQL lives in `supabase/rollback/`. Run it in the SQL Editor (or `psql`) as the role that applied the migrations, in this order. Both scripts set an empty `search_path` and schema-qualify every object, and `0019` records schema-qualified function signatures, so the client's `search_path` does not matter:
 
 1. `supabase/rollback/0019_rollback.sql`: restores the anon/authenticated `SELECT` grant and RLS policy on `deal_previews`, and every client `EXECUTE`, schema `USAGE`/`CREATE` and default function privilege that `0019` revoked, from the snapshot `0019` recorded in `private.pre_0019_acl`. Then it drops the snapshot. It refuses to run if the snapshot is missing.
 2. Redeploy the app build from before the DTO-RPC change. That build reads `deal_previews` directly and does not call `admin_release_preview_hold`.

@@ -13,8 +13,11 @@
 
 begin;
 
+-- Every object below is schema-qualified; an empty path proves it.
+set local search_path = '';
+
 CREATE OR REPLACE FUNCTION private.detect_preview_leakage(p_deal_id uuid, p_preview_title text, p_preview_summary text, p_requirements jsonb)
- RETURNS leakage_risk
+ RETURNS public.leakage_risk
  LANGUAGE plpgsql
  STABLE SECURITY DEFINER
  SET search_path TO 'pg_catalog', 'public', 'extensions'
