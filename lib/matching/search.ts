@@ -1,23 +1,17 @@
 import "server-only";
 
 import {
-  getPublishedDealPreviewByDealId,
   listPublishedDealPreviews,
   searchPublishedDealPreviews,
-  type DealPreviewPublic,
+  type DealPreviewSearchRow,
   type PublicSupabaseClient,
 } from "@/lib/db/previews";
-import { throwIfQueryError } from "@/lib/db/errors";
-import {
-  loadCompanyProfileIdForUser,
-  loadSafeMatchForDeal,
-  loadSafeMatchesForDeals,
-  toSafeMatchView,
-} from "@/lib/matching/load";
+import { loadCompanyProfileIdForUser, toSafeMatchView } from "@/lib/matching/load";
 import { parseStoredReasons } from "@/lib/matching/reasons";
 import type { SafeMatchView } from "@/lib/matching/types";
 import {
   toPublicDealPreview,
+  type RankedDealSearchItem,
   type RankedDealSearchResult,
 } from "@/lib/search/dto";
 import {
@@ -33,49 +27,14 @@ import {
   type SignedInSearchFilters,
 } from "@/lib/search/params";
 
-type ProfileSearchRow = {
-  deal_id: string;
-  relevance_score: number | null;
-  preview_reasons: unknown;
-  total_count: number;
-} & Parameters<typeof toPublicDealPreview>[0];
-
-function usesRelevanceQuery(filters: SignedInSearchFilters): boolean {
-  return filters.sort === "relevance" || filters.minScore != null;
+function rowMatch(row: DealPreviewSearchRow): SafeMatchView | null {
+  return row.relevance_score == null
+    ? null
+    : toSafeMatchView(Number(row.relevance_score), parseStoredReasons(row.preview_reasons));
 }
 
-async function rankedResultFromPreviewRows(input: {
-  client: PublicSupabaseClient;
-  userId?: string | null;
-  rows: DealPreviewPublic[];
-  pageSize: number;
-}): Promise<{
-  companyProfileId: string | null;
-  result: RankedDealSearchResult;
-}> {
-  const companyProfileId = input.userId
-    ? await loadCompanyProfileIdForUser(input.client, input.userId)
-    : null;
-  const matches = companyProfileId
-    ? await loadSafeMatchesForDeals({
-        client: input.client,
-        companyProfileId,
-        dealIds: input.rows.map((row) => row.deal_id),
-      })
-    : new Map<string, SafeMatchView>();
-
-  return {
-    companyProfileId,
-    result: {
-      items: input.rows.map((row) => ({
-        preview: toPublicDealPreview(row),
-        match: matches.get(row.deal_id) ?? null,
-      })),
-      total: input.rows.length,
-      page: 1,
-      pageSize: input.pageSize,
-    },
-  };
+function toRankedItem(row: DealPreviewSearchRow): RankedDealSearchItem {
+  return { preview: toPublicDealPreview(row), match: rowMatch(row) };
 }
 
 export async function searchHomeLatestDealPreviews(input: {
@@ -98,44 +57,26 @@ export async function searchHomeLatestDealPreviews(input: {
           limit: limit - primaryRows.length,
         })
       : [];
-  const rows = takeHomeLatestItems(
-    primaryRows,
-    awardedRows,
-    (row) => row.deal_id,
-    limit,
-  );
+  const rows = takeHomeLatestItems(primaryRows, awardedRows, (row) => row.slug, limit);
+  const companyProfileId = input.userId
+    ? await loadCompanyProfileIdForUser(input.client, input.userId)
+    : null;
 
-  return rankedResultFromPreviewRows({
-    client: input.client,
-    userId: input.userId,
-    rows,
-    pageSize: limit,
-  });
-}
-
-function profileSearchArgs(
-  companyProfileId: string,
-  filters: SignedInSearchFilters,
-  offset: number,
-  limit = filters.limit,
-) {
   return {
-    p_company_profile_id: companyProfileId,
-    p_query: filters.query || undefined,
-    p_category: filters.category,
-    p_buyer_sector: filters.buyerSector,
-    p_deal_type: filters.dealType,
-    p_region: filters.region,
-    p_status: filters.status,
-    p_value_band: filters.valueBand,
-    p_deadline_band: filters.deadlineBand,
-    p_min_score: filters.minScore,
-    p_sort: filters.sort,
-    p_limit: limit,
-    p_offset: offset,
+    companyProfileId,
+    result: {
+      items: rows.map(toRankedItem),
+      total: rows.length,
+      page: 1,
+      pageSize: limit,
+    },
   };
 }
 
+/**
+ * Relevance scores come from the viewer's own company profile, resolved from
+ * auth.uid() inside search_preview_dtos — never from a client-supplied id.
+ */
 export async function searchDealPreviewsForUser(input: {
   client: PublicSupabaseClient;
   searchParams: SearchParamRecord;
@@ -159,76 +100,30 @@ export async function searchDealPreviewsForUser(input: {
     minScore: companyProfileId ? requested.minScore : undefined,
   };
 
-  if (!companyProfileId || !usesRelevanceQuery(filters)) {
-    const offset = publicSearchOffset(filters);
-    const rows = await searchPublishedDealPreviews(input.client, {
-      query: filters.query,
-      category: filters.category,
-      buyerSector: filters.buyerSector,
-      region: filters.region,
-      valueBand: filters.valueBand,
-      deadlineBand: filters.deadlineBand,
-      dealType: filters.dealType,
-      status: filters.status,
-      limit: filters.limit,
-      offset,
-    });
-    let total = rows[0]?.total_count ?? 0;
-    if (rows.length === 0 && offset > 0) {
-      const countRows = await searchPublishedDealPreviews(input.client, {
-        query: filters.query,
-        category: filters.category,
-        buyerSector: filters.buyerSector,
-        region: filters.region,
-        valueBand: filters.valueBand,
-        deadlineBand: filters.deadlineBand,
-        dealType: filters.dealType,
-        status: filters.status,
-        limit: 1,
-        offset: 0,
-      });
-      total = countRows[0]?.total_count ?? 0;
-    }
-    const matches = companyProfileId
-      ? await loadSafeMatchesForDeals({
-          client: input.client,
-          companyProfileId,
-          dealIds: rows.map((row) => row.deal_id),
-        })
-      : new Map<string, SafeMatchView>();
-    return {
-      filters,
-      companyProfileId,
-      result: {
-        items: rows.map((row) => ({
-          preview: toPublicDealPreview(row),
-          match: matches.get(row.deal_id) ?? null,
-        })),
-        total: Number(total),
-        page: filters.page,
-        pageSize: filters.limit,
-      },
-    };
-  }
-
   const offset = publicSearchOffset(filters);
-  const { data, error } = await input.client.rpc(
-    "search_deal_previews_for_profile",
-    profileSearchArgs(companyProfileId, filters, offset),
-  );
-  const rows = throwIfQueryError("Failed to search ranked deal previews", {
-    data: (data as ProfileSearchRow[] | null) ?? [],
-    error,
+  const searchArgs = {
+    query: filters.query,
+    category: filters.category,
+    buyerSector: filters.buyerSector,
+    region: filters.region,
+    valueBand: filters.valueBand,
+    deadlineBand: filters.deadlineBand,
+    dealType: filters.dealType,
+    status: filters.status,
+    minScore: filters.minScore,
+    sort: filters.sort,
+  };
+  const rows = await searchPublishedDealPreviews(input.client, {
+    ...searchArgs,
+    limit: filters.limit,
+    offset,
   });
   let total = rows[0]?.total_count ?? 0;
   if (rows.length === 0 && offset > 0) {
-    const recount = await input.client.rpc(
-      "search_deal_previews_for_profile",
-      profileSearchArgs(companyProfileId, filters, 0, 1),
-    );
-    const countRows = throwIfQueryError("Failed to count ranked deal previews", {
-      data: (recount.data as ProfileSearchRow[] | null) ?? [],
-      error: recount.error,
+    const countRows = await searchPublishedDealPreviews(input.client, {
+      ...searchArgs,
+      limit: 1,
+      offset: 0,
     });
     total = countRows[0]?.total_count ?? 0;
   }
@@ -237,43 +132,10 @@ export async function searchDealPreviewsForUser(input: {
     filters,
     companyProfileId,
     result: {
-      items: rows.map((row) => ({
-        preview: toPublicDealPreview(row),
-        match:
-          row.relevance_score == null
-            ? null
-            : toSafeMatchView(Number(row.relevance_score), parseStoredReasons(row.preview_reasons)),
-      })),
+      items: rows.map(toRankedItem),
       total: Number(total),
       page: filters.page,
       pageSize: filters.limit,
     },
   };
-}
-
-export async function loadMatchForPreviewPage(input: {
-  client: PublicSupabaseClient;
-  userId: string | null;
-  dealId: string;
-}): Promise<SafeMatchView | null> {
-  if (!input.userId) {
-    return null;
-  }
-  const companyProfileId = await loadCompanyProfileIdForUser(input.client, input.userId);
-  if (!companyProfileId) {
-    return null;
-  }
-  return loadSafeMatchForDeal({
-    client: input.client,
-    companyProfileId,
-    dealId: input.dealId,
-  });
-}
-
-export async function publishedPreviewExists(
-  client: PublicSupabaseClient,
-  dealId: string,
-): Promise<boolean> {
-  const row = await getPublishedDealPreviewByDealId(client, dealId);
-  return Boolean(row);
 }

@@ -2970,24 +2970,24 @@ export type Database = {
           p_deal_id: string
         }
         Returns: {
-          bid_complexity: string
-          broad_region: string
+          bid_complexity: string | null
+          broad_region: string | null
           buyer_sector: Database["public"]["Enums"]["buyer_sector"]
-          competition_level: string
-          deadline_band: string
+          competition_level: string | null
+          deadline_band: string | null
           deal_type: Database["public"]["Enums"]["deal_type"]
-          duration_band: string
+          duration_band: string | null
           freshness_label: string
-          main_category: string
+          main_category: string | null
           preview_summary: string
           preview_title: string
           relevance_tags: string[]
           requirements_preview: Json
           slug: string
-          sme_suitability: string
+          sme_suitability: string | null
           stage: Database["public"]["Enums"]["deal_stage"]
           status: Database["public"]["Enums"]["deal_status"]
-          value_band: string
+          value_band: string | null
           preview_reasons: Json
           relevance_score: number | null
         }[]
@@ -2997,24 +2997,24 @@ export type Database = {
           p_slug: string
         }
         Returns: {
-          bid_complexity: string
-          broad_region: string
+          bid_complexity: string | null
+          broad_region: string | null
           buyer_sector: Database["public"]["Enums"]["buyer_sector"]
-          competition_level: string
-          deadline_band: string
+          competition_level: string | null
+          deadline_band: string | null
           deal_type: Database["public"]["Enums"]["deal_type"]
-          duration_band: string
+          duration_band: string | null
           freshness_label: string
-          main_category: string
+          main_category: string | null
           preview_summary: string
           preview_title: string
           relevance_tags: string[]
           requirements_preview: Json
           slug: string
-          sme_suitability: string
+          sme_suitability: string | null
           stage: Database["public"]["Enums"]["deal_stage"]
           status: Database["public"]["Enums"]["deal_status"]
-          value_band: string
+          value_band: string | null
           preview_reasons: Json
           relevance_score: number | null
         }[]
@@ -3025,15 +3025,15 @@ export type Database = {
           p_offset?: number
         }
         Returns: {
-          broad_region: string
-          deadline_band: string
+          broad_region: string | null
+          deadline_band: string | null
           last_modified: string
-          main_category: string
+          main_category: string | null
           preview_summary: string
           preview_title: string
           slug: string
           status: Database["public"]["Enums"]["deal_status"]
-          value_band: string
+          value_band: string | null
         }[]
       }
       list_saved_deal_previews: {
@@ -3086,24 +3086,24 @@ export type Database = {
           p_value_band?: string
         }
         Returns: {
-          bid_complexity: string
-          broad_region: string
+          bid_complexity: string | null
+          broad_region: string | null
           buyer_sector: Database["public"]["Enums"]["buyer_sector"]
-          competition_level: string
-          deadline_band: string
+          competition_level: string | null
+          deadline_band: string | null
           deal_type: Database["public"]["Enums"]["deal_type"]
-          duration_band: string
+          duration_band: string | null
           freshness_label: string
-          main_category: string
+          main_category: string | null
           preview_summary: string
           preview_title: string
           relevance_tags: string[]
           requirements_preview: Json
           slug: string
-          sme_suitability: string
+          sme_suitability: string | null
           stage: Database["public"]["Enums"]["deal_stage"]
           status: Database["public"]["Enums"]["deal_status"]
-          value_band: string
+          value_band: string | null
           preview_reasons: Json
           relevance_score: number | null
           total_count: number

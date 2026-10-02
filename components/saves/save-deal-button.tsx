@@ -18,7 +18,7 @@ export function SaveDealButton({
   signedIn,
   loginHref,
 }: {
-  dealId: string;
+  dealId: string | null;
   saved: boolean;
   used: number;
   limit: number | null;
@@ -29,7 +29,7 @@ export function SaveDealButton({
   const [state, formAction, pending] = useActionState(action, INITIAL_ACTION_STATE);
   const atLimit = !saved && limit !== null && used >= limit;
 
-  if (!signedIn) {
+  if (!signedIn || !dealId) {
     return (
       <Button asChild variant="outline">
         <Link href={loginHref ?? "/login"}>Sign in to save</Link>

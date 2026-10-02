@@ -1,18 +1,18 @@
 import "server-only";
 
 import { throwIfQueryError } from "@/lib/db/errors";
-import {
-  searchPublishedDealPreviews,
-  type PublicSupabaseClient,
-} from "@/lib/db/previews";
+import type { PublicSupabaseClient } from "@/lib/db/previews";
 import type { DealExportRequest } from "@/lib/exports/request";
 import { loadCompanyProfileIdForUser } from "@/lib/matching/load";
 import { PUBLIC_SEARCH_MAX_PAGE_SIZE } from "@/lib/search/params";
 import type { SavedSearchFilters } from "@/lib/saves/filters";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 const PREVIEW_PAGE_SIZE = PUBLIC_SEARCH_MAX_PAGE_SIZE;
 
-type ProfileSearchRow = {
+type AdminClient = ReturnType<typeof createSupabaseAdminClient>;
+
+type DealIdSearchRow = {
   deal_id: string;
   total_count: number;
 };
@@ -31,7 +31,7 @@ function uniquePreserveOrder(ids: string[]): string[] {
 }
 
 async function publishedDealIds(
-  client: PublicSupabaseClient,
+  admin: AdminClient,
   dealIds: string[],
   remaining: number,
 ): Promise<string[]> {
@@ -43,12 +43,13 @@ async function publishedDealIds(
   const published = new Set<string>();
   for (let index = 0; index < unique.length; index += 80) {
     const chunk = unique.slice(index, index + 80);
-    const { data, error } = await client
+    const { data, error } = await admin
       .from("deal_previews")
       .select("deal_id")
       .in("deal_id", chunk)
       .eq("is_published", true)
-      .eq("leakage_risk", "LOW");
+      .eq("leakage_risk", "LOW")
+      .eq("unpublished_by_admin", false);
     const rows = throwIfQueryError("Failed to verify published deals for export", {
       data: (data as { deal_id: string }[] | null) ?? [],
       error,
@@ -81,6 +82,7 @@ async function listSavedDealIds(
 
 async function listFilteredDealIds(
   client: PublicSupabaseClient,
+  admin: AdminClient,
   userId: string,
   filters: SavedSearchFilters,
   remaining: number,
@@ -97,7 +99,7 @@ async function listFilteredDealIds(
   while (ids.length < remaining && offset < total) {
     const limit = Math.min(PREVIEW_PAGE_SIZE, remaining - ids.length);
     if (useRelevance && companyProfileId) {
-      const { data, error } = await client.rpc("search_deal_previews_for_profile", {
+      const { data, error } = await admin.rpc("search_deal_previews_for_profile", {
         p_company_profile_id: companyProfileId,
         p_query: filters.query || undefined,
         p_category: filters.category,
@@ -113,7 +115,7 @@ async function listFilteredDealIds(
         p_offset: offset,
       });
       const rows = throwIfQueryError("Failed to search ranked deals for export", {
-        data: (data as ProfileSearchRow[] | null) ?? [],
+        data: (data as DealIdSearchRow[] | null) ?? [],
         error,
       });
       if (rows.length === 0) {
@@ -133,17 +135,21 @@ async function listFilteredDealIds(
       continue;
     }
 
-    const rows = await searchPublishedDealPreviews(client, {
-      query: filters.query,
-      category: filters.category,
-      buyerSector: filters.buyerSector,
-      region: filters.region,
-      valueBand: filters.valueBand,
-      deadlineBand: filters.deadlineBand,
-      dealType: filters.dealType,
-      status: filters.status,
-      limit,
-      offset,
+    const { data, error } = await admin.rpc("search_deal_previews", {
+      p_query: filters.query || undefined,
+      p_category: filters.category,
+      p_buyer_sector: filters.buyerSector,
+      p_deal_type: filters.dealType,
+      p_region: filters.region,
+      p_status: filters.status,
+      p_value_band: filters.valueBand,
+      p_deadline_band: filters.deadlineBand,
+      p_limit: limit,
+      p_offset: offset,
+    });
+    const rows = throwIfQueryError("Failed to search deals for export", {
+      data: (data as DealIdSearchRow[] | null) ?? [],
+      error,
     });
     if (rows.length === 0) {
       break;
@@ -164,6 +170,11 @@ async function listFilteredDealIds(
   return ids;
 }
 
+/**
+ * Callers must have verified Pro entitlement server-side: deal ids are resolved
+ * with the admin client because client roles cannot read deal_previews rows.
+ * Saved deals and the company profile still come from the user's RLS session.
+ */
 export async function resolveExportDealIds(input: {
   client: PublicSupabaseClient;
   userId: string;
@@ -175,18 +186,21 @@ export async function resolveExportDealIds(input: {
     return [];
   }
 
+  const admin = createSupabaseAdminClient();
+
   if (input.body.dealIds) {
-    return publishedDealIds(input.client, input.body.dealIds, remaining);
+    return publishedDealIds(admin, input.body.dealIds, remaining);
   }
 
   if (input.body.saved) {
     const savedIds = await listSavedDealIds(input.client, input.userId, remaining);
-    return publishedDealIds(input.client, savedIds, remaining);
+    return publishedDealIds(admin, savedIds, remaining);
   }
 
   if (input.body.filters) {
     return listFilteredDealIds(
       input.client,
+      admin,
       input.userId,
       input.body.filters,
       remaining,

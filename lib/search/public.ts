@@ -5,10 +5,15 @@ import {
   getPublishedDealPreviewBySlug,
   listPublishedDealPreviewSitemapRows,
   countPublishedDealPreviewSitemapRows,
+  resolvePublishedPreviewDealId,
   searchPublishedDealPreviews,
+  type DealPreviewDtoRow,
   type DealPreviewSitemapRow,
   type PublicSupabaseClient,
 } from "@/lib/db/previews";
+import { toSafeMatchView } from "@/lib/matching/load";
+import { parseStoredReasons } from "@/lib/matching/reasons";
+import type { SafeMatchView } from "@/lib/matching/types";
 import { DEAL_PREVIEW_SITEMAP_PAGE_SIZE } from "@/lib/db/preview-columns";
 import {
   evaluatePublicIndexability,
@@ -91,19 +96,31 @@ export async function getPublicDealPreviewBySlug(
 
 export type PublicDealPreviewPage = {
   preview: PublicDealPreview;
-  dealId: string;
+  /** Present only for signed-in viewers; anonymous payloads never carry it. */
+  dealId: string | null;
+  match: SafeMatchView | null;
 };
+
+function viewerMatch(row: DealPreviewDtoRow): SafeMatchView | null {
+  return row.relevance_score == null
+    ? null
+    : toSafeMatchView(Number(row.relevance_score), parseStoredReasons(row.preview_reasons));
+}
 
 export async function getPublicDealPreviewPageBySlug(
   client: PublicSupabaseClient,
   slug: string,
+  options: { signedIn: boolean },
 ): Promise<PublicDealPreviewPage | null> {
   const parsedSlug = parseInput(slugSchema, slug, "Preview slug");
   const row = await getPublishedDealPreviewBySlug(client, parsedSlug);
   if (!row) {
     return null;
   }
-  return { preview: toPublicDealPreview(row), dealId: row.deal_id };
+  const dealId = options.signedIn
+    ? await resolvePublishedPreviewDealId(client, parsedSlug)
+    : null;
+  return { preview: toPublicDealPreview(row), dealId, match: viewerMatch(row) };
 }
 
 export async function getPublicDealPreviewPageByDealId(
@@ -114,7 +131,7 @@ export async function getPublicDealPreviewPageByDealId(
   if (!row) {
     return null;
   }
-  return { preview: toPublicDealPreview(row), dealId: row.deal_id };
+  return { preview: toPublicDealPreview(row), dealId, match: viewerMatch(row) };
 }
 
 function sitemapRowSignals(row: DealPreviewSitemapRow): PreviewIndexSignals {
@@ -165,7 +182,7 @@ export async function listIndexablePreviewSitemapEntries(
     )
     .map((row) => ({
       slug: row.slug,
-      lastModified: row.updated_at,
+      lastModified: row.last_modified,
       url: absoluteUrl(`/deals/${row.slug}`, origin),
     }));
 }

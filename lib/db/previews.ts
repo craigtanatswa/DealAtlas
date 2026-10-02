@@ -1,11 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { Database } from "@/lib/db/database.types";
-import {
-  DEAL_PREVIEW_PUBLIC_SELECT,
-  DEAL_PREVIEW_SITEMAP_PAGE_SIZE,
-  DEAL_PREVIEW_SITEMAP_SELECT,
-} from "@/lib/db/preview-columns";
+import { DEAL_PREVIEW_SITEMAP_PAGE_SIZE } from "@/lib/db/preview-columns";
 import { throwIfQueryError } from "@/lib/db/errors";
 import type { PublicDatabase } from "@/lib/db/public-schema";
 import { paginationSchema, parseInput, slugSchema, uuidSchema } from "@/lib/validation";
@@ -13,46 +9,33 @@ import { z } from "zod";
 
 export type PublicSupabaseClient = SupabaseClient<PublicDatabase>;
 
-export type DealPreviewPublic = Pick<
-  Database["public"]["Tables"]["deal_previews"]["Row"],
-  | "deal_id"
-  | "slug"
-  | "preview_title"
-  | "preview_summary"
-  | "deal_type"
-  | "buyer_sector"
-  | "stage"
-  | "status"
-  | "main_category"
-  | "broad_region"
-  | "value_band"
-  | "deadline_band"
-  | "duration_band"
-  | "sme_suitability"
-  | "bid_complexity"
-  | "competition_level"
-  | "requirements_preview"
-  | "relevance_tags"
-  | "freshness_label"
-  | "created_at"
-  | "updated_at"
->;
+type PublicFunctions = Database["public"]["Functions"];
+
+/**
+ * Sanitised preview DTO returned by the SECURITY DEFINER preview RPCs (0018).
+ * It carries no deal_id, timestamps, source, buyer, reference or contact
+ * fields; relevance is the signed-in viewer's own match, or null.
+ */
+export type DealPreviewDtoRow =
+  PublicFunctions["get_preview_dto_by_slug"]["Returns"][number];
 
 export type DealPreviewSearchRow =
-  Database["public"]["Functions"]["search_deal_previews"]["Returns"][number];
+  PublicFunctions["search_preview_dtos"]["Returns"][number];
 
-export type DealPreviewSitemapRow = Pick<
-  Database["public"]["Tables"]["deal_previews"]["Row"],
-  | "slug"
-  | "preview_title"
-  | "preview_summary"
-  | "main_category"
-  | "broad_region"
-  | "value_band"
-  | "deadline_band"
-  | "status"
-  | "updated_at"
->;
+export type DealPreviewSitemapRow =
+  PublicFunctions["list_preview_sitemap_entries"]["Returns"][number];
+
+const DEAL_STATUS_VALUES = [
+  "UPCOMING",
+  "OPEN",
+  "CLOSING_SOON",
+  "CLOSED",
+  "AWARDED",
+  "CANCELLED",
+  "ACTIVE",
+  "EXPIRED",
+  "WITHDRAWN",
+] as const;
 
 const previewListSchema = paginationSchema.extend({
   category: z.string().trim().min(1).max(200).optional(),
@@ -87,152 +70,99 @@ const previewListSchema = paginationSchema.extend({
   region: z.string().trim().min(1).max(200).optional(),
   valueBand: z.string().trim().min(1).max(80).optional(),
   deadlineBand: z.string().trim().min(1).max(80).optional(),
-  status: z
-    .enum([
-      "UPCOMING",
-      "OPEN",
-      "CLOSING_SOON",
-      "CLOSED",
-      "AWARDED",
-      "CANCELLED",
-      "ACTIVE",
-      "EXPIRED",
-      "WITHDRAWN",
-    ])
-    .optional(),
-  statuses: z
-    .array(
-      z.enum([
-        "UPCOMING",
-        "OPEN",
-        "CLOSING_SOON",
-        "CLOSED",
-        "AWARDED",
-        "CANCELLED",
-        "ACTIVE",
-        "EXPIRED",
-        "WITHDRAWN",
-      ]),
-    )
-    .min(1)
-    .max(9)
-    .optional(),
+  status: z.enum(DEAL_STATUS_VALUES).optional(),
+  statuses: z.array(z.enum(DEAL_STATUS_VALUES)).min(1).max(9).optional(),
 });
 
 const previewSearchSchema = previewListSchema.extend({
   query: z.string().trim().max(200).optional(),
+  minScore: z.coerce.number().min(0).max(100).optional(),
+  sort: z.enum(["updated", "relevance"]).default("updated"),
   offset: z.coerce.number().int().min(0).max(10_000).default(0),
   limit: z.coerce.number().int().min(1).max(50).default(20),
 });
-
-const publishedPreviewFilter = {
-  is_published: true,
-  leakage_risk: "LOW",
-} as const;
-
-export async function listPublishedDealPreviews(
-  client: PublicSupabaseClient,
-  input: unknown = {},
-): Promise<DealPreviewPublic[]> {
-  const filters = parseInput(previewListSchema, input, "Published preview list");
-
-  let query = client
-    .from("deal_previews")
-    .select(DEAL_PREVIEW_PUBLIC_SELECT)
-    .eq("is_published", publishedPreviewFilter.is_published)
-    .eq("leakage_risk", publishedPreviewFilter.leakage_risk)
-    .order("updated_at", { ascending: false })
-    .limit(filters.limit);
-
-  if (filters.category) {
-    query = query.eq("main_category", filters.category);
-  }
-  if (filters.buyerSector) {
-    query = query.eq("buyer_sector", filters.buyerSector);
-  }
-  if (filters.dealType) {
-    query = query.eq("deal_type", filters.dealType);
-  }
-  if (filters.region) {
-    query = query.eq("broad_region", filters.region);
-  }
-  if (filters.statuses?.length) {
-    query = query.in("status", filters.statuses);
-  } else if (filters.status) {
-    query = query.eq("status", filters.status);
-  }
-  if (filters.valueBand) {
-    query = query.eq("value_band", filters.valueBand);
-  }
-  if (filters.deadlineBand) {
-    query = query.eq("deadline_band", filters.deadlineBand);
-  }
-
-  const { data, error } = await query;
-  return throwIfQueryError("Failed to list published deal previews", {
-    data: (data as unknown as DealPreviewPublic[]) ?? [],
-    error,
-  });
-}
-
-export async function getPublishedDealPreviewBySlug(
-  client: PublicSupabaseClient,
-  slug: string,
-): Promise<DealPreviewPublic | null> {
-  const parsedSlug = parseInput(slugSchema, slug, "Preview slug");
-  const { data, error } = await client
-    .from("deal_previews")
-    .select(DEAL_PREVIEW_PUBLIC_SELECT)
-    .eq("slug", parsedSlug)
-    .eq("is_published", publishedPreviewFilter.is_published)
-    .eq("leakage_risk", publishedPreviewFilter.leakage_risk)
-    .maybeSingle();
-
-  return throwIfQueryError("Failed to load published deal preview", {
-    data: (data as unknown as DealPreviewPublic | null) ?? null,
-    error,
-  });
-}
-
-export async function getPublishedDealPreviewByDealId(
-  client: PublicSupabaseClient,
-  dealId: string,
-): Promise<DealPreviewPublic | null> {
-  const id = parseInput(uuidSchema, dealId, "Deal id");
-  const { data, error } = await client
-    .from("deal_previews")
-    .select(DEAL_PREVIEW_PUBLIC_SELECT)
-    .eq("deal_id", id)
-    .eq("is_published", publishedPreviewFilter.is_published)
-    .eq("leakage_risk", publishedPreviewFilter.leakage_risk)
-    .maybeSingle();
-
-  return throwIfQueryError("Failed to load published deal preview by id", {
-    data: (data as unknown as DealPreviewPublic | null) ?? null,
-    error,
-  });
-}
 
 export async function searchPublishedDealPreviews(
   client: PublicSupabaseClient,
   input: unknown = {},
 ): Promise<DealPreviewSearchRow[]> {
   const filters = parseInput(previewSearchSchema, input, "Published preview search");
-  const { data, error } = await client.rpc("search_deal_previews", {
+  const { data, error } = await client.rpc("search_preview_dtos", {
     p_query: filters.query || undefined,
     p_category: filters.category,
     p_buyer_sector: filters.buyerSector,
     p_deal_type: filters.dealType,
     p_region: filters.region,
-    p_status: filters.status,
+    p_status: filters.statuses?.length ? undefined : filters.status,
+    p_statuses: filters.statuses,
     p_value_band: filters.valueBand,
     p_deadline_band: filters.deadlineBand,
+    p_min_score: filters.minScore,
+    p_sort: filters.sort,
     p_limit: filters.limit,
     p_offset: filters.offset,
   });
 
   return throwIfQueryError("Failed to search published deal previews", {
     data: data ?? [],
+    error,
+  });
+}
+
+export async function listPublishedDealPreviews(
+  client: PublicSupabaseClient,
+  input: unknown = {},
+): Promise<DealPreviewSearchRow[]> {
+  const filters = parseInput(previewListSchema, input, "Published preview list");
+  return searchPublishedDealPreviews(client, { ...filters, sort: "updated", offset: 0 });
+}
+
+export async function getPublishedDealPreviewBySlug(
+  client: PublicSupabaseClient,
+  slug: string,
+): Promise<DealPreviewDtoRow | null> {
+  const parsedSlug = parseInput(slugSchema, slug, "Preview slug");
+  const { data, error } = await client.rpc("get_preview_dto_by_slug", {
+    p_slug: parsedSlug,
+  });
+
+  return throwIfQueryError("Failed to load published deal preview", {
+    data: data?.[0] ?? null,
+    error,
+  });
+}
+
+/** Signed-in only: the RPC returns nothing without auth.uid(). */
+export async function getPublishedDealPreviewByDealId(
+  client: PublicSupabaseClient,
+  dealId: string,
+): Promise<DealPreviewDtoRow | null> {
+  const id = parseInput(uuidSchema, dealId, "Deal id");
+  const { data, error } = await client.rpc("get_preview_dto_by_deal_id", {
+    p_deal_id: id,
+  });
+
+  return throwIfQueryError("Failed to load published deal preview by id", {
+    data: data?.[0] ?? null,
+    error,
+  });
+}
+
+/**
+ * Signed-in only: resolves the internal deal id behind a published slug so
+ * save/reveal controls can be rendered. Never call this for anonymous viewers.
+ */
+export async function resolvePublishedPreviewDealId(
+  client: PublicSupabaseClient,
+  slug: string,
+): Promise<string | null> {
+  const parsedSlug = parseInput(slugSchema, slug, "Preview slug");
+  const { data, error } = await client.rpc("resolve_preview_deal_id", {
+    p_slug: parsedSlug,
+  });
+
+  return throwIfQueryError("Failed to resolve published deal preview", {
+    data: typeof data === "string" ? data : null,
     error,
   });
 }
@@ -250,17 +180,13 @@ const sitemapPageSchema = z.object({
 export async function countPublishedDealPreviewSitemapRows(
   client: PublicSupabaseClient,
 ): Promise<number> {
-  const { count, error } = await client
-    .from("deal_previews")
-    .select("slug", { count: "exact", head: true })
-    .eq("is_published", publishedPreviewFilter.is_published)
-    .eq("leakage_risk", publishedPreviewFilter.leakage_risk);
-
-  throwIfQueryError("Failed to count published deal previews for sitemap", {
-    data: count ?? 0,
-    error,
-  });
-  return count ?? 0;
+  const { data, error } = await client.rpc("count_preview_sitemap_entries");
+  return Number(
+    throwIfQueryError("Failed to count published deal previews for sitemap", {
+      data: data ?? 0,
+      error,
+    }),
+  );
 }
 
 export async function listPublishedDealPreviewSitemapRows(
@@ -268,17 +194,13 @@ export async function listPublishedDealPreviewSitemapRows(
   input: unknown = {},
 ): Promise<DealPreviewSitemapRow[]> {
   const page = parseInput(sitemapPageSchema, input, "Preview sitemap page");
-  const to = page.offset + page.limit - 1;
-  const { data, error } = await client
-    .from("deal_previews")
-    .select(DEAL_PREVIEW_SITEMAP_SELECT)
-    .eq("is_published", publishedPreviewFilter.is_published)
-    .eq("leakage_risk", publishedPreviewFilter.leakage_risk)
-    .order("updated_at", { ascending: false })
-    .range(page.offset, to);
+  const { data, error } = await client.rpc("list_preview_sitemap_entries", {
+    p_limit: page.limit,
+    p_offset: page.offset,
+  });
 
   return throwIfQueryError("Failed to list published deal previews for sitemap", {
-    data: (data as unknown as DealPreviewSitemapRow[]) ?? [],
+    data: data ?? [],
     error,
   });
 }
