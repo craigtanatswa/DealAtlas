@@ -25,6 +25,19 @@ select ok(not has_schema_privilege('anon', 'extensions', 'usage'), 'anon has no 
 select ok(not has_schema_privilege('authenticated', 'extensions', 'usage'), 'authenticated has no usage on extensions');
 select ok(not has_schema_privilege('anon', 'public', 'create'), 'anon cannot create in public');
 
+create function public.zz_rls_default_privilege_probe() returns integer language sql as $$ select 1 $$;
+select ok(
+  not has_function_privilege('anon', 'public.zz_rls_default_privilege_probe()', 'execute')
+  and not has_function_privilege('authenticated', 'public.zz_rls_default_privilege_probe()', 'execute'),
+  'functions created after 0019 by the migration role are not client-callable by default'
+);
+drop function public.zz_rls_default_privilege_probe();
+select ok(
+  not has_table_privilege('service_role', 'private.pre_0019_acl', 'select')
+  and not has_table_privilege('anon', 'private.pre_0019_acl', 'select'),
+  'the 0019 ACL snapshot is not readable by API roles'
+);
+
 select ok(
   has_function_privilege('anon', 'public.search_preview_dtos(text, text, public.buyer_sector, public.deal_type, text, public.deal_status, public.deal_status[], text, text, numeric, text, integer, integer)', 'execute'),
   'anon can execute the DTO search RPC'
