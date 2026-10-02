@@ -20,7 +20,7 @@
     "db:reset": "supabase db reset",
     "db:push": "supabase db push",
     "db:types": "node scripts/generate-db-types.mjs",
-    "db:test": "supabase test db",
+    "db:test": "supabase test db --local",
     "db:bundle": "node scripts/bundle-schema.mjs",
     "ingest": "tsx scripts/ingest.ts",
     "ingest:source": "tsx scripts/ingest.ts",
