@@ -32,7 +32,7 @@ The primary product-security risk is source leakage to a non-subscriber. Treat b
 
 Free endpoints must query the preview dataset only.
 
-Client roles (`anon`, `authenticated`) have no table grant or policy on `deal_previews` (migration `0019`). They read previews only through `SECURITY DEFINER` DTO RPCs that return sanitised fields with no `deal_id`, timestamps, source, buyer, reference, contact or document fields. `deal_id` is resolvable only by signed-in users (`resolve_preview_deal_id`, `get_preview_dto_by_deal_id`, `list_saved_deal_previews`). Client roles have no USAGE on non-public schemas (except `auth`) and no EXECUTE on public functions other than those RPCs.
+Client roles (`anon`, `authenticated`) have no table grant or policy on `deal_previews` (migration `0019`). They read previews only through `SECURITY DEFINER` DTO RPCs that return sanitised fields with no `deal_id`, timestamps, source, buyer, reference, contact or document fields. `deal_id` is resolvable only by signed-in users (`resolve_preview_deal_id`, `get_preview_dto_by_deal_id`, `list_saved_deal_previews`). Client roles have no USAGE on the `private` and `extensions` schemas (0019 names them explicitly; Supabase-managed schemas keep their platform grants) and no EXECUTE on public functions other than those RPCs.
 
 Publication is decided by the database gate on every write to `deal_previews` (`0018`); application code cannot publish a preview that the gate rates REVIEW/HIGH or that an admin has held.
 
