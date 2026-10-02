@@ -291,18 +291,19 @@ Never include source ID, organization ID exposed as discoverable identifier, exa
 The database publish gate (`0018`) decides publication. `private.enforce_preview_safety` runs `private.detect_preview_leakage` on every `deal_previews` insert and update, including `session_replication_role = replica` (`enable always trigger`). Risk can only be raised by the writer; any non-LOW risk or admin hold forces `is_published = false`; a gate error fails closed to `REVIEW`. `private.preview_leak_findings` returns the per-rule findings. The TypeScript scanner in `lib/redaction/scan.ts` mirrors the same rules so ingestion can regenerate before writing; shared synthetic fixtures in `tests/fixtures/leak-gate/cases.json` keep the two in parity (`npm run db:gen-leak-parity` regenerates the pgTAP file). Vocabulary lives in `lib/redaction/gate-vocabulary.ts` and is seeded into `private.leak_gate_terms`; changing it needs a new migration.
 
 The gate flags (HIGH unless noted):
-- buyer name, aliases, acronyms/initials, distinctive buyer tokens (4-letter tokens are REVIEW) and buyer web/email domains
-- any organisation name or alias from the full `organizations`/`organization_aliases` tables, ignoring Ltd/Limited/LLP/plc suffixes (single distinctive token is REVIEW), plus Title-Case runs ending in a legal suffix
+- buyer name, aliases, acronyms/initials, distinctive buyer tokens (4-letter tokens are REVIEW) and buyer web/email domains. Acronym-style aliases (all caps, or mixed case with two or more capitals) match case-insensitively in prose and slug; other 2–3 character aliases are REVIEW
+- any organisation name or alias from the full `organizations`/`organization_aliases` tables of 3+ characters, ignoring Ltd/Limited/LLP/plc suffixes (single distinctive token is REVIEW; names under 5 characters also skip generic acronyms and proper words), plus Title-Case runs ending in a legal suffix
 - copied source title (also for titles shorter than 20 characters), slug or description similarity, and any copied 6-word phrase
 - reference numbers, OCIDs, notice IDs and UUIDs; other reference-like patterns are REVIEW
-- source dates in Europe/London time within ±1 day in common written forms; any other exact date is REVIEW, never LOW
-- full postcodes, outward codes of known buyer/linked/location postcodes; other outward-code shapes are REVIEW
+- source dates in Europe/London time within ±1 day in common written forms, including yearless `DD/MM` and `D/M`; any other exact date is REVIEW, never LOW (day + month with or without a year, `May 14`, yearless `D/M` other than `24/7`, `D-Mon-YYYY`)
+- full postcodes, outward codes of known buyer/linked/location postcodes; other outward-code shapes (in prose, or as slug words) are REVIEW
 - exact location fragments and buyer address terms; project names; exact source amounts; URLs, emails, phones and source platform markers
 - programme acronyms (HIGH when copied from source, otherwise REVIEW) and Title-Case place/site runs in prose (REVIEW unless copied)
-- combination risk: when four distinctive copied source words match fewer than three deals in total, REVIEW (k < 3)
+- source names in any case, including the slug (`SOURCE_NAME_TOKEN`): standalone source acronyms (HIGH) and capitalised words that follow a lowercase word in the source and never appear lowercase there (HIGH from 5 characters, otherwise REVIEW). All-caps runs and fields, generic vocabulary and capitalised defined terms ("the Contractor") are ignored
+- combination risk: when four distinctive copied source words (title, prose and slug) match fewer than three deals in total, REVIEW (k < 3)
 - the slug is scanned with its trailing 8-hex suffix removed
 
-Admin holds (`unpublished_by_admin`) can only be cleared through `public.admin_release_preview_hold` (service role); ingestion upserts that omit or reset the flag keep the hold.
+Admin holds (`unpublished_by_admin`) are recorded per deal in `private.preview_holds`, which no API role (including `service_role`) can read or write. While a hold row exists the gate forces `unpublished_by_admin = true`, so ingestion upserts that reset the flag, forged session settings and deleting/re-inserting the preview all keep the hold. Only `public.admin_release_preview_hold` (service role, called after the app's ADMIN check) deletes the hold row.
 
 Original minimum checklist (all covered by the gate) — before `is_published=true`, reject or flag preview if it contains:
 - canonical buyer name
@@ -401,24 +402,28 @@ select count(*) from public.subscriptions
 where status = 'ACTIVE' and is_current and current_period_end is null;
 ```
 
-`0018` gates new writes only; previews already published keep their old verdict until rewritten. After `0018`, dry-run the new gate over published rows, then re-gate them. Replica mode skips the `updated_at` touch trigger, while the gate trigger is `ALWAYS` and still fires:
+`0018` gates new writes only; existing previews keep their old verdict until rewritten. After `0018`, dry-run the new gate over **every** preview (published, unpublished and held), then re-gate all of them, so the stored risk of unpublished and held rows also reflects the v2 rules and the admin review queue starts from the current verdict. Replica mode skips the `updated_at` touch trigger, while the gate trigger is `ALWAYS` and still fires. Holds stay in place because they are recorded in `private.preview_holds`:
 
 ```sql
--- dry run: how many published previews the new gate would hold back
-select private.detect_preview_leakage(
+-- dry run: what the new gate says for every preview
+select dp.is_published, dp.unpublished_by_admin, dp.leakage_risk as stored_risk,
+       private.detect_preview_leakage(
          dp.deal_id, dp.slug, dp.preview_title, dp.preview_summary,
          dp.requirements_preview, dp.relevance_tags, dp.broad_region
-       ) as new_risk, count(*)
+       ) as new_risk,
+       count(*)
 from public.deal_previews dp
-where dp.is_published
-group by 1;
+group by 1, 2, 3, 4
+order by 1, 2, 3, 4;
 
--- re-gate published previews in place
+-- re-gate every preview in place (risk can only rise)
 begin;
 set local session_replication_role = replica;
-update public.deal_previews set leakage_risk = leakage_risk where is_published;
+update public.deal_previews set leakage_risk = leakage_risk;
 commit;
 ```
+
+Rollback scripts for `0018` and `0019` are in `supabase/rollback/`; see `DATABASE_SETUP.md`.
 
 `supabase/dealatlas_full_schema.sql` is a generated concatenation of those files for SQL Editor use on a fresh project. Regenerate it with `npm run db:bundle` after changing a migration. Do not run the combined file after individual migrations have already been applied.
 
