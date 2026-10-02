@@ -81,6 +81,24 @@ describe("deterministic preview leak scanner", () => {
       }),
     );
     expect(result.risk).toBe("HIGH");
-    expect(result.findings.some((item) => item.code === "FINGERPRINT")).toBe(true);
+    const codes = new Set(result.findings.map((item) => item.code));
+    expect(codes.has("EXACT_AMOUNT")).toBe(true);
+    expect(codes.has("DATE_SOURCE")).toBe(true);
+    expect(codes.has("LOCATION_EXACT")).toBe(true);
+  });
+
+  it("scans the slug but ignores its deal-id suffix", () => {
+    expect(scanPreviewLeaks(baseInput({ slug: "technology-tender-0a1b2c3d" })).risk).toBe("LOW");
+    expect(
+      scanPreviewLeaks(baseInput({ slug: "example-city-council-technology-0a1b2c3d" })).risk,
+    ).toBe("HIGH");
+  });
+
+  it("flags short source titles that are copied verbatim", () => {
+    const result = scanPreviewLeaks(
+      baseInput({ sourceTitle: "Gritting fleet", previewTitle: "Gritting fleet" }),
+    );
+    expect(result.findings.some((item) => item.code === "TITLE_SIMILARITY")).toBe(true);
+    expect(result.risk).toBe("HIGH");
   });
 });
