@@ -4234,10 +4234,25 @@ revoke execute on function private.detect_preview_leakage(uuid, text, text, text
   from public, anon, authenticated;
 
 -- -----------------------------------------------------------------------------
+-- Admin holds. Recorded per deal (not per preview row) so deleting and
+-- re-inserting the preview cannot clear them, and kept in a table no API role
+-- can read or write. Only public.admin_release_preview_hold deletes a hold.
+-- -----------------------------------------------------------------------------
+create table if not exists private.preview_holds (
+  deal_id uuid primary key references public.deals(id) on delete cascade,
+  held_at timestamptz not null default now()
+);
+
+revoke all on table private.preview_holds from public, anon, authenticated, service_role;
+
+insert into private.preview_holds (deal_id)
+select dp.deal_id from public.deal_previews dp where dp.unpublished_by_admin
+on conflict (deal_id) do nothing;
+
+-- -----------------------------------------------------------------------------
 -- Publish gate. Runs on every INSERT/UPDATE (all columns) and fires even under
 -- session_replication_role = replica. The detected risk can only raise the
 -- stored risk; anything other than LOW, or an admin hold, forces unpublished.
--- An admin hold can only be cleared through public.admin_release_preview_hold.
 -- -----------------------------------------------------------------------------
 create or replace function private.enforce_preview_safety()
 returns trigger
@@ -4248,12 +4263,11 @@ as $$
 declare
   detected public.leakage_risk;
 begin
-  if tg_op = 'UPDATE'
-     and old.unpublished_by_admin
-     and not new.unpublished_by_admin
-     and coalesce(current_setting('dealatlas.release_preview_hold', true), '') <> old.deal_id::text
-  then
+  if exists (select 1 from private.preview_holds h where h.deal_id = new.deal_id) then
     new.unpublished_by_admin := true;
+  elsif new.unpublished_by_admin then
+    insert into private.preview_holds (deal_id) values (new.deal_id)
+    on conflict (deal_id) do nothing;
   end if;
 
   begin
@@ -4308,13 +4322,12 @@ as $$
 declare
   v_rows integer;
 begin
-  perform set_config('dealatlas.release_preview_hold', p_deal_id::text, true);
+  delete from private.preview_holds where deal_id = p_deal_id;
   update public.deal_previews
   set unpublished_by_admin = false,
       is_published = false
   where deal_id = p_deal_id;
   get diagnostics v_rows = row_count;
-  perform set_config('dealatlas.release_preview_hold', '', true);
   return v_rows > 0;
 end;
 $$;

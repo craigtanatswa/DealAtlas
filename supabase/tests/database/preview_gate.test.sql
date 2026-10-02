@@ -157,6 +157,50 @@ select is(
   'gate still fires with session_replication_role = replica'
 );
 
+select set_config('dealatlas.release_preview_hold', 'b0000000-0000-4000-8000-000000000001', true);
+update public.deal_previews
+set unpublished_by_admin = false
+where deal_id = 'b0000000-0000-4000-8000-000000000001';
+select set_config('dealatlas.release_preview_hold', '', true);
+
+select is(
+  (select unpublished_by_admin from public.deal_previews where deal_id = 'b0000000-0000-4000-8000-000000000001'),
+  true,
+  'a forged release setting cannot clear an admin hold'
+);
+
+delete from public.deal_previews where deal_id = 'b0000000-0000-4000-8000-000000000001';
+insert into public.deal_previews (
+  deal_id, slug, preview_title, preview_summary, deal_type, buyer_sector, stage, status,
+  leakage_risk, is_published, unpublished_by_admin
+) values (
+  'b0000000-0000-4000-8000-000000000001',
+  'street-lighting-upgrade-b0000000',
+  'Street lighting upgrade for a local authority',
+  'A public body in Wales wants a contractor to replace roadside lighting with efficient units.',
+  'PUBLIC_TENDER', 'PUBLIC', 'LIVE', 'OPEN',
+  'LOW', true, false
+);
+
+select is(
+  (select unpublished_by_admin from public.deal_previews where deal_id = 'b0000000-0000-4000-8000-000000000001'),
+  true,
+  'deleting and re-inserting the preview cannot clear an admin hold'
+);
+select is(
+  (select is_published from public.deal_previews where deal_id = 'b0000000-0000-4000-8000-000000000001'),
+  false,
+  're-inserted held preview stays unpublished'
+);
+
+select ok(
+  not has_table_privilege('service_role', 'private.preview_holds', 'select')
+  and not has_table_privilege('service_role', 'private.preview_holds', 'delete')
+  and not has_table_privilege('authenticated', 'private.preview_holds', 'delete')
+  and not has_table_privilege('anon', 'private.preview_holds', 'delete'),
+  'no API role can read or clear admin holds directly'
+);
+
 select is(
   public.admin_release_preview_hold('b0000000-0000-4000-8000-000000000001'),
   true,
@@ -172,10 +216,9 @@ select is(
   false,
   'releasing a hold does not auto-publish'
 );
-select is(
-  coalesce(current_setting('dealatlas.release_preview_hold', true), ''),
-  '',
-  'release flag does not leak past the RPC'
+select ok(
+  not exists (select 1 from private.preview_holds where deal_id = 'b0000000-0000-4000-8000-000000000001'),
+  'admin release RPC removes the recorded hold'
 );
 
 select ok(
