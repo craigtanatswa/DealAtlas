@@ -54,7 +54,7 @@ Attempt to run ingestion for:
 ## Security launch tests
 - direct REST/client select on `deals` fails for anon/authenticated
 - direct select on `organizations` fails
-- `deal_previews` shows LOW + published only
+- direct select on `deal_previews` fails for anon/authenticated; the DTO RPCs return LOW + published + non-held rows only, with no `deal_id` for anon
 - user cannot update `profiles.role`
 - user cannot write subscriptions/billing_events/export_usage
 - free saved/search limits enforced even via direct Supabase client

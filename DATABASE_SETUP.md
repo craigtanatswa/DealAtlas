@@ -15,6 +15,9 @@ The migrations run in this order:
 4. `supabase/migrations/0004_security_and_rls.sql`
 5. `supabase/migrations/0005_functions_and_indexes.sql`
 6. `supabase/migrations/0006_seed_reference_data.sql`
+7. … through `supabase/migrations/0019_revoke_client_preview_table_access.sql` (see `docs/DATABASE.md` for the full list)
+
+On an existing production project, `0018` and `0019` must be rolled out as separate steps: apply `0018`, deploy the app release that reads previews through the DTO RPCs, verify it, then apply `0019`. `db push` applies every pending migration at once, so push from a checkout that does not yet contain `0019` (or apply the files manually) for the first step. A fresh project with no deployed app can apply everything in one pass.
 
 ## Option 2 — One-pass Supabase SQL Editor
 Open:
@@ -46,8 +49,8 @@ npm run test:db
 - RLS/grants
 - free-plan/Pro quota triggers
 - source compliance enforcement
-- preview leakage failsafe
-- safe public search RPC
+- preview publish gate (re-scans every `deal_previews` write)
+- sanitised preview DTO RPCs (the only client path to previews)
 - indexes
 - initial DealAtlas categories
 - Find a Tender source registry seed
@@ -83,6 +86,21 @@ order by source_key;
 select slug, name
 from public.categories
 order by name;
+```
+
+```sql
+-- 5. Confirm client roles cannot read deal_previews or non-public schemas
+select grantee, privilege_type
+from information_schema.role_table_grants
+where table_schema = 'public' and table_name = 'deal_previews'
+  and grantee in ('anon', 'authenticated');      -- expect no rows
+
+select n.nspname, r.rolname
+from pg_namespace n
+cross join (values ('anon'), ('authenticated')) as r(rolname)
+where has_schema_privilege(r.rolname, n.oid, 'USAGE')
+  and n.nspname not in ('public', 'auth', 'pg_catalog', 'information_schema')
+  and n.nspname not like 'pg\_%';                -- expect no rows
 ```
 
 ## Promote your account to ADMIN after signing up

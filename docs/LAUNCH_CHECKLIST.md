@@ -64,7 +64,7 @@ After changing Production env vars, redeploy.
 - [x] Create or select the production Supabase project (do not reuse the local Docker stack). (`DealAtlas`, `eu-west-1`, `ACTIVE_HEALTHY`)
 - [x] Link the CLI (`npx supabase link`) and apply migrations with `npx supabase db push`. Do **not** run `db reset` against production. (migrations `0001`–`0017` applied)
 - [x] Confirm Table Editor shows the migrated schema, including `deal_previews`, `subscriptions`, `billing_events`, `data_sources`, and `admin_audit_events`.
-- [x] Data API: exposed schemas must be `public` only. Disable `graphql_public` / GraphQL if the hosted project still lists it. Canonical tables must have no `anon` / `authenticated` grants. (anon REST on `deals` / `notices` / `organizations` is HTTP 401 / `42501`; `deal_previews` SELECT succeeds; `/graphql/v1` is not a working GraphQL API)
+- [x] Data API: exposed schemas must be `public` only. Disable `graphql_public` / GraphQL if the hosted project still lists it. Canonical tables must have no `anon` / `authenticated` grants. (anon REST on `deals` / `notices` / `organizations` is HTTP 401 / `42501`; `deal_previews` SELECT succeeded before `0019`; after `0019` it must fail and `/rest/v1/rpc/get_preview_dto_by_slug` must return the sanitised DTO; `/graphql/v1` is not a working GraphQL API)
 - [x] Auth URL configuration:
   - Site URL = `https://www.dealatlas.uk`
   - Redirect allowlist includes:
