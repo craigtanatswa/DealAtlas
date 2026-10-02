@@ -48,7 +48,7 @@ describe("supabase migrations", () => {
   const files = listMigrations();
   const sql = files.map(readMigration).join("\n");
 
-  it("are numbered 0001-0018 in order with no gaps", () => {
+  it("are numbered 0001-0019 in order with no gaps", () => {
     expect(files).toEqual([
       "0001_extensions_and_types.sql",
       "0002_core_schema.sql",
@@ -68,6 +68,7 @@ describe("supabase migrations", () => {
       "0016_admin_operations.sql",
       "0017_job_runs.sql",
       "0018_preview_gate_v2_and_dto_rpcs.sql",
+      "0019_revoke_client_preview_table_access.sql",
     ]);
   });
 
@@ -184,6 +185,14 @@ describe("supabase migrations", () => {
     expect(gate).not.toMatch(
       /grant execute on function (public|private)\.(preview_leak_findings|detect_preview_leakage|admin_release_preview_hold)[\s\S]{0,120}to (anon|authenticated)/i,
     );
+  });
+
+  it("revokes direct client access to deal_previews in a separate post-deploy migration", () => {
+    const revoke = readMigration("0019_revoke_client_preview_table_access.sql");
+    expect(revoke).toContain(
+      "revoke all on table public.deal_previews from public, anon, authenticated",
+    );
+    expect(revoke).not.toMatch(/grant\s+(all|select)[\s\S]{0,60}to\s+(anon|authenticated)/i);
   });
 
   it("never disable RLS", () => {
