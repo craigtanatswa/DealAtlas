@@ -2,13 +2,60 @@ begin;
 select no_plan();
 
 -- ---------------------------------------------------------------------------
--- Client grants: canonical tables stay unreachable; previews are select-only.
+-- Client grants: canonical tables and deal_previews stay unreachable; the
+-- sanitised DTO RPCs are the only client preview path (0018/0019).
 -- ---------------------------------------------------------------------------
-select ok(has_table_privilege('anon', 'public.deal_previews', 'select'), 'anon can select deal_previews');
-select ok(has_table_privilege('authenticated', 'public.deal_previews', 'select'), 'authenticated can select deal_previews');
+select ok(not has_table_privilege('anon', 'public.deal_previews', 'select'), 'anon cannot select deal_previews');
+select ok(not has_table_privilege('authenticated', 'public.deal_previews', 'select'), 'authenticated cannot select deal_previews');
 select ok(not has_table_privilege('anon', 'public.deal_previews', 'insert'), 'anon cannot insert deal_previews');
 select ok(not has_table_privilege('anon', 'public.deal_previews', 'update'), 'anon cannot update deal_previews');
 select ok(not has_table_privilege('anon', 'public.deal_previews', 'delete'), 'anon cannot delete deal_previews');
+select ok(not has_table_privilege('authenticated', 'public.deal_previews', 'update'), 'authenticated cannot update deal_previews');
+select is(
+  (select count(*)::integer from pg_policies where schemaname = 'public' and tablename = 'deal_previews'),
+  0,
+  'deal_previews has no client read policy'
+);
+
+select ok(has_schema_privilege('anon', 'public', 'usage'), 'anon keeps usage on public');
+select ok(has_schema_privilege('anon', 'auth', 'usage'), 'anon keeps usage on auth for RLS helpers');
+select ok(not has_schema_privilege('anon', 'private', 'usage'), 'anon has no usage on private');
+select ok(not has_schema_privilege('authenticated', 'private', 'usage'), 'authenticated has no usage on private');
+select ok(not has_schema_privilege('anon', 'extensions', 'usage'), 'anon has no usage on extensions');
+select ok(not has_schema_privilege('authenticated', 'extensions', 'usage'), 'authenticated has no usage on extensions');
+select ok(not has_schema_privilege('anon', 'public', 'create'), 'anon cannot create in public');
+
+select ok(
+  has_function_privilege('anon', 'public.search_preview_dtos(text, text, public.buyer_sector, public.deal_type, text, public.deal_status, public.deal_status[], text, text, numeric, text, integer, integer)', 'execute'),
+  'anon can execute the DTO search RPC'
+);
+select ok(has_function_privilege('anon', 'public.get_preview_dto_by_slug(text)', 'execute'), 'anon can execute DTO by slug');
+select ok(has_function_privilege('anon', 'public.list_preview_sitemap_entries(integer, integer)', 'execute'), 'anon can list sitemap entries');
+select ok(not has_function_privilege('anon', 'public.get_preview_dto_by_deal_id(uuid)', 'execute'), 'anon cannot load DTO by deal id');
+select ok(not has_function_privilege('anon', 'public.resolve_preview_deal_id(text)', 'execute'), 'anon cannot resolve deal ids');
+select ok(not has_function_privilege('anon', 'public.list_saved_deal_previews()', 'execute'), 'anon cannot list saved deals');
+select ok(
+  not has_function_privilege('anon', 'public.search_deal_previews(text, text, public.buyer_sector, public.deal_type, text, public.deal_status, text, text, integer, integer)', 'execute'),
+  'anon cannot execute the legacy deal_id-bearing search RPC'
+);
+select ok(
+  not has_function_privilege('authenticated', 'public.search_deal_previews_for_profile(uuid, text, text, public.buyer_sector, public.deal_type, text, public.deal_status, text, text, numeric, text, integer, integer)', 'execute'),
+  'authenticated cannot execute the legacy profile search RPC'
+);
+select ok(not has_function_privilege('anon', 'public.admin_release_preview_hold(uuid)', 'execute'), 'anon cannot release preview holds');
+select ok(not has_function_privilege('authenticated', 'public.admin_release_preview_hold(uuid)', 'execute'), 'authenticated cannot release preview holds');
+select ok(
+  not exists (
+    select 1
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and has_function_privilege('anon', p.oid, 'execute')
+      and p.proname not in ('search_preview_dtos', 'get_preview_dto_by_slug', 'list_preview_sitemap_entries', 'count_preview_sitemap_entries')
+      and not exists (select 1 from pg_depend dep where dep.objid = p.oid and dep.deptype = 'e')
+  ),
+  'anon can only execute the public DTO RPCs in schema public'
+);
 
 select ok(not has_table_privilege('anon', 'public.deals', 'select'), 'anon cannot select deals');
 select ok(not has_table_privilege('anon', 'public.organizations', 'select'), 'anon cannot select organizations');
@@ -218,56 +265,87 @@ select is(
 );
 
 -- ---------------------------------------------------------------------------
--- Anon row filter
+-- Anon reads go through the DTO RPCs only.
+-- pgTAP lives in `extensions`, which client roles can no longer use; grant it
+-- back inside this rolled-back transaction purely so assertions can run.
 -- ---------------------------------------------------------------------------
+grant usage on schema extensions to anon, authenticated;
+
 set local role anon;
 
+select throws_ok(
+  'select slug from public.deal_previews limit 1',
+  '42501',
+  NULL,
+  'anon select on deal_previews is denied'
+);
+
+select is(
+  (select array_agg(slug order by slug) from public.search_preview_dtos()),
+  array['published-low-risk-preview'],
+  'anon DTO search returns only the published LOW-risk fixture preview'
+);
+
 select ok(
-  exists (
+  not exists (
     select 1
-    from public.deal_previews
-    where slug = 'published-low-risk-preview'
+    from public.search_preview_dtos() as r
+    where to_jsonb(r) ?| array[
+      'deal_id', 'source_url', 'source_title', 'reference', 'ocid', 'buyer_organization_id',
+      'canonical_name', 'email', 'phone', 'application_url', 'created_at', 'updated_at',
+      'leakage_risk', 'is_published', 'unpublished_by_admin'
+    ]
   ),
-  'anon can see the published LOW-risk fixture preview'
+  'anon DTO rows contain no identifying or internal fields'
 );
 
 select is(
-  (
-    select count(*)::integer
-    from public.deal_previews
-    where slug in (
-      'unpublished-low-risk-preview',
-      'high-risk-unpublished-preview'
-    )
-  ),
-  0,
-  'anon cannot see unpublished or HIGH-risk fixture previews'
+  (select relevance_score from public.search_preview_dtos() limit 1),
+  null::numeric,
+  'anon DTO rows carry no relevance score'
 );
 
 select is(
-  (
-    select count(*)::integer
-    from public.deal_previews
-    where leakage_risk <> 'LOW'
-       or is_published is not true
-  ),
+  (select count(*)::integer from public.get_preview_dto_by_slug('unpublished-low-risk-preview')),
   0,
-  'anon sees only published LOW-risk deal_previews'
+  'anon cannot load an unpublished preview by slug'
 );
 
 select is(
-  (
-    select count(*)::integer
-    from public.deal_previews
-    where preview_title ilike '%CANARY%'
-       or preview_summary ilike '%CANARY%'
-       or preview_title ilike '%canary-protected%'
-       or preview_summary ilike '%canary-protected%'
-       or preview_title ilike '%canary-source%'
-       or preview_summary ilike '%canary-source%'
-  ),
+  (select count(*)::integer from public.get_preview_dto_by_slug('high-risk-unpublished-preview')),
   0,
-  'anon previews do not contain canary source markers'
+  'anon cannot load a HIGH-risk preview by slug'
+);
+
+select is(
+  (select preview_title from public.get_preview_dto_by_slug('published-low-risk-preview')),
+  'Managed IT support for a public organisation',
+  'anon can load the published preview DTO by slug'
+);
+
+select ok(
+  not exists (
+    select 1
+    from public.search_preview_dtos() as r
+    where r.preview_title ilike '%canary%' or r.preview_summary ilike '%canary%'
+  ),
+  'anon DTO previews do not contain canary source markers'
+);
+
+select is(public.count_preview_sitemap_entries(), 1::bigint, 'sitemap count only covers published LOW-risk previews');
+
+select throws_ok(
+  $$ select public.resolve_preview_deal_id('published-low-risk-preview') $$,
+  '42501',
+  NULL,
+  'anon cannot resolve a deal id'
+);
+
+select throws_ok(
+  $$ select * from public.search_deal_previews() $$,
+  '42501',
+  NULL,
+  'anon cannot call the legacy search RPC'
 );
 
 select throws_ok(
@@ -333,17 +411,76 @@ select throws_ok(
   'anon select on raw_records is denied'
 );
 
-select isnt_empty(
-  $$ select slug from public.search_deal_previews() $$,
-  'anon can call search_deal_previews'
-);
-
 reset role;
 
 -- ---------------------------------------------------------------------------
 -- Authenticated role still has no canonical table grants.
 -- ---------------------------------------------------------------------------
+insert into auth.users (id, email) values
+  ('55555555-5555-4555-8555-555555555555', 'free-user@example.test');
+insert into public.company_profiles (id, user_id, company_name)
+values ('66666666-6666-4666-8666-666666666666', '55555555-5555-4555-8555-555555555555', 'Example Co');
+insert into public.deal_matches (company_profile_id, deal_id, relevance_score, preview_reasons)
+values ('66666666-6666-4666-8666-666666666666', '22222222-2222-4222-8222-222222222222', 72, '[]'::jsonb);
+insert into public.saved_deals (user_id, deal_id) values
+  ('55555555-5555-4555-8555-555555555555', '22222222-2222-4222-8222-222222222222'),
+  ('55555555-5555-4555-8555-555555555555', '33333333-3333-4333-8333-333333333333');
+
 set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"55555555-5555-4555-8555-555555555555","role":"authenticated"}', true);
+
+select throws_ok(
+  'select slug from public.deal_previews limit 1',
+  '42501',
+  NULL,
+  'authenticated select on deal_previews is denied'
+);
+
+select is(
+  (select relevance_score from public.search_preview_dtos() where slug = 'published-low-risk-preview'),
+  72::numeric,
+  'signed-in DTO search carries only the caller''s own relevance score'
+);
+
+select is(
+  public.resolve_preview_deal_id('published-low-risk-preview'),
+  '22222222-2222-4222-8222-222222222222'::uuid,
+  'signed-in users can resolve a published slug for save/reveal'
+);
+
+select is(
+  public.resolve_preview_deal_id('unpublished-low-risk-preview'),
+  null::uuid,
+  'unpublished slugs do not resolve'
+);
+
+select is(
+  (select slug from public.get_preview_dto_by_deal_id('22222222-2222-4222-8222-222222222222')),
+  'published-low-risk-preview',
+  'signed-in users can load a published DTO by deal id'
+);
+
+select is(
+  (select count(*)::integer from public.get_preview_dto_by_deal_id('44444444-4444-4444-8444-444444444444')),
+  0,
+  'HIGH-risk previews are not returned by deal id'
+);
+
+select is(
+  (select array_agg(coalesce(slug, '<hidden>') order by slug nulls last) from public.list_saved_deal_previews()),
+  array['published-low-risk-preview', '<hidden>'],
+  'saved deals list exposes previews only while published'
+);
+
+select ok(
+  not exists (
+    select 1 from public.list_saved_deal_previews() as r
+    where to_jsonb(r) ?| array['source_url', 'source_title', 'reference', 'ocid', 'leakage_risk', 'is_published']
+  ),
+  'saved deal DTO rows contain no source fields'
+);
+
+select set_config('request.jwt.claims', '', true);
 
 select throws_ok(
   'select id from public.deals limit 1',

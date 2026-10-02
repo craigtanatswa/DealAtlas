@@ -232,21 +232,63 @@ describe.skipIf(!configured)("PostgREST RLS smoke tests", () => {
     }
   });
 
-  it("lets anon read published LOW-risk deal_previews only", async () => {
-    const { status, body } = await restSelect(
-      anonKey!,
-      "deal_previews",
-      `select=deal_id,slug,preview_title&slug=in.("${publishedSlug}","${unpublishedSlug}")`,
-    );
+  it("blocks anon and authenticated users from reading deal_previews directly", async () => {
+    const query = `select=deal_id,slug&slug=in.("${publishedSlug}","${unpublishedSlug}")`;
+    const anon = await restSelect(anonKey!, "deal_previews", query);
+    expect(anon.status).toBeGreaterThanOrEqual(400);
+    expect(Array.isArray(anon.body)).toBe(false);
+    expect(errorCode(anon.body)).toMatch(/42501|PGRST301|PGRST105/);
 
+    const signedIn = await restRequest(anonKey!, `/rest/v1/deal_previews?${query}`, {
+      headers: { Authorization: `Bearer ${userAccessToken}` },
+    });
+    expect(signedIn.status).toBeGreaterThanOrEqual(400);
+    expect(Array.isArray(signedIn.body)).toBe(false);
+  });
+
+  it("returns only sanitised published previews from the anon DTO RPC", async () => {
+    const { status, body } = await restRequest(anonKey!, "/rest/v1/rpc/get_preview_dto_by_slug", {
+      method: "POST",
+      body: JSON.stringify({ p_slug: publishedSlug }),
+    });
     expect(status).toBe(200);
-    expect(body).toEqual([
-      {
-        deal_id: publishedDealId,
-        slug: publishedSlug,
-        preview_title: "Managed IT support for a public organisation",
-      },
-    ]);
+    expect(Array.isArray(body)).toBe(true);
+    const rows = body as Record<string, unknown>[];
+    expect(rows.map((row) => row.slug)).toEqual([publishedSlug]);
+    for (const key of [
+      "deal_id",
+      "source_title",
+      "source_url",
+      "reference",
+      "ocid",
+      "buyer_organization_id",
+      "created_at",
+      "updated_at",
+    ]) {
+      expect(rows[0], key).not.toHaveProperty(key);
+    }
+    expect(JSON.stringify(rows)).not.toContain("CANARY");
+
+    const hidden = await restRequest(anonKey!, "/rest/v1/rpc/get_preview_dto_by_slug", {
+      method: "POST",
+      body: JSON.stringify({ p_slug: unpublishedSlug }),
+    });
+    expect(hidden.status).toBe(200);
+    expect(hidden.body).toEqual([]);
+  });
+
+  it("does not let anon resolve internal deal ids or call legacy search RPCs", async () => {
+    for (const [fn, args] of [
+      ["resolve_preview_deal_id", { p_slug: publishedSlug }],
+      ["get_preview_dto_by_deal_id", { p_deal_id: publishedDealId }],
+      ["search_deal_previews", {}],
+    ] as const) {
+      const { status } = await restRequest(anonKey!, `/rest/v1/rpc/${fn}`, {
+        method: "POST",
+        body: JSON.stringify(args),
+      });
+      expect(status, fn).toBeGreaterThanOrEqual(400);
+    }
   });
 
   it("blocks anon from canonical source-bearing tables", async () => {
