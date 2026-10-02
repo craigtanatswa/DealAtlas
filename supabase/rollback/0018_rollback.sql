@@ -5,9 +5,10 @@
 -- deal_previews directly and does not call admin_release_preview_hold), then
 -- run this file. See DATABASE_SETUP.md "Rolling back 0018/0019".
 --
--- Restores the 0016 publish gate, the 4-argument detect_preview_leakage and
--- the pre-0018 is_user_pro (which treats a NULL current_period_end on an
--- ACTIVE subscription as Pro), and drops everything 0018 added. Preview rows
+-- Restores the 0016 publish gate and the 4-argument detect_preview_leakage,
+-- and drops everything 0018 added. One deliberate exception: is_user_pro
+-- keeps the fail-closed 0018 definition (a NULL current_period_end is not
+-- Pro); the pre-0018 version would reopen the paywall. Preview rows
 -- keep any leakage_risk / is_published values the v2 gate set; admin holds
 -- stay recorded in deal_previews.unpublished_by_admin.
 
@@ -122,6 +123,9 @@ drop trigger if exists enforce_preview_safety on public.deal_previews;
 CREATE TRIGGER enforce_preview_safety BEFORE INSERT OR UPDATE OF preview_title, preview_summary, requirements_preview, leakage_risk, is_published, unpublished_by_admin ON public.deal_previews FOR EACH ROW EXECUTE FUNCTION private.enforce_preview_safety();
 
 
+-- Deliberately NOT reverted: is_user_pro stays fail-closed (a NULL
+-- current_period_end is never Pro), so rolling back cannot reopen the
+-- paywall. Same definition as 0018.
 CREATE OR REPLACE FUNCTION private.is_user_pro(p_user_id uuid)
  RETURNS boolean
  LANGUAGE sql
@@ -133,16 +137,12 @@ AS $function$
     from public.subscriptions s
     where s.user_id = p_user_id
       and s.is_current = true
+      and s.current_period_end is not null
+      and s.current_period_end > now()
       and (
         s.status = 'ACTIVE'
-        or (
-          s.status = 'CANCELLED'
-          and s.cancel_at_period_end = true
-          and s.current_period_end is not null
-          and s.current_period_end > now()
-        )
+        or (s.status = 'CANCELLED' and s.cancel_at_period_end = true)
       )
-      and (s.current_period_end is null or s.current_period_end > now())
   );
 $function$;
 
