@@ -15,16 +15,16 @@ export const FREE_ENTITLEMENT: EntitlementSnapshot = {
 };
 
 /**
- * Paid-through check aligned with `private.is_user_pro`:
- * a missing period end does not revoke an otherwise qualifying subscription;
- * a recorded period end must be strictly in the future.
+ * Paid-through check aligned with `private.is_user_pro` (migration 0018):
+ * fails closed. A missing or unparseable period end never grants Pro; a
+ * recorded period end must be strictly in the future.
  */
 export function isPaidThrough(
   currentPeriodEnd: string | null,
   now: Date,
 ): boolean {
   if (currentPeriodEnd === null) {
-    return true;
+    return false;
   }
 
   const end = Date.parse(currentPeriodEnd);
