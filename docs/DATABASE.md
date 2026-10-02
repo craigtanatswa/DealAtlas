@@ -393,6 +393,33 @@ Included in the build pack:
 
 Apply in numeric order with the Supabase CLI (`npx supabase db reset` locally, or `npx supabase db push` to a linked project). Never reset or drop a linked production database. `db push` applies every pending file, so roll out `0018` and `0019` as separate pushes (push from a checkout without `0019`, deploy the app, then push again) or apply them manually in order.
 
+#### 0018/0019 rollout checks
+Before applying `0018`, count current subscriptions that would lose Pro under the fail-closed paid-through rule:
+
+```sql
+select count(*) from public.subscriptions
+where status = 'ACTIVE' and is_current and current_period_end is null;
+```
+
+`0018` gates new writes only; previews already published keep their old verdict until rewritten. After `0018`, dry-run the new gate over published rows, then re-gate them. Replica mode skips the `updated_at` touch trigger, while the gate trigger is `ALWAYS` and still fires:
+
+```sql
+-- dry run: how many published previews the new gate would hold back
+select private.detect_preview_leakage(
+         dp.deal_id, dp.slug, dp.preview_title, dp.preview_summary,
+         dp.requirements_preview, dp.relevance_tags, dp.broad_region
+       ) as new_risk, count(*)
+from public.deal_previews dp
+where dp.is_published
+group by 1;
+
+-- re-gate published previews in place
+begin;
+set local session_replication_role = replica;
+update public.deal_previews set leakage_risk = leakage_risk where is_published;
+commit;
+```
+
 `supabase/dealatlas_full_schema.sql` is a generated concatenation of those files for SQL Editor use on a fresh project. Regenerate it with `npm run db:bundle` after changing a migration. Do not run the combined file after individual migrations have already been applied.
 
 ### TypeScript types
