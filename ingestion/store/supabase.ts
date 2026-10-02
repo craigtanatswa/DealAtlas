@@ -438,7 +438,8 @@ export function createSupabaseIngestionStore(
             freshness_label: input.freshnessLabel,
             leakage_risk: input.leakageRisk,
             is_published: input.isPublished,
-            unpublished_by_admin: input.unpublishedByAdmin === true,
+            // unpublished_by_admin is never written here: admin holds are
+            // owned by admin_release_preview_hold and the DB publish gate.
             updated_at: new Date().toISOString(),
           },
           { onConflict: "deal_id" },

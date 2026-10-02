@@ -2205,6 +2205,7 @@ export type Database = {
           alias: string
           created_at: string
           id: string
+          leak_match_name: string | null
           normalized_alias: string
           organization_id: string
           source_id: string | null
@@ -2352,6 +2353,7 @@ export type Database = {
           id: string
           is_sme: boolean | null
           is_vcse: boolean | null
+          leak_match_name: string | null
           normalized_name: string
           phone: string | null
           postcode: string | null
@@ -2952,6 +2954,160 @@ export type Database = {
           p_keep: string
         }
         Returns: undefined
+      }
+      admin_release_preview_hold: {
+        Args: {
+          p_deal_id: string
+        }
+        Returns: boolean
+      }
+      count_preview_sitemap_entries: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
+      get_preview_dto_by_deal_id: {
+        Args: {
+          p_deal_id: string
+        }
+        Returns: {
+          bid_complexity: string
+          broad_region: string
+          buyer_sector: Database["public"]["Enums"]["buyer_sector"]
+          competition_level: string
+          deadline_band: string
+          deal_type: Database["public"]["Enums"]["deal_type"]
+          duration_band: string
+          freshness_label: string
+          main_category: string
+          preview_summary: string
+          preview_title: string
+          relevance_tags: string[]
+          requirements_preview: Json
+          slug: string
+          sme_suitability: string
+          stage: Database["public"]["Enums"]["deal_stage"]
+          status: Database["public"]["Enums"]["deal_status"]
+          value_band: string
+          preview_reasons: Json
+          relevance_score: number | null
+        }[]
+      }
+      get_preview_dto_by_slug: {
+        Args: {
+          p_slug: string
+        }
+        Returns: {
+          bid_complexity: string
+          broad_region: string
+          buyer_sector: Database["public"]["Enums"]["buyer_sector"]
+          competition_level: string
+          deadline_band: string
+          deal_type: Database["public"]["Enums"]["deal_type"]
+          duration_band: string
+          freshness_label: string
+          main_category: string
+          preview_summary: string
+          preview_title: string
+          relevance_tags: string[]
+          requirements_preview: Json
+          slug: string
+          sme_suitability: string
+          stage: Database["public"]["Enums"]["deal_stage"]
+          status: Database["public"]["Enums"]["deal_status"]
+          value_band: string
+          preview_reasons: Json
+          relevance_score: number | null
+        }[]
+      }
+      list_preview_sitemap_entries: {
+        Args: {
+          p_limit?: number
+          p_offset?: number
+        }
+        Returns: {
+          broad_region: string
+          deadline_band: string
+          last_modified: string
+          main_category: string
+          preview_summary: string
+          preview_title: string
+          slug: string
+          status: Database["public"]["Enums"]["deal_status"]
+          value_band: string
+        }[]
+      }
+      list_saved_deal_previews: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          bid_complexity: string | null
+          broad_region: string | null
+          buyer_sector: Database["public"]["Enums"]["buyer_sector"] | null
+          competition_level: string | null
+          deadline_band: string | null
+          deal_type: Database["public"]["Enums"]["deal_type"] | null
+          duration_band: string | null
+          freshness_label: string | null
+          main_category: string | null
+          preview_summary: string | null
+          preview_title: string | null
+          relevance_tags: string[] | null
+          requirements_preview: Json | null
+          slug: string | null
+          sme_suitability: string | null
+          stage: Database["public"]["Enums"]["deal_stage"] | null
+          status: Database["public"]["Enums"]["deal_status"] | null
+          value_band: string | null
+          deal_id: string
+          notes: string | null
+          saved_at: string
+          saved_deal_id: string
+        }[]
+      }
+      resolve_preview_deal_id: {
+        Args: {
+          p_slug: string
+        }
+        Returns: string | null
+      }
+      search_preview_dtos: {
+        Args: {
+          p_buyer_sector?: Database["public"]["Enums"]["buyer_sector"]
+          p_category?: string
+          p_deadline_band?: string
+          p_deal_type?: Database["public"]["Enums"]["deal_type"]
+          p_limit?: number
+          p_min_score?: number
+          p_offset?: number
+          p_query?: string
+          p_region?: string
+          p_sort?: string
+          p_status?: Database["public"]["Enums"]["deal_status"]
+          p_statuses?: Database["public"]["Enums"]["deal_status"][]
+          p_value_band?: string
+        }
+        Returns: {
+          bid_complexity: string
+          broad_region: string
+          buyer_sector: Database["public"]["Enums"]["buyer_sector"]
+          competition_level: string
+          deadline_band: string
+          deal_type: Database["public"]["Enums"]["deal_type"]
+          duration_band: string
+          freshness_label: string
+          main_category: string
+          preview_summary: string
+          preview_title: string
+          relevance_tags: string[]
+          requirements_preview: Json
+          slug: string
+          sme_suitability: string
+          stage: Database["public"]["Enums"]["deal_stage"]
+          status: Database["public"]["Enums"]["deal_status"]
+          value_band: string
+          preview_reasons: Json
+          relevance_score: number | null
+          total_count: number
+        }[]
       }
       search_deal_previews: {
         Args: {

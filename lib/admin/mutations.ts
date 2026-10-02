@@ -107,18 +107,11 @@ export async function releasePreviewHold(input: {
   actorId: string;
   dealId: string;
 }): Promise<void> {
-  const { data, error } = await admin()
-    .from("deal_previews")
-    .update({
-      unpublished_by_admin: false,
-      is_published: false,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("deal_id", input.dealId)
-    .select("deal_id, leakage_risk, unpublished_by_admin, is_published")
-    .maybeSingle();
+  const { data, error } = await admin().rpc("admin_release_preview_hold", {
+    p_deal_id: input.dealId,
+  });
   throwIfQueryError("Failed to release preview hold", { data, error });
-  if (!data) {
+  if (data !== true) {
     throw new AdminMutationError("NOT_FOUND", "That preview does not exist.");
   }
   await recordAdminAudit({
