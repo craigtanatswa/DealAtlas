@@ -295,15 +295,16 @@ The gate flags (HIGH unless noted):
 - any organisation name or alias from the full `organizations`/`organization_aliases` tables of 3+ characters, ignoring Ltd/Limited/LLP/plc suffixes (single distinctive token is REVIEW; names under 5 characters also skip generic acronyms and proper words), plus Title-Case runs ending in a legal suffix
 - copied source title (also for titles shorter than 20 characters), slug or description similarity, and any copied 6-word phrase
 - reference numbers, OCIDs, notice IDs and UUIDs; other reference-like patterns are REVIEW
-- source dates in Europe/London time within ±1 day in common written forms, including yearless `DD/MM` and `D/M`; any other exact date is REVIEW, never LOW (day + month with or without a year, `May 14`, yearless `D/M` other than `24/7`, `D-Mon-YYYY`)
+- source dates in Europe/London time within ±1 day in common written forms, including yearless `DD/MM`, `D/M`, `DD.MM`, `D.M`, `DD-MM`, `D-M` and `DD MM` (digit boundaries, so decimals such as `14.035` are not dates); any other exact date is REVIEW, never LOW (day + month with or without a year, `May 14`, yearless `D/M` other than `24/7`, `D-Mon-YYYY`)
 - full postcodes, outward codes of known buyer/linked/location postcodes; other outward-code shapes (in prose, or as slug words) are REVIEW
-- exact location fragments and buyer address terms; project names; exact source amounts; URLs, emails, phones and source platform markers
+- exact location fragments and buyer address terms, and single distinctive words of them in any case and in the slug (`LOCATION_TOKEN`, HIGH from 5 characters, otherwise REVIEW; place-type words such as "Depot" or "Yard" are generic); project names; exact source amounts; URLs, emails, phones and source platform markers
 - programme acronyms (HIGH when copied from source, otherwise REVIEW) and Title-Case place/site runs in prose (REVIEW unless copied)
 - source names in any case, including the slug (`SOURCE_NAME_TOKEN`): standalone source acronyms (HIGH) and capitalised words that follow a lowercase word in the source and never appear lowercase there (HIGH from 5 characters, otherwise REVIEW). All-caps runs and fields, generic vocabulary and capitalised defined terms ("the Contractor") are ignored
+- rare source words (`SOURCE_RARE_WORD`, REVIEW, database-only): capitalised source words in any position (Title-Case titles, sentence starts, ALL-CAPS headings) that the source never writes in lowercase, appear anywhere in the preview or slug, and occur in fewer than three other deals (`deals_leak_source_tsv_idx`, up to 20 candidates)
 - combination risk: when four distinctive copied source words (title, prose and slug) match fewer than three deals in total, REVIEW (k < 3)
 - the slug is scanned with its trailing 8-hex suffix removed
 
-Admin holds (`unpublished_by_admin`) are recorded per deal in `private.preview_holds`, which no API role (including `service_role`) can read or write. While a hold row exists the gate forces `unpublished_by_admin = true`, so ingestion upserts that reset the flag, forged session settings and deleting/re-inserting the preview all keep the hold. Only `public.admin_release_preview_hold` (service role, called after the app's ADMIN check) deletes the hold row.
+Admin holds (`unpublished_by_admin`) are recorded per deal in `private.preview_holds`, which no API role (including `service_role`) can read or write. While a hold row exists the gate forces `unpublished_by_admin = true`, so ingestion upserts that reset the flag, forged session settings, deleting/re-inserting the preview and deleting/re-creating the deal (the table has no foreign key) all keep the hold. Only `public.admin_release_preview_hold` (service role, called after the app's ADMIN check) deletes the hold row.
 
 Original minimum checklist (all covered by the gate) — before `is_published=true`, reject or flag preview if it contains:
 - canonical buyer name
@@ -399,7 +400,8 @@ Before applying `0018`, count current subscriptions that would lose Pro under th
 
 ```sql
 select count(*) from public.subscriptions
-where status = 'ACTIVE' and is_current and current_period_end is null;
+where is_current and current_period_end is null
+  and (status = 'ACTIVE' or (status = 'CANCELLED' and cancel_at_period_end));
 ```
 
 `0018` gates new writes only; existing previews keep their old verdict until rewritten. After `0018`, dry-run the new gate over **every** preview (published, unpublished and held), then re-gate all of them, so the stored risk of unpublished and held rows also reflects the v2 rules and the admin review queue starts from the current verdict. Replica mode skips the `updated_at` touch trigger, while the gate trigger is `ALWAYS` and still fires. Holds stay in place because they are recorded in `private.preview_holds`:
