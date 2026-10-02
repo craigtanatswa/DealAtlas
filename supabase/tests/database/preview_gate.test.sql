@@ -9,7 +9,7 @@ values (
   'Brynlow Vale County Borough Council',
   'brynlow vale county borough council',
   'brynlowvale.gov.uk',
-  'CF47 8XY'
+  'XW7 2PL'
 );
 
 insert into public.deals (

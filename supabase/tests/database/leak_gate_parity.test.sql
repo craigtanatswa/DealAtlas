@@ -12,7 +12,7 @@ select set_eq(
 
 insert into public.organizations (id, canonical_name, normalized_name, domain, postcode, city) values
   ('c2000000-0000-4000-8000-000000000001', 'Corrivale Fenmoor District Council', 'corrivale fenmoor district council', 'corrivalefenmoor.gov.uk', 'ZE9 4QT', 'Ostbury Fenmoor'),
-  ('c2000000-0000-4000-8000-000000000002', 'Quarrendon Signalworks Limited', 'quarrendon signalworks limited', null, null, null),
+  ('c2000000-0000-4000-8000-000000000002', 'Quorvellan Signalworks Limited', 'quorvellan signalworks limited', null, null, null),
   ('c2000000-0000-4000-8000-000000000003', 'Tervane Maritime Logistics LLP', 'tervane maritime logistics llp', null, null, null);
 
 insert into public.organization_aliases (organization_id, alias, normalized_alias) values
@@ -160,7 +160,7 @@ select is(
     'c1000000-0000-4000-8000-000000000001'::uuid,
     'winter-road-treatment-vehicles-c1000000',
     'Winter road treatment vehicles',
-    'The incumbent, Quarrendon Signalworks, currently services the fleet.',
+    'The incumbent, Quorvellan Signalworks, currently services the fleet.',
     '[]'::jsonb,
     '{}'::text[],
     null
@@ -173,7 +173,7 @@ select ok(
     'c1000000-0000-4000-8000-000000000001'::uuid,
     'winter-road-treatment-vehicles-c1000000',
     'Winter road treatment vehicles',
-    'The incumbent, Quarrendon Signalworks, currently services the fleet.',
+    'The incumbent, Quorvellan Signalworks, currently services the fleet.',
     '[]'::jsonb,
     '{}'::text[],
     null
