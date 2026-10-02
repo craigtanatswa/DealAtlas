@@ -16,6 +16,11 @@ create table if not exists private.pre_0019_acl (
 );
 revoke all on table private.pre_0019_acl from public, anon, authenticated, service_role;
 
+-- Signatures are rendered with an empty search_path so names and argument
+-- types are schema-qualified and the rollback resolves them under any path.
+select pg_catalog.set_config('dealatlas.pre_0019_search_path', pg_catalog.current_setting('search_path'), false);
+select pg_catalog.set_config('search_path', '', false);
+
 insert into private.pre_0019_acl (kind, object, acl)
 select 'function', p.oid::regprocedure::text, p.proacl
 from pg_catalog.pg_proc p
@@ -40,6 +45,8 @@ where d.defaclobjtype = 'f'
   and d.defaclrole = (select r.oid from pg_catalog.pg_roles r where r.rolname = current_user)
   and (d.defaclnamespace = 0 or n.nspname = 'public')
 on conflict (kind, object) do nothing;
+
+select pg_catalog.set_config('search_path', pg_catalog.current_setting('dealatlas.pre_0019_search_path'), false);
 
 -- Client roles no longer read deal_previews; the DTO RPCs (SECURITY DEFINER)
 -- are the only client path.

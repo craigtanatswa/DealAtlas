@@ -39,6 +39,19 @@ select ok(
 );
 
 select ok(
+  exists (select 1 from private.pre_0019_acl where kind = 'function')
+  and not exists (
+    select 1 from private.pre_0019_acl
+    where kind = 'function' and object !~ '^public\.'
+  )
+  and exists (
+    select 1 from private.pre_0019_acl
+    where kind = 'function' and object like 'public.search_deal_previews(%public.buyer_sector%'
+  ),
+  'the 0019 ACL snapshot stores schema-qualified function signatures'
+);
+
+select ok(
   has_function_privilege('anon', 'public.search_preview_dtos(text, text, public.buyer_sector, public.deal_type, text, public.deal_status, public.deal_status[], text, text, numeric, text, integer, integer)', 'execute'),
   'anon can execute the DTO search RPC'
 );

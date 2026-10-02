@@ -12,6 +12,9 @@
 
 begin;
 
+-- Every object below is schema-qualified; an empty path proves it.
+set local search_path = '';
+
 do $$
 begin
   if to_regclass('private.pre_0019_acl') is null then
