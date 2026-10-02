@@ -3185,41 +3185,65 @@ insert into private.leak_gate_terms (kind, term) values
   ('generic_proper_word', 'applicants'),
   ('generic_proper_word', 'april'),
   ('generic_proper_word', 'august'),
+  ('generic_proper_word', 'avenue'),
+  ('generic_proper_word', 'barn'),
   ('generic_proper_word', 'bidder'),
   ('generic_proper_word', 'bidders'),
+  ('generic_proper_word', 'bridge'),
   ('generic_proper_word', 'britain'),
   ('generic_proper_word', 'british'),
   ('generic_proper_word', 'building'),
+  ('generic_proper_word', 'business'),
   ('generic_proper_word', 'buyer'),
   ('generic_proper_word', 'buyers'),
+  ('generic_proper_word', 'centre'),
   ('generic_proper_word', 'client'),
+  ('generic_proper_word', 'close'),
   ('generic_proper_word', 'consultant'),
   ('generic_proper_word', 'contractor'),
   ('generic_proper_word', 'contractors'),
   ('generic_proper_word', 'contracts'),
+  ('generic_proper_word', 'court'),
+  ('generic_proper_word', 'crescent'),
   ('generic_proper_word', 'customer'),
   ('generic_proper_word', 'cyber'),
   ('generic_proper_word', 'data'),
   ('generic_proper_word', 'december'),
+  ('generic_proper_word', 'depot'),
+  ('generic_proper_word', 'dock'),
+  ('generic_proper_word', 'drive'),
   ('generic_proper_word', 'east'),
   ('generic_proper_word', 'employer'),
   ('generic_proper_word', 'england'),
   ('generic_proper_word', 'english'),
   ('generic_proper_word', 'essentials'),
+  ('generic_proper_word', 'estate'),
   ('generic_proper_word', 'european'),
+  ('generic_proper_word', 'farm'),
   ('generic_proper_word', 'february'),
+  ('generic_proper_word', 'field'),
+  ('generic_proper_word', 'fields'),
   ('generic_proper_word', 'friday'),
+  ('generic_proper_word', 'gardens'),
+  ('generic_proper_word', 'gate'),
   ('generic_proper_word', 'goods'),
   ('generic_proper_word', 'google'),
   ('generic_proper_word', 'great'),
+  ('generic_proper_word', 'green'),
+  ('generic_proper_word', 'hall'),
   ('generic_proper_word', 'health'),
+  ('generic_proper_word', 'hill'),
+  ('generic_proper_word', 'house'),
   ('generic_proper_word', 'humber'),
+  ('generic_proper_word', 'industrial'),
   ('generic_proper_word', 'ireland'),
   ('generic_proper_word', 'january'),
   ('generic_proper_word', 'july'),
   ('generic_proper_word', 'june'),
   ('generic_proper_word', 'kingdom'),
+  ('generic_proper_word', 'lane'),
   ('generic_proper_word', 'living'),
+  ('generic_proper_word', 'lodge'),
   ('generic_proper_word', 'london'),
   ('generic_proper_word', 'lot'),
   ('generic_proper_word', 'lots'),
@@ -3227,6 +3251,7 @@ insert into private.leak_gate_terms (kind, term) values
   ('generic_proper_word', 'may'),
   ('generic_proper_word', 'microsoft'),
   ('generic_proper_word', 'midlands'),
+  ('generic_proper_word', 'mill'),
   ('generic_proper_word', 'modern'),
   ('generic_proper_word', 'monday'),
   ('generic_proper_word', 'nationwide'),
@@ -3237,6 +3262,8 @@ insert into private.leak_gate_terms (kind, term) values
   ('generic_proper_word', 'october'),
   ('generic_proper_word', 'of'),
   ('generic_proper_word', 'office'),
+  ('generic_proper_word', 'park'),
+  ('generic_proper_word', 'place'),
   ('generic_proper_word', 'plus'),
   ('generic_proper_word', 'private'),
   ('generic_proper_word', 'procurement'),
@@ -3245,6 +3272,7 @@ insert into private.leak_gate_terms (kind, term) values
   ('generic_proper_word', 'providers'),
   ('generic_proper_word', 'public'),
   ('generic_proper_word', 'purchaser'),
+  ('generic_proper_word', 'quay'),
   ('generic_proper_word', 'real'),
   ('generic_proper_word', 'regulations'),
   ('generic_proper_word', 'remote'),
@@ -3254,28 +3282,38 @@ insert into private.leak_gate_terms (kind, term) values
   ('generic_proper_word', 'scottish'),
   ('generic_proper_word', 'sector'),
   ('generic_proper_word', 'september'),
+  ('generic_proper_word', 'site'),
   ('generic_proper_word', 'slavery'),
   ('generic_proper_word', 'social'),
   ('generic_proper_word', 'south'),
   ('generic_proper_word', 'specification'),
+  ('generic_proper_word', 'square'),
+  ('generic_proper_word', 'station'),
+  ('generic_proper_word', 'store'),
+  ('generic_proper_word', 'street'),
   ('generic_proper_word', 'sunday'),
   ('generic_proper_word', 'supplier'),
   ('generic_proper_word', 'suppliers'),
   ('generic_proper_word', 'tenderer'),
   ('generic_proper_word', 'tenderers'),
+  ('generic_proper_word', 'terrace'),
   ('generic_proper_word', 'the'),
   ('generic_proper_word', 'thursday'),
   ('generic_proper_word', 'tuesday'),
   ('generic_proper_word', 'union'),
+  ('generic_proper_word', 'unit'),
   ('generic_proper_word', 'united'),
+  ('generic_proper_word', 'units'),
   ('generic_proper_word', 'value'),
   ('generic_proper_word', 'wage'),
   ('generic_proper_word', 'wales'),
   ('generic_proper_word', 'wednesday'),
   ('generic_proper_word', 'welsh'),
   ('generic_proper_word', 'west'),
+  ('generic_proper_word', 'wharf'),
   ('generic_proper_word', 'works'),
   ('generic_proper_word', 'workspace'),
+  ('generic_proper_word', 'yard'),
   ('generic_proper_word', 'yorkshire'),
   ('generic_proper_word', 'zero'),
   ('broad_location', 'britain'),
@@ -3743,13 +3781,15 @@ begin
     cross join unnest(array[
       'YYYY-MM-DD', 'DD/MM/YYYY', 'FMDD/FMMM/YYYY', 'DD/MM/YY', 'FMDD FMMonth',
       'FMDDth FMMonth', 'FMDD Mon', 'FMDDth Mon', 'FMMonth FMDD', 'FMMonth FMDDth', 'Mon FMDD',
-      'DD/MM', 'FMDD/FMMM'
+      'DD/MM', 'FMDD/FMMM', 'DD.MM', 'FMDD.FMMM', 'DD-MM', 'FMDD-FMMM', 'DD MM'
     ]) as f
   loop
-    -- Yearless numeric forms only count with digit/slash boundaries, so a
-    -- "14 03" in other text is not a hit.
-    if (v_term ~ '^[0-9]+/[0-9]+$' and v_all_lower ~ ('(?<![0-9/.])' || v_term || '(?![0-9/])'))
-       or (v_term !~ '^[0-9]+/[0-9]+$' and position(private.leak_norm(v_term) in v_all_norm) > 0)
+    -- Yearless numeric forms only count with digit boundaries, so decimals
+    -- such as "14.035" or longer digit runs are not hits. A hyphen may follow
+    -- so ranges like "14/03-21/03" still match.
+    if (v_term ~ '^[0-9]+[/. -][0-9]+$'
+        and v_all_lower ~ ('(?<![0-9/.,])' || replace(v_term, '.', '[.]') || '(?![0-9]|[/.,][0-9])'))
+       or (v_term !~ '^[0-9]+[/. -][0-9]+$' and position(private.leak_norm(v_term) in v_all_norm) > 0)
     then
       return query select 'DATE_SOURCE'::text, 'HIGH'::public.leakage_risk, v_term;
     end if;
@@ -3835,6 +3875,21 @@ begin
     then
       return query select 'LOCATION_EXACT'::text, 'HIGH'::public.leakage_risk, v_term;
     end if;
+
+    -- Single distinctive words of a location ("Brindlequay" from
+    -- "Brindlequay, Ostbury Fenmoor"), in any case and in the slug.
+    return query select 'LOCATION_TOKEN'::text,
+        (case when length(w) >= 5 then 'HIGH' else 'REVIEW' end)::public.leakage_risk,
+        w
+      from unnest(string_to_array(btrim(v_norm), ' ')) as w
+      where length(w) >= 4
+        and w !~ '[0-9]'
+        and w <> all(v_generic_org)
+        and w <> all(v_generic_proper)
+        and w <> all(v_broad)
+        and w <> all(v_stop)
+        and position(' ' || w || ' ' in coalesce(private.leak_norm(p_broad_region), '')) = 0
+        and position(' ' || w || ' ' in v_all_norm) > 0;
   end loop;
 
   -- Buyer identity -----------------------------------------------------------
@@ -4073,6 +4128,42 @@ begin
     from unnest(v_source_names) as w
     where position(' ' || w || ' ' in v_all_norm) > 0;
 
+  -- Capitalised source words in any position (Title-Case titles, sentence
+  -- starts, ALL-CAPS headings) that the source never writes in lowercase and
+  -- that fewer than three other deals use. Per-word form of COMBINATION, so
+  -- REVIEW only; common words are filtered out by the corpus count.
+  for v_term in
+    select c.w
+    from (
+      select distinct lower(m[1]) as w
+      from unnest(v_source_parts) as part
+      cross join lateral regexp_matches(part, '\m([A-Z][a-z]{3,}|[A-Z]{4,})\M', 'g') as m
+    ) c
+    where c.w <> all(v_generic_org)
+      and c.w <> all(v_generic_proper)
+      and c.w <> all(v_broad)
+      and c.w <> all(v_stop)
+      and c.w <> all(v_source_names)
+      and c.w <> all(v_source_acronyms)
+      and v_source_raw !~ ('\m' || c.w || '\M')
+      and position(' ' || c.w || ' ' in v_all_norm) > 0
+    order by length(c.w) desc, c.w
+    limit 20
+  loop
+    select count(*) into v_k
+    from (
+      select 1
+      from public.deals x
+      where x.id <> d.id
+        and to_tsvector('simple'::regconfig, coalesce(x.source_title, '') || ' ' || coalesce(x.source_description, ''))
+            @@ plainto_tsquery('simple'::regconfig, v_term)
+      limit 3
+    ) others;
+    if v_k < 3 then
+      return query select 'SOURCE_RARE_WORD'::text, 'REVIEW'::public.leakage_risk, v_term;
+    end if;
+  end loop;
+
   -- Similarity and copied phrases -------------------------------------------
   if length(btrim(coalesce(d.source_title, ''))) >= 4 then
     v_sim := extensions.similarity(lower(d.source_title), lower(coalesce(p_preview_title, '')));
@@ -4234,12 +4325,14 @@ revoke execute on function private.detect_preview_leakage(uuid, text, text, text
   from public, anon, authenticated;
 
 -- -----------------------------------------------------------------------------
--- Admin holds. Recorded per deal (not per preview row) so deleting and
+-- Admin holds. Recorded per deal id (not per preview row) so deleting and
 -- re-inserting the preview cannot clear them, and kept in a table no API role
 -- can read or write. Only public.admin_release_preview_hold deletes a hold.
+-- No foreign key: a hold must survive the deal being deleted and re-created
+-- with the same id.
 -- -----------------------------------------------------------------------------
 create table if not exists private.preview_holds (
-  deal_id uuid primary key references public.deals(id) on delete cascade,
+  deal_id uuid primary key,
   held_at timestamptz not null default now()
 );
 
@@ -4851,6 +4944,11 @@ create table if not exists private.pre_0019_acl (
 );
 revoke all on table private.pre_0019_acl from public, anon, authenticated, service_role;
 
+-- Signatures are rendered with an empty search_path so names and argument
+-- types are schema-qualified and the rollback resolves them under any path.
+select pg_catalog.set_config('dealatlas.pre_0019_search_path', pg_catalog.current_setting('search_path'), false);
+select pg_catalog.set_config('search_path', '', false);
+
 insert into private.pre_0019_acl (kind, object, acl)
 select 'function', p.oid::regprocedure::text, p.proacl
 from pg_catalog.pg_proc p
@@ -4875,6 +4973,8 @@ where d.defaclobjtype = 'f'
   and d.defaclrole = (select r.oid from pg_catalog.pg_roles r where r.rolname = current_user)
   and (d.defaclnamespace = 0 or n.nspname = 'public')
 on conflict (kind, object) do nothing;
+
+select pg_catalog.set_config('search_path', pg_catalog.current_setting('dealatlas.pre_0019_search_path'), false);
 
 -- Client roles no longer read deal_previews; the DTO RPCs (SECURITY DEFINER)
 -- are the only client path.
