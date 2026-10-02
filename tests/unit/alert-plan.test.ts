@@ -48,6 +48,7 @@ describe("alert planning and dedupe", () => {
     expect(alerts[0]?.dedupeKey).toBe(alertDedupeKey("NEW_MATCH", CONTEXT.dealId));
     expect(findProtectedMarkerLeaks(alerts[0]?.title ?? "")).toEqual([]);
     expect(findProtectedMarkerLeaks(alerts[0]?.message ?? "")).toEqual([]);
+    expect(alerts[0]?.message).not.toContain(CONTEXT.previewTitle);
     expect(alerts[0]?.protectedPayload.sourceTitle).toBe(
       "CANARY SOURCE TITLE NEVER FREE",
     );
