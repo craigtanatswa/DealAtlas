@@ -69,6 +69,32 @@ describe("billing lifecycle apply", () => {
     expect(store.subscriptions.filter((row) => row.isCurrent)).toHaveLength(1);
   });
 
+  it("keeps the known period end when a later event for the same subscription omits it", async () => {
+    const store = createMemoryBillingStore({
+      profileIds: [BILLING_FIXTURE_USER_ID],
+    });
+    await applyBillingEvent(
+      incomingAt(billingWebhookFixtures.monthlyActive(), "evt_first", "2026-06-01T12:00:00.000Z"),
+      store,
+    );
+    const knownEnd = store.subscriptions.find((row) => row.isCurrent)?.currentPeriodEnd;
+    expect(knownEnd).toBeTruthy();
+
+    const later = incomingAt(billingWebhookFixtures.monthlyActive(), "evt_no_period", "2026-06-02T12:00:00.000Z");
+    const withoutPeriod = {
+      ...later,
+      subscription: later.subscription
+        ? { ...later.subscription, currentPeriodEnd: null, currentPeriodStart: null }
+        : null,
+    };
+    expect(await applyBillingEvent(withoutPeriod, store)).toEqual({ outcome: "applied" });
+
+    const current = store.subscriptions.find((row) => row.isCurrent);
+    expect(current?.currentPeriodEnd).toBe(knownEnd);
+    expect(current?.currentPeriodStart).toBeTruthy();
+    expect(entitlementFromStore(store).plan).toBe("PRO");
+  });
+
   it("maps annual, renewed, on-hold, cancelled, failed, and expired transitions", async () => {
     const store = createMemoryBillingStore({
       profileIds: [BILLING_FIXTURE_USER_ID],

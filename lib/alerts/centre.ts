@@ -7,6 +7,7 @@ import { throwIfQueryError } from "@/lib/db/errors";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { parseInput, uuidSchema } from "@/lib/validation";
 import { toAlertCentreDto } from "@/lib/alerts/dto";
+import { loadPublishedAlertPreviews } from "@/lib/alerts/published";
 import type { AlertCentreDto, AlertRecord, AlertStatus } from "@/lib/alerts/types";
 import { ALERT_STATUSES } from "@/lib/alerts/types";
 import { getCurrentEntitlement } from "@/lib/entitlements/service";
@@ -35,7 +36,11 @@ export async function listAlertCentre(input: {
     })),
     error,
   });
-  return toAlertCentreDto(rows, entitlement);
+  const previews = await loadPublishedAlertPreviews(
+    admin,
+    rows.map((row) => row.deal_id),
+  );
+  return toAlertCentreDto(rows, entitlement, previews);
 }
 
 export async function markAlertStatus(input: {

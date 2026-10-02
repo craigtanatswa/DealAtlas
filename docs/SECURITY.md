@@ -32,6 +32,10 @@ The primary product-security risk is source leakage to a non-subscriber. Treat b
 
 Free endpoints must query the preview dataset only.
 
+Client roles (`anon`, `authenticated`) have no table grant or policy on `deal_previews` (migration `0019`). They read previews only through `SECURITY DEFINER` DTO RPCs that return sanitised fields with no `deal_id`, timestamps, source, buyer, reference, contact or document fields. `deal_id` is resolvable only by signed-in users (`resolve_preview_deal_id`, `get_preview_dto_by_deal_id`, `list_saved_deal_previews`). Client roles have no USAGE on the `private` and `extensions` schemas (0019 names them explicitly; Supabase-managed schemas keep their platform grants) and no EXECUTE on public functions other than those RPCs.
+
+Publication is decided by the database gate on every write to `deal_previews` (`0018`); application code cannot publish a preview that the gate rates REVIEW/HIGH or that an admin has held.
+
 Do not use `select('*')` on canonical Deal tables in any public route.
 
 ## 5. Protected Deal endpoint
@@ -51,6 +55,8 @@ Dodo checkout redirect is not proof of payment.
 Only verified webhook state (or a secure provider API reconciliation) grants entitlement.
 
 Never grant Pro because `?success=true` exists in URL.
+
+Entitlement fails closed: a subscription with no `current_period_end` is not paid-through (`isPaidThrough(null) === false` in `lib/entitlements/policy.ts`, mirrored by `private.is_user_pro`).
 
 ## 7. Webhook security
 - use official Dodo webhook adapter/signature verification;
@@ -76,7 +82,7 @@ Rate-limit:
 - checkout session creation
 - alert-management abuse paths
 
-Use an IP/user-based abstraction so implementation can start simple and migrate to a dedicated rate-limit store later.
+Use an IP/user-based abstraction so implementation can start simple and migrate to a dedicated rate-limit store later. `lib/security/rate-limit.ts` provides `sharedRateLimit` (Upstash REST fixed window when `UPSTASH_REDIS_REST_URL`/`UPSTASH_REDIS_REST_TOKEN` are set, per-instance fallback otherwise). `proxy.ts` limits anonymous preview pages (`/`, `/deals`, `/deals/*`, `/categories/*`) to 240 requests/minute/IP; `/api/search` allows 60/minute/IP. Direct PostgREST calls to the DTO RPCs are not covered by these limits; rely on Supabase/API gateway limits for that path.
 
 ## 10. Enumeration protection
 Deal UUIDs may be non-sequential, but UUID unpredictability is not the security boundary.

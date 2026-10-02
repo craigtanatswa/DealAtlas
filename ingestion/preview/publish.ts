@@ -6,8 +6,8 @@ import type {
   IntelligenceContext,
   PreviewPublishResult,
 } from "@/ingestion/intelligence/types";
-import { generatePreviewDraft } from "@/ingestion/preview/generate";
-import { scanPreviewLeaks, type LeakScanInput } from "@/lib/redaction/scan";
+import { generatePreviewDraft, leakScanInputFromContext } from "@/ingestion/preview/generate";
+import { scanPreviewLeaks } from "@/lib/redaction/scan";
 import type {
   DealInsightRecord,
   DealPreviewRecord,
@@ -28,41 +28,6 @@ function slugifyPreview(title: string, dealId: string): string {
     .slice(0, 48);
   const suffix = dealId.replace(/-/g, "").slice(0, 8);
   return `${base || "opportunity"}-${suffix}`;
-}
-
-function leakInputFrom(
-  context: IntelligenceContext,
-  title: string,
-  summary: string,
-  requirements: string[],
-  tags: string[],
-): LeakScanInput {
-  return {
-    previewTitle: title,
-    previewSummary: summary,
-    requirementsPreview: requirements,
-    relevanceTags: tags,
-    sourceTitle: context.deal.sourceTitle,
-    sourceDescription: context.deal.sourceDescription,
-    ocid: context.deal.ocid,
-    reference: context.deal.reference,
-    externalPrimaryId: context.deal.externalPrimaryId,
-    noticeIdentifiers: context.noticeIdentifiers,
-    sourceUrl: context.deal.sourceUrl,
-    applicationUrl: context.deal.applicationUrl,
-    sourceName: context.source.name,
-    sourceKey: context.source.sourceKey,
-    buyerName: context.buyer?.canonicalName ?? null,
-    buyerAliases: context.buyerAliases,
-    buyerDomain: context.buyer?.domain ?? null,
-    buyerEmail: context.buyer?.email ?? null,
-    buyerPhone: context.buyer?.phone ?? null,
-    exactValueText: context.deal.exactValueText,
-    valueMinExVat: context.deal.valueMinExVat,
-    valueMaxExVat: context.deal.valueMaxExVat,
-    submissionDeadline: context.deal.submissionDeadline,
-    exactLocationText: context.deal.exactLocationText,
-  };
 }
 
 function insightRecord(dealId: string, intelligence: DealIntelligence): DealInsightRecord {
@@ -105,20 +70,14 @@ export async function persistIntelligenceAndPreview(options: {
     attempts += 1;
   }
 
+  const existing = await store.getDealPreview(context.deal.id);
+  const slug = existing?.slug ?? slugifyPreview(draft.previewTitle, context.deal.id);
   const finalScan = scanPreviewLeaks(
-    leakInputFrom(
-      context,
-      draft.previewTitle,
-      draft.previewSummary,
-      draft.requirementsPreview,
-      draft.relevanceTags,
-    ),
+    leakScanInputFromContext(context, draft, { slug, broadRegion: draft.broadRegion }),
   );
   const leakageRisk = finalScan.risk;
-  const existing = await store.getDealPreview(context.deal.id);
   const unpublishedByAdmin = existing?.unpublishedByAdmin === true;
   const published = leakageRisk === "LOW" && !unpublishedByAdmin;
-  const slug = existing?.slug ?? slugifyPreview(draft.previewTitle, context.deal.id);
 
   const preview: DealPreviewRecord = {
     dealId: context.deal.id,

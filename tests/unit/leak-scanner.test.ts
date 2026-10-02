@@ -81,6 +81,35 @@ describe("deterministic preview leak scanner", () => {
       }),
     );
     expect(result.risk).toBe("HIGH");
-    expect(result.findings.some((item) => item.code === "FINGERPRINT")).toBe(true);
+    const codes = new Set(result.findings.map((item) => item.code));
+    expect(codes.has("EXACT_AMOUNT")).toBe(true);
+    expect(codes.has("DATE_SOURCE")).toBe(true);
+    expect(codes.has("LOCATION_EXACT")).toBe(true);
+  });
+
+  it("scans the slug but ignores its deal-id suffix", () => {
+    expect(scanPreviewLeaks(baseInput({ slug: "technology-tender-0a1b2c3d" })).risk).toBe("LOW");
+    expect(
+      scanPreviewLeaks(baseInput({ slug: "example-city-council-technology-0a1b2c3d" })).risk,
+    ).toBe("HIGH");
+  });
+
+  it("flags short source titles that are copied verbatim", () => {
+    const result = scanPreviewLeaks(
+      baseInput({ sourceTitle: "Gritting fleet", previewTitle: "Gritting fleet" }),
+    );
+    expect(result.findings.some((item) => item.code === "TITLE_SIMILARITY")).toBe(true);
+    expect(result.risk).toBe("HIGH");
+  });
+
+  it("does not treat all-caps headings or capitalised defined terms as source names", () => {
+    const result = scanPreviewLeaks(
+      baseInput({
+        sourceTitle: "LOT 2 SUPPORT SERVICE NEVER FREE for civic offices",
+        sourceDescription: "The Contractor shall provide support to the Supplier portal.",
+        previewSummary: "A public organisation needs support that is never free of charge from a supplier and contractor.",
+      }),
+    );
+    expect(result.findings.filter((item) => item.code === "SOURCE_NAME_TOKEN")).toEqual([]);
   });
 });

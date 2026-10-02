@@ -153,12 +153,18 @@ export function createMemoryIngestionStore(seed?: {
     },
     async upsertDealPreview(input) {
       const index = state.previews.findIndex((item) => item.dealId === input.dealId);
+      const held = index >= 0 && state.previews[index].unpublishedByAdmin === true;
+      const saved: typeof input = {
+        ...input,
+        unpublishedByAdmin: held,
+        isPublished: input.isPublished && !held && input.leakageRisk === "LOW",
+      };
       if (index >= 0) {
-        state.previews[index] = input;
+        state.previews[index] = saved;
       } else {
-        state.previews.push(input);
+        state.previews.push(saved);
       }
-      return input;
+      return saved;
     },
     async upsertDealInsight(input) {
       const index = state.insights.findIndex((item) => item.dealId === input.dealId);

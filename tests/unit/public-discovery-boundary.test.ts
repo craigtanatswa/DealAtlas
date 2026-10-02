@@ -54,11 +54,27 @@ describe("public discovery data boundary", () => {
     }
   });
 
-  it("loads public payloads from deal_previews or search_deal_previews", () => {
+  it("loads public payloads from the preview DTO RPCs only", () => {
     const combined = sources.map(({ source }) => source).join("\n");
-    expect(combined).toContain("deal_previews");
-    expect(combined).toContain("search_deal_previews");
-    expect(combined).toContain("DEAL_PREVIEW_PUBLIC_SELECT");
+    expect(combined).toContain("search_preview_dtos");
+    expect(combined).toContain("get_preview_dto_by_slug");
+    for (const { file, source } of sources) {
+      expect(source, file).not.toMatch(/\.from\(\s*["']deal_previews["']\s*\)/);
+      expect(source, file).not.toMatch(/rpc\(\s*["']search_deal_previews/);
+    }
+  });
+
+  it("only resolves internal deal ids for signed-in viewers", () => {
+    const publicSearch = fs.readFileSync(path.join(ROOT, "lib/search/public.ts"), "utf8");
+    expect(publicSearch).toMatch(
+      /options\.signedIn\s*\?\s*await resolvePublishedPreviewDealId\(/,
+    );
+    const slugPage = fs.readFileSync(
+      path.join(ROOT, "app/(marketing)/deals/[slug]/page.tsx"),
+      "utf8",
+    );
+    expect(slugPage).toContain("signedIn: Boolean(user)");
+    expect(slugPage).toContain("const dealId = user ? page.dealId : null;");
   });
 
   it("does not import paid/canonical helpers from public/free discovery", () => {

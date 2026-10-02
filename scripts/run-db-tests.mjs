@@ -2,6 +2,9 @@ import { spawnSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { runRollbackChecks } from "./check-rollbacks.mjs";
+import { assertSafeDbTestTargets } from "./db-target-guard.mjs";
+
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 function run(command, args, extraEnv = {}) {
@@ -47,22 +50,38 @@ function readLocalSupabaseEnv() {
     parsed.SECRET_KEY ||
     parsed.SUPABASE_SERVICE_ROLE_KEY;
 
-  if (!url || !anon || !secret) {
+  if (!url || !anon || !secret || !parsed.DB_URL) {
     process.stderr.write(
-      "Could not read local Supabase API URL and keys from `supabase status`.\n",
+      "Could not read local Supabase API URL, DB URL and keys from `supabase status`.\n",
     );
     process.exit(1);
   }
 
   return {
+    dbUrl: parsed.DB_URL,
     DEALATLAS_DB_TEST_URL: url,
     DEALATLAS_DB_TEST_ANON_KEY: anon,
     DEALATLAS_DB_TEST_SECRET_KEY: secret,
   };
 }
 
-run("npx", ["supabase", "test", "db"]);
-const testEnv = readLocalSupabaseEnv();
+const { dbUrl, ...testEnv } = readLocalSupabaseEnv();
+try {
+  assertSafeDbTestTargets([
+    ["supabase status API_URL", testEnv.DEALATLAS_DB_TEST_URL],
+    ["supabase status DB_URL", dbUrl],
+  ]);
+} catch (error) {
+  process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
+  process.exit(1);
+}
+run("npx", ["supabase", "test", "db", "--local"]);
+try {
+  runRollbackChecks(dbUrl);
+} catch (error) {
+  process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
+  process.exit(1);
+}
 run(
   "npx",
   ["vitest", "run", "tests/integration"],

@@ -15,6 +15,22 @@ The migrations run in this order:
 4. `supabase/migrations/0004_security_and_rls.sql`
 5. `supabase/migrations/0005_functions_and_indexes.sql`
 6. `supabase/migrations/0006_seed_reference_data.sql`
+7. … through `supabase/migrations/0019_revoke_client_preview_table_access.sql` (see `docs/DATABASE.md` for the full list)
+
+On an existing production project, `0018` and `0019` must be rolled out as separate steps: apply `0018`, deploy the app release that reads previews through the DTO RPCs, verify it, then apply `0019`. `db push` applies every pending migration at once, so push from a checkout that does not yet contain `0019` (or apply the files manually) for the first step. A fresh project with no deployed app can apply everything in one pass.
+
+### Rolling back 0018/0019
+Rollback SQL lives in `supabase/rollback/`. Run it in the SQL Editor (or `psql`) as the role that applied the migrations, in this order. Both scripts set an empty `search_path` and schema-qualify every object, and `0019` records schema-qualified function signatures, so the client's `search_path` does not matter:
+
+1. `supabase/rollback/0019_rollback.sql`: restores the anon/authenticated `SELECT` grant and RLS policy on `deal_previews`, and every client `EXECUTE`, schema `USAGE`/`CREATE` and default function privilege that `0019` revoked, from the snapshot `0019` recorded in `private.pre_0019_acl`. Then it drops the snapshot. It refuses to run if the snapshot is missing.
+2. Redeploy the app build from before the DTO-RPC change. That build reads `deal_previews` directly and does not call `admin_release_preview_hold`.
+3. `supabase/rollback/0018_rollback.sql`: restores the `0016` publish gate and trigger and the 4-argument `detect_preview_leakage`. It drops the DTO RPCs, `admin_release_preview_hold`, the v2 gate functions, `leak_match_name`, the combination index, `private.leak_gate_terms` and `private.preview_holds`.
+
+**Deliberate deviation from a pure rollback:** `0018_rollback.sql` does not restore the pre-`0018` `private.is_user_pro`. That version counted an `ACTIVE` subscription with a NULL `current_period_end` as Pro, so restoring it would reopen the paywall. The rollback re-asserts the fail-closed `0018` definition instead: a subscription is Pro only with a non-NULL `current_period_end` in the future. `npm run test:db` checks this by running both rollbacks inside a transaction that is then rolled back (`scripts/check-rollbacks.mjs`).
+
+After rolling back `0018`, holds are again kept only by the `unpublished_by_admin` column. Preview risk raised by the v2 gate is not lowered. After the rollback the migration history still lists `0018`/`0019`. Remove those rows from `supabase_migrations.schema_migrations` before re-applying them.
+
+To check a rollback, capture `supabase/rollback/schema_snapshot.sql` output before applying the migrations and again after rolling back, then diff the two. It lists functions, tables, schema and default ACLs, policies, triggers, columns and indexes in `public`/`private`. The only expected differences are the order of entries inside an ACL and, after `0018_rollback.sql`, the body hash of `private.is_user_pro` (it matches the `0018` body). Both rollbacks were checked this way on a local PG17 database, followed by re-applying `0018` and `0019` and passing the pgTAP suite.
 
 ## Option 2 — One-pass Supabase SQL Editor
 Open:
@@ -46,8 +62,8 @@ npm run test:db
 - RLS/grants
 - free-plan/Pro quota triggers
 - source compliance enforcement
-- preview leakage failsafe
-- safe public search RPC
+- preview publish gate (re-scans every `deal_previews` write)
+- sanitised preview DTO RPCs (the only client path to previews)
 - indexes
 - initial DealAtlas categories
 - Find a Tender source registry seed
@@ -83,6 +99,20 @@ order by source_key;
 select slug, name
 from public.categories
 order by name;
+```
+
+```sql
+-- 5. Confirm client roles cannot read deal_previews or the private/extensions schemas
+select grantee, privilege_type
+from information_schema.role_table_grants
+where table_schema = 'public' and table_name = 'deal_previews'
+  and grantee in ('anon', 'authenticated');      -- expect no rows
+
+select n.nspname, r.rolname
+from pg_namespace n
+cross join (values ('anon'), ('authenticated')) as r(rolname)
+where has_schema_privilege(r.rolname, n.oid, 'USAGE')
+  and n.nspname in ('private', 'extensions');    -- expect no rows
 ```
 
 ## Promote your account to ADMIN after signing up

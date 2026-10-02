@@ -1,7 +1,7 @@
 import type { DealCardData, SuitabilityLevel } from "@/components/deals/types";
 import type { BuyerSector } from "@/lib/constants";
 import { BUYER_SECTORS } from "@/lib/constants";
-import type { DealPreviewPublic, DealPreviewSearchRow } from "@/lib/db/previews";
+import type { DealPreviewSearchRow } from "@/lib/db/previews";
 import type { SafeMatchView } from "@/lib/matching/types";
 import {
   DEAL_STAGES,
@@ -11,7 +11,6 @@ import {
   type DealStatus,
   type DealType,
 } from "@/lib/search/filters";
-import { freshnessLabelAtRead } from "@/lib/search/freshness";
 
 const SUITABILITY_LEVELS = ["LOW", "MEDIUM", "HIGH", "UNKNOWN"] as const;
 
@@ -149,17 +148,30 @@ function parseBuyerSector(value: unknown): BuyerSector {
   return "OTHER";
 }
 
-function rowTimestamp(
-  row: DealPreviewPublic | DealPreviewSearchRow,
-  key: "created_at" | "updated_at",
-): string | null {
-  const value = (row as Partial<DealPreviewPublic>)[key];
-  return typeof value === "string" ? value : null;
-}
+/** Sanitised preview fields shared by every preview DTO RPC. */
+export type PreviewDtoFields = Pick<
+  DealPreviewSearchRow,
+  | "slug"
+  | "preview_title"
+  | "preview_summary"
+  | "deal_type"
+  | "buyer_sector"
+  | "stage"
+  | "status"
+  | "main_category"
+  | "broad_region"
+  | "value_band"
+  | "deadline_band"
+  | "duration_band"
+  | "sme_suitability"
+  | "bid_complexity"
+  | "competition_level"
+  | "requirements_preview"
+  | "relevance_tags"
+  | "freshness_label"
+>;
 
-export function toPublicDealPreview(
-  row: DealPreviewPublic | DealPreviewSearchRow,
-): PublicDealPreview {
+export function toPublicDealPreview(row: PreviewDtoFields): PublicDealPreview {
   return {
     slug: row.slug,
     previewTitle: row.preview_title,
@@ -180,11 +192,7 @@ export function toPublicDealPreview(
     relevanceTags: Array.isArray(row.relevance_tags)
       ? row.relevance_tags.filter((tag): tag is string => typeof tag === "string").slice(0, 12)
       : [],
-    freshnessLabel: freshnessLabelAtRead({
-      createdAt: rowTimestamp(row, "created_at"),
-      updatedAt: rowTimestamp(row, "updated_at"),
-      stored: row.freshness_label,
-    }),
+    freshnessLabel: row.freshness_label?.trim() || null,
   };
 }
 

@@ -2,7 +2,12 @@ import { NextRequest } from "next/server";
 
 import { DatabaseQueryError } from "@/lib/db/errors";
 import { searchPublicDealPreviewsFromParams } from "@/lib/search/public";
-import { clientKeyFromRequest, rateLimit } from "@/lib/security/rate-limit";
+import {
+  PUBLIC_SEARCH_RATE_LIMIT,
+  clientKeyFromRequest,
+  retryAfterSeconds,
+  sharedRateLimit,
+} from "@/lib/security/rate-limit";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -25,10 +30,10 @@ function searchParamsRecord(
 }
 
 export async function GET(request: NextRequest) {
-  const limited = rateLimit(
-    clientKeyFromRequest(request, "public-search"),
-    60,
-    60_000,
+  const limited = await sharedRateLimit(
+    clientKeyFromRequest(request, PUBLIC_SEARCH_RATE_LIMIT.bucket),
+    PUBLIC_SEARCH_RATE_LIMIT.limit,
+    PUBLIC_SEARCH_RATE_LIMIT.windowMs,
   );
   if (!limited.ok) {
     return Response.json(
@@ -36,9 +41,7 @@ export async function GET(request: NextRequest) {
       {
         status: 429,
         headers: {
-          "Retry-After": String(
-            Math.max(1, Math.ceil((limited.resetAt - Date.now()) / 1000)),
-          ),
+          "Retry-After": String(retryAfterSeconds(limited)),
         },
       },
     );

@@ -112,7 +112,7 @@ describe.skipIf(!configured)("public discovery leak integration", () => {
         slug,
         preview_title: "Managed IT support for a public organisation",
         preview_summary:
-          "A public organisation needs ongoing technology support without exposing source identity.",
+          "A public organisation needs ongoing technology support from an experienced provider.",
         deal_type: "PUBLIC_TENDER",
         buyer_sector: "PUBLIC",
         stage: "LIVE",
@@ -147,7 +147,7 @@ describe.skipIf(!configured)("public discovery leak integration", () => {
   });
 
   it("returns sanitised search JSON and HTML without protected markers", async () => {
-    const search = await restRequest(anonKey!, "/rest/v1/rpc/search_deal_previews", {
+    const search = await restRequest(anonKey!, "/rest/v1/rpc/search_preview_dtos", {
       method: "POST",
       body: JSON.stringify({
         p_query: "managed support",
@@ -165,6 +165,7 @@ describe.skipIf(!configured)("public discovery leak integration", () => {
     expect(rows.length).toBe(1);
     expect(findProtectedMarkerLeaks(search.text)).toEqual([]);
     expect(findForbiddenPublicKeys(rows[0])).toEqual([]);
+    expect(rows[0]).not.toHaveProperty("deal_id");
 
     const dto = toPublicDealPreview(
       rows[0] as unknown as Parameters<typeof toPublicDealPreview>[0],
@@ -178,14 +179,21 @@ describe.skipIf(!configured)("public discovery leak integration", () => {
     expect(dto.previewTitle).toBe("Managed IT support for a public organisation");
   });
 
-  it("lets anon read the published preview row without canary markers", async () => {
-    const preview = await restRequest(
-      anonKey!,
-      `/rest/v1/deal_previews?slug=eq.${slug}&select=slug,preview_title,preview_summary,main_category,value_band,deadline_band`,
-    );
+  it("reads the published preview through the slug DTO RPC without canary markers", async () => {
+    const preview = await restRequest(anonKey!, "/rest/v1/rpc/get_preview_dto_by_slug", {
+      method: "POST",
+      body: JSON.stringify({ p_slug: slug }),
+    });
     expect(preview.status).toBe(200);
     expect(findProtectedMarkerLeaks(preview.text)).toEqual([]);
+    expect(preview.text).not.toContain(dealId);
     expect(JSON.stringify(preview.body)).toContain("Managed IT support");
+
+    const direct = await restRequest(
+      anonKey!,
+      `/rest/v1/deal_previews?slug=eq.${slug}&select=slug`,
+    );
+    expect(direct.status).toBeGreaterThanOrEqual(400);
   });
 
   it("blocks direct canonical table access for the seeded protected deal", async () => {
