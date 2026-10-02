@@ -66,21 +66,20 @@ alter default privileges in schema public revoke execute on functions from publi
 revoke create on schema public from public, anon, authenticated;
 
 -- Client roles keep USAGE on public (DTO RPCs, own-row tables) and auth
--- (auth.uid() inside RLS policies). Every other schema is server-only.
+-- (auth.uid() inside RLS policies). The DealAtlas server-only schemas are
+-- named explicitly; Supabase-managed schemas (storage, realtime, graphql,
+-- vault, ...) keep their platform grants.
 do $$
 declare
-  s record;
+  s text;
 begin
-  for s in
-    select n.nspname
-    from pg_catalog.pg_namespace n
-    where n.nspname not in ('public', 'auth', 'pg_catalog', 'information_schema')
-      and n.nspname not like 'pg\_%'
-  loop
-    begin
-      execute format('revoke all on schema %I from public, anon, authenticated', s.nspname);
-    exception when insufficient_privilege then
-      raise warning 'could not revoke client usage on schema % (insufficient privilege)', s.nspname;
-    end;
+  foreach s in array array['private', 'extensions'] loop
+    if exists (select 1 from pg_catalog.pg_namespace where nspname = s) then
+      begin
+        execute format('revoke all on schema %I from public, anon, authenticated', s);
+      exception when insufficient_privilege then
+        raise warning 'could not revoke client usage on schema % (insufficient privilege)', s;
+      end;
+    end if;
   end loop;
 end $$;

@@ -89,7 +89,7 @@ order by name;
 ```
 
 ```sql
--- 5. Confirm client roles cannot read deal_previews or non-public schemas
+-- 5. Confirm client roles cannot read deal_previews or the private/extensions schemas
 select grantee, privilege_type
 from information_schema.role_table_grants
 where table_schema = 'public' and table_name = 'deal_previews'
@@ -99,8 +99,7 @@ select n.nspname, r.rolname
 from pg_namespace n
 cross join (values ('anon'), ('authenticated')) as r(rolname)
 where has_schema_privilege(r.rolname, n.oid, 'USAGE')
-  and n.nspname not in ('public', 'auth', 'pg_catalog', 'information_schema')
-  and n.nspname not like 'pg\_%';                -- expect no rows
+  and n.nspname in ('private', 'extensions');    -- expect no rows
 ```
 
 ## Promote your account to ADMIN after signing up
