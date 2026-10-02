@@ -137,6 +137,11 @@ export function sourceDateCandidates(values: Array<string | null | undefined>): 
       out.add(`${mon} ${d}`);
       out.add(`${dd}/${mm}`);
       out.add(`${d}/${m}`);
+      out.add(`${dd}.${mm}`);
+      out.add(`${d}.${m}`);
+      out.add(`${dd}-${mm}`);
+      out.add(`${d}-${m}`);
+      out.add(`${dd} ${mm}`);
     }
   }
   return [...out];

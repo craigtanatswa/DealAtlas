@@ -146,7 +146,7 @@ const DATE_EXACT_RES = [
   /\b([0-3]?[0-9]-(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sept?(?:ember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)(?:-(?:19|20)?[0-9]{2})?)\b/gi,
 ];
 
-const YEARLESS_NUMERIC_DATE = /^[0-9]+\/[0-9]+$/;
+const YEARLESS_NUMERIC_DATE = /^[0-9]+[/. -][0-9]+$/;
 
 const POSTCODE_RE = /\b([A-Z]{1,2}[0-9][A-Z0-9]?\s*[0-9][A-Z]{2})\b/gi;
 
@@ -318,7 +318,7 @@ export function scanPreviewLeaks(input: LeakScanInput): LeakScanResult {
   }
   for (const candidate of sourceDateCandidates([input.submissionDeadline, ...(input.sourceDates ?? [])])) {
     const found = YEARLESS_NUMERIC_DATE.test(candidate)
-      ? new RegExp(`(?<![0-9/.])${candidate}(?![0-9/])`).test(allLower)
+      ? new RegExp(`(?<![0-9/.,])${candidate.replace(/\./g, "[.]")}(?![0-9]|[/.,][0-9])`).test(allLower)
       : containsNorm(allNorm, candidate);
     if (found) {
       push("DATE_SOURCE", "HIGH", "Preview contains a source date", candidate);

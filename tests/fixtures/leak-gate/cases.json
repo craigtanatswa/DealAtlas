@@ -532,6 +532,52 @@
       "expectCodes": [
         "COMBINATION"
       ]
+    },
+    {
+      "id": "date-yearless-dot",
+      "description": "source deadline as DD.MM with no year (M6)",
+      "preview": {
+        "title": "Winter road treatment vehicles",
+        "summary": "Responses are due by 14.03."
+      },
+      "expectRisk": "HIGH",
+      "expectCodes": [
+        "DATE_SOURCE"
+      ]
+    },
+    {
+      "id": "date-yearless-hyphen",
+      "description": "source deadline as DD-MM with no year (M6)",
+      "preview": {
+        "title": "Winter road treatment vehicles",
+        "summary": "Responses are due by 14-03."
+      },
+      "expectRisk": "HIGH",
+      "expectCodes": [
+        "DATE_SOURCE"
+      ]
+    },
+    {
+      "id": "date-yearless-space",
+      "description": "source deadline as DD MM with no year (M6)",
+      "preview": {
+        "title": "Winter road treatment vehicles",
+        "summary": "Responses are due by 14 03."
+      },
+      "expectRisk": "HIGH",
+      "expectCodes": [
+        "DATE_SOURCE"
+      ]
+    },
+    {
+      "id": "date-yearless-decimal",
+      "description": "a decimal that starts like the deadline is not a date (M6 control)",
+      "preview": {
+        "title": "Winter road treatment vehicles",
+        "summary": "Each hopper holds 14.035 cubic metres."
+      },
+      "expectRisk": "LOW",
+      "expectCodes": []
     }
   ]
 }
