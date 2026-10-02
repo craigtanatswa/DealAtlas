@@ -1090,5 +1090,101 @@ select ok(
   'combination-slug: reports COMBINATION'
 );
 
+-- date-yearless-dot: source deadline as DD.MM with no year (M6)
+select is(
+  (select private.detect_preview_leakage(
+    'c1000000-0000-4000-8000-000000000001'::uuid,
+    'winter-road-treatment-vehicles-c1000000',
+    'Winter road treatment vehicles',
+    'Responses are due by 14.03.',
+    '[]'::jsonb,
+    '{}'::text[],
+    null
+  )::text),
+  'HIGH',
+  'date-yearless-dot: risk is HIGH'
+);
+select ok(
+  (select coalesce(array_agg(distinct f.finding_code), '{}') from private.preview_leak_findings(
+    'c1000000-0000-4000-8000-000000000001'::uuid,
+    'winter-road-treatment-vehicles-c1000000',
+    'Winter road treatment vehicles',
+    'Responses are due by 14.03.',
+    '[]'::jsonb,
+    '{}'::text[],
+    null
+  ) f) @> array['DATE_SOURCE']::text[],
+  'date-yearless-dot: reports DATE_SOURCE'
+);
+
+-- date-yearless-hyphen: source deadline as DD-MM with no year (M6)
+select is(
+  (select private.detect_preview_leakage(
+    'c1000000-0000-4000-8000-000000000001'::uuid,
+    'winter-road-treatment-vehicles-c1000000',
+    'Winter road treatment vehicles',
+    'Responses are due by 14-03.',
+    '[]'::jsonb,
+    '{}'::text[],
+    null
+  )::text),
+  'HIGH',
+  'date-yearless-hyphen: risk is HIGH'
+);
+select ok(
+  (select coalesce(array_agg(distinct f.finding_code), '{}') from private.preview_leak_findings(
+    'c1000000-0000-4000-8000-000000000001'::uuid,
+    'winter-road-treatment-vehicles-c1000000',
+    'Winter road treatment vehicles',
+    'Responses are due by 14-03.',
+    '[]'::jsonb,
+    '{}'::text[],
+    null
+  ) f) @> array['DATE_SOURCE']::text[],
+  'date-yearless-hyphen: reports DATE_SOURCE'
+);
+
+-- date-yearless-space: source deadline as DD MM with no year (M6)
+select is(
+  (select private.detect_preview_leakage(
+    'c1000000-0000-4000-8000-000000000001'::uuid,
+    'winter-road-treatment-vehicles-c1000000',
+    'Winter road treatment vehicles',
+    'Responses are due by 14 03.',
+    '[]'::jsonb,
+    '{}'::text[],
+    null
+  )::text),
+  'HIGH',
+  'date-yearless-space: risk is HIGH'
+);
+select ok(
+  (select coalesce(array_agg(distinct f.finding_code), '{}') from private.preview_leak_findings(
+    'c1000000-0000-4000-8000-000000000001'::uuid,
+    'winter-road-treatment-vehicles-c1000000',
+    'Winter road treatment vehicles',
+    'Responses are due by 14 03.',
+    '[]'::jsonb,
+    '{}'::text[],
+    null
+  ) f) @> array['DATE_SOURCE']::text[],
+  'date-yearless-space: reports DATE_SOURCE'
+);
+
+-- date-yearless-decimal: a decimal that starts like the deadline is not a date (M6 control)
+select is(
+  (select private.detect_preview_leakage(
+    'c1000000-0000-4000-8000-000000000001'::uuid,
+    'winter-road-treatment-vehicles-c1000000',
+    'Winter road treatment vehicles',
+    'Each hopper holds 14.035 cubic metres.',
+    '[]'::jsonb,
+    '{}'::text[],
+    null
+  )::text),
+  'LOW',
+  'date-yearless-decimal: risk is LOW'
+);
+
 select * from finish();
 rollback;

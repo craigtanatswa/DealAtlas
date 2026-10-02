@@ -871,13 +871,15 @@ begin
     cross join unnest(array[
       'YYYY-MM-DD', 'DD/MM/YYYY', 'FMDD/FMMM/YYYY', 'DD/MM/YY', 'FMDD FMMonth',
       'FMDDth FMMonth', 'FMDD Mon', 'FMDDth Mon', 'FMMonth FMDD', 'FMMonth FMDDth', 'Mon FMDD',
-      'DD/MM', 'FMDD/FMMM'
+      'DD/MM', 'FMDD/FMMM', 'DD.MM', 'FMDD.FMMM', 'DD-MM', 'FMDD-FMMM', 'DD MM'
     ]) as f
   loop
-    -- Yearless numeric forms only count with digit/slash boundaries, so a
-    -- "14 03" in other text is not a hit.
-    if (v_term ~ '^[0-9]+/[0-9]+$' and v_all_lower ~ ('(?<![0-9/.])' || v_term || '(?![0-9/])'))
-       or (v_term !~ '^[0-9]+/[0-9]+$' and position(private.leak_norm(v_term) in v_all_norm) > 0)
+    -- Yearless numeric forms only count with digit boundaries, so decimals
+    -- such as "14.035" or longer digit runs are not hits. A hyphen may follow
+    -- so ranges like "14/03-21/03" still match.
+    if (v_term ~ '^[0-9]+[/. -][0-9]+$'
+        and v_all_lower ~ ('(?<![0-9/.,])' || replace(v_term, '.', '[.]') || '(?![0-9]|[/.,][0-9])'))
+       or (v_term !~ '^[0-9]+[/. -][0-9]+$' and position(private.leak_norm(v_term) in v_all_norm) > 0)
     then
       return query select 'DATE_SOURCE'::text, 'HIGH'::public.leakage_risk, v_term;
     end if;

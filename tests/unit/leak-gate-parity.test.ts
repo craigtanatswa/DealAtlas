@@ -63,6 +63,10 @@ describe("leak gate parity fixtures (TypeScript scanner)", () => {
       "lowercase-acronym",
       "slug-postcode",
       "combination-slug",
+      "date-yearless-dot",
+      "date-yearless-hyphen",
+      "date-yearless-space",
+      "date-yearless-decimal",
     ]) {
       expect(ids, id).toContain(id);
     }
