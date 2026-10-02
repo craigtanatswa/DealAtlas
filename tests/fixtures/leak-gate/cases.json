@@ -14,7 +14,7 @@
     },
     "supplier": {
       "id": "c2000000-0000-4000-8000-000000000002",
-      "name": "Quarrendon Signalworks Limited",
+      "name": "Quorvellan Signalworks Limited",
       "role": "SUPPLIER"
     },
     "unlinkedOrganization": {
@@ -103,7 +103,7 @@
       "description": "linked supplier name without the legal suffix",
       "preview": {
         "title": "Winter road treatment vehicles",
-        "summary": "The incumbent, Quarrendon Signalworks, currently services the fleet."
+        "summary": "The incumbent, Quorvellan Signalworks, currently services the fleet."
       },
       "expectRisk": "HIGH",
       "expectCodes": [
