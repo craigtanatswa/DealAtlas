@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { toAlertDto } from "@/lib/alerts/dto";
+import { toAlertDto, type PublishedAlertPreviews } from "@/lib/alerts/dto";
 import type { AlertRecord } from "@/lib/alerts/types";
 import { FREE_ENTITLEMENT } from "@/lib/entitlements/policy";
 import { PLANS } from "@/lib/constants";
@@ -29,6 +29,19 @@ const RECORD: AlertRecord = {
   dedupe_key: "DEADLINE:22222222-2222-4222-8222-222222222222:7",
 };
 
+const PUBLISHED: PublishedAlertPreviews = new Map([
+  [
+    "22222222-2222-4222-8222-222222222222",
+    {
+      previewTitle: "Managed IT support for a public organisation",
+      deadlineBand: "Within 7 days",
+      valueBand: "£250k–£500k",
+      category: "Technology",
+      region: "South East England",
+    },
+  ],
+]);
+
 const PRO: EntitlementSnapshot = {
   plan: PLANS.PRO,
   status: "ACTIVE",
@@ -40,7 +53,7 @@ const PRO: EntitlementSnapshot = {
 
 describe("alert digest paywall", () => {
   it("keeps free digest copy free of protected source identity", () => {
-    const dto = toAlertDto(RECORD, FREE_ENTITLEMENT);
+    const dto = toAlertDto(RECORD, FREE_ENTITLEMENT, PUBLISHED);
     const digest = renderAlertDigest({
       plan: PLANS.FREE,
       alerts: [dto],
@@ -55,7 +68,7 @@ describe("alert digest paywall", () => {
   });
 
   it("makes Pro digest actionable with paid details after entitlement mapping", () => {
-    const dto = toAlertDto(RECORD, PRO);
+    const dto = toAlertDto(RECORD, PRO, PUBLISHED);
     const digest = renderAlertDigest({
       plan: PLANS.PRO,
       alerts: [dto],
@@ -66,6 +79,28 @@ describe("alert digest paywall", () => {
     expect(digest.text).toContain("https://canary-source.example/notice");
     expect(digest.text).toContain("/app/deals/22222222-2222-4222-8222-222222222222");
     expect(digest.html).toContain("Open in DealAtlas");
+  });
+
+  it("never emails a free user the stored title of a held or non-LOW preview", () => {
+    const leaky: AlertRecord = {
+      ...RECORD,
+      alert_type: "NEW_MATCH",
+      protected_payload: {
+        ...(RECORD.protected_payload as Record<string, unknown>),
+        previewTitle: "Kelderwick depot gritting fleet for Corrivale Fenmoor",
+      },
+    };
+    const held = toAlertDto(leaky, FREE_ENTITLEMENT, new Map());
+    const digest = renderAlertDigest({ plan: PLANS.FREE, alerts: [held], appUrl: "http://localhost:3000" });
+    const blob = `${digest.subject}\n${digest.text}\n${digest.html}`;
+    expect(held.previewTitle).toBeUndefined();
+    expect(blob).not.toContain("Kelderwick");
+    expect(blob).not.toContain("Corrivale");
+
+    const republished = toAlertDto(leaky, FREE_ENTITLEMENT, PUBLISHED);
+    const current = renderAlertDigest({ plan: PLANS.FREE, alerts: [republished], appUrl: "http://localhost:3000" });
+    expect(current.text).toContain("Managed IT support for a public organisation");
+    expect(current.text).not.toContain("Kelderwick");
   });
 
   it("does not emit javascript: hrefs from scraped source URLs", () => {
@@ -81,6 +116,7 @@ describe("alert digest paywall", () => {
         },
       },
       PRO,
+      PUBLISHED,
     );
     const digest = renderAlertDigest({
       plan: PLANS.PRO,
