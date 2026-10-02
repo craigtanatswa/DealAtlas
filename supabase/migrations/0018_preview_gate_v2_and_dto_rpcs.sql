@@ -1453,12 +1453,14 @@ revoke execute on function private.detect_preview_leakage(uuid, text, text, text
   from public, anon, authenticated;
 
 -- -----------------------------------------------------------------------------
--- Admin holds. Recorded per deal (not per preview row) so deleting and
+-- Admin holds. Recorded per deal id (not per preview row) so deleting and
 -- re-inserting the preview cannot clear them, and kept in a table no API role
 -- can read or write. Only public.admin_release_preview_hold deletes a hold.
+-- No foreign key: a hold must survive the deal being deleted and re-created
+-- with the same id.
 -- -----------------------------------------------------------------------------
 create table if not exists private.preview_holds (
-  deal_id uuid primary key references public.deals(id) on delete cascade,
+  deal_id uuid primary key,
   held_at timestamptz not null default now()
 );
 

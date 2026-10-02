@@ -193,6 +193,44 @@ select is(
   're-inserted held preview stays unpublished'
 );
 
+-- Deleting the deal itself (which cascades to its preview) and re-creating it
+-- with the same id must not clear the hold either.
+delete from public.deals where id = 'b0000000-0000-4000-8000-000000000001';
+insert into public.deals (
+  id, source_title, source_description, buyer_organization_id, reference,
+  deal_type, buyer_sector, stage, status, submission_deadline
+) values (
+  'b0000000-0000-4000-8000-000000000001',
+  'Highway lighting column renewal programme',
+  'Renewal of ageing highway lighting columns across the borough with new LED lanterns and structural testing.',
+  'a0000000-0000-4000-8000-000000000001',
+  'BVCBC-2027-0417',
+  'PUBLIC_TENDER', 'PUBLIC', 'LIVE', 'OPEN',
+  '2027-03-14T12:00:00Z'
+);
+insert into public.deal_previews (
+  deal_id, slug, preview_title, preview_summary, deal_type, buyer_sector, stage, status,
+  broad_region, leakage_risk, is_published, unpublished_by_admin
+) values (
+  'b0000000-0000-4000-8000-000000000001',
+  'street-lighting-upgrade-b0000000',
+  'Street lighting upgrade for a local authority',
+  'A public body in Wales wants a contractor to replace roadside lighting with efficient units.',
+  'PUBLIC_TENDER', 'PUBLIC', 'LIVE', 'OPEN',
+  'Wales', 'LOW', true, false
+);
+
+select is(
+  (select unpublished_by_admin from public.deal_previews where deal_id = 'b0000000-0000-4000-8000-000000000001'),
+  true,
+  'deleting and re-creating the deal cannot clear an admin hold'
+);
+select is(
+  (select is_published from public.deal_previews where deal_id = 'b0000000-0000-4000-8000-000000000001'),
+  false,
+  're-created deal preview stays unpublished while held'
+);
+
 select ok(
   not has_table_privilege('service_role', 'private.preview_holds', 'select')
   and not has_table_privilege('service_role', 'private.preview_holds', 'delete')
