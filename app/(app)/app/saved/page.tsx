@@ -27,7 +27,7 @@ export default async function SavedPage() {
   const entitlement = await getCurrentEntitlement(user.id);
   const isPro = isProEntitlement(entitlement);
   const client = await createSupabaseServerClient();
-  const items = await listSavedDeals(client, user.id);
+  const items = await listSavedDeals(client);
   const limit = featureLimit(entitlement.plan, "savedDeals");
   const exportUsage = isPro
     ? await loadExportUsageForMonth(user.id)

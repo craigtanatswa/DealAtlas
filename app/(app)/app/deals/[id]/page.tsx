@@ -17,7 +17,6 @@ import { loadExportUsageForMonth } from "@/lib/exports/usage";
 import { featureLimit } from "@/lib/quotas";
 import { loadDealSaveState } from "@/lib/saves/queries";
 import { loadCompanyProfileIdForUser, loadProMatchForDeal } from "@/lib/matching/load";
-import { loadMatchForPreviewPage } from "@/lib/matching/search";
 import { getPublicDealPreviewPageByDealId } from "@/lib/search/public";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -133,17 +132,11 @@ export default async function AppDealPage({ params }: PageProps) {
     notFound();
   }
 
-  const match = await loadMatchForPreviewPage({
-    client,
-    userId: user.id,
-    dealId,
-  });
-
   return (
     <Main>
       <DealPreviewDetail
         deal={previewPage.preview}
-        match={match}
+        match={previewPage.match}
         save={saveControl}
         unlock={{
           mode: "free",

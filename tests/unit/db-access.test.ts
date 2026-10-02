@@ -10,15 +10,23 @@ function read(relativePath: string) {
 }
 
 describe("typed data-access boundaries", () => {
-  it("keeps public preview queries on deal_previews with explicit columns", () => {
+  it("reads public previews only through the sanitised preview DTO RPCs", () => {
     const source = read("lib/db/previews.ts");
-    expect(source).toContain('.from("deal_previews")');
-    expect(source).toContain("search_deal_previews");
+    expect(source).not.toContain('.from("deal_previews")');
+    expect(source).not.toMatch(/rpc\(\s*["']search_deal_previews/);
+    for (const fn of [
+      "search_preview_dtos",
+      "get_preview_dto_by_slug",
+      "get_preview_dto_by_deal_id",
+      "resolve_preview_deal_id",
+      "list_preview_sitemap_entries",
+      "count_preview_sitemap_entries",
+    ]) {
+      expect(source).toContain(`rpc("${fn}"`);
+    }
     expect(source).toContain("p_value_band");
     expect(source).toContain("p_deadline_band");
-    expect(source).toContain("DEAL_PREVIEW_PUBLIC_SELECT");
-    expect(source).toContain("DEAL_PREVIEW_SITEMAP_SELECT");
-    expect(source).toContain('.in("status"');
+    expect(source).toContain("p_statuses");
     expect(source).not.toMatch(/select\(\s*["']\*["']\s*\)/);
     expect(source).not.toContain('.from("deals")');
     expect(source).not.toContain('.from("organizations")');
@@ -38,7 +46,6 @@ describe("typed data-access boundaries", () => {
     expect(columns).not.toContain("unpublished_by_admin");
     expect(columns).not.toContain("leakage_risk");
     expect(columns).not.toContain("is_published");
-    expect(source).toContain("DEAL_PREVIEW_SITEMAP_COLUMNS");
     expect(source).not.toContain("source_title");
     expect(source).not.toContain("source_url");
   });

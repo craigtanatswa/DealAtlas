@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { PUBLIC_PREVIEW_DTO_KEYS, toDealCardData, toPublicDealPreview } from "@/lib/search/dto";
 import { publicDealPreviewMetadata } from "@/lib/search/metadata";
-import type { DealPreviewPublic } from "@/lib/db/previews";
+import type { PreviewDtoFields } from "@/lib/search/dto";
 import {
   FORBIDDEN_PUBLIC_KEYS,
   SEEDED_PROTECTED_MARKERS,
@@ -33,10 +33,8 @@ const sanitisedRow = {
     "security/data-protection capability",
   ],
   relevance_tags: ["it-support"],
-  freshness_label: "Recently added",
-  created_at: "2026-01-01T00:00:00Z",
-  updated_at: "2026-01-02T00:00:00Z",
-} as DealPreviewPublic;
+  freshness_label: "Open opportunity",
+} as PreviewDtoFields & { deal_id: string };
 
 describe("public preview DTO", () => {
   it("maps only sanitised preview fields", () => {
@@ -111,12 +109,10 @@ describe("public preview DTO", () => {
     expect(SEEDED_PROTECTED_MARKERS.length).toBeGreaterThan(3);
   });
 
-  it("computes freshness at read time and passes it to cards", () => {
+  it("passes the server-computed freshness label to cards", () => {
     const recent = toPublicDealPreview({
       ...sanitisedRow,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      freshness_label: "Recently added",
+      freshness_label: "New this week",
     });
     expect(recent.freshnessLabel).toBe("New this week");
     expect(toDealCardData(recent).freshnessLabel).toBe("New this week");

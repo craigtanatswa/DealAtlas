@@ -18,7 +18,6 @@ import { publicDealPreviewMetadata, missingPublicDealPreviewMetadata } from "@/l
 import { getPublicDealPreviewPageBySlug } from "@/lib/search/public";
 import { isIndexablePublicPreview } from "@/lib/seo/indexability";
 import { webPageJsonLd } from "@/lib/seo/json-ld";
-import { loadMatchForPreviewPage } from "@/lib/matching/search";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { parseInputSafe, slugSchema } from "@/lib/validation";
 
@@ -34,8 +33,11 @@ const loadPreviewPage = cache(async (slug: string) => {
     return null;
   }
 
+  const user = await getAuthUser();
   const client = await createSupabaseServerClient();
-  return getPublicDealPreviewPageBySlug(client, parsed.data);
+  return getPublicDealPreviewPageBySlug(client, parsed.data, {
+    signedIn: Boolean(user),
+  });
 });
 
 export async function generateMetadata({
@@ -70,14 +72,9 @@ export default async function DealPreviewPage({ params }: PageProps) {
     : isProEntitlement(entitlement)
       ? "pro"
       : "free";
-  const client = await createSupabaseServerClient();
-  const match = await loadMatchForPreviewPage({
-    client,
-    userId: user?.id ?? null,
-    dealId: page.dealId,
-  });
-  const saveState = user
-    ? await loadDealSaveState(client, user.id, page.dealId)
+  const dealId = user ? page.dealId : null;
+  const saveState = user && dealId
+    ? await loadDealSaveState(await createSupabaseServerClient(), user.id, dealId)
     : { saved: false, used: 0 };
 
   const origin = getAppOrigin();
@@ -97,10 +94,10 @@ export default async function DealPreviewPage({ params }: PageProps) {
       ) : null}
       <DealPreviewDetail
         deal={page.preview}
-        match={match}
+        match={page.match}
         save={
           <SaveDealButton
-            dealId={page.dealId}
+            dealId={dealId}
             saved={saveState.saved}
             used={saveState.used}
             limit={featureLimit(entitlement?.plan ?? "FREE", "savedDeals")}
@@ -111,8 +108,8 @@ export default async function DealPreviewPage({ params }: PageProps) {
         unlock={{
           mode,
           loginHref: loginPathWithNext(`/deals/${page.preview.slug}`),
-          revealHref: appDealPath(page.dealId),
-          returnTo: appDealPath(page.dealId),
+          revealHref: dealId ? appDealPath(dealId) : undefined,
+          returnTo: dealId ? appDealPath(dealId) : undefined,
         }}
       />
     </Main>
