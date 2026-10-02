@@ -1,9 +1,14 @@
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { findProductionEnvViolations } from "@/scripts/ci-guard-env.mjs";
+import {
+  findEnvFileViolations,
+  findProductionEnvViolations,
+  LOCAL_DEMO_KEY_SHA256,
+} from "@/scripts/ci-guard-env.mjs";
 
 const ROOT = path.resolve(__dirname, "../..");
 
@@ -82,6 +87,128 @@ describe("CI production-env guard", () => {
   });
 });
 
+// Fake, key-shaped strings only. Built by concatenation so they never look like
+// real credentials to secret scanners.
+const FAKE_HOSTED_SECRET = "sb_secret_" + "x".repeat(32);
+const FAKE_HOSTED_PUBLISHABLE = "sb_publishable_" + "y".repeat(32);
+
+describe("CI production-env guard: key formats", () => {
+  it("rejects hosted-format sb_secret_ and sb_publishable_ keys", () => {
+    const secret = findProductionEnvViolations({
+      SUPABASE_SECRET_KEY: FAKE_HOSTED_SECRET,
+    });
+    expect(secret).toHaveLength(1);
+    expect(secret[0]).toContain("SUPABASE_SECRET_KEY");
+    expect(secret[0]).not.toContain(FAKE_HOSTED_SECRET);
+
+    expect(
+      findProductionEnvViolations({
+        NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: FAKE_HOSTED_PUBLISHABLE,
+        DEALATLAS_DB_TEST_ANON_KEY: FAKE_HOSTED_PUBLISHABLE,
+      }),
+    ).toHaveLength(2);
+  });
+
+  it("allows local demo-style keys (ci-placeholder-* and supabase-demo JWTs)", () => {
+    const payload = Buffer.from(
+      JSON.stringify({ iss: "supabase-demo", role: "service_role" }),
+    ).toString("base64url");
+    expect(
+      findProductionEnvViolations({
+        NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "ci-placeholder-publishable-key",
+        SUPABASE_SECRET_KEY: `eyJhbGciOiJIUzI1NiJ9.${payload}.sig`,
+      }),
+    ).toEqual([]);
+  });
+
+  it("recognises the CLI default sb_ keys by digest only", () => {
+    expect(LOCAL_DEMO_KEY_SHA256.size).toBe(2);
+    for (const digest of LOCAL_DEMO_KEY_SHA256) {
+      expect(digest).toMatch(/^[0-9a-f]{64}$/);
+    }
+    // The actual defaults are exercised end to end: the DB and E2E jobs run the
+    // guard against the keys `supabase status` reports for the local stack.
+  });
+
+  it("rejects unknown Supabase credential formats by default", () => {
+    expect(
+      findProductionEnvViolations({ SUPABASE_ACCESS_TOKEN: "sbp_" + "z".repeat(40) }),
+    ).toHaveLength(1);
+  });
+});
+
+describe("CI production-env guard: scope", () => {
+  it("ignores GitHub-provided ref variables that contain the domain", () => {
+    expect(
+      findProductionEnvViolations({
+        GITHUB_HEAD_REF: "fix/dealatlas.uk-links",
+        GITHUB_REF: "refs/heads/fix/dealatlas.uk-links",
+        GITHUB_REF_NAME: "dealatlas.uk",
+        RUNNER_NAME: "vercel.app-runner",
+      }),
+    ).toEqual([]);
+  });
+
+  it("does not scan unrelated variables for hosted hostnames", () => {
+    expect(
+      findProductionEnvViolations({ COMMIT_MESSAGE: "update www.dealatlas.uk copy" }),
+    ).toEqual([]);
+  });
+});
+
+describe("CI production-env guard: .env files", () => {
+  function withTree(files: Record<string, string>, run: (root: string) => void) {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "ci-guard-"));
+    try {
+      for (const [name, content] of Object.entries(files)) {
+        const file = path.join(root, name);
+        fs.mkdirSync(path.dirname(file), { recursive: true });
+        fs.writeFileSync(file, content);
+      }
+      run(root);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  }
+
+  it("fails on a .env file with a hosted Supabase URL", () => {
+    withTree(
+      { ".env.local": "NEXT_PUBLIC_SUPABASE_URL=https://abcdefghijklmnop.supabase.co\n" },
+      (root) => {
+        const violations = findEnvFileViolations(root);
+        expect(violations).toHaveLength(1);
+        expect(violations[0]).toContain(".env.local");
+        expect(violations[0]).toContain("NEXT_PUBLIC_SUPABASE_URL");
+      },
+    );
+  });
+
+  it("fails on hosted keys and quoted values in nested .env files", () => {
+    withTree(
+      { "apps/web/.env": `export SUPABASE_SECRET_KEY="${FAKE_HOSTED_SECRET}" # prod\n` },
+      (root) => {
+        const violations = findEnvFileViolations(root);
+        expect(violations).toHaveLength(1);
+        expect(violations[0]).not.toContain(FAKE_HOSTED_SECRET);
+      },
+    );
+  });
+
+  it("skips .env.example-style templates, node_modules and local-only files", () => {
+    withTree(
+      {
+        ".env.example": "NEXT_PUBLIC_SUPABASE_URL=https://abcdefghijklmnop.supabase.co\n",
+        ".env.sample": "NEXT_PUBLIC_SUPABASE_URL=https://abcdefghijklmnop.supabase.co\n",
+        "node_modules/pkg/.env": "NEXT_PUBLIC_SUPABASE_URL=https://abcdefghijklmnop.supabase.co\n",
+        ".env.test": "NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321\n",
+      },
+      (root) => {
+        expect(findEnvFileViolations(root)).toEqual([]);
+      },
+    );
+  });
+});
+
 describe("CI workflow", () => {
   const workflow = read(".github/workflows/ci.yml");
 
@@ -96,6 +223,15 @@ describe("CI workflow", () => {
     expect(workflow).toMatch(/^permissions:\n {2}contents: read\n/m);
     expect(workflow).toContain("concurrency:");
     expect(workflow).toContain("cancel-in-progress:");
+  });
+
+  it("keys main-push concurrency on the commit SHA so pushes never cancel each other", () => {
+    expect(workflow).toContain(
+      "group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}",
+    );
+    expect(workflow).toContain(
+      "cancel-in-progress: ${{ github.event_name == 'pull_request' }}",
+    );
   });
 
   it("references no repository secrets", () => {

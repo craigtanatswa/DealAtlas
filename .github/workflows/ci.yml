@@ -13,8 +13,9 @@ permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  # Cancel superseded PR runs; keep every run on main so each merge has a result.
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  # Cancel superseded PR runs. Main pushes get a per-SHA group so they never cancel
+  # each other and every merge keeps its own result.
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
