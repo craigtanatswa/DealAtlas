@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 
 import { expectNoProtectedLeaks, findProtectedMarkerLeaks } from "./helpers/leaks";
 import { readSeed } from "./helpers/seed";
+import { submitKeywordSearch } from "./helpers/search";
 
 test.describe("Anonymous journey", () => {
   test("Homepage → Search → Preview → reveal attempts → Pricing/Signup", async ({
@@ -21,7 +22,7 @@ test.describe("Anonymous journey", () => {
     await page.getByRole("link", { name: "Find Deals" }).first().click();
     await page.waitForURL(/\/deals/);
     await page.locator("#search-q").fill(seed.searchToken);
-    await page.getByRole("button", { name: "Search", exact: true }).click();
+    await submitKeywordSearch(page);
     await expect(page.getByRole("heading", { name: seed.previewTitle })).toBeVisible();
     await expectNoProtectedLeaks(page);
 
