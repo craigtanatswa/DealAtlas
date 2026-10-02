@@ -21,7 +21,7 @@ export function containsNorm(haystackNorm: string, needle: string | null | undef
 
 const LEGAL_SUFFIX_RE = /\b(ltd|limited|llp|plc|llc|inc|cic|co|the)\b/g;
 
-/** `organizations.leak_match_name`: name without legal suffixes, null when < 5 chars. */
+/** `organizations.leak_match_name`: name without legal suffixes, null when < 3 chars. */
 export function leakMatchName(name: string | null | undefined): string | null {
   const stripped = (name ?? "")
     .toLowerCase()
@@ -29,7 +29,7 @@ export function leakMatchName(name: string | null | undefined): string | null {
     .replace(LEGAL_SUFFIX_RE, " ")
     .replace(/\s+/g, " ")
     .trim();
-  return stripped.length >= 5 ? ` ${stripped} ` : null;
+  return stripped.length >= 3 ? ` ${stripped} ` : null;
 }
 
 function trigrams(value: string): Set<string> {
@@ -135,6 +135,8 @@ export function sourceDateCandidates(values: Array<string | null | undefined>): 
       out.add(`${month} ${d}`);
       out.add(`${month} ${ordinal(d)}`);
       out.add(`${mon} ${d}`);
+      out.add(`${dd}/${mm}`);
+      out.add(`${d}/${m}`);
     }
   }
   return [...out];

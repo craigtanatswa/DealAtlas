@@ -47,19 +47,25 @@ export const GENERIC_ACRONYMS = [
   "WIFI",
 ] as const;
 
-/** Title-Case words allowed in prose runs (regions, months, generic schemes). */
+/**
+ * Title-Case words allowed in prose runs (regions, months, generic schemes) and
+ * capitalised defined terms common in tender documents ("the Contractor").
+ */
 export const GENERIC_PROPER_WORDS = [
-  "act", "amazon", "and", "april", "august", "britain", "british", "building",
-  "contracts", "cyber", "data", "december", "east", "england", "english",
-  "essentials", "european", "february", "friday", "google", "great", "health",
-  "humber", "ireland", "january", "july", "june", "kingdom", "living", "london",
-  "march", "may", "microsoft", "midlands", "modern", "monday", "nationwide", "net",
-  "north", "northern", "november", "october", "of", "office", "plus", "private",
-  "procurement", "protection", "public", "real", "regulations", "remote",
-  "safety", "saturday", "scotland", "scottish", "sector", "september",
-  "slavery", "social", "south", "sunday", "the", "thursday", "tuesday", "union",
-  "united", "value", "wage", "wales", "wednesday", "welsh", "west", "workspace",
-  "yorkshire", "zero",
+  "act", "agreement", "amazon", "and", "applicant", "applicants", "april", "august",
+  "bidder", "bidders", "britain", "british", "building", "buyer", "buyers", "client",
+  "consultant", "contractor", "contractors", "contracts", "customer", "cyber", "data",
+  "december", "east", "employer", "england", "english", "essentials", "european",
+  "february", "friday", "goods", "google", "great", "health", "humber", "ireland",
+  "january", "july", "june", "kingdom", "living", "london", "lot", "lots", "march",
+  "may", "microsoft", "midlands", "modern", "monday", "nationwide", "net", "north",
+  "northern", "november", "october", "of", "office", "plus", "private", "procurement",
+  "protection", "provider", "providers", "public", "purchaser", "real", "regulations",
+  "remote", "safety", "saturday", "scotland", "scottish", "sector", "september",
+  "slavery", "social", "south", "specification", "sunday", "supplier", "suppliers",
+  "tenderer", "tenderers", "the", "thursday", "tuesday", "union", "united", "value",
+  "wage", "wales", "wednesday", "welsh", "west", "works", "workspace", "yorkshire",
+  "zero",
 ] as const;
 
 /** Location strings that are coarse enough to appear in a free preview. */

@@ -6,23 +6,26 @@ select no_plan();
 
 select set_eq(
   $$select kind, term from private.leak_gate_terms$$,
-  $$values ('generic_org_token', 'academies'), ('generic_org_token', 'academy'), ('generic_org_token', 'agency'), ('generic_org_token', 'ambulance'), ('generic_org_token', 'and'), ('generic_org_token', 'association'), ('generic_org_token', 'authorities'), ('generic_org_token', 'authority'), ('generic_org_token', 'board'), ('generic_org_token', 'borough'), ('generic_org_token', 'britain'), ('generic_org_token', 'british'), ('generic_org_token', 'care'), ('generic_org_token', 'central'), ('generic_org_token', 'cic'), ('generic_org_token', 'city'), ('generic_org_token', 'college'), ('generic_org_token', 'combined'), ('generic_org_token', 'commercial'), ('generic_org_token', 'commission'), ('generic_org_token', 'commissioner'), ('generic_org_token', 'community'), ('generic_org_token', 'companies'), ('generic_org_token', 'company'), ('generic_org_token', 'construction'), ('generic_org_token', 'consulting'), ('generic_org_token', 'contractors'), ('generic_org_token', 'corporation'), ('generic_org_token', 'council'), ('generic_org_token', 'councils'), ('generic_org_token', 'county'), ('generic_org_token', 'crown'), ('generic_org_token', 'department'), ('generic_org_token', 'dept'), ('generic_org_token', 'development'), ('generic_org_token', 'district'), ('generic_org_token', 'east'), ('generic_org_token', 'eastern'), ('generic_org_token', 'education'), ('generic_org_token', 'electricity'), ('generic_org_token', 'energy'), ('generic_org_token', 'engineering'), ('generic_org_token', 'england'), ('generic_org_token', 'english'), ('generic_org_token', 'enterprises'), ('generic_org_token', 'estates'), ('generic_org_token', 'executive'), ('generic_org_token', 'facilities'), ('generic_org_token', 'fire'), ('generic_org_token', 'for'), ('generic_org_token', 'foundation'), ('generic_org_token', 'gas'), ('generic_org_token', 'global'), ('generic_org_token', 'government'), ('generic_org_token', 'greater'), ('generic_org_token', 'group'), ('generic_org_token', 'groups'), ('generic_org_token', 'health'), ('generic_org_token', 'healthcare'), ('generic_org_token', 'highways'), ('generic_org_token', 'holdings'), ('generic_org_token', 'homes'), ('generic_org_token', 'hospital'), ('generic_org_token', 'hospitals'), ('generic_org_token', 'housing'), ('generic_org_token', 'industries'), ('generic_org_token', 'infrastructure'), ('generic_org_token', 'integrated'), ('generic_org_token', 'international'), ('generic_org_token', 'ireland'), ('generic_org_token', 'kingdom'), ('generic_org_token', 'limited'), ('generic_org_token', 'llc'), ('generic_org_token', 'llp'), ('generic_org_token', 'local'), ('generic_org_token', 'lower'), ('generic_org_token', 'ltd'), ('generic_org_token', 'majesty'), ('generic_org_token', 'majestys'), ('generic_org_token', 'management'), ('generic_org_token', 'metropolitan'), ('generic_org_token', 'ministry'), ('generic_org_token', 'national'), ('generic_org_token', 'network'), ('generic_org_token', 'networks'), ('generic_org_token', 'new'), ('generic_org_token', 'nhs'), ('generic_org_token', 'north'), ('generic_org_token', 'northern'), ('generic_org_token', 'office'), ('generic_org_token', 'parish'), ('generic_org_token', 'partners'), ('generic_org_token', 'partnership'), ('generic_org_token', 'plc'), ('generic_org_token', 'police'), ('generic_org_token', 'power'), ('generic_org_token', 'private'), ('generic_org_token', 'property'), ('generic_org_token', 'public'), ('generic_org_token', 'rail'), ('generic_org_token', 'railway'), ('generic_org_token', 'railways'), ('generic_org_token', 'regional'), ('generic_org_token', 'rescue'), ('generic_org_token', 'road'), ('generic_org_token', 'roads'), ('generic_org_token', 'royal'), ('generic_org_token', 'school'), ('generic_org_token', 'schools'), ('generic_org_token', 'scotland'), ('generic_org_token', 'scottish'), ('generic_org_token', 'service'), ('generic_org_token', 'services'), ('generic_org_token', 'solutions'), ('generic_org_token', 'south'), ('generic_org_token', 'southern'), ('generic_org_token', 'support'), ('generic_org_token', 'system'), ('generic_org_token', 'systems'), ('generic_org_token', 'technologies'), ('generic_org_token', 'technology'), ('generic_org_token', 'the'), ('generic_org_token', 'town'), ('generic_org_token', 'trading'), ('generic_org_token', 'transport'), ('generic_org_token', 'trust'), ('generic_org_token', 'trusts'), ('generic_org_token', 'united'), ('generic_org_token', 'university'), ('generic_org_token', 'upper'), ('generic_org_token', 'utilities'), ('generic_org_token', 'ventures'), ('generic_org_token', 'wales'), ('generic_org_token', 'water'), ('generic_org_token', 'welsh'), ('generic_org_token', 'west'), ('generic_org_token', 'western'), ('generic_org_token', 'with'), ('generic_acronym', 'A&E'), ('generic_acronym', 'AED'), ('generic_acronym', 'ANPR'), ('generic_acronym', 'API'), ('generic_acronym', 'APIS'), ('generic_acronym', 'ASB'), ('generic_acronym', 'AWS'), ('generic_acronym', 'BCP'), ('generic_acronym', 'BIM'), ('generic_acronym', 'BMS'), ('generic_acronym', 'BREEAM'), ('generic_acronym', 'BSI'), ('generic_acronym', 'BTEC'), ('generic_acronym', 'CAD'), ('generic_acronym', 'CCTV'), ('generic_acronym', 'CDM'), ('generic_acronym', 'CHAS'), ('generic_acronym', 'CMS'), ('generic_acronym', 'CNC'), ('generic_acronym', 'CO2'), ('generic_acronym', 'COSHH'), ('generic_acronym', 'COVID'), ('generic_acronym', 'COVID19'), ('generic_acronym', 'CPD'), ('generic_acronym', 'CPV'), ('generic_acronym', 'CQC'), ('generic_acronym', 'CRM'), ('generic_acronym', 'CSCS'), ('generic_acronym', 'CSR'), ('generic_acronym', 'DBS'), ('generic_acronym', 'DDA'), ('generic_acronym', 'DFMA'), ('generic_acronym', 'DPIA'), ('generic_acronym', 'DPS'), ('generic_acronym', 'EHCP'), ('generic_acronym', 'EHR'), ('generic_acronym', 'EOI'), ('generic_acronym', 'EPC'), ('generic_acronym', 'EPR'), ('generic_acronym', 'ERP'), ('generic_acronym', 'ESG'), ('generic_acronym', 'ESOL'), ('generic_acronym', 'EVCP'), ('generic_acronym', 'EVS'), ('generic_acronym', 'FOI'), ('generic_acronym', 'GBP'), ('generic_acronym', 'GCSE'), ('generic_acronym', 'GDPR'), ('generic_acronym', 'GIS'), ('generic_acronym', 'GPS'), ('generic_acronym', 'HGV'), ('generic_acronym', 'HSCN'), ('generic_acronym', 'HVAC'), ('generic_acronym', 'IAAS'), ('generic_acronym', 'IAM'), ('generic_acronym', 'ICT'), ('generic_acronym', 'ICU'), ('generic_acronym', 'IOT'), ('generic_acronym', 'IR35'), ('generic_acronym', 'ISO'), ('generic_acronym', 'ITT'), ('generic_acronym', 'JCT'), ('generic_acronym', 'KPI'), ('generic_acronym', 'KPIS'), ('generic_acronym', 'LAN'), ('generic_acronym', 'LED'), ('generic_acronym', 'LGV'), ('generic_acronym', 'LIMS'), ('generic_acronym', 'LOLER'), ('generic_acronym', 'LPG'), ('generic_acronym', 'M&E'), ('generic_acronym', 'MEP'), ('generic_acronym', 'MEWP'), ('generic_acronym', 'MFA'), ('generic_acronym', 'MMC'), ('generic_acronym', 'MOT'), ('generic_acronym', 'MPLS'), ('generic_acronym', 'MRI'), ('generic_acronym', 'NEC'), ('generic_acronym', 'NHS'), ('generic_acronym', 'NVQ'), ('generic_acronym', 'OEM'), ('generic_acronym', 'PAAS'), ('generic_acronym', 'PACS'), ('generic_acronym', 'PAS'), ('generic_acronym', 'PAT'), ('generic_acronym', 'PCR'), ('generic_acronym', 'PFI'), ('generic_acronym', 'PM10'), ('generic_acronym', 'PPE'), ('generic_acronym', 'PQQ'), ('generic_acronym', 'PSN'), ('generic_acronym', 'PSTN'), ('generic_acronym', 'R&D'), ('generic_acronym', 'RFI'), ('generic_acronym', 'RFP'), ('generic_acronym', 'RFQ'), ('generic_acronym', 'RIDDOR'), ('generic_acronym', 'SAAS'), ('generic_acronym', 'SCADA'), ('generic_acronym', 'SEN'), ('generic_acronym', 'SEND'), ('generic_acronym', 'SIEM'), ('generic_acronym', 'SIP'), ('generic_acronym', 'SLA'), ('generic_acronym', 'SLAS'), ('generic_acronym', 'SME'), ('generic_acronym', 'SMES'), ('generic_acronym', 'SOC'), ('generic_acronym', 'SQL'), ('generic_acronym', 'SSIP'), ('generic_acronym', 'SSO'), ('generic_acronym', 'STEM'), ('generic_acronym', 'TUPE'), ('generic_acronym', 'UAT'), ('generic_acronym', 'UKAS'), ('generic_acronym', 'UPS'), ('generic_acronym', 'VAT'), ('generic_acronym', 'VCSE'), ('generic_acronym', 'VOIP'), ('generic_acronym', 'VPN'), ('generic_acronym', 'WAN'), ('generic_acronym', 'WIFI'), ('generic_proper_word', 'act'), ('generic_proper_word', 'amazon'), ('generic_proper_word', 'and'), ('generic_proper_word', 'april'), ('generic_proper_word', 'august'), ('generic_proper_word', 'britain'), ('generic_proper_word', 'british'), ('generic_proper_word', 'building'), ('generic_proper_word', 'contracts'), ('generic_proper_word', 'cyber'), ('generic_proper_word', 'data'), ('generic_proper_word', 'december'), ('generic_proper_word', 'east'), ('generic_proper_word', 'england'), ('generic_proper_word', 'english'), ('generic_proper_word', 'essentials'), ('generic_proper_word', 'european'), ('generic_proper_word', 'february'), ('generic_proper_word', 'friday'), ('generic_proper_word', 'google'), ('generic_proper_word', 'great'), ('generic_proper_word', 'health'), ('generic_proper_word', 'humber'), ('generic_proper_word', 'ireland'), ('generic_proper_word', 'january'), ('generic_proper_word', 'july'), ('generic_proper_word', 'june'), ('generic_proper_word', 'kingdom'), ('generic_proper_word', 'living'), ('generic_proper_word', 'london'), ('generic_proper_word', 'march'), ('generic_proper_word', 'may'), ('generic_proper_word', 'microsoft'), ('generic_proper_word', 'midlands'), ('generic_proper_word', 'modern'), ('generic_proper_word', 'monday'), ('generic_proper_word', 'nationwide'), ('generic_proper_word', 'net'), ('generic_proper_word', 'north'), ('generic_proper_word', 'northern'), ('generic_proper_word', 'november'), ('generic_proper_word', 'october'), ('generic_proper_word', 'of'), ('generic_proper_word', 'office'), ('generic_proper_word', 'plus'), ('generic_proper_word', 'private'), ('generic_proper_word', 'procurement'), ('generic_proper_word', 'protection'), ('generic_proper_word', 'public'), ('generic_proper_word', 'real'), ('generic_proper_word', 'regulations'), ('generic_proper_word', 'remote'), ('generic_proper_word', 'safety'), ('generic_proper_word', 'saturday'), ('generic_proper_word', 'scotland'), ('generic_proper_word', 'scottish'), ('generic_proper_word', 'sector'), ('generic_proper_word', 'september'), ('generic_proper_word', 'slavery'), ('generic_proper_word', 'social'), ('generic_proper_word', 'south'), ('generic_proper_word', 'sunday'), ('generic_proper_word', 'the'), ('generic_proper_word', 'thursday'), ('generic_proper_word', 'tuesday'), ('generic_proper_word', 'union'), ('generic_proper_word', 'united'), ('generic_proper_word', 'value'), ('generic_proper_word', 'wage'), ('generic_proper_word', 'wales'), ('generic_proper_word', 'wednesday'), ('generic_proper_word', 'welsh'), ('generic_proper_word', 'west'), ('generic_proper_word', 'workspace'), ('generic_proper_word', 'yorkshire'), ('generic_proper_word', 'zero'), ('broad_location', 'britain'), ('broad_location', 'east'), ('broad_location', 'east midlands'), ('broad_location', 'east of england'), ('broad_location', 'england'), ('broad_location', 'europe'), ('broad_location', 'gb'), ('broad_location', 'great britain'), ('broad_location', 'ireland'), ('broad_location', 'london'), ('broad_location', 'midlands'), ('broad_location', 'nationwide'), ('broad_location', 'north'), ('broad_location', 'north east'), ('broad_location', 'north east england'), ('broad_location', 'north west'), ('broad_location', 'north west england'), ('broad_location', 'northern ireland'), ('broad_location', 'remote'), ('broad_location', 'scotland'), ('broad_location', 'south'), ('broad_location', 'south east'), ('broad_location', 'south east england'), ('broad_location', 'south west'), ('broad_location', 'south west england'), ('broad_location', 'uk'), ('broad_location', 'united kingdom'), ('broad_location', 'wales'), ('broad_location', 'west'), ('broad_location', 'west midlands'), ('broad_location', 'yorkshire and the humber'), ('reference_prefix', 'bs'), ('reference_prefix', 'bsen'), ('reference_prefix', 'en'), ('reference_prefix', 'g'), ('reference_prefix', 'hbn'), ('reference_prefix', 'htm'), ('reference_prefix', 'iec'), ('reference_prefix', 'ipv'), ('reference_prefix', 'iso'), ('reference_prefix', 'jct'), ('reference_prefix', 'lot'), ('reference_prefix', 'm'), ('reference_prefix', 'nec'), ('reference_prefix', 'office'), ('reference_prefix', 'pas'), ('reference_prefix', 'phase'), ('reference_prefix', 'shtm'), ('reference_prefix', 'tier'), ('reference_prefix', 'year'), ('postcode_like', 'A3'), ('postcode_like', 'A4'), ('postcode_like', 'A5'), ('postcode_like', 'B2B'), ('postcode_like', 'B2C'), ('postcode_like', 'B2G'), ('postcode_like', 'CO2'), ('postcode_like', 'E2E'), ('postcode_like', 'G2G'), ('postcode_like', 'H2'), ('postcode_like', 'H2O'), ('postcode_like', 'IR35'), ('postcode_like', 'KS1'), ('postcode_like', 'KS2'), ('postcode_like', 'KS3'), ('postcode_like', 'KS4'), ('postcode_like', 'KS5'), ('postcode_like', 'NO2'), ('postcode_like', 'P2P'), ('postcode_like', 'PM10'), ('postcode_like', 'SO2'), ('phrase_stopword', 'a'), ('phrase_stopword', 'across'), ('phrase_stopword', 'all'), ('phrase_stopword', 'also'), ('phrase_stopword', 'an'), ('phrase_stopword', 'and'), ('phrase_stopword', 'any'), ('phrase_stopword', 'are'), ('phrase_stopword', 'as'), ('phrase_stopword', 'at'), ('phrase_stopword', 'be'), ('phrase_stopword', 'been'), ('phrase_stopword', 'being'), ('phrase_stopword', 'by'), ('phrase_stopword', 'can'), ('phrase_stopword', 'contract'), ('phrase_stopword', 'contracts'), ('phrase_stopword', 'could'), ('phrase_stopword', 'delivery'), ('phrase_stopword', 'for'), ('phrase_stopword', 'framework'), ('phrase_stopword', 'from'), ('phrase_stopword', 'has'), ('phrase_stopword', 'have'), ('phrase_stopword', 'in'), ('phrase_stopword', 'include'), ('phrase_stopword', 'including'), ('phrase_stopword', 'into'), ('phrase_stopword', 'is'), ('phrase_stopword', 'it'), ('phrase_stopword', 'its'), ('phrase_stopword', 'may'), ('phrase_stopword', 'must'), ('phrase_stopword', 'no'), ('phrase_stopword', 'not'), ('phrase_stopword', 'of'), ('phrase_stopword', 'on'), ('phrase_stopword', 'opportunity'), ('phrase_stopword', 'or'), ('phrase_stopword', 'other'), ('phrase_stopword', 'our'), ('phrase_stopword', 'over'), ('phrase_stopword', 'per'), ('phrase_stopword', 'provision'), ('phrase_stopword', 'requirement'), ('phrase_stopword', 'requirements'), ('phrase_stopword', 'service'), ('phrase_stopword', 'services'), ('phrase_stopword', 'should'), ('phrase_stopword', 'such'), ('phrase_stopword', 'supply'), ('phrase_stopword', 'tender'), ('phrase_stopword', 'that'), ('phrase_stopword', 'the'), ('phrase_stopword', 'their'), ('phrase_stopword', 'these'), ('phrase_stopword', 'this'), ('phrase_stopword', 'those'), ('phrase_stopword', 'to'), ('phrase_stopword', 'under'), ('phrase_stopword', 'up'), ('phrase_stopword', 'was'), ('phrase_stopword', 'we'), ('phrase_stopword', 'were'), ('phrase_stopword', 'which'), ('phrase_stopword', 'who'), ('phrase_stopword', 'will'), ('phrase_stopword', 'with'), ('phrase_stopword', 'within'), ('phrase_stopword', 'would'), ('phrase_stopword', 'you'), ('source_platform', 'contracts finder'), ('source_platform', 'contractsfinder'), ('source_platform', 'crown commercial service'), ('source_platform', 'e-tenders ni'), ('source_platform', 'etendersni'), ('source_platform', 'find a tender'), ('source_platform', 'find-a-tender'), ('source_platform', 'find-tender'), ('source_platform', 'nista'), ('source_platform', 'public contracts scotland'), ('source_platform', 'sell2wales'), ('source_platform', 'ted.europa.eu'), ('source_platform', 'tenders electronic daily'), ('source_platform', 'uk infrastructure pipeline')$$,
+  $$values ('generic_org_token', 'academies'), ('generic_org_token', 'academy'), ('generic_org_token', 'agency'), ('generic_org_token', 'ambulance'), ('generic_org_token', 'and'), ('generic_org_token', 'association'), ('generic_org_token', 'authorities'), ('generic_org_token', 'authority'), ('generic_org_token', 'board'), ('generic_org_token', 'borough'), ('generic_org_token', 'britain'), ('generic_org_token', 'british'), ('generic_org_token', 'care'), ('generic_org_token', 'central'), ('generic_org_token', 'cic'), ('generic_org_token', 'city'), ('generic_org_token', 'college'), ('generic_org_token', 'combined'), ('generic_org_token', 'commercial'), ('generic_org_token', 'commission'), ('generic_org_token', 'commissioner'), ('generic_org_token', 'community'), ('generic_org_token', 'companies'), ('generic_org_token', 'company'), ('generic_org_token', 'construction'), ('generic_org_token', 'consulting'), ('generic_org_token', 'contractors'), ('generic_org_token', 'corporation'), ('generic_org_token', 'council'), ('generic_org_token', 'councils'), ('generic_org_token', 'county'), ('generic_org_token', 'crown'), ('generic_org_token', 'department'), ('generic_org_token', 'dept'), ('generic_org_token', 'development'), ('generic_org_token', 'district'), ('generic_org_token', 'east'), ('generic_org_token', 'eastern'), ('generic_org_token', 'education'), ('generic_org_token', 'electricity'), ('generic_org_token', 'energy'), ('generic_org_token', 'engineering'), ('generic_org_token', 'england'), ('generic_org_token', 'english'), ('generic_org_token', 'enterprises'), ('generic_org_token', 'estates'), ('generic_org_token', 'executive'), ('generic_org_token', 'facilities'), ('generic_org_token', 'fire'), ('generic_org_token', 'for'), ('generic_org_token', 'foundation'), ('generic_org_token', 'gas'), ('generic_org_token', 'global'), ('generic_org_token', 'government'), ('generic_org_token', 'greater'), ('generic_org_token', 'group'), ('generic_org_token', 'groups'), ('generic_org_token', 'health'), ('generic_org_token', 'healthcare'), ('generic_org_token', 'highways'), ('generic_org_token', 'holdings'), ('generic_org_token', 'homes'), ('generic_org_token', 'hospital'), ('generic_org_token', 'hospitals'), ('generic_org_token', 'housing'), ('generic_org_token', 'industries'), ('generic_org_token', 'infrastructure'), ('generic_org_token', 'integrated'), ('generic_org_token', 'international'), ('generic_org_token', 'ireland'), ('generic_org_token', 'kingdom'), ('generic_org_token', 'limited'), ('generic_org_token', 'llc'), ('generic_org_token', 'llp'), ('generic_org_token', 'local'), ('generic_org_token', 'lower'), ('generic_org_token', 'ltd'), ('generic_org_token', 'majesty'), ('generic_org_token', 'majestys'), ('generic_org_token', 'management'), ('generic_org_token', 'metropolitan'), ('generic_org_token', 'ministry'), ('generic_org_token', 'national'), ('generic_org_token', 'network'), ('generic_org_token', 'networks'), ('generic_org_token', 'new'), ('generic_org_token', 'nhs'), ('generic_org_token', 'north'), ('generic_org_token', 'northern'), ('generic_org_token', 'office'), ('generic_org_token', 'parish'), ('generic_org_token', 'partners'), ('generic_org_token', 'partnership'), ('generic_org_token', 'plc'), ('generic_org_token', 'police'), ('generic_org_token', 'power'), ('generic_org_token', 'private'), ('generic_org_token', 'property'), ('generic_org_token', 'public'), ('generic_org_token', 'rail'), ('generic_org_token', 'railway'), ('generic_org_token', 'railways'), ('generic_org_token', 'regional'), ('generic_org_token', 'rescue'), ('generic_org_token', 'road'), ('generic_org_token', 'roads'), ('generic_org_token', 'royal'), ('generic_org_token', 'school'), ('generic_org_token', 'schools'), ('generic_org_token', 'scotland'), ('generic_org_token', 'scottish'), ('generic_org_token', 'service'), ('generic_org_token', 'services'), ('generic_org_token', 'solutions'), ('generic_org_token', 'south'), ('generic_org_token', 'southern'), ('generic_org_token', 'support'), ('generic_org_token', 'system'), ('generic_org_token', 'systems'), ('generic_org_token', 'technologies'), ('generic_org_token', 'technology'), ('generic_org_token', 'the'), ('generic_org_token', 'town'), ('generic_org_token', 'trading'), ('generic_org_token', 'transport'), ('generic_org_token', 'trust'), ('generic_org_token', 'trusts'), ('generic_org_token', 'united'), ('generic_org_token', 'university'), ('generic_org_token', 'upper'), ('generic_org_token', 'utilities'), ('generic_org_token', 'ventures'), ('generic_org_token', 'wales'), ('generic_org_token', 'water'), ('generic_org_token', 'welsh'), ('generic_org_token', 'west'), ('generic_org_token', 'western'), ('generic_org_token', 'with'), ('generic_acronym', 'A&E'), ('generic_acronym', 'AED'), ('generic_acronym', 'ANPR'), ('generic_acronym', 'API'), ('generic_acronym', 'APIS'), ('generic_acronym', 'ASB'), ('generic_acronym', 'AWS'), ('generic_acronym', 'BCP'), ('generic_acronym', 'BIM'), ('generic_acronym', 'BMS'), ('generic_acronym', 'BREEAM'), ('generic_acronym', 'BSI'), ('generic_acronym', 'BTEC'), ('generic_acronym', 'CAD'), ('generic_acronym', 'CCTV'), ('generic_acronym', 'CDM'), ('generic_acronym', 'CHAS'), ('generic_acronym', 'CMS'), ('generic_acronym', 'CNC'), ('generic_acronym', 'CO2'), ('generic_acronym', 'COSHH'), ('generic_acronym', 'COVID'), ('generic_acronym', 'COVID19'), ('generic_acronym', 'CPD'), ('generic_acronym', 'CPV'), ('generic_acronym', 'CQC'), ('generic_acronym', 'CRM'), ('generic_acronym', 'CSCS'), ('generic_acronym', 'CSR'), ('generic_acronym', 'DBS'), ('generic_acronym', 'DDA'), ('generic_acronym', 'DFMA'), ('generic_acronym', 'DPIA'), ('generic_acronym', 'DPS'), ('generic_acronym', 'EHCP'), ('generic_acronym', 'EHR'), ('generic_acronym', 'EOI'), ('generic_acronym', 'EPC'), ('generic_acronym', 'EPR'), ('generic_acronym', 'ERP'), ('generic_acronym', 'ESG'), ('generic_acronym', 'ESOL'), ('generic_acronym', 'EVCP'), ('generic_acronym', 'EVS'), ('generic_acronym', 'FOI'), ('generic_acronym', 'GBP'), ('generic_acronym', 'GCSE'), ('generic_acronym', 'GDPR'), ('generic_acronym', 'GIS'), ('generic_acronym', 'GPS'), ('generic_acronym', 'HGV'), ('generic_acronym', 'HSCN'), ('generic_acronym', 'HVAC'), ('generic_acronym', 'IAAS'), ('generic_acronym', 'IAM'), ('generic_acronym', 'ICT'), ('generic_acronym', 'ICU'), ('generic_acronym', 'IOT'), ('generic_acronym', 'IR35'), ('generic_acronym', 'ISO'), ('generic_acronym', 'ITT'), ('generic_acronym', 'JCT'), ('generic_acronym', 'KPI'), ('generic_acronym', 'KPIS'), ('generic_acronym', 'LAN'), ('generic_acronym', 'LED'), ('generic_acronym', 'LGV'), ('generic_acronym', 'LIMS'), ('generic_acronym', 'LOLER'), ('generic_acronym', 'LPG'), ('generic_acronym', 'M&E'), ('generic_acronym', 'MEP'), ('generic_acronym', 'MEWP'), ('generic_acronym', 'MFA'), ('generic_acronym', 'MMC'), ('generic_acronym', 'MOT'), ('generic_acronym', 'MPLS'), ('generic_acronym', 'MRI'), ('generic_acronym', 'NEC'), ('generic_acronym', 'NHS'), ('generic_acronym', 'NVQ'), ('generic_acronym', 'OEM'), ('generic_acronym', 'PAAS'), ('generic_acronym', 'PACS'), ('generic_acronym', 'PAS'), ('generic_acronym', 'PAT'), ('generic_acronym', 'PCR'), ('generic_acronym', 'PFI'), ('generic_acronym', 'PM10'), ('generic_acronym', 'PPE'), ('generic_acronym', 'PQQ'), ('generic_acronym', 'PSN'), ('generic_acronym', 'PSTN'), ('generic_acronym', 'R&D'), ('generic_acronym', 'RFI'), ('generic_acronym', 'RFP'), ('generic_acronym', 'RFQ'), ('generic_acronym', 'RIDDOR'), ('generic_acronym', 'SAAS'), ('generic_acronym', 'SCADA'), ('generic_acronym', 'SEN'), ('generic_acronym', 'SEND'), ('generic_acronym', 'SIEM'), ('generic_acronym', 'SIP'), ('generic_acronym', 'SLA'), ('generic_acronym', 'SLAS'), ('generic_acronym', 'SME'), ('generic_acronym', 'SMES'), ('generic_acronym', 'SOC'), ('generic_acronym', 'SQL'), ('generic_acronym', 'SSIP'), ('generic_acronym', 'SSO'), ('generic_acronym', 'STEM'), ('generic_acronym', 'TUPE'), ('generic_acronym', 'UAT'), ('generic_acronym', 'UKAS'), ('generic_acronym', 'UPS'), ('generic_acronym', 'VAT'), ('generic_acronym', 'VCSE'), ('generic_acronym', 'VOIP'), ('generic_acronym', 'VPN'), ('generic_acronym', 'WAN'), ('generic_acronym', 'WIFI'), ('generic_proper_word', 'act'), ('generic_proper_word', 'agreement'), ('generic_proper_word', 'amazon'), ('generic_proper_word', 'and'), ('generic_proper_word', 'applicant'), ('generic_proper_word', 'applicants'), ('generic_proper_word', 'april'), ('generic_proper_word', 'august'), ('generic_proper_word', 'bidder'), ('generic_proper_word', 'bidders'), ('generic_proper_word', 'britain'), ('generic_proper_word', 'british'), ('generic_proper_word', 'building'), ('generic_proper_word', 'buyer'), ('generic_proper_word', 'buyers'), ('generic_proper_word', 'client'), ('generic_proper_word', 'consultant'), ('generic_proper_word', 'contractor'), ('generic_proper_word', 'contractors'), ('generic_proper_word', 'contracts'), ('generic_proper_word', 'customer'), ('generic_proper_word', 'cyber'), ('generic_proper_word', 'data'), ('generic_proper_word', 'december'), ('generic_proper_word', 'east'), ('generic_proper_word', 'employer'), ('generic_proper_word', 'england'), ('generic_proper_word', 'english'), ('generic_proper_word', 'essentials'), ('generic_proper_word', 'european'), ('generic_proper_word', 'february'), ('generic_proper_word', 'friday'), ('generic_proper_word', 'goods'), ('generic_proper_word', 'google'), ('generic_proper_word', 'great'), ('generic_proper_word', 'health'), ('generic_proper_word', 'humber'), ('generic_proper_word', 'ireland'), ('generic_proper_word', 'january'), ('generic_proper_word', 'july'), ('generic_proper_word', 'june'), ('generic_proper_word', 'kingdom'), ('generic_proper_word', 'living'), ('generic_proper_word', 'london'), ('generic_proper_word', 'lot'), ('generic_proper_word', 'lots'), ('generic_proper_word', 'march'), ('generic_proper_word', 'may'), ('generic_proper_word', 'microsoft'), ('generic_proper_word', 'midlands'), ('generic_proper_word', 'modern'), ('generic_proper_word', 'monday'), ('generic_proper_word', 'nationwide'), ('generic_proper_word', 'net'), ('generic_proper_word', 'north'), ('generic_proper_word', 'northern'), ('generic_proper_word', 'november'), ('generic_proper_word', 'october'), ('generic_proper_word', 'of'), ('generic_proper_word', 'office'), ('generic_proper_word', 'plus'), ('generic_proper_word', 'private'), ('generic_proper_word', 'procurement'), ('generic_proper_word', 'protection'), ('generic_proper_word', 'provider'), ('generic_proper_word', 'providers'), ('generic_proper_word', 'public'), ('generic_proper_word', 'purchaser'), ('generic_proper_word', 'real'), ('generic_proper_word', 'regulations'), ('generic_proper_word', 'remote'), ('generic_proper_word', 'safety'), ('generic_proper_word', 'saturday'), ('generic_proper_word', 'scotland'), ('generic_proper_word', 'scottish'), ('generic_proper_word', 'sector'), ('generic_proper_word', 'september'), ('generic_proper_word', 'slavery'), ('generic_proper_word', 'social'), ('generic_proper_word', 'south'), ('generic_proper_word', 'specification'), ('generic_proper_word', 'sunday'), ('generic_proper_word', 'supplier'), ('generic_proper_word', 'suppliers'), ('generic_proper_word', 'tenderer'), ('generic_proper_word', 'tenderers'), ('generic_proper_word', 'the'), ('generic_proper_word', 'thursday'), ('generic_proper_word', 'tuesday'), ('generic_proper_word', 'union'), ('generic_proper_word', 'united'), ('generic_proper_word', 'value'), ('generic_proper_word', 'wage'), ('generic_proper_word', 'wales'), ('generic_proper_word', 'wednesday'), ('generic_proper_word', 'welsh'), ('generic_proper_word', 'west'), ('generic_proper_word', 'works'), ('generic_proper_word', 'workspace'), ('generic_proper_word', 'yorkshire'), ('generic_proper_word', 'zero'), ('broad_location', 'britain'), ('broad_location', 'east'), ('broad_location', 'east midlands'), ('broad_location', 'east of england'), ('broad_location', 'england'), ('broad_location', 'europe'), ('broad_location', 'gb'), ('broad_location', 'great britain'), ('broad_location', 'ireland'), ('broad_location', 'london'), ('broad_location', 'midlands'), ('broad_location', 'nationwide'), ('broad_location', 'north'), ('broad_location', 'north east'), ('broad_location', 'north east england'), ('broad_location', 'north west'), ('broad_location', 'north west england'), ('broad_location', 'northern ireland'), ('broad_location', 'remote'), ('broad_location', 'scotland'), ('broad_location', 'south'), ('broad_location', 'south east'), ('broad_location', 'south east england'), ('broad_location', 'south west'), ('broad_location', 'south west england'), ('broad_location', 'uk'), ('broad_location', 'united kingdom'), ('broad_location', 'wales'), ('broad_location', 'west'), ('broad_location', 'west midlands'), ('broad_location', 'yorkshire and the humber'), ('reference_prefix', 'bs'), ('reference_prefix', 'bsen'), ('reference_prefix', 'en'), ('reference_prefix', 'g'), ('reference_prefix', 'hbn'), ('reference_prefix', 'htm'), ('reference_prefix', 'iec'), ('reference_prefix', 'ipv'), ('reference_prefix', 'iso'), ('reference_prefix', 'jct'), ('reference_prefix', 'lot'), ('reference_prefix', 'm'), ('reference_prefix', 'nec'), ('reference_prefix', 'office'), ('reference_prefix', 'pas'), ('reference_prefix', 'phase'), ('reference_prefix', 'shtm'), ('reference_prefix', 'tier'), ('reference_prefix', 'year'), ('postcode_like', 'A3'), ('postcode_like', 'A4'), ('postcode_like', 'A5'), ('postcode_like', 'B2B'), ('postcode_like', 'B2C'), ('postcode_like', 'B2G'), ('postcode_like', 'CO2'), ('postcode_like', 'E2E'), ('postcode_like', 'G2G'), ('postcode_like', 'H2'), ('postcode_like', 'H2O'), ('postcode_like', 'IR35'), ('postcode_like', 'KS1'), ('postcode_like', 'KS2'), ('postcode_like', 'KS3'), ('postcode_like', 'KS4'), ('postcode_like', 'KS5'), ('postcode_like', 'NO2'), ('postcode_like', 'P2P'), ('postcode_like', 'PM10'), ('postcode_like', 'SO2'), ('phrase_stopword', 'a'), ('phrase_stopword', 'across'), ('phrase_stopword', 'all'), ('phrase_stopword', 'also'), ('phrase_stopword', 'an'), ('phrase_stopword', 'and'), ('phrase_stopword', 'any'), ('phrase_stopword', 'are'), ('phrase_stopword', 'as'), ('phrase_stopword', 'at'), ('phrase_stopword', 'be'), ('phrase_stopword', 'been'), ('phrase_stopword', 'being'), ('phrase_stopword', 'by'), ('phrase_stopword', 'can'), ('phrase_stopword', 'contract'), ('phrase_stopword', 'contracts'), ('phrase_stopword', 'could'), ('phrase_stopword', 'delivery'), ('phrase_stopword', 'for'), ('phrase_stopword', 'framework'), ('phrase_stopword', 'from'), ('phrase_stopword', 'has'), ('phrase_stopword', 'have'), ('phrase_stopword', 'in'), ('phrase_stopword', 'include'), ('phrase_stopword', 'including'), ('phrase_stopword', 'into'), ('phrase_stopword', 'is'), ('phrase_stopword', 'it'), ('phrase_stopword', 'its'), ('phrase_stopword', 'may'), ('phrase_stopword', 'must'), ('phrase_stopword', 'no'), ('phrase_stopword', 'not'), ('phrase_stopword', 'of'), ('phrase_stopword', 'on'), ('phrase_stopword', 'opportunity'), ('phrase_stopword', 'or'), ('phrase_stopword', 'other'), ('phrase_stopword', 'our'), ('phrase_stopword', 'over'), ('phrase_stopword', 'per'), ('phrase_stopword', 'provision'), ('phrase_stopword', 'requirement'), ('phrase_stopword', 'requirements'), ('phrase_stopword', 'service'), ('phrase_stopword', 'services'), ('phrase_stopword', 'should'), ('phrase_stopword', 'such'), ('phrase_stopword', 'supply'), ('phrase_stopword', 'tender'), ('phrase_stopword', 'that'), ('phrase_stopword', 'the'), ('phrase_stopword', 'their'), ('phrase_stopword', 'these'), ('phrase_stopword', 'this'), ('phrase_stopword', 'those'), ('phrase_stopword', 'to'), ('phrase_stopword', 'under'), ('phrase_stopword', 'up'), ('phrase_stopword', 'was'), ('phrase_stopword', 'we'), ('phrase_stopword', 'were'), ('phrase_stopword', 'which'), ('phrase_stopword', 'who'), ('phrase_stopword', 'will'), ('phrase_stopword', 'with'), ('phrase_stopword', 'within'), ('phrase_stopword', 'would'), ('phrase_stopword', 'you'), ('source_platform', 'contracts finder'), ('source_platform', 'contractsfinder'), ('source_platform', 'crown commercial service'), ('source_platform', 'e-tenders ni'), ('source_platform', 'etendersni'), ('source_platform', 'find a tender'), ('source_platform', 'find-a-tender'), ('source_platform', 'find-tender'), ('source_platform', 'nista'), ('source_platform', 'public contracts scotland'), ('source_platform', 'sell2wales'), ('source_platform', 'ted.europa.eu'), ('source_platform', 'tenders electronic daily'), ('source_platform', 'uk infrastructure pipeline')$$,
   'SQL gate vocabulary matches lib/redaction/gate-vocabulary.ts'
 );
 
 insert into public.organizations (id, canonical_name, normalized_name, domain, postcode, city) values
   ('c2000000-0000-4000-8000-000000000001', 'Corrivale Fenmoor District Council', 'corrivale fenmoor district council', 'corrivalefenmoor.gov.uk', 'ZE9 4QT', 'Ostbury Fenmoor'),
   ('c2000000-0000-4000-8000-000000000002', 'Quorvellan Signalworks Limited', 'quorvellan signalworks limited', null, null, null),
-  ('c2000000-0000-4000-8000-000000000003', 'Tervane Maritime Logistics LLP', 'tervane maritime logistics llp', null, null, null);
+  ('c2000000-0000-4000-8000-000000000003', 'Tervane Maritime Logistics LLP', 'tervane maritime logistics llp', null, null, null),
+  ('c2000000-0000-4000-8000-000000000004', 'Qavr', 'qavr', null, null, null);
 
 insert into public.organization_aliases (organization_id, alias, normalized_alias) values
   ('c2000000-0000-4000-8000-000000000001', 'CFDC', 'cfdc');
+insert into public.organization_aliases (organization_id, alias, normalized_alias) values
+  ('c2000000-0000-4000-8000-000000000001', 'CvF', 'cvf');
 
 insert into public.deals (
   id, source_title, source_description, buyer_organization_id, reference, ocid,
   deal_type, buyer_sector, stage, status, submission_deadline, exact_location_text, value_max_ex_vat
 ) values (
-  'c1000000-0000-4000-8000-000000000001', 'Kelderwick depot gritting fleet replacement', 'Supply and maintenance of six winter gritting vehicles with insulated hoppers and route telematics for the Kelderwick depot.',
+  'c1000000-0000-4000-8000-000000000001', 'Kelderwick depot gritting fleet replacement', 'Supply and maintenance of six winter gritting vehicles with insulated hoppers and route telematics for the Kelderwick depot. Vehicles must report to the QVRS fleet portal.',
   'c2000000-0000-4000-8000-000000000001', 'CFDC-2027-0815', 'ocds-q7zx2m-081527',
   'PUBLIC_TENDER', 'PUBLIC', 'LIVE', 'OPEN',
   '2027-03-14T12:00:00Z', 'Kelderwick Depot, Ostbury Fenmoor', 1840000
@@ -719,6 +722,372 @@ select ok(
     null
   ) f) @> array['COMBINATION']::text[],
   'combination: reports COMBINATION'
+);
+
+-- date-yearless-may: day and May with no year (M1)
+select is(
+  (select private.detect_preview_leakage(
+    'c1000000-0000-4000-8000-000000000001'::uuid,
+    'winter-road-treatment-vehicles-c1000000',
+    'Winter road treatment vehicles',
+    'Site visits are expected around 14 May.',
+    '[]'::jsonb,
+    '{}'::text[],
+    null
+  )::text),
+  'REVIEW',
+  'date-yearless-may: risk is REVIEW'
+);
+select ok(
+  (select coalesce(array_agg(distinct f.finding_code), '{}') from private.preview_leak_findings(
+    'c1000000-0000-4000-8000-000000000001'::uuid,
+    'winter-road-treatment-vehicles-c1000000',
+    'Winter road treatment vehicles',
+    'Site visits are expected around 14 May.',
+    '[]'::jsonb,
+    '{}'::text[],
+    null
+  ) f) @> array['DATE_EXACT']::text[],
+  'date-yearless-may: reports DATE_EXACT'
+);
+
+-- date-may-modal: "may" as a verb and 24/7 are not dates (M1)
+select is(
+  (select private.detect_preview_leakage(
+    'c1000000-0000-4000-8000-000000000001'::uuid,
+    'winter-road-treatment-vehicles-c1000000',
+    'Winter road treatment vehicles',
+    'Up to 2 may be appointed and 24/7 call-out cover is needed.',
+    '[]'::jsonb,
+    '{}'::text[],
+    null
+  )::text),
+  'LOW',
+  'date-may-modal: risk is LOW'
+);
+
+-- date-numeric-source: source deadline as DD/MM with no year (M1)
+select is(
+  (select private.detect_preview_leakage(
+    'c1000000-0000-4000-8000-000000000001'::uuid,
+    'winter-road-treatment-vehicles-c1000000',
+    'Winter road treatment vehicles',
+    'Responses are due by 14/03.',
+    '[]'::jsonb,
+    '{}'::text[],
+    null
+  )::text),
+  'HIGH',
+  'date-numeric-source: risk is HIGH'
+);
+select ok(
+  (select coalesce(array_agg(distinct f.finding_code), '{}') from private.preview_leak_findings(
+    'c1000000-0000-4000-8000-000000000001'::uuid,
+    'winter-road-treatment-vehicles-c1000000',
+    'Winter road treatment vehicles',
+    'Responses are due by 14/03.',
+    '[]'::jsonb,
+    '{}'::text[],
+    null
+  ) f) @> array['DATE_SOURCE', 'DATE_EXACT']::text[],
+  'date-numeric-source: reports DATE_SOURCE, DATE_EXACT'
+);
+
+-- date-numeric-unrelated: unrelated DD/MM with no year is never LOW (M1)
+select is(
+  (select private.detect_preview_leakage(
+    'c1000000-0000-4000-8000-000000000001'::uuid,
+    'winter-road-treatment-vehicles-c1000000',
+    'Winter road treatment vehicles',
+    'Site visits are expected around 02/06.',
+    '[]'::jsonb,
+    '{}'::text[],
+    null
+  )::text),
+  'REVIEW',
+  'date-numeric-unrelated: risk is REVIEW'
+);
+select ok(
+  (select coalesce(array_agg(distinct f.finding_code), '{}') from private.preview_leak_findings(
+    'c1000000-0000-4000-8000-000000000001'::uuid,
+    'winter-road-treatment-vehicles-c1000000',
+    'Winter road treatment vehicles',
+    'Site visits are expected around 02/06.',
+    '[]'::jsonb,
+    '{}'::text[],
+    null
+  ) f) @> array['DATE_EXACT']::text[],
+  'date-numeric-unrelated: reports DATE_EXACT'
+);
+
+-- date-hyphenated: D-Mon-YYYY date is never LOW (M1)
+select is(
+  (select private.detect_preview_leakage(
+    'c1000000-0000-4000-8000-000000000001'::uuid,
+    'winter-road-treatment-vehicles-c1000000',
+    'Winter road treatment vehicles',
+    'Site visits are expected around 2-Jun-2027.',
+    '[]'::jsonb,
+    '{}'::text[],
+    null
+  )::text),
+  'REVIEW',
+  'date-hyphenated: risk is REVIEW'
+);
+select ok(
+  (select coalesce(array_agg(distinct f.finding_code), '{}') from private.preview_leak_findings(
+    'c1000000-0000-4000-8000-000000000001'::uuid,
+    'winter-road-treatment-vehicles-c1000000',
+    'Winter road treatment vehicles',
+    'Site visits are expected around 2-Jun-2027.',
+    '[]'::jsonb,
+    '{}'::text[],
+    null
+  ) f) @> array['DATE_EXACT']::text[],
+  'date-hyphenated: reports DATE_EXACT'
+);
+
+-- buyer-alias-mixed-case: short mixed-case buyer alias (M2)
+select is(
+  (select private.detect_preview_leakage(
+    'c1000000-0000-4000-8000-000000000001'::uuid,
+    'winter-road-treatment-vehicles-c1000000',
+    'Winter road treatment vehicles',
+    'The CvF fleet team needs a supplier for road treatment vehicles.',
+    '[]'::jsonb,
+    '{}'::text[],
+    null
+  )::text),
+  'HIGH',
+  'buyer-alias-mixed-case: risk is HIGH'
+);
+select ok(
+  (select coalesce(array_agg(distinct f.finding_code), '{}') from private.preview_leak_findings(
+    'c1000000-0000-4000-8000-000000000001'::uuid,
+    'winter-road-treatment-vehicles-c1000000',
+    'Winter road treatment vehicles',
+    'The CvF fleet team needs a supplier for road treatment vehicles.',
+    '[]'::jsonb,
+    '{}'::text[],
+    null
+  ) f) @> array['BUYER_ACRONYM']::text[],
+  'buyer-alias-mixed-case: reports BUYER_ACRONYM'
+);
+
+-- buyer-alias-slug: short mixed-case buyer alias only in the slug (M2)
+select is(
+  (select private.detect_preview_leakage(
+    'c1000000-0000-4000-8000-000000000001'::uuid,
+    'cvf-road-treatment-vehicles-c1000000',
+    'Winter road treatment vehicles',
+    'A public body needs a supplier for road treatment vehicles.',
+    '[]'::jsonb,
+    '{}'::text[],
+    null
+  )::text),
+  'HIGH',
+  'buyer-alias-slug: risk is HIGH'
+);
+select ok(
+  (select coalesce(array_agg(distinct f.finding_code), '{}') from private.preview_leak_findings(
+    'c1000000-0000-4000-8000-000000000001'::uuid,
+    'cvf-road-treatment-vehicles-c1000000',
+    'Winter road treatment vehicles',
+    'A public body needs a supplier for road treatment vehicles.',
+    '[]'::jsonb,
+    '{}'::text[],
+    null
+  ) f) @> array['BUYER_ACRONYM']::text[],
+  'buyer-alias-slug: reports BUYER_ACRONYM'
+);
+
+-- short-unlinked-org: four-character organisation known only from the organisations table (M2)
+select is(
+  (select private.detect_preview_leakage(
+    'c1000000-0000-4000-8000-000000000001'::uuid,
+    'winter-road-treatment-vehicles-c1000000',
+    'Winter road treatment vehicles',
+    'Spare parts are held by Qavr for the season.',
+    '[]'::jsonb,
+    '{}'::text[],
+    null
+  )::text),
+  'REVIEW',
+  'short-unlinked-org: risk is REVIEW'
+);
+select ok(
+  (select coalesce(array_agg(distinct f.finding_code), '{}') from private.preview_leak_findings(
+    'c1000000-0000-4000-8000-000000000001'::uuid,
+    'winter-road-treatment-vehicles-c1000000',
+    'Winter road treatment vehicles',
+    'Spare parts are held by Qavr for the season.',
+    '[]'::jsonb,
+    '{}'::text[],
+    null
+  ) f) @> array['ORG_NAME']::text[],
+  'short-unlinked-org: reports ORG_NAME'
+);
+
+-- slug-acronym: source acronym only in the slug (M3)
+select is(
+  (select private.detect_preview_leakage(
+    'c1000000-0000-4000-8000-000000000001'::uuid,
+    'qvrs-road-treatment-vehicles-c1000000',
+    'Winter road treatment vehicles',
+    'A public body needs a supplier for road treatment vehicles.',
+    '[]'::jsonb,
+    '{}'::text[],
+    null
+  )::text),
+  'HIGH',
+  'slug-acronym: risk is HIGH'
+);
+select ok(
+  (select coalesce(array_agg(distinct f.finding_code), '{}') from private.preview_leak_findings(
+    'c1000000-0000-4000-8000-000000000001'::uuid,
+    'qvrs-road-treatment-vehicles-c1000000',
+    'Winter road treatment vehicles',
+    'A public body needs a supplier for road treatment vehicles.',
+    '[]'::jsonb,
+    '{}'::text[],
+    null
+  ) f) @> array['SOURCE_NAME_TOKEN']::text[],
+  'slug-acronym: reports SOURCE_NAME_TOKEN'
+);
+
+-- slug-site: source site name only in the slug (M3)
+select is(
+  (select private.detect_preview_leakage(
+    'c1000000-0000-4000-8000-000000000001'::uuid,
+    'kelderwick-road-treatment-vehicles-c1000000',
+    'Winter road treatment vehicles',
+    'A public body needs a supplier for road treatment vehicles.',
+    '[]'::jsonb,
+    '{}'::text[],
+    null
+  )::text),
+  'HIGH',
+  'slug-site: risk is HIGH'
+);
+select ok(
+  (select coalesce(array_agg(distinct f.finding_code), '{}') from private.preview_leak_findings(
+    'c1000000-0000-4000-8000-000000000001'::uuid,
+    'kelderwick-road-treatment-vehicles-c1000000',
+    'Winter road treatment vehicles',
+    'A public body needs a supplier for road treatment vehicles.',
+    '[]'::jsonb,
+    '{}'::text[],
+    null
+  ) f) @> array['SOURCE_NAME_TOKEN']::text[],
+  'slug-site: reports SOURCE_NAME_TOKEN'
+);
+
+-- lowercase-site: lowercased source site name in prose (M3)
+select is(
+  (select private.detect_preview_leakage(
+    'c1000000-0000-4000-8000-000000000001'::uuid,
+    'winter-road-treatment-vehicles-c1000000',
+    'Winter road treatment vehicles',
+    'Vehicles will be stabled at kelderwick over the winter.',
+    '[]'::jsonb,
+    '{}'::text[],
+    null
+  )::text),
+  'HIGH',
+  'lowercase-site: risk is HIGH'
+);
+select ok(
+  (select coalesce(array_agg(distinct f.finding_code), '{}') from private.preview_leak_findings(
+    'c1000000-0000-4000-8000-000000000001'::uuid,
+    'winter-road-treatment-vehicles-c1000000',
+    'Winter road treatment vehicles',
+    'Vehicles will be stabled at kelderwick over the winter.',
+    '[]'::jsonb,
+    '{}'::text[],
+    null
+  ) f) @> array['SOURCE_NAME_TOKEN']::text[],
+  'lowercase-site: reports SOURCE_NAME_TOKEN'
+);
+
+-- lowercase-acronym: lowercased source acronym in prose (M3)
+select is(
+  (select private.detect_preview_leakage(
+    'c1000000-0000-4000-8000-000000000001'::uuid,
+    'winter-road-treatment-vehicles-c1000000',
+    'Winter road treatment vehicles',
+    'Telemetry must feed the existing qvrs portal.',
+    '[]'::jsonb,
+    '{}'::text[],
+    null
+  )::text),
+  'HIGH',
+  'lowercase-acronym: risk is HIGH'
+);
+select ok(
+  (select coalesce(array_agg(distinct f.finding_code), '{}') from private.preview_leak_findings(
+    'c1000000-0000-4000-8000-000000000001'::uuid,
+    'winter-road-treatment-vehicles-c1000000',
+    'Winter road treatment vehicles',
+    'Telemetry must feed the existing qvrs portal.',
+    '[]'::jsonb,
+    '{}'::text[],
+    null
+  ) f) @> array['SOURCE_NAME_TOKEN']::text[],
+  'lowercase-acronym: reports SOURCE_NAME_TOKEN'
+);
+
+-- slug-postcode: postcode-shaped token only in the slug (M3)
+select is(
+  (select private.detect_preview_leakage(
+    'c1000000-0000-4000-8000-000000000001'::uuid,
+    'xq4-road-treatment-vehicles-c1000000',
+    'Winter road treatment vehicles',
+    'A public body needs a supplier for road treatment vehicles.',
+    '[]'::jsonb,
+    '{}'::text[],
+    null
+  )::text),
+  'REVIEW',
+  'slug-postcode: risk is REVIEW'
+);
+select ok(
+  (select coalesce(array_agg(distinct f.finding_code), '{}') from private.preview_leak_findings(
+    'c1000000-0000-4000-8000-000000000001'::uuid,
+    'xq4-road-treatment-vehicles-c1000000',
+    'Winter road treatment vehicles',
+    'A public body needs a supplier for road treatment vehicles.',
+    '[]'::jsonb,
+    '{}'::text[],
+    null
+  ) f) @> array['POSTCODE_OUTWARD']::text[],
+  'slug-postcode: reports POSTCODE_OUTWARD'
+);
+
+-- combination-slug: distinctive source words carried only by the slug (M3)
+select is(
+  (select private.detect_preview_leakage(
+    'c1000000-0000-4000-8000-000000000001'::uuid,
+    'insulated-hoppers-telematics-gritting-c1000000',
+    'Road treatment units',
+    'A public body needs a supplier for road treatment units.',
+    '[]'::jsonb,
+    '{}'::text[],
+    null
+  )::text),
+  'REVIEW',
+  'combination-slug: risk is REVIEW'
+);
+select ok(
+  (select coalesce(array_agg(distinct f.finding_code), '{}') from private.preview_leak_findings(
+    'c1000000-0000-4000-8000-000000000001'::uuid,
+    'insulated-hoppers-telematics-gritting-c1000000',
+    'Road treatment units',
+    'A public body needs a supplier for road treatment units.',
+    '[]'::jsonb,
+    '{}'::text[],
+    null
+  ) f) @> array['COMBINATION']::text[],
+  'combination-slug: reports COMBINATION'
 );
 
 select * from finish();

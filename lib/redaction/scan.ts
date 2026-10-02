@@ -56,6 +56,7 @@ export type LeakFindingCode =
   | "PROJECT_NAME"
   | "ACRONYM"
   | "PROPER_NOUN_RUN"
+  | "SOURCE_NAME_TOKEN"
   | "TITLE_SIMILARITY"
   | "SLUG_SIMILARITY"
   | "DESCRIPTION_SIMILARITY"
@@ -139,7 +140,13 @@ const DATE_EXACT_RES = [
   /\b(may\s+[0-3]?[0-9](?:st|nd|rd|th)?,?\s+(?:19|20)[0-9]{2})\b/gi,
   /\b([0-3]?[0-9][/.-][01]?[0-9][/.-](?:19|20)?[0-9]{2})\b/gi,
   /\b((?:19|20)[0-9]{2}[/.-][01]?[0-9][/.-][0-3]?[0-9])\b/gi,
+  /\b([0-3]?[0-9](?:st|nd|rd|th)?\s+(?:of\s+)?may)\b(?!\s+(?:be|not|also|apply|have|include|need|require|vary|change|only|still|well)\b)/gi,
+  /\b(may\s+[0-3]?[0-9](?:st|nd|rd|th)?)\b/gi,
+  /(?<![0-9/.])((?:0?[1-9]|[12][0-9]|3[01])\/(?:0?[1-9]|1[0-2]))(?![0-9/])/gi,
+  /\b([0-3]?[0-9]-(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sept?(?:ember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)(?:-(?:19|20)?[0-9]{2})?)\b/gi,
 ];
+
+const YEARLESS_NUMERIC_DATE = /^[0-9]+\/[0-9]+$/;
 
 const POSTCODE_RE = /\b([A-Z]{1,2}[0-9][A-Z0-9]?\s*[0-9][A-Z]{2})\b/gi;
 
@@ -178,6 +185,46 @@ function initials(tokens: string[]): string {
     .toUpperCase();
 }
 
+function isGenericWord(word: string): boolean {
+  return GENERIC_ORG.has(word) || GENERIC_PROPER.has(word) || BROAD.has(word) || STOP.has(word);
+}
+
+/**
+ * Names the source uses: standalone acronyms (outside all-caps fields and
+ * all-caps runs) and capitalised words that follow a lowercase word and never
+ * appear in lowercase. Returned lowercase so slugs and lowercased prose are
+ * matched too.
+ */
+function sourceNameTokens(parts: string[], raw: string): { acronyms: Set<string>; names: Set<string> } {
+  const acronyms = new Set<string>();
+  const names = new Set<string>();
+  for (const part of parts) {
+    const upper = part.replace(/[^A-Z]/g, "").length;
+    const letters = part.replace(/[^A-Za-z]/g, "").length;
+    if (upper * 2 <= letters) {
+      const standalone = part.replace(/\b[A-Z][A-Z0-9&]*(?:\s+[A-Z][A-Z0-9&]*\b)+/g, " ");
+      for (const m of matches(standalone, /\b([A-Z][A-Z0-9]{2,5})\b/g)) {
+        const word = m[1];
+        const lower = word.toLowerCase();
+        if (
+          !GENERIC_ACR.has(word) &&
+          !isGenericWord(lower) &&
+          matches(raw, new RegExp(`\\b(${word})\\b`, "gi")).every((other) => other[1] === word)
+        ) {
+          acronyms.add(lower);
+        }
+      }
+    }
+    for (const m of matches(part, /\b[a-z][a-z0-9'-]*[,;:)]?\s+([A-Z][a-z]{3,})\b/g)) {
+      const lower = m[1].toLowerCase();
+      if (!isGenericWord(lower) && !new RegExp(`\\b${lower}\\b`).test(raw)) {
+        names.add(lower);
+      }
+    }
+  }
+  return { acronyms, names };
+}
+
 function raise(findings: LeakFinding[]): LeakageRisk {
   if (findings.some((item) => item.risk === "HIGH")) {
     return "HIGH";
@@ -203,10 +250,12 @@ export function scanPreviewLeaks(input: LeakScanInput): LeakScanResult {
   const allNorm = leakNorm(all);
   const csTokens = new Set(textCs.match(/[A-Za-z0-9&]+/g) ?? []);
 
-  const sourceRaw = [input.sourceTitle, input.sourceDescription, ...(input.sourceExtraText ?? [])]
-    .filter((item): item is string => Boolean(item))
-    .join(" . ");
+  const sourceParts = [input.sourceTitle, input.sourceDescription, ...(input.sourceExtraText ?? [])].filter(
+    (item): item is string => Boolean(item),
+  );
+  const sourceRaw = sourceParts.join(" . ");
   const sourceNorm = leakNorm(sourceRaw);
+  const { acronyms: sourceAcronyms, names: sourceNames } = sourceNameTokens(sourceParts, sourceRaw);
 
   // Direct identifiers -------------------------------------------------------
   for (const m of matches(all, /((?:https?:\/\/|www\.)\S+)/gi)) {
@@ -262,11 +311,16 @@ export function scanPreviewLeaks(input: LeakScanInput): LeakScanResult {
   // Dates --------------------------------------------------------------------
   for (const re of DATE_EXACT_RES) {
     for (const m of matches(all, re)) {
-      push("DATE_EXACT", "REVIEW", "Preview contains an exact date", m[1]);
+      if (m[1] !== "24/7") {
+        push("DATE_EXACT", "REVIEW", "Preview contains an exact date", m[1]);
+      }
     }
   }
   for (const candidate of sourceDateCandidates([input.submissionDeadline, ...(input.sourceDates ?? [])])) {
-    if (containsNorm(allNorm, candidate)) {
+    const found = YEARLESS_NUMERIC_DATE.test(candidate)
+      ? new RegExp(`(?<![0-9/.])${candidate}(?![0-9/])`).test(allLower)
+      : containsNorm(allNorm, candidate);
+    if (found) {
       push("DATE_SOURCE", "HIGH", "Preview contains a source date", candidate);
     }
   }
@@ -291,6 +345,11 @@ export function scanPreviewLeaks(input: LeakScanInput): LeakScanResult {
   for (const m of matches(textCs, /\b([A-Z]{1,2}[0-9][A-Z0-9]?)\b/g)) {
     if (!POSTCODE_LIKE.has(m[1])) {
       push("POSTCODE_OUTWARD", "REVIEW", "Preview contains a postcode-shaped token", m[1]);
+    }
+  }
+  for (const word of slugTokens) {
+    if (/^[a-z]{1,2}[0-9][a-z0-9]?$/.test(word) && !POSTCODE_LIKE.has(word.toUpperCase())) {
+      push("POSTCODE_OUTWARD", "REVIEW", "Slug contains a postcode-shaped token", word.toUpperCase());
     }
   }
   const regionNorm = leakNorm(input.broadRegion);
@@ -328,20 +387,44 @@ export function scanPreviewLeaks(input: LeakScanInput): LeakScanResult {
     }
   }
   for (const alias of input.buyerAliases) {
-    if (/^[A-Z0-9&.]{2,12}$/.test(alias) && /[A-Z]/.test(alias)) {
-      const label = alias.replace(/\./g, "");
-      if (csTokens.has(label) || (label.length >= 3 && slugTokens.includes(label.toLowerCase()))) {
+    const label = alias.replace(/\./g, "");
+    // Acronym-style aliases: all caps, or mixed case with two or more capitals.
+    if (
+      /^[A-Za-z0-9&]{2,12}$/.test(label) &&
+      ((/[A-Z]/.test(label) && !/[a-z]/.test(label)) || /[A-Z][^A-Z]*[A-Z]/.test(label))
+    ) {
+      const lower = label.toLowerCase();
+      if (
+        csTokens.has(label) ||
+        (label.length >= 3 &&
+          !GENERIC_ACR.has(label.toUpperCase()) &&
+          !GENERIC_ORG.has(lower) &&
+          !GENERIC_PROPER.has(lower) &&
+          !STOP.has(lower) &&
+          containsNorm(allNorm, label))
+      ) {
         push("BUYER_ACRONYM", "HIGH", "Preview contains a buyer acronym", alias);
       }
       continue;
     }
     const norm = leakNorm(alias);
+    const trimmed = norm.trim();
     if (
-      norm.trim().length >= 4 &&
+      trimmed.length >= 4 &&
       leakTokens(alias).some((word) => !GENERIC_ORG.has(word) && !BROAD.has(word)) &&
       allNorm.includes(norm)
     ) {
       push("BUYER_ALIAS", "HIGH", "Preview contains a buyer alias", alias);
+    } else if (
+      trimmed.length >= 2 &&
+      trimmed.length <= 3 &&
+      !GENERIC_ORG.has(trimmed) &&
+      !BROAD.has(trimmed) &&
+      !STOP.has(trimmed) &&
+      !GENERIC_ACR.has(trimmed.toUpperCase()) &&
+      allNorm.includes(norm)
+    ) {
+      push("BUYER_ALIAS", "REVIEW", "Preview may contain a short buyer alias", alias);
     }
   }
   if (input.buyerName) {
@@ -394,8 +477,14 @@ export function scanPreviewLeaks(input: LeakScanInput): LeakScanResult {
     if (!matchName || !allNorm.includes(matchName)) {
       continue;
     }
+    const short = matchName.trim().length < 5;
     const distinctive = leakTokens(matchName).filter(
-      (word) => !GENERIC_ORG.has(word) && !BROAD.has(word) && !STOP.has(word) && !/^[0-9]+$/.test(word),
+      (word) =>
+        !GENERIC_ORG.has(word) &&
+        !BROAD.has(word) &&
+        !STOP.has(word) &&
+        !/^[0-9]+$/.test(word) &&
+        (!short || (!GENERIC_ACR.has(word.toUpperCase()) && !GENERIC_PROPER.has(word))),
     ).length;
     if (distinctive >= 2) {
       push("ORG_NAME", "HIGH", "Preview contains a known organisation name", name);
@@ -451,6 +540,17 @@ export function scanPreviewLeaks(input: LeakScanInput): LeakScanResult {
           m[1],
         );
       }
+    }
+  }
+
+  for (const word of sourceAcronyms) {
+    if (wordIn(allNorm, word)) {
+      push("SOURCE_NAME_TOKEN", "HIGH", "Preview contains a source acronym", word);
+    }
+  }
+  for (const word of sourceNames) {
+    if (wordIn(allNorm, word)) {
+      push("SOURCE_NAME_TOKEN", word.length >= 5 ? "HIGH" : "REVIEW", "Preview contains a source name", word);
     }
   }
 

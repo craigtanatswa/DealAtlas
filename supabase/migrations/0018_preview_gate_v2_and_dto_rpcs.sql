@@ -306,24 +306,38 @@ insert into private.leak_gate_terms (kind, term) values
   ('generic_acronym', 'WAN'),
   ('generic_acronym', 'WIFI'),
   ('generic_proper_word', 'act'),
+  ('generic_proper_word', 'agreement'),
   ('generic_proper_word', 'amazon'),
   ('generic_proper_word', 'and'),
+  ('generic_proper_word', 'applicant'),
+  ('generic_proper_word', 'applicants'),
   ('generic_proper_word', 'april'),
   ('generic_proper_word', 'august'),
+  ('generic_proper_word', 'bidder'),
+  ('generic_proper_word', 'bidders'),
   ('generic_proper_word', 'britain'),
   ('generic_proper_word', 'british'),
   ('generic_proper_word', 'building'),
+  ('generic_proper_word', 'buyer'),
+  ('generic_proper_word', 'buyers'),
+  ('generic_proper_word', 'client'),
+  ('generic_proper_word', 'consultant'),
+  ('generic_proper_word', 'contractor'),
+  ('generic_proper_word', 'contractors'),
   ('generic_proper_word', 'contracts'),
+  ('generic_proper_word', 'customer'),
   ('generic_proper_word', 'cyber'),
   ('generic_proper_word', 'data'),
   ('generic_proper_word', 'december'),
   ('generic_proper_word', 'east'),
+  ('generic_proper_word', 'employer'),
   ('generic_proper_word', 'england'),
   ('generic_proper_word', 'english'),
   ('generic_proper_word', 'essentials'),
   ('generic_proper_word', 'european'),
   ('generic_proper_word', 'february'),
   ('generic_proper_word', 'friday'),
+  ('generic_proper_word', 'goods'),
   ('generic_proper_word', 'google'),
   ('generic_proper_word', 'great'),
   ('generic_proper_word', 'health'),
@@ -335,6 +349,8 @@ insert into private.leak_gate_terms (kind, term) values
   ('generic_proper_word', 'kingdom'),
   ('generic_proper_word', 'living'),
   ('generic_proper_word', 'london'),
+  ('generic_proper_word', 'lot'),
+  ('generic_proper_word', 'lots'),
   ('generic_proper_word', 'march'),
   ('generic_proper_word', 'may'),
   ('generic_proper_word', 'microsoft'),
@@ -353,7 +369,10 @@ insert into private.leak_gate_terms (kind, term) values
   ('generic_proper_word', 'private'),
   ('generic_proper_word', 'procurement'),
   ('generic_proper_word', 'protection'),
+  ('generic_proper_word', 'provider'),
+  ('generic_proper_word', 'providers'),
   ('generic_proper_word', 'public'),
+  ('generic_proper_word', 'purchaser'),
   ('generic_proper_word', 'real'),
   ('generic_proper_word', 'regulations'),
   ('generic_proper_word', 'remote'),
@@ -366,7 +385,12 @@ insert into private.leak_gate_terms (kind, term) values
   ('generic_proper_word', 'slavery'),
   ('generic_proper_word', 'social'),
   ('generic_proper_word', 'south'),
+  ('generic_proper_word', 'specification'),
   ('generic_proper_word', 'sunday'),
+  ('generic_proper_word', 'supplier'),
+  ('generic_proper_word', 'suppliers'),
+  ('generic_proper_word', 'tenderer'),
+  ('generic_proper_word', 'tenderers'),
   ('generic_proper_word', 'the'),
   ('generic_proper_word', 'thursday'),
   ('generic_proper_word', 'tuesday'),
@@ -378,6 +402,7 @@ insert into private.leak_gate_terms (kind, term) values
   ('generic_proper_word', 'wednesday'),
   ('generic_proper_word', 'welsh'),
   ('generic_proper_word', 'west'),
+  ('generic_proper_word', 'works'),
   ('generic_proper_word', 'workspace'),
   ('generic_proper_word', 'yorkshire'),
   ('generic_proper_word', 'zero'),
@@ -562,7 +587,7 @@ revoke execute on function private.leak_norm(text) from public, anon, authentica
 alter table public.organizations
   add column if not exists leak_match_name text generated always as (
     case
-      when length(btrim(regexp_replace(regexp_replace(regexp_replace(lower(coalesce(canonical_name, '')), '[^a-z0-9]+', ' ', 'g'), '\m(ltd|limited|llp|plc|llc|inc|cic|co|the)\M', ' ', 'g'), '\s+', ' ', 'g'))) >= 5
+      when length(btrim(regexp_replace(regexp_replace(regexp_replace(lower(coalesce(canonical_name, '')), '[^a-z0-9]+', ' ', 'g'), '\m(ltd|limited|llp|plc|llc|inc|cic|co|the)\M', ' ', 'g'), '\s+', ' ', 'g'))) >= 3
       then ' ' || btrim(regexp_replace(regexp_replace(regexp_replace(lower(coalesce(canonical_name, '')), '[^a-z0-9]+', ' ', 'g'), '\m(ltd|limited|llp|plc|llc|inc|cic|co|the)\M', ' ', 'g'), '\s+', ' ', 'g')) || ' '
     end
   ) stored;
@@ -570,7 +595,7 @@ alter table public.organizations
 alter table public.organization_aliases
   add column if not exists leak_match_name text generated always as (
     case
-      when length(btrim(regexp_replace(regexp_replace(regexp_replace(lower(coalesce(alias, '')), '[^a-z0-9]+', ' ', 'g'), '\m(ltd|limited|llp|plc|llc|inc|cic|co|the)\M', ' ', 'g'), '\s+', ' ', 'g'))) >= 5
+      when length(btrim(regexp_replace(regexp_replace(regexp_replace(lower(coalesce(alias, '')), '[^a-z0-9]+', ' ', 'g'), '\m(ltd|limited|llp|plc|llc|inc|cic|co|the)\M', ' ', 'g'), '\s+', ' ', 'g'))) >= 3
       then ' ' || btrim(regexp_replace(regexp_replace(regexp_replace(lower(coalesce(alias, '')), '[^a-z0-9]+', ' ', 'g'), '\m(ltd|limited|llp|plc|llc|inc|cic|co|the)\M', ' ', 'g'), '\s+', ' ', 'g')) || ' '
     end
   ) stored;
@@ -627,8 +652,11 @@ declare
   v_all text;
   v_all_lower text;
   v_all_norm text;
+  v_source_parts text[];
   v_source_raw text;
   v_source_norm text;
+  v_source_acronyms text[];
+  v_source_names text[];
   v_cs_tokens text[];
   v_term text;
   v_label text;
@@ -683,15 +711,45 @@ begin
   v_all_norm := private.leak_norm(v_all);
   v_cs_tokens := array(select m[1] from regexp_matches(v_text_cs, '([A-Za-z0-9&]+)', 'g') as m);
 
-  select concat_ws(' . ',
-    d.source_title,
-    d.source_description,
-    (select string_agg(concat_ws(' . ', l.source_title, l.source_description), ' . ') from public.lots l where l.deal_id = d.id),
-    (select string_agg(concat_ws(' . ', r.name, r.description), ' . ') from public.requirements r where r.deal_id = d.id),
-    (select concat_ws(' . ', pod.project_name, array_to_string(pod.goods_required, ' . '), array_to_string(pod.services_required, ' . '), array_to_string(pod.works_required, ' . '))
-       from public.private_opportunity_details pod where pod.deal_id = d.id)
-  ) into v_source_raw;
+  select array_remove(
+    array[d.source_title, d.source_description]
+    || coalesce((select array_agg(x) from public.lots l, unnest(array[l.source_title, l.source_description]) as x where l.deal_id = d.id), '{}')
+    || coalesce((select array_agg(x) from public.requirements r, unnest(array[r.name, r.description]) as x where r.deal_id = d.id), '{}')
+    || coalesce((select array[pod.project_name] || pod.goods_required || pod.services_required || pod.works_required
+       from public.private_opportunity_details pod where pod.deal_id = d.id), '{}'),
+    null
+  ) into v_source_parts;
+  v_source_raw := array_to_string(v_source_parts, ' . ');
   v_source_norm := private.leak_norm(v_source_raw);
+
+  -- Names the source uses: standalone acronyms (outside all-caps fields and
+  -- all-caps runs) and capitalised words that follow a lowercase word and never
+  -- appear in lowercase. Matched case-insensitively so slugs and lowercased
+  -- prose cannot carry them.
+  select coalesce(array_agg(distinct lower(m[1])), '{}') into v_source_acronyms
+  from unnest(v_source_parts) as part
+  cross join lateral regexp_matches(
+    regexp_replace(part, '\m[A-Z][A-Z0-9&]*(?:\s+[A-Z][A-Z0-9&]*\M)+', ' ', 'g'),
+    '\m([A-Z][A-Z0-9]{2,5})\M', 'g'
+  ) as m
+  where length(regexp_replace(part, '[^A-Z]', '', 'g')) * 2 <= length(regexp_replace(part, '[^A-Za-z]', '', 'g'))
+    and m[1] <> all(v_generic_acr)
+    and lower(m[1]) <> all(v_generic_org)
+    and lower(m[1]) <> all(v_generic_proper)
+    and lower(m[1]) <> all(v_broad)
+    and lower(m[1]) <> all(v_stop)
+    and not exists (
+      select 1 from regexp_matches(v_source_raw, '\m(' || m[1] || ')\M', 'gi') as o where o[1] <> m[1]
+    );
+
+  select coalesce(array_agg(distinct lower(m[1])), '{}') into v_source_names
+  from unnest(v_source_parts) as part
+  cross join lateral regexp_matches(part, '\m[a-z][a-z0-9''-]*[,;:)]?\s+([A-Z][a-z]{3,})\M', 'g') as m
+  where lower(m[1]) <> all(v_generic_org)
+    and lower(m[1]) <> all(v_generic_proper)
+    and lower(m[1]) <> all(v_broad)
+    and lower(m[1]) <> all(v_stop)
+    and v_source_raw !~ ('\m' || lower(m[1]) || '\M');
 
   -- Direct identifiers -------------------------------------------------------
   return query select 'URL'::text, 'HIGH'::public.leakage_risk, left(m[1], 120)
@@ -751,11 +809,16 @@ begin
     '\m((?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|june?|july?|aug(?:ust)?|sept?(?:ember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\.?\s+[0-3]?[0-9](?:st|nd|rd|th)?)\M',
     '\m(may\s+[0-3]?[0-9](?:st|nd|rd|th)?,?\s+(?:19|20)[0-9]{2})\M',
     '\m([0-3]?[0-9][/.-][01]?[0-9][/.-](?:19|20)?[0-9]{2})\M',
-    '\m((?:19|20)[0-9]{2}[/.-][01]?[0-9][/.-][0-3]?[0-9])\M'
+    '\m((?:19|20)[0-9]{2}[/.-][01]?[0-9][/.-][0-3]?[0-9])\M',
+    '\m([0-3]?[0-9](?:st|nd|rd|th)?\s+(?:of\s+)?may)\M(?!\s+(?:be|not|also|apply|have|include|need|require|vary|change|only|still|well)\M)',
+    '\m(may\s+[0-3]?[0-9](?:st|nd|rd|th)?)\M',
+    '(?<![0-9/.])((?:0?[1-9]|[12][0-9]|3[01])/(?:0?[1-9]|1[0-2]))(?![0-9/])',
+    '\m([0-3]?[0-9]-(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sept?(?:ember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)(?:-(?:19|20)?[0-9]{2})?)\M'
   ]
   loop
     return query select 'DATE_EXACT'::text, 'REVIEW'::public.leakage_risk, m[1]
-      from regexp_matches(v_all, v_term, 'gi') as m;
+      from regexp_matches(v_all, v_term, 'gi') as m
+      where m[1] <> '24/7';
   end loop;
 
   -- Source dates in Europe/London, +/- one day, in common written forms.
@@ -807,10 +870,15 @@ begin
     from days
     cross join unnest(array[
       'YYYY-MM-DD', 'DD/MM/YYYY', 'FMDD/FMMM/YYYY', 'DD/MM/YY', 'FMDD FMMonth',
-      'FMDDth FMMonth', 'FMDD Mon', 'FMDDth Mon', 'FMMonth FMDD', 'FMMonth FMDDth', 'Mon FMDD'
+      'FMDDth FMMonth', 'FMDD Mon', 'FMDDth Mon', 'FMMonth FMDD', 'FMMonth FMDDth', 'Mon FMDD',
+      'DD/MM', 'FMDD/FMMM'
     ]) as f
   loop
-    if position(private.leak_norm(v_term) in v_all_norm) > 0 then
+    -- Yearless numeric forms only count with digit/slash boundaries, so a
+    -- "14 03" in other text is not a hit.
+    if (v_term ~ '^[0-9]+/[0-9]+$' and v_all_lower ~ ('(?<![0-9/.])' || v_term || '(?![0-9/])'))
+       or (v_term !~ '^[0-9]+/[0-9]+$' and position(private.leak_norm(v_term) in v_all_norm) > 0)
+    then
       return query select 'DATE_SOURCE'::text, 'HIGH'::public.leakage_risk, v_term;
     end if;
   end loop;
@@ -851,6 +919,11 @@ begin
   return query select 'POSTCODE_OUTWARD'::text, 'REVIEW'::public.leakage_risk, m[1]
     from regexp_matches(v_text_cs, '\m([A-Z]{1,2}[0-9][A-Z0-9]?)\M', 'g') as m
     where m[1] <> all(v_postcode_like);
+
+  -- Slugs are lowercase, so postcode-shaped slug words are checked separately.
+  return query select 'POSTCODE_OUTWARD'::text, 'REVIEW'::public.leakage_risk, upper(w)
+    from unnest(v_slug_tokens) as w
+    where w ~ '^[a-z]{1,2}[0-9][a-z0-9]?$' and upper(w) <> all(v_postcode_like);
 
   if d.buyer_organization_id is not null then
     select * into b from public.organizations where id = d.buyer_organization_id;
@@ -904,9 +977,19 @@ begin
     for v_term in
       select a.alias from public.organization_aliases a where a.organization_id = b.id
     loop
-      if v_term ~ '^[A-Z0-9&.]{2,12}$' and v_term ~ '[A-Z]' then
-        v_label := replace(v_term, '.', '');
-        if v_label = any(v_cs_tokens) or (length(v_label) >= 3 and lower(v_label) = any(v_slug_tokens)) then
+      v_label := replace(v_term, '.', '');
+      -- Acronym-style aliases: all caps, or mixed case with two or more capitals.
+      if v_label ~ '^[A-Za-z0-9&]{2,12}$'
+         and ((v_label ~ '[A-Z]' and v_label !~ '[a-z]') or v_label ~ '[A-Z][^A-Z]*[A-Z]')
+      then
+        if v_label = any(v_cs_tokens)
+           or (length(v_label) >= 3
+               and upper(v_label) <> all(v_generic_acr)
+               and lower(v_label) <> all(v_generic_org)
+               and lower(v_label) <> all(v_generic_proper)
+               and lower(v_label) <> all(v_stop)
+               and position(private.leak_norm(v_label) in v_all_norm) > 0)
+        then
           return query select 'BUYER_ACRONYM'::text, 'HIGH'::public.leakage_risk, v_term;
         end if;
         continue;
@@ -920,6 +1003,14 @@ begin
          and position(v_norm in v_all_norm) > 0
       then
         return query select 'BUYER_ALIAS'::text, 'HIGH'::public.leakage_risk, v_term;
+      elsif length(btrim(v_norm)) between 2 and 3
+         and btrim(v_norm) <> all(v_generic_org)
+         and btrim(v_norm) <> all(v_broad)
+         and btrim(v_norm) <> all(v_stop)
+         and upper(btrim(v_norm)) <> all(v_generic_acr)
+         and position(v_norm in v_all_norm) > 0
+      then
+        return query select 'BUYER_ALIAS'::text, 'REVIEW'::public.leakage_risk, v_term;
       end if;
     end loop;
 
@@ -1001,7 +1092,8 @@ begin
   loop
     select count(*) into v_count
     from unnest(string_to_array(btrim(v_norm), ' ')) as w
-    where w <> all(v_generic_org) and w <> all(v_broad) and w <> all(v_stop) and w !~ '^[0-9]+$';
+    where w <> all(v_generic_org) and w <> all(v_broad) and w <> all(v_stop) and w !~ '^[0-9]+$'
+      and (length(btrim(v_norm)) >= 5 or (upper(w) <> all(v_generic_acr) and w <> all(v_generic_proper)));
     if v_count >= 2 then
       return query select 'ORG_NAME'::text, 'HIGH'::public.leakage_risk, v_term;
     elsif v_count = 1 then
@@ -1098,6 +1190,16 @@ begin
       end if;
     end loop;
   end loop;
+
+  return query select 'SOURCE_NAME_TOKEN'::text, 'HIGH'::public.leakage_risk, w
+    from unnest(v_source_acronyms) as w
+    where position(' ' || w || ' ' in v_all_norm) > 0;
+
+  return query select 'SOURCE_NAME_TOKEN'::text,
+      (case when length(w) >= 5 then 'HIGH' else 'REVIEW' end)::public.leakage_risk,
+      w
+    from unnest(v_source_names) as w
+    where position(' ' || w || ' ' in v_all_norm) > 0;
 
   -- Similarity and copied phrases -------------------------------------------
   if length(btrim(coalesce(d.source_title, ''))) >= 4 then
@@ -1197,7 +1299,7 @@ begin
   select coalesce(array_agg(w order by length(w) desc, w), '{}') into v_carried
   from (
     select distinct w
-    from unnest(string_to_array(btrim(private.leak_norm(array_to_string(v_segments, ' . '))), ' ')) as w
+    from unnest(string_to_array(btrim(private.leak_norm(concat_ws(' . ', array_to_string(v_segments, ' . '), v_slug))), ' ')) as w
     where length(w) >= 5
       and w !~ '^[0-9]+$'
       and w <> all(v_generic_org)
