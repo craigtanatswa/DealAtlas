@@ -10,20 +10,39 @@ import { z } from "zod";
 export type PublicSupabaseClient = SupabaseClient<PublicDatabase>;
 
 type PublicFunctions = Database["public"]["Functions"];
+type PreviewTableRow = Database["public"]["Tables"]["deal_previews"]["Row"];
+
+/**
+ * Generated RPC return types mark every RETURNS TABLE column non-null. Columns
+ * copied from deal_previews keep the table's nullability, and the viewer's
+ * relevance is null without a match.
+ */
+type WithPreviewNullability<T> = {
+  [K in keyof T]: K extends "relevance_score" | "preview_reasons"
+    ? T[K] | null
+    : K extends keyof PreviewTableRow
+      ? null extends PreviewTableRow[K]
+        ? T[K] | null
+        : T[K]
+      : T[K];
+};
 
 /**
  * Sanitised preview DTO returned by the SECURITY DEFINER preview RPCs (0018).
  * It carries no deal_id, timestamps, source, buyer, reference or contact
  * fields; relevance is the signed-in viewer's own match, or null.
  */
-export type DealPreviewDtoRow =
-  PublicFunctions["get_preview_dto_by_slug"]["Returns"][number];
+export type DealPreviewDtoRow = WithPreviewNullability<
+  PublicFunctions["get_preview_dto_by_slug"]["Returns"][number]
+>;
 
-export type DealPreviewSearchRow =
-  PublicFunctions["search_preview_dtos"]["Returns"][number];
+export type DealPreviewSearchRow = WithPreviewNullability<
+  PublicFunctions["search_preview_dtos"]["Returns"][number]
+>;
 
-export type DealPreviewSitemapRow =
-  PublicFunctions["list_preview_sitemap_entries"]["Returns"][number];
+export type DealPreviewSitemapRow = WithPreviewNullability<
+  PublicFunctions["list_preview_sitemap_entries"]["Returns"][number]
+>;
 
 const DEAL_STATUS_VALUES = [
   "UPCOMING",
