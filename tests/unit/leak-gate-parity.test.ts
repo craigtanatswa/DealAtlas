@@ -49,6 +49,20 @@ describe("leak gate parity fixtures (TypeScript scanner)", () => {
       "short-title-copy",
       "phrase-overlap",
       "combination",
+      "date-yearless-may",
+      "date-may-modal",
+      "date-numeric-source",
+      "date-numeric-unrelated",
+      "date-hyphenated",
+      "buyer-alias-mixed-case",
+      "buyer-alias-slug",
+      "short-unlinked-org",
+      "slug-acronym",
+      "slug-site",
+      "lowercase-site",
+      "lowercase-acronym",
+      "slug-postcode",
+      "combination-slug",
     ]) {
       expect(ids, id).toContain(id);
     }

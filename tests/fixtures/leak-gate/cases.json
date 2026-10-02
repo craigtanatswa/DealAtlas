@@ -6,7 +6,8 @@
       "id": "c2000000-0000-4000-8000-000000000001",
       "name": "Corrivale Fenmoor District Council",
       "aliases": [
-        "CFDC"
+        "CFDC",
+        "CvF"
       ],
       "domain": "corrivalefenmoor.gov.uk",
       "postcode": "ZE9 4QT",
@@ -21,9 +22,13 @@
       "id": "c2000000-0000-4000-8000-000000000003",
       "name": "Tervane Maritime Logistics LLP"
     },
+    "unlinkedShortOrganization": {
+      "id": "c2000000-0000-4000-8000-000000000004",
+      "name": "Qavr"
+    },
     "deal": {
       "sourceTitle": "Kelderwick depot gritting fleet replacement",
-      "sourceDescription": "Supply and maintenance of six winter gritting vehicles with insulated hoppers and route telematics for the Kelderwick depot.",
+      "sourceDescription": "Supply and maintenance of six winter gritting vehicles with insulated hoppers and route telematics for the Kelderwick depot. Vehicles must report to the QVRS fleet portal.",
       "reference": "CFDC-2027-0815",
       "ocid": "ocds-q7zx2m-081527",
       "submissionDeadline": "2027-03-14T12:00:00Z",
@@ -349,6 +354,179 @@
       "preview": {
         "title": "Winter road treatment vehicles",
         "summary": "Telematics, hoppers and insulated bodies are needed for a gritting fleet."
+      },
+      "expectRisk": "REVIEW",
+      "expectCodes": [
+        "COMBINATION"
+      ]
+    },
+    {
+      "id": "date-yearless-may",
+      "description": "day and May with no year (M1)",
+      "preview": {
+        "title": "Winter road treatment vehicles",
+        "summary": "Site visits are expected around 14 May."
+      },
+      "expectRisk": "REVIEW",
+      "expectCodes": [
+        "DATE_EXACT"
+      ]
+    },
+    {
+      "id": "date-may-modal",
+      "description": "\"may\" as a verb and 24/7 are not dates (M1)",
+      "preview": {
+        "title": "Winter road treatment vehicles",
+        "summary": "Up to 2 may be appointed and 24/7 call-out cover is needed."
+      },
+      "expectRisk": "LOW",
+      "expectCodes": []
+    },
+    {
+      "id": "date-numeric-source",
+      "description": "source deadline as DD/MM with no year (M1)",
+      "preview": {
+        "title": "Winter road treatment vehicles",
+        "summary": "Responses are due by 14/03."
+      },
+      "expectRisk": "HIGH",
+      "expectCodes": [
+        "DATE_SOURCE",
+        "DATE_EXACT"
+      ]
+    },
+    {
+      "id": "date-numeric-unrelated",
+      "description": "unrelated DD/MM with no year is never LOW (M1)",
+      "preview": {
+        "title": "Winter road treatment vehicles",
+        "summary": "Site visits are expected around 02/06."
+      },
+      "expectRisk": "REVIEW",
+      "expectCodes": [
+        "DATE_EXACT"
+      ]
+    },
+    {
+      "id": "date-hyphenated",
+      "description": "D-Mon-YYYY date is never LOW (M1)",
+      "preview": {
+        "title": "Winter road treatment vehicles",
+        "summary": "Site visits are expected around 2-Jun-2027."
+      },
+      "expectRisk": "REVIEW",
+      "expectCodes": [
+        "DATE_EXACT"
+      ]
+    },
+    {
+      "id": "buyer-alias-mixed-case",
+      "description": "short mixed-case buyer alias (M2)",
+      "preview": {
+        "title": "Winter road treatment vehicles",
+        "summary": "The CvF fleet team needs a supplier for road treatment vehicles."
+      },
+      "expectRisk": "HIGH",
+      "expectCodes": [
+        "BUYER_ACRONYM"
+      ]
+    },
+    {
+      "id": "buyer-alias-slug",
+      "description": "short mixed-case buyer alias only in the slug (M2)",
+      "preview": {
+        "title": "Winter road treatment vehicles",
+        "summary": "A public body needs a supplier for road treatment vehicles.",
+        "slug": "cvf-road-treatment-vehicles-c1000000"
+      },
+      "expectRisk": "HIGH",
+      "expectCodes": [
+        "BUYER_ACRONYM"
+      ]
+    },
+    {
+      "id": "short-unlinked-org",
+      "description": "four-character organisation known only from the organisations table (M2)",
+      "preview": {
+        "title": "Winter road treatment vehicles",
+        "summary": "Spare parts are held by Qavr for the season."
+      },
+      "expectRisk": "REVIEW",
+      "expectCodes": [
+        "ORG_NAME"
+      ]
+    },
+    {
+      "id": "slug-acronym",
+      "description": "source acronym only in the slug (M3)",
+      "preview": {
+        "title": "Winter road treatment vehicles",
+        "summary": "A public body needs a supplier for road treatment vehicles.",
+        "slug": "qvrs-road-treatment-vehicles-c1000000"
+      },
+      "expectRisk": "HIGH",
+      "expectCodes": [
+        "SOURCE_NAME_TOKEN"
+      ]
+    },
+    {
+      "id": "slug-site",
+      "description": "source site name only in the slug (M3)",
+      "preview": {
+        "title": "Winter road treatment vehicles",
+        "summary": "A public body needs a supplier for road treatment vehicles.",
+        "slug": "kelderwick-road-treatment-vehicles-c1000000"
+      },
+      "expectRisk": "HIGH",
+      "expectCodes": [
+        "SOURCE_NAME_TOKEN"
+      ]
+    },
+    {
+      "id": "lowercase-site",
+      "description": "lowercased source site name in prose (M3)",
+      "preview": {
+        "title": "Winter road treatment vehicles",
+        "summary": "Vehicles will be stabled at kelderwick over the winter."
+      },
+      "expectRisk": "HIGH",
+      "expectCodes": [
+        "SOURCE_NAME_TOKEN"
+      ]
+    },
+    {
+      "id": "lowercase-acronym",
+      "description": "lowercased source acronym in prose (M3)",
+      "preview": {
+        "title": "Winter road treatment vehicles",
+        "summary": "Telemetry must feed the existing qvrs portal."
+      },
+      "expectRisk": "HIGH",
+      "expectCodes": [
+        "SOURCE_NAME_TOKEN"
+      ]
+    },
+    {
+      "id": "slug-postcode",
+      "description": "postcode-shaped token only in the slug (M3)",
+      "preview": {
+        "title": "Winter road treatment vehicles",
+        "summary": "A public body needs a supplier for road treatment vehicles.",
+        "slug": "xq4-road-treatment-vehicles-c1000000"
+      },
+      "expectRisk": "REVIEW",
+      "expectCodes": [
+        "POSTCODE_OUTWARD"
+      ]
+    },
+    {
+      "id": "combination-slug",
+      "description": "distinctive source words carried only by the slug (M3)",
+      "sqlOnly": true,
+      "preview": {
+        "title": "Road treatment units",
+        "summary": "A public body needs a supplier for road treatment units.",
+        "slug": "insulated-hoppers-telematics-gritting-c1000000"
       },
       "expectRisk": "REVIEW",
       "expectCodes": [

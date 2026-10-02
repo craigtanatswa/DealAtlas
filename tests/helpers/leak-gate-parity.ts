@@ -41,6 +41,7 @@ export type LeakGateFixture = {
     };
     supplier: { id: string; name: string; role: string };
     unlinkedOrganization: { id: string; name: string };
+    unlinkedShortOrganization: { id: string; name: string };
     deal: {
       sourceTitle: string;
       sourceDescription: string;
@@ -68,7 +69,7 @@ export function leakScanInputForCase(
   fixture: LeakGateFixture,
   testCase: LeakGateCase,
 ): LeakScanInput {
-  const { buyer, supplier, unlinkedOrganization, deal } = fixture.world;
+  const { buyer, supplier, unlinkedOrganization, unlinkedShortOrganization, deal } = fixture.world;
   return {
     previewTitle: testCase.preview.title,
     previewSummary: testCase.preview.summary,
@@ -91,7 +92,13 @@ export function leakScanInputForCase(
     buyerEmail: null,
     buyerPhone: null,
     linkedOrganizationNames: [supplier.name],
-    organizationNames: [buyer.name, ...buyer.aliases, supplier.name, unlinkedOrganization.name],
+    organizationNames: [
+      buyer.name,
+      ...buyer.aliases,
+      supplier.name,
+      unlinkedOrganization.name,
+      unlinkedShortOrganization.name,
+    ],
     exactValueText: null,
     valueMinExVat: null,
     valueMaxExVat: deal.valueMaxExVat,
@@ -135,7 +142,7 @@ export function renderLeakGateParitySql(
   fixture: LeakGateFixture = loadLeakGateFixture(),
   terms: Record<string, readonly string[]> = LEAK_GATE_TERMS,
 ): string {
-  const { buyer, supplier, unlinkedOrganization, deal, dealId } = fixture.world;
+  const { buyer, supplier, unlinkedOrganization, unlinkedShortOrganization, deal, dealId } = fixture.world;
   const termRows = Object.entries(terms).flatMap(([kind, list]) =>
     list.map((term) => `(${sqlText(kind)}, ${sqlText(term)})`),
   );
@@ -156,7 +163,8 @@ export function renderLeakGateParitySql(
     "insert into public.organizations (id, canonical_name, normalized_name, domain, postcode, city) values",
     `  (${sqlText(buyer.id)}, ${sqlText(buyer.name)}, ${sqlText(normalizedName(buyer.name))}, ${sqlText(buyer.domain)}, ${sqlText(buyer.postcode)}, ${sqlText(buyer.city)}),`,
     `  (${sqlText(supplier.id)}, ${sqlText(supplier.name)}, ${sqlText(normalizedName(supplier.name))}, null, null, null),`,
-    `  (${sqlText(unlinkedOrganization.id)}, ${sqlText(unlinkedOrganization.name)}, ${sqlText(normalizedName(unlinkedOrganization.name))}, null, null, null);`,
+    `  (${sqlText(unlinkedOrganization.id)}, ${sqlText(unlinkedOrganization.name)}, ${sqlText(normalizedName(unlinkedOrganization.name))}, null, null, null),`,
+    `  (${sqlText(unlinkedShortOrganization.id)}, ${sqlText(unlinkedShortOrganization.name)}, ${sqlText(normalizedName(unlinkedShortOrganization.name))}, null, null, null);`,
     "",
   ];
 

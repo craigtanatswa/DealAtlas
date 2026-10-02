@@ -101,4 +101,15 @@ describe("deterministic preview leak scanner", () => {
     expect(result.findings.some((item) => item.code === "TITLE_SIMILARITY")).toBe(true);
     expect(result.risk).toBe("HIGH");
   });
+
+  it("does not treat all-caps headings or capitalised defined terms as source names", () => {
+    const result = scanPreviewLeaks(
+      baseInput({
+        sourceTitle: "LOT 2 SUPPORT SERVICE NEVER FREE for civic offices",
+        sourceDescription: "The Contractor shall provide support to the Supplier portal.",
+        previewSummary: "A public organisation needs support that is never free of charge from a supplier and contractor.",
+      }),
+    );
+    expect(result.findings.filter((item) => item.code === "SOURCE_NAME_TOKEN")).toEqual([]);
+  });
 });
