@@ -1,0 +1,62 @@
+import fs from "node:fs";
+
+import { describe, expect, it } from "vitest";
+
+import { scanPreviewLeaks } from "@/lib/redaction/scan";
+
+import {
+  LEAK_GATE_PARITY_SQL_PATH,
+  leakScanInputForCase,
+  loadLeakGateFixture,
+  renderLeakGateParitySql,
+} from "../helpers/leak-gate-parity";
+
+const fixture = loadLeakGateFixture();
+
+describe("leak gate parity fixtures (TypeScript scanner)", () => {
+  for (const testCase of fixture.cases.filter((item) => !item.sqlOnly)) {
+    it(`${testCase.id}: ${testCase.description}`, () => {
+      const result = scanPreviewLeaks(leakScanInputForCase(fixture, testCase));
+      const codes = new Set(result.findings.map((finding) => finding.code));
+
+      expect(result.risk, JSON.stringify(result.findings)).toBe(testCase.expectRisk);
+      for (const code of testCase.expectCodes) {
+        expect(codes, `${testCase.id} missing ${code}`).toContain(code);
+      }
+    });
+  }
+
+  it("keeps synthetic fixtures covering every brief pattern", () => {
+    const ids = new Set(fixture.cases.map((item) => item.id));
+    for (const id of [
+      "clean",
+      "buyer-name",
+      "buyer-acronym",
+      "buyer-slug",
+      "supplier-name",
+      "unlinked-org",
+      "org-suffix",
+      "reference",
+      "ocid",
+      "date-exact-source",
+      "date-plus-one",
+      "date-unrelated",
+      "postcode-full",
+      "postcode-outward",
+      "location-exact",
+      "programme-acronym",
+      "title-case-site",
+      "short-title-copy",
+      "phrase-overlap",
+      "combination",
+    ]) {
+      expect(ids, id).toContain(id);
+    }
+  });
+});
+
+describe("leak gate parity fixtures (generated SQL)", () => {
+  it("keeps supabase/tests/database/leak_gate_parity.test.sql in sync", () => {
+    expect(fs.readFileSync(LEAK_GATE_PARITY_SQL_PATH, "utf8")).toBe(renderLeakGateParitySql());
+  });
+});

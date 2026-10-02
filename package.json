@@ -22,6 +22,7 @@
     "db:types": "node scripts/generate-db-types.mjs",
     "db:test": "supabase test db --local",
     "db:bundle": "node scripts/bundle-schema.mjs",
+    "db:gen-leak-parity": "tsx scripts/generate-leak-gate-parity.ts",
     "ingest": "tsx scripts/ingest.ts",
     "ingest:source": "tsx scripts/ingest.ts",
     "ingest:smoke": "tsx scripts/ingest.ts --source find-a-tender --smoke",
