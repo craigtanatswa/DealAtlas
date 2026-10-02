@@ -3,6 +3,7 @@ import { expect, test } from "@playwright/test";
 import { loginAs } from "./helpers/auth";
 import { expectNoProtectedLeaks, findProtectedMarkerLeaks } from "./helpers/leaks";
 import { readSeed } from "./helpers/seed";
+import { submitKeywordSearch } from "./helpers/search";
 
 test.describe("Free account journey", () => {
   test("Login → profile → relevance → save preview → saved search → locked Deal → Checkout", async ({
@@ -24,7 +25,7 @@ test.describe("Free account journey", () => {
 
     await page.goto("/app/search");
     await page.locator("#search-q").fill(seed.searchToken);
-    await page.getByRole("button", { name: "Search", exact: true }).click();
+    await submitKeywordSearch(page);
     await expect(page.getByRole("heading", { name: seed.previewTitle })).toBeVisible();
     await expect(page.getByLabel(/Match score \d+/i)).toBeVisible();
     await expectNoProtectedLeaks(page);
@@ -38,7 +39,7 @@ test.describe("Free account journey", () => {
 
     await page.goto("/app/search");
     await page.locator("#search-q").fill(seed.searchToken);
-    await page.getByRole("button", { name: "Search", exact: true }).click();
+    await submitKeywordSearch(page);
     await page.getByLabel("Save this search").fill(`E2E ${seed.searchToken}`);
     await page.getByRole("button", { name: "Save search" }).click();
     await expect(
