@@ -229,7 +229,7 @@ export async function createE2ESeed(): Promise<E2ESeed> {
     slug: publishedSlug,
     title: previewTitle,
     summary:
-      "A public organisation needs ongoing technology support without exposing source identity.",
+      "A public organisation needs ongoing technology support from an experienced provider.",
     published: true,
   });
   await insertPreview(env, {

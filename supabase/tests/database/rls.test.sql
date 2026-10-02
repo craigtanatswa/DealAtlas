@@ -154,7 +154,7 @@ insert into public.deal_previews (
   '22222222-2222-4222-8222-222222222222',
   'published-low-risk-preview',
   'Managed IT support for a public organisation',
-  'A public organisation needs ongoing technology support without exposing source identity.',
+  'A public organisation needs ongoing technology support from an experienced provider.',
   'PUBLIC_TENDER',
   'PUBLIC',
   'LIVE',

@@ -48,24 +48,29 @@ export const GENERIC_ACRONYMS = [
 ] as const;
 
 /**
- * Title-Case words allowed in prose runs (regions, months, generic schemes) and
- * capitalised defined terms common in tender documents ("the Contractor").
+ * Title-Case words allowed in prose runs (regions, months, generic schemes),
+ * capitalised defined terms common in tender documents ("the Contractor"), and
+ * place-type words that only identify a site together with a name ("Yard").
  */
 export const GENERIC_PROPER_WORDS = [
   "act", "agreement", "amazon", "and", "applicant", "applicants", "april", "august",
-  "bidder", "bidders", "britain", "british", "building", "buyer", "buyers", "client",
-  "consultant", "contractor", "contractors", "contracts", "customer", "cyber", "data",
-  "december", "east", "employer", "england", "english", "essentials", "european",
-  "february", "friday", "goods", "google", "great", "health", "humber", "ireland",
-  "january", "july", "june", "kingdom", "living", "london", "lot", "lots", "march",
-  "may", "microsoft", "midlands", "modern", "monday", "nationwide", "net", "north",
-  "northern", "november", "october", "of", "office", "plus", "private", "procurement",
-  "protection", "provider", "providers", "public", "purchaser", "real", "regulations",
-  "remote", "safety", "saturday", "scotland", "scottish", "sector", "september",
-  "slavery", "social", "south", "specification", "sunday", "supplier", "suppliers",
-  "tenderer", "tenderers", "the", "thursday", "tuesday", "union", "united", "value",
-  "wage", "wales", "wednesday", "welsh", "west", "works", "workspace", "yorkshire",
-  "zero",
+  "avenue", "barn", "bidder", "bidders", "bridge", "britain", "british", "building",
+  "business", "buyer", "buyers", "centre", "client", "close", "consultant",
+  "contractor", "contractors", "contracts", "court", "crescent", "customer", "cyber",
+  "data", "december", "depot", "dock", "drive", "east", "employer", "england",
+  "english", "essentials", "estate", "european", "farm", "february", "field", "fields",
+  "friday", "gardens", "gate", "goods", "google", "great", "green", "hall", "health",
+  "hill", "house", "humber", "industrial", "ireland", "january", "july", "june",
+  "kingdom", "lane", "living", "lodge", "london", "lot", "lots", "march", "may",
+  "microsoft", "midlands", "mill", "modern", "monday", "nationwide", "net", "north",
+  "northern", "november", "october", "of", "office", "park", "place", "plus",
+  "private", "procurement", "protection", "provider", "providers", "public",
+  "purchaser", "quay", "real", "regulations", "remote", "safety", "saturday",
+  "scotland", "scottish", "sector", "september", "site", "slavery", "social", "south",
+  "specification", "square", "station", "store", "street", "sunday", "supplier",
+  "suppliers", "tenderer", "tenderers", "terrace", "the", "thursday", "tuesday",
+  "union", "unit", "united", "units", "value", "wage", "wales", "wednesday", "welsh",
+  "west", "wharf", "works", "workspace", "yard", "yorkshire", "zero",
 ] as const;
 
 /** Location strings that are coarse enough to appear in a free preview. */

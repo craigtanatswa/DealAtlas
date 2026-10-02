@@ -27,14 +27,31 @@
       "name": "Qavr"
     },
     "deal": {
-      "sourceTitle": "Kelderwick depot gritting fleet replacement",
-      "sourceDescription": "Supply and maintenance of six winter gritting vehicles with insulated hoppers and route telematics for the Kelderwick depot. Vehicles must report to the QVRS fleet portal.",
+      "sourceTitle": "Fenquarry Yard Gritting Fleet Replacement",
+      "sourceDescription": "Supply and maintenance of six winter gritting vehicles with insulated hoppers and route telematics for the Kelderwick depot. Vehicles must report to the QVRS fleet portal. Brindlequay will hold the reserve salt. Tolvercombe crews handle night shifts. OSKERNAITH SALT STORE - LOT 2.",
       "reference": "CFDC-2027-0815",
       "ocid": "ocds-q7zx2m-081527",
       "submissionDeadline": "2027-03-14T12:00:00Z",
-      "exactLocationText": "Kelderwick Depot, Ostbury Fenmoor",
+      "exactLocationText": "Kelderwick Depot, Brindlequay, Ostbury Fenmoor",
       "valueMaxExVat": 1840000
-    }
+    },
+    "fillerDeals": [
+      {
+        "id": "c1000000-0000-4000-8000-000000000011",
+        "sourceTitle": "Library Shelving Replacement",
+        "sourceDescription": "Replacement of shelving across two branch libraries."
+      },
+      {
+        "id": "c1000000-0000-4000-8000-000000000012",
+        "sourceTitle": "Boiler Replacement Programme",
+        "sourceDescription": "Replacement of gas boilers in council housing."
+      },
+      {
+        "id": "c1000000-0000-4000-8000-000000000013",
+        "sourceTitle": "Lighting Column Replacement",
+        "sourceDescription": "Replacement of ageing street lighting columns."
+      }
+    ]
   },
   "cases": [
     {
@@ -287,7 +304,7 @@
       "id": "short-title-copy",
       "description": "copied source title",
       "preview": {
-        "title": "Kelderwick depot gritting fleet replacement",
+        "title": "Fenquarry yard gritting fleet replacement",
         "summary": "A public body needs a supplier for road treatment vehicles."
       },
       "expectRisk": "HIGH",
@@ -575,6 +592,215 @@
       "preview": {
         "title": "Winter road treatment vehicles",
         "summary": "Each hopper holds 14.035 cubic metres."
+      },
+      "expectRisk": "LOW",
+      "expectCodes": []
+    },
+    {
+      "id": "location-token-slug",
+      "description": "sentence-initial site that is also a location, only in the slug (M5)",
+      "preview": {
+        "title": "Road treatment units",
+        "summary": "A public body needs a supplier for road treatment units.",
+        "slug": "brindlequay-road-treatment-units-c1000000"
+      },
+      "expectRisk": "HIGH",
+      "expectCodes": [
+        "LOCATION_TOKEN"
+      ]
+    },
+    {
+      "id": "location-token-word",
+      "description": "sentence-initial site that is also a location, one Title word (M5)",
+      "preview": {
+        "title": "Road treatment units",
+        "summary": "Units will be stabled at Brindlequay.",
+        "slug": "road-treatment-units-c1000000"
+      },
+      "expectRisk": "HIGH",
+      "expectCodes": [
+        "LOCATION_TOKEN"
+      ]
+    },
+    {
+      "id": "location-token-lowercase",
+      "description": "sentence-initial site that is also a location, lowercase (M5)",
+      "preview": {
+        "title": "Road treatment units",
+        "summary": "Units will be stabled at brindlequay.",
+        "slug": "road-treatment-units-c1000000"
+      },
+      "expectRisk": "HIGH",
+      "expectCodes": [
+        "LOCATION_TOKEN"
+      ]
+    },
+    {
+      "id": "location-token-buyer-city",
+      "description": "one word of a two-word buyer town (M5)",
+      "preview": {
+        "title": "Road treatment units",
+        "summary": "Units will be serviced in Ostbury.",
+        "slug": "road-treatment-units-c1000000"
+      },
+      "expectRisk": "HIGH",
+      "expectCodes": [
+        "LOCATION_TOKEN"
+      ]
+    },
+    {
+      "id": "initial-site-slug",
+      "description": "site written only at the start of a sentence, only in the slug (M5)",
+      "sqlOnly": true,
+      "tsExpectRisk": "LOW",
+      "preview": {
+        "title": "Road treatment units",
+        "summary": "A public body needs a supplier for road treatment units.",
+        "slug": "tolvercombe-road-treatment-units-c1000000"
+      },
+      "expectRisk": "REVIEW",
+      "expectCodes": [
+        "SOURCE_RARE_WORD"
+      ]
+    },
+    {
+      "id": "initial-site-word",
+      "description": "site written only at the start of a sentence, one Title word in prose (M5)",
+      "sqlOnly": true,
+      "tsExpectRisk": "LOW",
+      "preview": {
+        "title": "Road treatment units",
+        "summary": "Units will be stabled at Tolvercombe.",
+        "slug": "road-treatment-units-c1000000"
+      },
+      "expectRisk": "REVIEW",
+      "expectCodes": [
+        "SOURCE_RARE_WORD"
+      ]
+    },
+    {
+      "id": "initial-site-lowercase",
+      "description": "site written only at the start of a sentence, lowercase in prose (M5)",
+      "sqlOnly": true,
+      "tsExpectRisk": "LOW",
+      "preview": {
+        "title": "Road treatment units",
+        "summary": "Units will be stabled at tolvercombe.",
+        "slug": "road-treatment-units-c1000000"
+      },
+      "expectRisk": "REVIEW",
+      "expectCodes": [
+        "SOURCE_RARE_WORD"
+      ]
+    },
+    {
+      "id": "heading-site-slug",
+      "description": "site written only in an ALL-CAPS heading, only in the slug (M5)",
+      "sqlOnly": true,
+      "tsExpectRisk": "LOW",
+      "preview": {
+        "title": "Road treatment units",
+        "summary": "A public body needs a supplier for road treatment units.",
+        "slug": "oskernaith-road-treatment-units-c1000000"
+      },
+      "expectRisk": "REVIEW",
+      "expectCodes": [
+        "SOURCE_RARE_WORD"
+      ]
+    },
+    {
+      "id": "heading-site-word",
+      "description": "site written only in an ALL-CAPS heading, one Title word in prose (M5)",
+      "sqlOnly": true,
+      "tsExpectRisk": "LOW",
+      "preview": {
+        "title": "Road treatment units",
+        "summary": "Units will be stabled at Oskernaith.",
+        "slug": "road-treatment-units-c1000000"
+      },
+      "expectRisk": "REVIEW",
+      "expectCodes": [
+        "SOURCE_RARE_WORD"
+      ]
+    },
+    {
+      "id": "heading-site-lowercase",
+      "description": "site written only in an ALL-CAPS heading, lowercase in prose (M5)",
+      "sqlOnly": true,
+      "tsExpectRisk": "LOW",
+      "preview": {
+        "title": "Road treatment units",
+        "summary": "Units will be stabled at oskernaith.",
+        "slug": "road-treatment-units-c1000000"
+      },
+      "expectRisk": "REVIEW",
+      "expectCodes": [
+        "SOURCE_RARE_WORD"
+      ]
+    },
+    {
+      "id": "title-site-slug",
+      "description": "site written only in the Title-Case source title, only in the slug (M5)",
+      "sqlOnly": true,
+      "tsExpectRisk": "LOW",
+      "preview": {
+        "title": "Road treatment units",
+        "summary": "A public body needs a supplier for road treatment units.",
+        "slug": "fenquarry-road-treatment-units-c1000000"
+      },
+      "expectRisk": "REVIEW",
+      "expectCodes": [
+        "SOURCE_RARE_WORD"
+      ]
+    },
+    {
+      "id": "title-site-word",
+      "description": "site written only in the Title-Case source title, one Title word in prose (M5)",
+      "sqlOnly": true,
+      "tsExpectRisk": "LOW",
+      "preview": {
+        "title": "Road treatment units",
+        "summary": "Units will be stabled at Fenquarry.",
+        "slug": "road-treatment-units-c1000000"
+      },
+      "expectRisk": "REVIEW",
+      "expectCodes": [
+        "SOURCE_RARE_WORD"
+      ]
+    },
+    {
+      "id": "title-site-lowercase",
+      "description": "site written only in the Title-Case source title, lowercase in prose (M5)",
+      "sqlOnly": true,
+      "tsExpectRisk": "LOW",
+      "preview": {
+        "title": "Road treatment units",
+        "summary": "Units will be stabled at fenquarry.",
+        "slug": "road-treatment-units-c1000000"
+      },
+      "expectRisk": "REVIEW",
+      "expectCodes": [
+        "SOURCE_RARE_WORD"
+      ]
+    },
+    {
+      "id": "common-title-word",
+      "description": "capitalised title word that other deals also use stays LOW (M5 control)",
+      "preview": {
+        "title": "Road treatment units",
+        "summary": "Replacement units are needed for the road fleet.",
+        "slug": "road-treatment-units-c1000000"
+      },
+      "expectRisk": "LOW",
+      "expectCodes": []
+    },
+    {
+      "id": "common-heading-word",
+      "description": "ALL-CAPS heading words the source also writes in lowercase stay LOW (M5 control)",
+      "preview": {
+        "title": "Road treatment units",
+        "summary": "A salt store is available for the fleet.",
+        "slug": "road-treatment-units-c1000000"
       },
       "expectRisk": "LOW",
       "expectCodes": []

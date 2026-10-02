@@ -15,7 +15,10 @@ export const LEAK_GATE_PARITY_SQL_PATH = path.join(
 export type LeakGateCase = {
   id: string;
   description: string;
+  /** The finding needs the deals corpus, so only the SQL gate can reach `expectRisk`. */
   sqlOnly?: boolean;
+  /** For `sqlOnly` cases: what the TypeScript scanner alone returns. */
+  tsExpectRisk?: LeakageRisk;
   preview: {
     title: string;
     summary: string;
@@ -51,6 +54,8 @@ export type LeakGateFixture = {
       exactLocationText: string;
       valueMaxExVat: number;
     };
+    /** Other deals in the corpus, so common source words are not rare. */
+    fillerDeals: Array<{ id: string; sourceTitle: string; sourceDescription: string }>;
   };
   cases: LeakGateCase[];
 };
@@ -190,6 +195,19 @@ export function renderLeakGateParitySql(
     "insert into public.deal_organizations (deal_id, organization_id, role) values",
     `  (${sqlText(dealId)}, ${sqlText(supplier.id)}, ${sqlText(supplier.role)});`,
   );
+
+  if (fixture.world.fillerDeals.length > 0) {
+    lines.push(
+      "",
+      "insert into public.deals (id, source_title, source_description, deal_type, buyer_sector, stage, status) values",
+      fixture.world.fillerDeals
+        .map(
+          (filler) =>
+            `  (${sqlText(filler.id)}, ${sqlText(filler.sourceTitle)}, ${sqlText(filler.sourceDescription)}, 'PUBLIC_TENDER', 'PUBLIC', 'LIVE', 'OPEN')`,
+        )
+        .join(",\n") + ";",
+    );
+  }
 
   for (const testCase of fixture.cases) {
     const call = findingsCall(fixture, testCase);
