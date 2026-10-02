@@ -12,6 +12,7 @@ export default defineConfig({
   },
   test: {
     environment: "node",
+    globalSetup: ["./tests/setup/db-target-guard.ts"],
     include: [
       "tests/unit/**/*.test.ts",
       "tests/unit/**/*.test.tsx",

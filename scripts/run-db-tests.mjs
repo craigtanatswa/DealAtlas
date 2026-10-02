@@ -2,6 +2,8 @@ import { spawnSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { assertSafeDbTestTargets } from "./db-target-guard.mjs";
+
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 function run(command, args, extraEnv = {}) {
@@ -61,8 +63,14 @@ function readLocalSupabaseEnv() {
   };
 }
 
-run("npx", ["supabase", "test", "db"]);
 const testEnv = readLocalSupabaseEnv();
+try {
+  assertSafeDbTestTargets([["supabase status API_URL", testEnv.DEALATLAS_DB_TEST_URL]]);
+} catch (error) {
+  process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
+  process.exit(1);
+}
+run("npx", ["supabase", "test", "db", "--local"]);
 run(
   "npx",
   ["vitest", "run", "tests/integration"],
