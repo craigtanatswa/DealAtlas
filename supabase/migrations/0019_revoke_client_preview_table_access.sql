@@ -5,6 +5,42 @@
 -- the 0018 DTO RPCs, verify it, THEN apply this migration. Applying it first
 -- breaks every public preview page still querying deal_previews directly.
 
+-- Function and schema ACLs as they were before this migration, so
+-- supabase/rollback/0019_rollback.sql can restore exactly what is revoked
+-- below (hosted default privileges differ per project). Server-only.
+create table if not exists private.pre_0019_acl (
+  kind text not null check (kind in ('function', 'schema', 'default_acl')),
+  object text not null,
+  acl aclitem[],
+  primary key (kind, object)
+);
+revoke all on table private.pre_0019_acl from public, anon, authenticated, service_role;
+
+insert into private.pre_0019_acl (kind, object, acl)
+select 'function', p.oid::regprocedure::text, p.proacl
+from pg_catalog.pg_proc p
+join pg_catalog.pg_namespace n on n.oid = p.pronamespace
+where n.nspname = 'public'
+  and not exists (
+    select 1
+    from pg_catalog.pg_depend dep
+    where dep.classid = 'pg_catalog.pg_proc'::regclass
+      and dep.objid = p.oid
+      and dep.deptype = 'e'
+  )
+union all
+select 'schema', n.nspname, n.nspacl
+from pg_catalog.pg_namespace n
+where n.nspname in ('public', 'private', 'extensions')
+union all
+select 'default_acl', coalesce(n.nspname, '*'), d.defaclacl
+from pg_catalog.pg_default_acl d
+left join pg_catalog.pg_namespace n on n.oid = d.defaclnamespace
+where d.defaclobjtype = 'f'
+  and d.defaclrole = (select r.oid from pg_catalog.pg_roles r where r.rolname = current_user)
+  and (d.defaclnamespace = 0 or n.nspname = 'public')
+on conflict (kind, object) do nothing;
+
 -- Client roles no longer read deal_previews; the DTO RPCs (SECURITY DEFINER)
 -- are the only client path.
 drop policy if exists "published low-risk previews are readable" on public.deal_previews;
@@ -62,7 +98,11 @@ begin
   end loop;
 end $$;
 
-alter default privileges in schema public revoke execute on functions from public;
+-- Functions created later by the migration role are not client-callable by
+-- default: the global PUBLIC default and any per-schema anon/authenticated
+-- default (hosted Supabase adds one) are both removed.
+alter default privileges revoke execute on functions from public;
+alter default privileges in schema public revoke execute on functions from public, anon, authenticated;
 revoke create on schema public from public, anon, authenticated;
 
 -- Client roles keep USAGE on public (DTO RPCs, own-row tables) and auth
