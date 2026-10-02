@@ -21,7 +21,10 @@ test.describe("Anonymous journey", () => {
     await page.getByRole("link", { name: "Find Deals" }).first().click();
     await page.waitForURL(/\/deals/);
     await page.locator("#search-q").fill(seed.searchToken);
-    await page.getByRole("button", { name: "Search", exact: true }).click();
+    await page
+      .locator("form:has(#search-q)")
+      .getByRole("button", { name: "Search", exact: true })
+      .click();
     await expect(page.getByRole("heading", { name: seed.previewTitle })).toBeVisible();
     await expectNoProtectedLeaks(page);
 
