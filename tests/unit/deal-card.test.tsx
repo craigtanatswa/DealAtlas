@@ -46,7 +46,9 @@ describe("locked intelligence", () => {
       screen.getByLabelText("Buyer identity is locked. See who is buying"),
     ).toBeTruthy();
     expect(screen.getByText("See who is buying")).toBeTruthy();
-    expect(screen.getByText(/placeholder only/i)).toBeTruthy();
+    expect(
+      screen.getByText("Join DealAtlas Pro to unlock this field."),
+    ).toBeTruthy();
   });
 
   it("does not accept or display a protected value on the unlock panel", () => {

@@ -5,6 +5,7 @@ import { expect, test } from "@playwright/test";
 import { loginAs } from "./helpers/auth";
 import { findProtectedMarkerLeaks } from "./helpers/leaks";
 import { readSeed } from "./helpers/seed";
+import { submitKeywordSearch } from "./helpers/search";
 import {
   proActiveWebhookPayload,
   signedWebhookHeaders,
@@ -84,7 +85,7 @@ test.describe("Pro journey", () => {
 
     await page.goto("/app/search");
     await page.locator("#search-q").fill(seed.searchToken);
-    await page.getByRole("button", { name: "Search", exact: true }).click();
+    await submitKeywordSearch(page);
     await expect(page.getByRole("heading", { name: seed.previewTitle })).toBeVisible();
     await page.getByLabel("Save this search").fill(`Pro ${seed.searchToken}`);
     await page.getByRole("button", { name: "Save search" }).click();
