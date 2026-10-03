@@ -1,3 +1,4 @@
+import { BROAD_REGIONS } from "@/lib/preview/region";
 import {
   BROAD_LOCATION_TERMS,
   GENERIC_ACRONYMS,
@@ -66,6 +67,7 @@ export type LeakFindingCode =
   | "PHRASE_OVERLAP"
   | "EXACT_AMOUNT"
   | "SOURCE_PLATFORM"
+  | "BROAD_REGION"
   | "COMBINATION";
 
 export type LeakFinding = {
@@ -661,6 +663,12 @@ export function scanPreviewLeaks(input: LeakScanInput): LeakScanResult {
     if ((platformSubstringOk(marker) && allLower.includes(marker)) || containsNorm(allNorm, marker)) {
       push("SOURCE_PLATFORM", "HIGH", "Preview contains a source-platform identifier", marker);
     }
+  }
+
+  // broad_region is shown verbatim on cards, so it must be one of the fixed regions.
+  const region = input.broadRegion?.trim();
+  if (region && !(BROAD_REGIONS as readonly string[]).includes(region)) {
+    push("BROAD_REGION", "HIGH", "Preview region is not a listed broad region", region);
   }
 
   const unique = findings.filter(

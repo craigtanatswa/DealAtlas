@@ -2100,5 +2100,47 @@ select is(
   'platform-word-control: risk is LOW'
 );
 
+-- region-unlisted: an unlisted broad_region holds the preview
+select is(
+  (select private.detect_preview_leakage(
+    'c1000000-0000-4000-8000-000000000001'::uuid,
+    'winter-road-treatment-vehicles-c1000000',
+    'Road treatment units for a district council',
+    'A public body in eastern England needs a supplier to provide and service a small number of road treatment units.',
+    '["relevant plant supply experience","servicing capability"]'::jsonb,
+    '{}'::text[],
+    'Zarqwellshire'
+  )::text),
+  'HIGH',
+  'region-unlisted: risk is HIGH'
+);
+select ok(
+  (select coalesce(array_agg(distinct f.finding_code), '{}') from private.preview_leak_findings(
+    'c1000000-0000-4000-8000-000000000001'::uuid,
+    'winter-road-treatment-vehicles-c1000000',
+    'Road treatment units for a district council',
+    'A public body in eastern England needs a supplier to provide and service a small number of road treatment units.',
+    '["relevant plant supply experience","servicing capability"]'::jsonb,
+    '{}'::text[],
+    'Zarqwellshire'
+  ) f) @> array['BROAD_REGION']::text[],
+  'region-unlisted: reports BROAD_REGION'
+);
+
+-- region-padded-listed: a listed broad_region with surrounding spaces publishes
+select is(
+  (select private.detect_preview_leakage(
+    'c1000000-0000-4000-8000-000000000001'::uuid,
+    'winter-road-treatment-vehicles-c1000000',
+    'Road treatment units for a district council',
+    'A public body in eastern England needs a supplier to provide and service a small number of road treatment units.',
+    '["relevant plant supply experience","servicing capability"]'::jsonb,
+    '{}'::text[],
+    ' East of England '
+  )::text),
+  'LOW',
+  'region-padded-listed: risk is LOW'
+);
+
 select * from finish();
 rollback;

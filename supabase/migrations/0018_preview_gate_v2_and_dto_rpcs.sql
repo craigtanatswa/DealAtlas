@@ -1427,6 +1427,17 @@ begin
            and position(marker in v_all_lower) > 0)
        or position(private.leak_norm(marker) in v_all_norm) > 0;
 
+  -- broad_region is shown verbatim on cards, so it must be one of the fixed
+  -- regions (lib/preview/region.ts BROAD_REGIONS).
+  if nullif(btrim(p_broad_region), '') is not null
+     and btrim(p_broad_region) <> all(array[
+       'Nationwide', 'London', 'South East England', 'South West England', 'East of England',
+       'East Midlands', 'West Midlands', 'Yorkshire and the Humber', 'North West England',
+       'North East England', 'Scotland', 'Wales', 'Northern Ireland', 'Remote'
+     ]) then
+    return query select 'BROAD_REGION'::text, 'HIGH'::public.leakage_risk, left(btrim(p_broad_region), 120);
+  end if;
+
   -- Combination risk: distinctive words carried from the source that pin the
   -- preview to fewer than three deals.
   select coalesce(array_agg(w order by length(w) desc, w), '{}') into v_carried

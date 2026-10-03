@@ -173,7 +173,7 @@ insert into public.deal_previews (
   'LIVE',
   'OPEN',
   'technology',
-  'UK',
+  'Nationwide',
   'LOW',
   true
 );

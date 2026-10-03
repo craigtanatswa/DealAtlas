@@ -1042,6 +1042,40 @@
       },
       "expectRisk": "LOW",
       "expectCodes": []
+    },
+    {
+      "id": "region-unlisted",
+      "description": "an unlisted broad_region holds the preview",
+      "preview": {
+        "title": "Road treatment units for a district council",
+        "summary": "A public body in eastern England needs a supplier to provide and service a small number of road treatment units.",
+        "requirements": [
+          "relevant plant supply experience",
+          "servicing capability"
+        ],
+        "slug": "winter-road-treatment-vehicles-c1000000",
+        "broadRegion": "Zarqwellshire"
+      },
+      "expectRisk": "HIGH",
+      "expectCodes": [
+        "BROAD_REGION"
+      ]
+    },
+    {
+      "id": "region-padded-listed",
+      "description": "a listed broad_region with surrounding spaces publishes",
+      "preview": {
+        "title": "Road treatment units for a district council",
+        "summary": "A public body in eastern England needs a supplier to provide and service a small number of road treatment units.",
+        "requirements": [
+          "relevant plant supply experience",
+          "servicing capability"
+        ],
+        "slug": "winter-road-treatment-vehicles-c1000000",
+        "broadRegion": " East of England "
+      },
+      "expectRisk": "LOW",
+      "expectCodes": []
     }
   ]
 }
