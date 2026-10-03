@@ -447,7 +447,10 @@ insert into auth.users (id, email) values
 insert into public.company_profiles (id, user_id, company_name)
 values ('66666666-6666-4666-8666-666666666666', '55555555-5555-4555-8555-555555555555', 'Example Co');
 insert into public.deal_matches (company_profile_id, deal_id, relevance_score, preview_reasons)
-values ('66666666-6666-4666-8666-666666666666', '22222222-2222-4222-8222-222222222222', 72, '[]'::jsonb);
+values ('66666666-6666-4666-8666-666666666666', '22222222-2222-4222-8222-222222222222', 72,
+  '[{"code":"KEYWORD_OVERLAP","kind":"match","label":"Matches Pellingworth Borough Council history"},
+    {"code":"NOT_A_REASON_CODE","kind":"match","label":"Pellingworth depot"},
+    {"code":"REGION_MATCH","kind":"sideways","label":"Pellingworth"}]'::jsonb);
 insert into public.saved_deals (user_id, deal_id) values
   ('55555555-5555-4555-8555-555555555555', '22222222-2222-4222-8222-222222222222'),
   ('55555555-5555-4555-8555-555555555555', '33333333-3333-4333-8333-333333333333');
@@ -466,6 +469,44 @@ select is(
   (select relevance_score from public.search_preview_dtos() where slug = 'published-low-risk-preview'),
   72::numeric,
   'signed-in DTO search carries only the caller''s own relevance score'
+);
+
+select is(
+  (select preview_reasons from public.search_preview_dtos() where slug = 'published-low-risk-preview'),
+  '[{"code":"KEYWORD_OVERLAP","kind":"match","label":"Keyword overlap with the opportunity preview"}]'::jsonb,
+  'search DTO reasons carry the canned label for the code; stored labels and unknown codes are dropped'
+);
+
+select is(
+  (select preview_reasons from public.get_preview_dto_by_slug('published-low-risk-preview')),
+  '[{"code":"KEYWORD_OVERLAP","kind":"match","label":"Keyword overlap with the opportunity preview"}]'::jsonb,
+  'slug DTO reasons are canned only'
+);
+
+select is(
+  (select preview_reasons from public.get_preview_dto_by_deal_id('22222222-2222-4222-8222-222222222222')),
+  '[{"code":"KEYWORD_OVERLAP","kind":"match","label":"Keyword overlap with the opportunity preview"}]'::jsonb,
+  'deal-id DTO reasons are canned only'
+);
+
+select throws_ok(
+  'select preview_reasons from public.deal_matches limit 1',
+  '42501',
+  NULL,
+  'authenticated cannot read stored deal_matches.preview_reasons'
+);
+
+select throws_ok(
+  'select detail_reasons from public.deal_matches limit 1',
+  '42501',
+  NULL,
+  'authenticated cannot read deal_matches.detail_reasons'
+);
+
+select is(
+  (select relevance_score from public.deal_matches where deal_id = '22222222-2222-4222-8222-222222222222'),
+  72::numeric,
+  'authenticated still reads its own match score'
 );
 
 select is(

@@ -54,6 +54,11 @@ drop policy if exists "published low-risk previews are readable" on public.deal_
 revoke all on table public.deal_previews from public, anon, authenticated;
 grant all on table public.deal_previews to service_role;
 
+-- Stored match-reason text never reaches clients directly; the DTO RPCs
+-- project canned labels from the reason codes (private.preview_dto_reasons).
+-- 0012 granted this column individually, so the column revoke is effective.
+revoke select (preview_reasons) on table public.deal_matches from anon, authenticated;
+
 -- Legacy invoker search RPCs return deal_id and are kept for service-role code
 -- (exports) only.
 revoke all on function public.search_deal_previews(

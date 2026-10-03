@@ -1673,8 +1673,55 @@ as $$
   end;
 $$;
 
+-- Match reasons leave the database as {code, kind, label} with the canned
+-- label for the code only; stored label text is never returned and unknown
+-- codes are dropped. Keep in sync with PREVIEW_REASON_LABELS in
+-- lib/matching/types.ts (tests/unit/preview-reason-labels-sql.test.ts).
+create or replace function private.preview_dto_reasons(p jsonb)
+returns jsonb
+language sql
+immutable
+set search_path = ''
+as $$
+  select coalesce(jsonb_agg(jsonb_build_object('code', x.code, 'kind', x.kind, 'label', x.label) order by x.ord), '[]'::jsonb)
+  from (
+    select r.code, r.kind, r.label, r.ord
+    from (
+      select
+        e ->> 'code' as code,
+        e ->> 'kind' as kind,
+        case e ->> 'code'
+          when 'CATEGORY_OVERLAP' then 'Category overlap with your profile'
+          when 'CPV_OVERLAP' then 'Classification overlap with your profile'
+          when 'KEYWORD_OVERLAP' then 'Keyword overlap with the opportunity preview'
+          when 'NEGATIVE_KEYWORD' then 'Reduced by a negative keyword'
+          when 'REGION_MATCH' then 'Region overlap with areas you serve'
+          when 'REGION_MISMATCH' then 'Region is outside your stated coverage'
+          when 'VALUE_IN_RANGE' then 'Value band sits within your range'
+          when 'VALUE_OUT_OF_RANGE' then 'Value band sits outside your range'
+          when 'SECTOR_MATCH' then 'Buyer sector matches your preference'
+          when 'SECTOR_MISMATCH' then 'Buyer sector differs from your preference'
+          when 'CERTIFICATION_SIGNAL' then 'Certification signal in general requirements'
+          when 'CERTIFICATION_GAP' then 'A listed certification requirement may not match your profile'
+          when 'FRAMEWORK_SIGNAL' then 'Framework or dynamic-market related opportunity'
+          when 'FRAMEWORK_GAP' then 'Framework-related opportunity; membership not listed'
+          when 'SEMANTIC_SIMILARITY' then 'Semantic similarity to your company description'
+          when 'PROFILE_LIMITED' then 'Limited profile data; score is approximate'
+        end as label,
+        a.ord
+      from jsonb_array_elements(case when jsonb_typeof(p) = 'array' then p else '[]'::jsonb end)
+        with ordinality as a(e, ord)
+      where jsonb_typeof(e) = 'object'
+    ) r
+    where r.label is not null and r.kind in ('match', 'mismatch')
+    order by r.ord
+    limit 16
+  ) x;
+$$;
+
 revoke execute on function private.preview_dto_requirements(jsonb) from public, anon, authenticated;
 revoke execute on function private.preview_freshness_label(timestamptz, timestamptz) from public, anon, authenticated;
+revoke execute on function private.preview_dto_reasons(jsonb) from public, anon, authenticated;
 
 create or replace function public.search_preview_dtos(
   p_query text default null,
@@ -1785,7 +1832,7 @@ as $$
     r.relevance_tags[1:12],
     private.preview_freshness_label(r.created_at, r.updated_at),
     r.match_score,
-    coalesce(r.match_reasons, '[]'::jsonb),
+    private.preview_dto_reasons(r.match_reasons),
     count(*) over ()
   from ranked r
   order by
@@ -1845,7 +1892,7 @@ as $$
     dp.relevance_tags[1:12],
     private.preview_freshness_label(dp.created_at, dp.updated_at),
     dm.relevance_score,
-    coalesce(dm.preview_reasons, '[]'::jsonb)
+    private.preview_dto_reasons(dm.preview_reasons)
   from public.deal_previews dp
   left join public.company_profiles cp on cp.user_id = auth.uid()
   left join public.deal_matches dm
@@ -1907,7 +1954,7 @@ as $$
     dp.relevance_tags[1:12],
     private.preview_freshness_label(dp.created_at, dp.updated_at),
     dm.relevance_score,
-    coalesce(dm.preview_reasons, '[]'::jsonb)
+    private.preview_dto_reasons(dm.preview_reasons)
   from public.deal_previews dp
   left join public.company_profiles cp on cp.user_id = auth.uid()
   left join public.deal_matches dm

@@ -164,6 +164,7 @@ drop function if exists private.detect_preview_leakage(uuid, text, text, text, j
 drop function if exists private.preview_leak_findings(uuid, text, text, text, jsonb, text[], text);
 drop function if exists private.preview_dto_requirements(jsonb);
 drop function if exists private.preview_freshness_label(timestamptz, timestamptz);
+drop function if exists private.preview_dto_reasons(jsonb);
 
 drop index if exists public.deals_leak_source_tsv_idx;
 alter table public.organizations drop column if exists leak_match_name;

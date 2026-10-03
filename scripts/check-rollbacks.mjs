@@ -63,6 +63,13 @@ begin
   if not pg_catalog.has_table_privilege('anon', 'public.deal_previews', 'select') then
     failures := array_append(failures, 'after 0019 rollback, anon cannot select deal_previews');
   end if;
+  if not pg_catalog.has_column_privilege('authenticated', 'public.deal_matches', 'preview_reasons', 'select')
+     or pg_catalog.has_column_privilege('authenticated', 'public.deal_matches', 'detail_reasons', 'select') then
+    failures := array_append(failures, 'after 0019 rollback, deal_matches column grants differ from 0012');
+  end if;
+  if pg_catalog.to_regprocedure('private.preview_dto_reasons(jsonb)') is not null then
+    failures := array_append(failures, 'after 0018 rollback, private.preview_dto_reasons remains');
+  end if;
   if cardinality(failures) > 0 then
     raise exception 'rollback check failed: %', array_to_string(failures, '; ');
   end if;

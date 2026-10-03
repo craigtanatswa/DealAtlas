@@ -31,6 +31,9 @@ for select
 to anon, authenticated
 using (is_published = true and leakage_risk = 'LOW');
 
+-- 0012's column grant, which 0019 revokes.
+grant select (preview_reasons) on table public.deal_matches to authenticated;
+
 -- Client EXECUTE grants on public functions, as recorded before 0019. A NULL
 -- ACL means the built-in default (EXECUTE for PUBLIC).
 do $$

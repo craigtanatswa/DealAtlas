@@ -108,9 +108,12 @@ describe("typed data-access boundaries", () => {
     expect(persist).not.toMatch(/select\(\s*["']\*["']\s*\)/);
 
     const load = read("lib/matching/load.ts");
-    expect(load).toContain("MATCH_PREVIEW_SELECT");
     expect(load).not.toContain("select(\"*\")");
     expect(load).toContain("detail_reasons");
+    // Stored reason columns are read only with the admin client after the
+    // Pro check; client roles get canned labels through the DTO RPCs.
+    expect(load.match(/\.from\("deal_matches"\)/g)?.length ?? 0).toBe(1);
+    expect(load).toMatch(/const admin = createSupabaseAdminClient\(\);\s*const \{ data, error \} = await admin\s*\.from\("deal_matches"\)/);
   });
 
   it("loads alerts with an explicit server-only column list and never selects star", () => {
