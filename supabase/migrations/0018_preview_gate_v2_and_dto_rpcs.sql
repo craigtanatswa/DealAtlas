@@ -586,19 +586,58 @@ insert into private.leak_gate_terms (kind, term) values
   ('phrase_stopword', 'within'),
   ('phrase_stopword', 'would'),
   ('phrase_stopword', 'you'),
+  ('source_platform', 'achilles uvdb'),
+  ('source_platform', 'atamis'),
+  ('source_platform', 'balfour beatty supply chain'),
+  ('source_platform', 'blue light procurement database'),
+  ('source_platform', 'bluelight'),
+  ('source_platform', 'bravo'),
+  ('source_platform', 'bravosolution'),
+  ('source_platform', 'competefor'),
+  ('source_platform', 'constructionline'),
   ('source_platform', 'contracts finder'),
   ('source_platform', 'contractsfinder'),
   ('source_platform', 'crown commercial service'),
+  ('source_platform', 'crown marketplace'),
+  ('source_platform', 'delta e-sourcing'),
+  ('source_platform', 'delta esourcing'),
+  ('source_platform', 'digital marketplace'),
+  ('source_platform', 'due north'),
   ('source_platform', 'e-tenders ni'),
   ('source_platform', 'etendersni'),
+  ('source_platform', 'etenderwales'),
+  ('source_platform', 'eu-supply'),
   ('source_platform', 'find a tender'),
   ('source_platform', 'find-a-tender'),
   ('source_platform', 'find-tender'),
+  ('source_platform', 'hinkley point c supply chain'),
+  ('source_platform', 'hs2 direct contract opportunities'),
+  ('source_platform', 'hs2 indirect supply chain opportunities'),
+  ('source_platform', 'in-tend'),
+  ('source_platform', 'intend'),
+  ('source_platform', 'jaggaer'),
+  ('source_platform', 'mytenders'),
+  ('source_platform', 'national grid suppliers'),
+  ('source_platform', 'national highways contracts pipeline'),
+  ('source_platform', 'national infrastructure and construction pipeline'),
+  ('source_platform', 'national infrastructure and construction pipeline 2023'),
+  ('source_platform', 'network rail procurement pipeline'),
   ('source_platform', 'nista'),
+  ('source_platform', 'pro-contract'),
+  ('source_platform', 'proactis'),
+  ('source_platform', 'procontract'),
   ('source_platform', 'public contracts scotland'),
+  ('source_platform', 'sell 2 wales'),
   ('source_platform', 'sell2wales'),
+  ('source_platform', 'sizewell c jaggaer supply chain'),
+  ('source_platform', 'supply2gov'),
   ('source_platform', 'ted.europa.eu'),
+  ('source_platform', 'tenders direct'),
   ('source_platform', 'tenders electronic daily'),
+  ('source_platform', 'thames water capital delivery pipeline'),
+  ('source_platform', 'the chest'),
+  ('source_platform', 'tideway supply chain'),
+  ('source_platform', 'tideway supply chain (competefor)'),
   ('source_platform', 'uk infrastructure pipeline')
 ;
 
@@ -1382,7 +1421,10 @@ begin
           where w <> all(v_generic_org) and w <> all(v_broad)
         )
     ) markers
-    where position(marker in v_all_lower) > 0
+    -- Short all-letter markers match whole words only (lib/redaction/scan.ts
+    -- platformSubstringOk).
+    where ((marker ~ '[^a-z ]' or length(replace(marker, ' ', '')) >= 8)
+           and position(marker in v_all_lower) > 0)
        or position(private.leak_norm(marker) in v_all_norm) > 0;
 
   -- Combination risk: distinctive words carried from the source that pin the

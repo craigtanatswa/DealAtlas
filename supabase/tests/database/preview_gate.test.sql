@@ -289,5 +289,36 @@ select is(private.is_user_pro('c0000000-0000-4000-8000-000000000001'), false, 'A
 select is(private.is_user_pro('c0000000-0000-4000-8000-000000000002'), true, 'ACTIVE paid-through is Pro');
 select is(private.is_user_pro('c0000000-0000-4000-8000-000000000003'), false, 'ACTIVE with lapsed period end is not Pro');
 
+-- Every registered source's name is a platform marker for every deal, not
+-- only for deals from that source.
+select is(
+  (
+    select coalesce(array_agg(ds.name order by ds.name), '{}')
+    from public.data_sources ds
+    where ds.source_key <> 'private-source-template'
+      and not exists (
+        select 1 from private.leak_gate_terms t
+        where t.kind = 'source_platform'
+          and private.leak_norm(t.term) = private.leak_norm(ds.name)
+      )
+  ),
+  '{}'::text[],
+  'every data_sources name is a source_platform gate term'
+);
+
+select is(
+  (
+    select array_agg(t order by t)
+    from unnest(array[
+      'delta esourcing', 'delta e-sourcing', 'procontract', 'in-tend', 'intend', 'proactis', 'jaggaer',
+      'atamis', 'mytenders', 'bravo', 'eu-supply', 'etenderwales', 'sell2wales', 'public contracts scotland',
+      'etendersni', 'find a tender', 'contracts finder'
+    ]) as t
+    where not exists (select 1 from private.leak_gate_terms g where g.kind = 'source_platform' and g.term = t)
+  ),
+  null::text[],
+  'the major UK procurement portals are source_platform gate terms'
+);
+
 select * from finish();
 rollback;

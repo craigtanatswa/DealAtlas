@@ -153,6 +153,12 @@ const YEARLESS_NUMERIC_DATE = /^[0-9]+[/. -][0-9]+$/;
 
 const POSTCODE_RE = /\b([A-Z]{1,2}[0-9][A-Z0-9]?\s*[0-9][A-Z]{2})\b/gi;
 
+// Short all-letter markers ("intend", "bravo") are ordinary words inside
+// longer ones ("intended", "superintendent"), so they match whole words only.
+function platformSubstringOk(marker: string): boolean {
+  return /[^a-z ]/.test(marker) || marker.replace(/ /g, "").length >= 8;
+}
+
 function matches(text: string, re: RegExp): RegExpExecArray[] {
   return [...text.matchAll(new RegExp(re.source, re.flags.includes("g") ? re.flags : `${re.flags}g`))];
 }
@@ -652,7 +658,7 @@ export function scanPreviewLeaks(input: LeakScanInput): LeakScanResult {
       leakTokens(item).some((word) => !GENERIC_ORG.has(word) && !BROAD.has(word)),
   );
   for (const marker of new Set([...SOURCE_PLATFORM_MARKERS, ...sourceMarkers])) {
-    if (allLower.includes(marker) || containsNorm(allNorm, marker)) {
+    if ((platformSubstringOk(marker) && allLower.includes(marker)) || containsNorm(allNorm, marker)) {
       push("SOURCE_PLATFORM", "HIGH", "Preview contains a source-platform identifier", marker);
     }
   }

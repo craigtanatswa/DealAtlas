@@ -804,6 +804,244 @@
       },
       "expectRisk": "LOW",
       "expectCodes": []
+    },
+    {
+      "id": "platform-delta-esourcing",
+      "description": "source-platform marker (delta-esourcing)",
+      "preview": {
+        "title": "Winter road treatment vehicles",
+        "summary": "Responses are submitted through Delta eSourcing."
+      },
+      "expectRisk": "HIGH",
+      "expectCodes": [
+        "SOURCE_PLATFORM"
+      ]
+    },
+    {
+      "id": "platform-delta-e-sourcing",
+      "description": "source-platform marker (delta-e-sourcing)",
+      "preview": {
+        "title": "Winter road treatment vehicles",
+        "summary": "Responses are submitted through Delta e-Sourcing."
+      },
+      "expectRisk": "HIGH",
+      "expectCodes": [
+        "SOURCE_PLATFORM"
+      ]
+    },
+    {
+      "id": "platform-procontract",
+      "description": "source-platform marker (procontract)",
+      "preview": {
+        "title": "Winter road treatment vehicles",
+        "summary": "Suppliers register on ProContract to respond."
+      },
+      "expectRisk": "HIGH",
+      "expectCodes": [
+        "SOURCE_PLATFORM"
+      ]
+    },
+    {
+      "id": "platform-in-tend",
+      "description": "source-platform marker (in-tend)",
+      "preview": {
+        "title": "Winter road treatment vehicles",
+        "summary": "Tender documents are issued through In-Tend."
+      },
+      "expectRisk": "HIGH",
+      "expectCodes": [
+        "SOURCE_PLATFORM"
+      ]
+    },
+    {
+      "id": "platform-intend",
+      "description": "source-platform marker (intend)",
+      "preview": {
+        "title": "Winter road treatment vehicles",
+        "summary": "Bids go through the Intend portal."
+      },
+      "expectRisk": "HIGH",
+      "expectCodes": [
+        "SOURCE_PLATFORM"
+      ]
+    },
+    {
+      "id": "platform-proactis",
+      "description": "source-platform marker (proactis)",
+      "preview": {
+        "title": "Winter road treatment vehicles",
+        "summary": "Responses are handled in Proactis."
+      },
+      "expectRisk": "HIGH",
+      "expectCodes": [
+        "SOURCE_PLATFORM"
+      ]
+    },
+    {
+      "id": "platform-jaggaer",
+      "description": "source-platform marker (jaggaer)",
+      "preview": {
+        "title": "Winter road treatment vehicles",
+        "summary": "Suppliers respond through Jaggaer."
+      },
+      "expectRisk": "HIGH",
+      "expectCodes": [
+        "SOURCE_PLATFORM"
+      ]
+    },
+    {
+      "id": "platform-atamis",
+      "description": "source-platform marker (atamis)",
+      "preview": {
+        "title": "Winter road treatment vehicles",
+        "summary": "The buyer runs the process on Atamis."
+      },
+      "expectRisk": "HIGH",
+      "expectCodes": [
+        "SOURCE_PLATFORM"
+      ]
+    },
+    {
+      "id": "platform-mytenders",
+      "description": "source-platform marker (mytenders)",
+      "preview": {
+        "title": "Winter road treatment vehicles",
+        "summary": "Documents are available on MyTenders."
+      },
+      "expectRisk": "HIGH",
+      "expectCodes": [
+        "SOURCE_PLATFORM"
+      ]
+    },
+    {
+      "id": "platform-bravo",
+      "description": "source-platform marker (bravo)",
+      "preview": {
+        "title": "Winter road treatment vehicles",
+        "summary": "Responses are collected through Bravo."
+      },
+      "expectRisk": "HIGH",
+      "expectCodes": [
+        "SOURCE_PLATFORM"
+      ]
+    },
+    {
+      "id": "platform-eu-supply",
+      "description": "source-platform marker (eu-supply)",
+      "preview": {
+        "title": "Winter road treatment vehicles",
+        "summary": "The tender runs on EU-Supply."
+      },
+      "expectRisk": "HIGH",
+      "expectCodes": [
+        "SOURCE_PLATFORM"
+      ]
+    },
+    {
+      "id": "platform-etenderwales",
+      "description": "source-platform marker (etenderwales)",
+      "preview": {
+        "title": "Winter road treatment vehicles",
+        "summary": "The tender runs on eTenderWales."
+      },
+      "expectRisk": "HIGH",
+      "expectCodes": [
+        "SOURCE_PLATFORM"
+      ]
+    },
+    {
+      "id": "platform-sell2wales",
+      "description": "source-platform marker (sell2wales)",
+      "preview": {
+        "title": "Winter road treatment vehicles",
+        "summary": "The notice was also placed on Sell2Wales."
+      },
+      "expectRisk": "HIGH",
+      "expectCodes": [
+        "SOURCE_PLATFORM"
+      ]
+    },
+    {
+      "id": "platform-public-contracts-scotland",
+      "description": "source-platform marker (public-contracts-scotland)",
+      "preview": {
+        "title": "Winter road treatment vehicles",
+        "summary": "See Public Contracts Scotland for the full notice."
+      },
+      "expectRisk": "HIGH",
+      "expectCodes": [
+        "SOURCE_PLATFORM"
+      ]
+    },
+    {
+      "id": "platform-etendersni",
+      "description": "source-platform marker (etendersni)",
+      "preview": {
+        "title": "Winter road treatment vehicles",
+        "summary": "Responses go through eTendersNI."
+      },
+      "expectRisk": "HIGH",
+      "expectCodes": [
+        "SOURCE_PLATFORM"
+      ]
+    },
+    {
+      "id": "platform-find-a-tender",
+      "description": "source-platform marker (find-a-tender)",
+      "preview": {
+        "title": "Winter road treatment vehicles",
+        "summary": "The opportunity is advertised on Find a Tender."
+      },
+      "expectRisk": "HIGH",
+      "expectCodes": [
+        "SOURCE_PLATFORM"
+      ]
+    },
+    {
+      "id": "platform-contracts-finder",
+      "description": "source-platform marker (contracts-finder)",
+      "preview": {
+        "title": "Winter road treatment vehicles",
+        "summary": "The opportunity is listed on Contracts Finder."
+      },
+      "expectRisk": "HIGH",
+      "expectCodes": [
+        "SOURCE_PLATFORM"
+      ]
+    },
+    {
+      "id": "platform-data-source-name",
+      "description": "source-platform marker (data-source-name)",
+      "preview": {
+        "title": "Winter road treatment vehicles",
+        "summary": "Suppliers must hold Constructionline membership."
+      },
+      "expectRisk": "HIGH",
+      "expectCodes": [
+        "SOURCE_PLATFORM"
+      ]
+    },
+    {
+      "id": "platform-tenders-direct",
+      "description": "source-platform marker (tenders-direct)",
+      "preview": {
+        "title": "Winter road treatment vehicles",
+        "summary": "The opportunity was circulated by Tenders Direct."
+      },
+      "expectRisk": "HIGH",
+      "expectCodes": [
+        "SOURCE_PLATFORM"
+      ]
+    },
+    {
+      "id": "platform-word-control",
+      "description": "short platform markers match whole words only (\"intends\", \"superintendent\", \"bravos\")",
+      "preview": {
+        "title": "Winter road treatment vehicles",
+        "summary": "The buyer intends to appoint a site superintendent; bravos are optional."
+      },
+      "expectRisk": "LOW",
+      "expectCodes": []
     }
   ]
 }
