@@ -4606,6 +4606,10 @@ revoke execute on function private.preview_dto_requirements(jsonb) from public, 
 revoke execute on function private.preview_freshness_label(timestamptz, timestamptz) from public, anon, authenticated;
 revoke execute on function private.preview_dto_reasons(jsonb) from public, anon, authenticated;
 
+-- Stored reason text reaches clients only as canned DTO labels (0012 granted
+-- authenticated a direct read of this column).
+revoke select (preview_reasons) on table public.deal_matches from anon, authenticated;
+
 create or replace function public.search_preview_dtos(
   p_query text default null,
   p_category text default null,
@@ -5088,8 +5092,6 @@ grant all on table public.deal_previews to service_role;
 -- Stored match-reason text never reaches clients directly; the DTO RPCs
 -- project canned labels from the reason codes (private.preview_dto_reasons).
 -- 0012 granted this column individually, so the column revoke is effective.
-revoke select (preview_reasons) on table public.deal_matches from anon, authenticated;
-
 -- Legacy invoker search RPCs return deal_id and are kept for service-role code
 -- (exports) only.
 revoke all on function public.search_deal_previews(

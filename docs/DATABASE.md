@@ -187,7 +187,7 @@ DealAtlas-derived intelligence such as summary, ideal supplier, risk flags, incu
 ### deal_matches
 Per-company-profile relevance score and sanitised match/mismatch reasons.
 
-`preview_reasons` is readable by the owning authenticated user and must contain only canned, non-source-identifying labels. `detail_reasons` is a server-only column: table-level SELECT is revoked from `anon`/`authenticated`, then preview-safe columns are granted to `authenticated`. Entitled Pro mismatch notes may refer to protected requirement *types* without copying source identity.
+`preview_reasons` is not readable by clients (0018 revokes the 0012 column grant); the DTO RPCs project canned labels from the reason code only (`private.preview_dto_reasons`), so stored label text never reaches a client. `detail_reasons` is a server-only column: table-level SELECT is revoked from `anon`/`authenticated`, then preview-safe columns are granted to `authenticated`. Entitled Pro mismatch notes may refer to protected requirement *types* without copying source identity.
 
 Score columns: `relevance_score` (0–100), plus optional `category_score`, `keyword_score`, `location_score`, `value_score`, `sector_score`, `certification_score`, `semantic_score`.
 

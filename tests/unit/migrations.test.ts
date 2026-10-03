@@ -107,6 +107,9 @@ describe("supabase migrations", () => {
     expect(privileges).not.toMatch(
       /grant select \([\s\S]*detail_reasons[\s\S]*\) on table public\.deal_matches to authenticated/,
     );
+    expect(readMigration("0018_preview_gate_v2_and_dto_rpcs.sql")).toContain(
+      "revoke select (preview_reasons) on table public.deal_matches from anon, authenticated;",
+    );
   });
 
   it("keeps alerts server-only and unique per user dedupe key", () => {

@@ -204,7 +204,7 @@ Do not expose source-bearing fields through search snippets.
 
 Paid advanced search may query protected dimensions server-side but must return protected results only after entitlement verification.
 
-Signed-in relevance sort/filter uses stored `deal_matches` rows (0–100) plus sanitised `preview_reasons`. Semantic similarity is included only when an embedding model and API key are configured. Free clients receive limited canned reasons. Pro mismatch notes that depend on protected requirement types are loaded server-side from `detail_reasons` after entitlement checks and still must not copy source identity. Authenticated clients are granted SELECT on preview-safe `deal_matches` columns only; `detail_reasons` is not included.
+Signed-in relevance sort/filter uses stored `deal_matches` rows (0–100) plus sanitised `preview_reasons`. Semantic similarity is included only when an embedding model and API key are configured. Free clients receive limited canned reasons. Pro mismatch notes that depend on protected requirement types are loaded server-side from `detail_reasons` after entitlement checks and still must not copy source identity. Authenticated clients are granted SELECT on preview-safe `deal_matches` columns only; neither `preview_reasons` nor `detail_reasons` is included, and the DTO RPCs return canned labels derived from reason codes.
 
 ## 10. Preview generation/redaction
 Every canonical deal gets a separate `deal_previews` row.

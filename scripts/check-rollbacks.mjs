@@ -65,7 +65,7 @@ begin
   end if;
   if not pg_catalog.has_column_privilege('authenticated', 'public.deal_matches', 'preview_reasons', 'select')
      or pg_catalog.has_column_privilege('authenticated', 'public.deal_matches', 'detail_reasons', 'select') then
-    failures := array_append(failures, 'after 0019 rollback, deal_matches column grants differ from 0012');
+    failures := array_append(failures, 'after 0018 rollback, deal_matches column grants differ from 0012');
   end if;
   if pg_catalog.to_regprocedure('private.preview_dto_reasons(jsonb)') is not null then
     failures := array_append(failures, 'after 0018 rollback, private.preview_dto_reasons remains');

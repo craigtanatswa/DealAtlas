@@ -166,6 +166,9 @@ drop function if exists private.preview_dto_requirements(jsonb);
 drop function if exists private.preview_freshness_label(timestamptz, timestamptz);
 drop function if exists private.preview_dto_reasons(jsonb);
 
+-- 0012's column grant, which 0018 revokes.
+grant select (preview_reasons) on table public.deal_matches to authenticated;
+
 drop index if exists public.deals_leak_source_tsv_idx;
 alter table public.organizations drop column if exists leak_match_name;
 alter table public.organization_aliases drop column if exists leak_match_name;
