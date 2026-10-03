@@ -249,6 +249,72 @@ describe("CI workflow", () => {
     }
   });
 
+  function job(id: string) {
+    const start = workflow.indexOf(`\n  ${id}:\n    name:`);
+    expect(start, id).toBeGreaterThan(-1);
+    const rest = workflow.slice(start + 1);
+    const next = rest.slice(1).search(/^ {2}[a-z0-9-]+:\n {4}name:/m);
+    return next === -1 ? rest : rest.slice(0, next + 1);
+  }
+
+  it("keeps stable names for the jobs listed as required checks", () => {
+    for (const name of [
+      "name: Lint",
+      "name: Typecheck",
+      "name: Unit tests",
+      "name: Build",
+      "name: Database tests (pgTAP + REST)",
+      "name: E2E (Playwright)",
+      "name: Gate parity (TS/SQL)",
+      "name: Leak regression (local)",
+      "name: Preview write timing (informational)",
+    ]) {
+      expect(workflow).toContain(name);
+    }
+  });
+
+  it("runs npm run test:db (pgTAP + rollback checks) with the psql client installed", () => {
+    const database = job("database");
+    expect(database).toContain("postgresql-client");
+    expect(database.indexOf("postgresql-client")).toBeLessThan(database.indexOf("npm run test:db"));
+  });
+
+  it("runs both sides of the gate parity suite", () => {
+    const parity = job("gate-parity");
+    expect(parity).toContain("git diff --exit-code -- supabase/tests/database/leak_gate_parity.test.sql");
+    expect(parity).toContain("npx vitest run tests/unit/leak-gate-parity.test.ts");
+    expect(parity).toContain("npx supabase test db --local supabase/tests/database/leak_gate_parity.test.sql");
+  });
+
+  it("probes before and after 0019 on the local stack and uploads the report", () => {
+    const leak = job("leak-regression");
+    const order = [
+      "mv supabase/migrations/0019_",
+      "npx supabase start",
+      "node scripts/ci-guard-env.mjs",
+      "scripts/leak-regression/seed.ts",
+      "npm run build",
+      "next start",
+      "--phase pre-0019",
+      "npx supabase migration up --local",
+      "--phase post-0019",
+      "tests/integration/public-discovery.rest.test.ts",
+      "actions/upload-artifact",
+    ].map((needle) => {
+      expect(leak, needle).toContain(needle);
+      return leak.indexOf(needle);
+    });
+    expect([...order].sort((a, b) => a - b)).toEqual(order);
+    expect(leak).toContain("if: always()");
+  });
+
+  it("keeps the write-timing job informational and artifact-producing", () => {
+    const timing = job("write-timing");
+    expect(timing).toContain("scripts/preview-write-timing.mjs");
+    expect(timing).toContain("actions/upload-artifact");
+    expect(timing).not.toContain("continue-on-error");
+  });
+
   it("guards the environment in every job", () => {
     const jobs = workflow.split(/^ {2}(?=[a-z0-9-]+:\n {4}name:)/m).slice(1);
     expect(jobs.length).toBeGreaterThanOrEqual(6);

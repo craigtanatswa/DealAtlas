@@ -9,10 +9,11 @@ status="${status#"${status%%\{*}"}"
 url="$(jq -r '.API_URL // .SUPABASE_URL' <<<"$status")"
 anon="$(jq -r '.PUBLISHABLE_KEY // .ANON_KEY // .SUPABASE_ANON_KEY' <<<"$status")"
 secret="$(jq -r '.SECRET_KEY // .SERVICE_ROLE_KEY // .SUPABASE_SERVICE_ROLE_KEY' <<<"$status")"
+db_url="$(jq -r '.DB_URL' <<<"$status")"
 
-for value in "$url" "$anon" "$secret"; do
+for value in "$url" "$anon" "$secret" "$db_url"; do
   if [ -z "$value" ] || [ "$value" = "null" ]; then
-    echo "Could not read local Supabase URL and keys from 'supabase status'." >&2
+    echo "Could not read local Supabase URLs and keys from 'supabase status'." >&2
     exit 1
   fi
 done
@@ -27,4 +28,5 @@ echo "::add-mask::$secret"
   echo "DEALATLAS_DB_TEST_URL=$url"
   echo "DEALATLAS_DB_TEST_ANON_KEY=$anon"
   echo "DEALATLAS_DB_TEST_SECRET_KEY=$secret"
+  echo "DEALATLAS_DB_TEST_DB_URL=$db_url"
 } >> "${GITHUB_ENV:?GITHUB_ENV must be set}"

@@ -22,6 +22,26 @@ Tests must request:
 
 Fail if canary values occur.
 
+## CI checks (`.github/workflows/ci.yml`)
+Every job runs on a throwaway local Supabase stack or with placeholders, never with secrets or production values, and runs `scripts/ci-guard-env.mjs` first.
+
+| Job name | What it runs | Required |
+| --- | --- | --- |
+| Lint / Typecheck / Unit tests / Build | `npm run lint`, `npm run typecheck`, `npx vitest run tests/unit`, `npm run build` | yes |
+| Database tests (pgTAP + REST) | `npm run test:db`: all pgTAP files, `scripts/check-rollbacks.mjs` (needs `psql`) and `tests/integration` | yes |
+| E2E (Playwright) | `npm run test:e2e` against `next start` | yes |
+| Gate parity (TS/SQL) | the generated pgTAP parity file is current, then both scanners over `tests/fixtures/leak-gate/cases.json` | yes |
+| Leak regression (local) | the protected-token probes below, before and after `0019` | yes |
+| Preview write timing (informational) | `scripts/preview-write-timing.mjs`: preview INSERT/UPDATE p50/p95 after a 20,000-deal bulk insert, with and without maintenance | no |
+
+### Leak regression (local)
+The job starts the local stack with migrations `0001`–`0018`, seeds the synthetic world, builds the app and runs `next start`. It probes every public surface as anonymous and Free users, applies `0019` with `supabase migration up --local`, probes again (plus REST deny/allow and Pro entitlement checks), then runs the HTTP leak suite. The `leak-regression-report` artifact holds `report-pre-0019.json`, `report-post-0019.json` (probe id, URL or RPC, phase, status, pass/fail, matched tokens), `protected-tokens.json` and raw response dumps under `raw/<phase>/`.
+
+- **Fixture world:** `tests/leak-regression/world.json`. Every string is invented. Fields named in `tokenFields`, plus `extraTokens`, become protected tokens. Held and non-LOW previews also contribute their slug, title and `hiddenMarkers`. Tokens are matched case-insensitively as whole words, in raw and decoded form (HTML entities, JSON escapes, URL encoding), and in slug form for names and sites, and digit-only form for phone numbers. Seeding fails if a preview does not reach its declared `state` (`published`, `held` or `non_low`).
+- **Probes:** `tests/leak-regression/probes.json`. Each probe has an `id`, `kind` (`http`, `rest` or `rpc`), `actor` (`anon`, `free` or `pro`), a `path` or `fn`/`args`, and optional `forEach` (`searchTerms`, `publishedPreviews`, `hiddenPreviews`, `allDeals`, `categories` or a name from `lists`), `rsc`, `views` (`body`, `meta`, `jsonld`, `items`), `phases`, `expect` or `expectByPhase` (`status`, `mustContain`, `mustContainAll`, `mustNotContain`, `emptyResult`, `nonEmptyViews`). Only `pro` probes may set `"tokens": "allow"`.
+- **Request echo:** the probe's own input (a search term or URL slug) is masked where the response echoes it, for example in a search box or the RSC route tree. JSON `items` and RPC responses are never masked.
+- **Running locally**, with the stack, `DEALATLAS_DB_TEST_*` and a built app on port 3000: `npx tsx scripts/leak-regression/seed.ts`, then `npx tsx scripts/leak-regression/probe.ts --phase pre-0019 --out leak-report` (add `--only <probe-id>` to run one probe).
+
 ## Billing tests
 - monthly checkout allowlist
 - annual checkout allowlist

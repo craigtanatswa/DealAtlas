@@ -35,7 +35,7 @@ Email/password auth is available at `/signup`, `/login`, `/forgot-password`, and
 | `npm run db:reset` | Recreate the **local** database from migrations |
 | `npm run db:types` | Generate `lib/db/database.types.ts` from local schema |
 | `npm run db:test` | Run pgTAP database tests |
-| `npm run test:db` | pgTAP plus PostgREST RLS smoke tests |
+| `npm run test:db` | pgTAP, rollback checks (needs `psql`) and PostgREST RLS smoke tests |
 | `npm run db:bundle` | Refresh `supabase/dealatlas_full_schema.sql` from migrations |
 | `npm run ingest -- --source find-a-tender` | Ingest one registered source (official Find a Tender OCDS API) |
 | `npm run ingest:smoke` | Controlled live smoke: a few recent Find a Tender records |
