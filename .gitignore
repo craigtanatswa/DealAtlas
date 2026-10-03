@@ -41,6 +41,11 @@ yarn-error.log*
 # e2e seed snapshot
 /tests/e2e/.seed.json
 
+# leak regression and write-timing outputs
+/.leak-regression/
+/leak-report/
+/write-timing/
+
 # vercel
 .vercel
 
