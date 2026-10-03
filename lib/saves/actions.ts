@@ -59,7 +59,7 @@ export async function saveDealAction(
 
   const entitlement = await getCurrentEntitlement(user.id);
   const limit = featureLimit(entitlement.plan, "savedDeals");
-  const used = await countSavedDeals(supabase, user.id);
+  const used = await countSavedDeals(supabase);
   if (isAtFeatureLimit(used, limit)) {
     return { error: QUOTA_ERROR_COPY.savedDeals, success: null };
   }

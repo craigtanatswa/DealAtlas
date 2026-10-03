@@ -9,7 +9,7 @@ import { isProEntitlement } from "@/lib/entitlements/policy";
 import { getCurrentEntitlement } from "@/lib/entitlements/service";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { parseSavedSearchFilters, type SavedSearchFilters } from "@/lib/saves/filters";
-import { toAlertDto } from "@/lib/alerts/dto";
+import { alertsVisibleTo, toAlertDto } from "@/lib/alerts/dto";
 import { loadPublishedAlertPreviews } from "@/lib/alerts/published";
 import { isDigestDue, shouldEvaluateSavedSearch } from "@/lib/alerts/dedupe";
 import { NEW_MATCH_MIN_SCORE } from "@/lib/alerts/dedupe";
@@ -680,7 +680,11 @@ async function sendDueDigests(input: {
       input.admin,
       rows.map((row) => row.deal_id),
     );
-    const dtos = rows.map((row) => toAlertDto(row, entitlement, previews));
+    const visible = alertsVisibleTo(rows, entitlement, previews);
+    if (visible.length === 0) {
+      continue;
+    }
+    const dtos = visible.map((row) => toAlertDto(row, entitlement, previews));
     if (!isProEntitlement(entitlement)) {
       for (const dto of dtos) {
         delete dto.sourceTitle;
@@ -718,7 +722,7 @@ async function sendDueDigests(input: {
       continue;
     }
 
-    const ids = rows.map((row) => row.id);
+    const ids = visible.map((row) => row.id);
     const sentAt = input.now.toISOString();
     const { error: sentError } = await input.admin
       .from("alerts")

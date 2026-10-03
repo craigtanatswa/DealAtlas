@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   assertAlertDto,
   assertFreeAlertDto,
+  alertsVisibleTo,
   toAlertCentreDto,
   toAlertDto,
   type PublishedAlertPreviews,
@@ -101,13 +102,27 @@ describe("alert DTO entitlement boundary", () => {
         previewTitle: "Kelderwick depot gritting fleet for Corrivale Fenmoor",
       },
     };
-    const centre = toAlertCentreDto([record], FREE_ENTITLEMENT, new Map());
+    const buyerAlert: AlertRecord = { ...CANARY_RECORD, id: "buyer-alert", deal_id: null, status: "UNREAD" };
+    const centre = toAlertCentreDto([{ ...record, status: "UNREAD" }, buyerAlert], FREE_ENTITLEMENT, new Map());
     const json = JSON.stringify(centre);
-    expect(centre.items[0].previewTitle).toBeUndefined();
-    expect(centre.items[0].region).toBeUndefined();
+    expect(centre.items.map((item) => item.id)).toEqual(["buyer-alert"]);
+    expect(centre.unreadCount).toBe(1);
     expect(json).not.toContain("Kelderwick");
     expect(json).not.toContain("Corrivale");
-    expect(centre.items[0].message).toBe(FREE_ALERT_COPY.NEW_MATCH.message);
+    expect(json).not.toContain(CANARY_RECORD.deal_id as string);
+  });
+
+  it("keeps held-deal alerts for Pro without their stored preview fields", () => {
+    const centre = toAlertCentreDto([CANARY_RECORD], PRO_ENTITLEMENT, new Map());
+    expect(centre.items).toHaveLength(1);
+    expect(centre.items[0].previewTitle).toBeUndefined();
+  });
+
+  it("drops a free alert from the list when its preview is not publishable", () => {
+    expect(alertsVisibleTo([CANARY_RECORD], FREE_ENTITLEMENT, new Map())).toEqual([]);
+    expect(alertsVisibleTo([CANARY_RECORD], FREE_ENTITLEMENT, PUBLISHED)).toEqual([CANARY_RECORD]);
+    expect(alertsVisibleTo([CANARY_RECORD], PRO_ENTITLEMENT, new Map())).toEqual([CANARY_RECORD]);
+    expect(FREE_ALERT_COPY.NEW_MATCH.message).toBeTruthy();
   });
 
   it("re-renders free alert copy from the current publishable preview, not the stored snapshot", () => {

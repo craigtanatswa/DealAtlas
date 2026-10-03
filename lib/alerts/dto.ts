@@ -165,15 +165,32 @@ export function toAlertDto(
   return compact(dto);
 }
 
+/**
+ * Free users never see an alert about a deal whose preview is held,
+ * unpublished or no longer LOW risk: no list item, no unread count, no digest
+ * line. Alerts without a deal (buyer activity) are kept.
+ */
+export function alertsVisibleTo<T extends Pick<AlertRecord, "deal_id">>(
+  records: T[],
+  entitlement: EntitlementSnapshot,
+  previews: PublishedAlertPreviews,
+): T[] {
+  if (isProEntitlement(entitlement)) {
+    return records;
+  }
+  return records.filter((record) => !record.deal_id || previews.has(record.deal_id));
+}
+
 export function toAlertCentreDto(
   records: AlertRecord[],
   entitlement: EntitlementSnapshot,
   previews: PublishedAlertPreviews,
 ): AlertCentreDto {
-  const items = records.map((record) => toAlertDto(record, entitlement, previews));
+  const visible = alertsVisibleTo(records, entitlement, previews);
+  const items = visible.map((record) => toAlertDto(record, entitlement, previews));
   return {
     plan: entitlement.plan,
-    unreadCount: records.filter((record) => record.status === "UNREAD").length,
+    unreadCount: visible.filter((record) => record.status === "UNREAD").length,
     items,
   };
 }

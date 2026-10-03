@@ -4918,6 +4918,9 @@ as $$
    and dp.leakage_risk = 'LOW'
    and dp.unpublished_by_admin = false
   where sd.user_id = auth.uid()
+    -- Free users never see saved deals that are held or unpublished, not even
+    -- as an empty row; Pro keeps them (detail access is entitled).
+    and (dp.deal_id is not null or private.is_user_pro(auth.uid()))
   order by sd.created_at desc;
 $$;
 
@@ -5005,7 +5008,7 @@ comment on function public.get_preview_dto_by_deal_id(uuid) is
 comment on function public.resolve_preview_deal_id(text) is
   'Signed-in only. Maps a published slug to its internal deal id for save/reveal actions.';
 comment on function public.list_saved_deal_previews() is
-  'Signed-in only. The caller''s saved deals with sanitised previews (null when no longer published).';
+  'Signed-in only. The caller''s saved deals with sanitised previews. Free callers get published deals only; Pro callers also get unpublished ones with null preview fields.';
 
 -- ============================================================================
 -- END 0018_preview_gate_v2_and_dto_rpcs.sql

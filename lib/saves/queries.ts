@@ -13,19 +13,18 @@ export type DealSaveState = {
   used: number;
 };
 
-export async function countSavedDeals(
-  client: PublicSupabaseClient,
-  userId: string,
-): Promise<number> {
-  const { count, error } = await client
-    .from("saved_deals")
-    .select("id", { count: "exact", head: true })
-    .eq("user_id", userId);
-  throwIfQueryError("Failed to count saved deals", {
-    data: count ?? 0,
+/**
+ * Counts the saves the viewer can see (list_saved_deal_previews scopes rows to
+ * auth.uid() and drops held deals for free users), so counts and quotas never
+ * reveal a save the list hides.
+ */
+export async function countSavedDeals(client: PublicSupabaseClient): Promise<number> {
+  const { data, error } = await client.rpc("list_saved_deal_previews");
+  const rows = throwIfQueryError("Failed to count saved deals", {
+    data: data ?? [],
     error,
   });
-  return count ?? 0;
+  return rows.length;
 }
 
 export async function countSavedSearches(
@@ -68,7 +67,7 @@ export async function loadDealSaveState(
 ): Promise<DealSaveState> {
   const [saved, used] = await Promise.all([
     isDealSaved(client, userId, dealId),
-    countSavedDeals(client, userId),
+    countSavedDeals(client),
   ]);
   return { saved, used };
 }

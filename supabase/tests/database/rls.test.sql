@@ -535,8 +535,8 @@ select is(
 
 select is(
   (select array_agg(coalesce(slug, '<hidden>') order by slug nulls last) from public.list_saved_deal_previews()),
-  array['published-low-risk-preview', '<hidden>'],
-  'saved deals list exposes previews only while published'
+  array['published-low-risk-preview'],
+  'a free user''s saved deals list drops deals that are not published (no row, no count)'
 );
 
 select ok(
@@ -606,6 +606,28 @@ select throws_ok(
   'authenticated insert on export_usage is denied'
 );
 
+reset role;
+
+-- A Pro user's saved list keeps every saved deal; unpublished ones carry no
+-- preview fields.
+insert into auth.users (id, email) values
+  ('77777777-7777-4777-8777-777777777777', 'pro-user@example.test');
+insert into public.subscriptions (user_id, provider, plan_key, status, current_period_start, current_period_end, is_current)
+values ('77777777-7777-4777-8777-777777777777', 'dodo', 'PRO_MONTHLY', 'ACTIVE', now() - interval '1 day', now() + interval '30 days', true);
+insert into public.saved_deals (user_id, deal_id) values
+  ('77777777-7777-4777-8777-777777777777', '22222222-2222-4222-8222-222222222222'),
+  ('77777777-7777-4777-8777-777777777777', '33333333-3333-4333-8333-333333333333');
+
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"77777777-7777-4777-8777-777777777777","role":"authenticated"}', true);
+
+select is(
+  (select array_agg(coalesce(slug, '<hidden>') order by slug nulls last) from public.list_saved_deal_previews()),
+  array['published-low-risk-preview', '<hidden>'],
+  'a Pro user''s saved deals list keeps unpublished deals without preview fields'
+);
+
+select set_config('request.jwt.claims', '', true);
 reset role;
 
 select * from finish();
