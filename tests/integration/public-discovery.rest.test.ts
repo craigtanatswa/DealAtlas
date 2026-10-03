@@ -207,28 +207,49 @@ describe.skipIf(!configured)("public discovery leak integration", () => {
       expect(findProtectedMarkerLeaks(text), table).toEqual([]);
     }
   });
-});
 
-describe.skipIf(!appUrl)("public discovery HTTP responses", () => {
-  it("does not leak seeded markers through Next.js JSON, HTML, or RSC payloads", async () => {
-    const [search, dealsPage, protectedDeal] = await Promise.all([
-      fetch(`${appUrl}/api/search?q=managed`),
-      fetch(`${appUrl}/deals`),
-      fetch(`${appUrl}/api/deals/${randomUUID()}`),
-    ]);
+  // Runs inside the seeded block so the app serves the canary deal's preview.
+  it.skipIf(!appUrl)(
+    "does not leak seeded markers through Next.js JSON, HTML, or RSC payloads",
+    async () => {
+      const [search, dealsPage, previewPage, protectedDeal, protectedSeeded] =
+        await Promise.all([
+          fetch(`${appUrl}/api/search?q=managed`),
+          fetch(`${appUrl}/deals`),
+          fetch(`${appUrl}/deals/${slug}`),
+          fetch(`${appUrl}/api/deals/${randomUUID()}`),
+          fetch(`${appUrl}/api/deals/${dealId}`),
+        ]);
 
-    const searchJson = await search.text();
-    const dealsHtml = await dealsPage.text();
-    const rsc = await fetch(`${appUrl}/deals`, {
-      headers: { RSC: "1", "Next-Router-State-Tree": "%5B%22%22%2C%7B%7D%2Cnull%2Cnull%5D" },
-    });
-    const rscText = await rsc.text();
-    const protectedText = await protectedDeal.text();
+      const searchJson = await search.text();
+      const dealsHtml = await dealsPage.text();
+      const previewHtml = await previewPage.text();
+      const rsc = await fetch(`${appUrl}/deals`, {
+        headers: { RSC: "1", "Next-Router-State-Tree": "%5B%22%22%2C%7B%7D%2Cnull%2Cnull%5D" },
+      });
+      const rscText = await rsc.text();
+      const protectedText = await protectedDeal.text();
+      const protectedSeededText = await protectedSeeded.text();
 
-    for (const payload of [searchJson, dealsHtml, rscText, protectedText]) {
-      expect(findProtectedMarkerLeaks(payload)).toEqual([]);
-    }
-    expect(protectedDeal.status).toBe(401);
-    expect(SEEDED_PROTECTED_MARKERS.length).toBeGreaterThan(0);
-  });
+      expect(search.status).toBe(200);
+      expect(searchJson).toContain(slug);
+      expect(previewPage.status).toBe(200);
+      expect(previewHtml).toContain("Managed IT support for a public organisation");
+      expect(previewHtml).not.toContain(dealId);
+
+      for (const payload of [
+        searchJson,
+        dealsHtml,
+        previewHtml,
+        rscText,
+        protectedText,
+        protectedSeededText,
+      ]) {
+        expect(findProtectedMarkerLeaks(payload)).toEqual([]);
+      }
+      expect(protectedDeal.status).toBe(401);
+      expect(protectedSeeded.status).toBe(401);
+      expect(SEEDED_PROTECTED_MARKERS.length).toBeGreaterThan(0);
+    },
+  );
 });
