@@ -146,7 +146,7 @@ function main(): void {
     pr_number: process.env.LEAK_PR_NUMBER ? Number(process.env.LEAK_PR_NUMBER) : null,
     head_sha: process.env.LEAK_HEAD_SHA || git("rev-parse", "HEAD"),
     base_sha: process.env.LEAK_BASE_SHA || null,
-    merge_sha: process.env.GITHUB_REF?.endsWith("/merge") ? process.env.GITHUB_SHA ?? null : null,
+    merge_sha: process.env.LEAK_MERGE_SHA || null,
     app_commit_sha: git("rev-parse", "HEAD"),
     next_build_id: { A: readLeak("build-id-A"), B: readLeak("build-id-B") },
     node_version: process.version,

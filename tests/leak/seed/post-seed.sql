@@ -15,7 +15,7 @@ where deal_id = '5eed0000-0000-4000-8000-0000000000e1';
 \t on
 \a
 \o :outcome_path
-select jsonb_pretty(coalesce(jsonb_agg(row_to_json(o)::jsonb order by o.deal_id), '[]'::jsonb))
+select jsonb_pretty(coalesce(jsonb_agg(row_to_json(o.*)::jsonb order by o.deal_id), '[]'::jsonb))
 from (
   select
     dp.deal_id,

@@ -289,6 +289,8 @@ describe("CI workflow", () => {
   it("probes before and after 0019 on the local stack and uploads the report", () => {
     const leak = job("leak-regression");
     const order = [
+      "github.event.pull_request.head.sha",
+      "LEAK_MERGE_SHA=${{ github.sha }}",
       "mv supabase/migrations/0019_",
       "npx supabase start",
       "node scripts/ci-guard-env.mjs",
@@ -307,6 +309,8 @@ describe("CI workflow", () => {
     });
     expect([...order].sort((a, b) => a - b)).toEqual(order);
     expect(leak).toContain("if: always()");
+    expect(leak).toContain("leak-probes-${LEAK_HEAD_SHA::7}-");
+    expect(leak).not.toContain("leak-probes-${GITHUB_SHA::7}-");
   });
 
   it("keeps the write-timing job informational and artifact-producing", () => {

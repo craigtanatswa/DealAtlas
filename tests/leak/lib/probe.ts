@@ -633,8 +633,16 @@ export class Ctx {
   }
 
   psqlJson<T>(sql: string): T {
-    return JSON.parse(this.psql(`select coalesce(json_agg(row_to_json(t)), '[]'::json) from (${sql}) t`) || "[]") as T;
+    return JSON.parse(this.psql(psqlJsonSql(sql)) || "[]") as T;
   }
+}
+
+/**
+ * JSON array of the subquery's rows. `to_json(t)` binds a column named `t`
+ * (type `name` in the enum query), so the wrapper relation is `__r`.
+ */
+export function psqlJsonSql(sql: string): string {
+  return `select coalesce(json_agg(to_json(__r)), '[]'::json) from (${sql}) __r`;
 }
 
 export function psql(dbUrl: string, sql: string): string {

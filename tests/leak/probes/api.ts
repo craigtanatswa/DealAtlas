@@ -311,7 +311,7 @@ export async function appProbes(ctx: Ctx, roles: Role[] = NON_PRO_ROLES): Promis
               check: (o) => [
                 ok(
                   "unpublished_not_served",
-                  o.final.status === 404 || (o.final.status === 200 && /Page not found|Opportunity not found/i.test(o.final.body)),
+                  o.final.status === 404 || (o.final.status === 200 && /<title>[^<]*(?:Opportunity not found|Page not found)/i.test(o.final.body)),
                   o.final.status,
                 ),
               ],
@@ -345,7 +345,7 @@ export async function appProbes(ctx: Ctx, roles: Role[] = NON_PRO_ROLES): Promis
                   : [
                       ok(
                         "unpublished_not_served",
-                        o.final.status === 404 || (o.final.status === 200 && /Page not found|Opportunity not found/i.test(o.final.body)),
+                        o.final.status === 404 || (o.final.status === 200 && /<title>[^<]*(?:Opportunity not found|Page not found)/i.test(o.final.body)),
                         o.final.status,
                       ),
                     ]),

@@ -13,10 +13,10 @@ import { evaluateAlerts } from "@/lib/alerts/evaluate";
 import type { EmailMessage } from "@/lib/email/render";
 
 import { LEAK_DIR, readLeakEnv } from "./lib/env";
-import { psql } from "./lib/probe";
+import { psql, psqlJsonSql } from "./lib/probe";
 
 function json<T>(dbUrl: string, sql: string): T[] {
-  return JSON.parse(psql(dbUrl, `select coalesce(json_agg(t), '[]'::json) from (${sql}) t`) || "[]") as T[];
+  return JSON.parse(psql(dbUrl, psqlJsonSql(sql)) || "[]") as T[];
 }
 
 function literal(value: string | null): string {
