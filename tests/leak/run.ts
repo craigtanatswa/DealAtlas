@@ -122,8 +122,8 @@ async function main(): Promise<void> {
     return;
   }
 
-  await step(ctx, "html+rest+api+app+alerts+pro", () =>
-    Promise.all([
+  await step(ctx, "html+rest+api+app+alerts+pro", async () => {
+    const settled = await Promise.allSettled([
       htmlProbes(ctx),
       metaExtraProbes(ctx),
       rscHandBuiltProbes(ctx),
@@ -132,8 +132,10 @@ async function main(): Promise<void> {
       alertProbes(ctx, FREE_ROLES),
       restProbes(ctx),
       proProbes(ctx),
-    ]),
-  );
+    ]);
+    const rejected = settled.find((item) => item.status === "rejected");
+    if (rejected?.status === "rejected") throw rejected.reason;
+  });
   await step(ctx, "seo", () => seoProbes(ctx));
   await step(ctx, "digest", () => digestProbes(ctx));
   await step(ctx, "mail", () => mailProbes(ctx));

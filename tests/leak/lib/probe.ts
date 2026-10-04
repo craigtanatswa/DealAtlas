@@ -633,7 +633,7 @@ export class Ctx {
   }
 
   psqlJson<T>(sql: string): T {
-    return JSON.parse(this.psql(`select coalesce(json_agg(t), '[]'::json) from (${sql}) t`) || "[]") as T;
+    return JSON.parse(this.psql(`select coalesce(json_agg(row_to_json(t)), '[]'::json) from (${sql}) t`) || "[]") as T;
   }
 }
 

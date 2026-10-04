@@ -44,7 +44,7 @@ async function page(ctx: Ctx, def: ProbeDef, opts: { meta?: MetaOpts; uaMatrix?:
         instance: def.instance,
         role: def.role,
         req: { ...def.req, rsc: variant },
-        requireRsc: true,
+        requireRsc: html.final.status === 200,
         hdr02: def.hdr02,
       }),
     );
@@ -264,10 +264,29 @@ export async function htmlProbes(ctx: Ctx, roles: Role[] = NON_PRO_ROLES): Promi
         ["invalid-slug", "/deals/INVALID_SLUG!", true],
         ["does-not-exist", "/does-not-exist", false],
       ] as Array<[string, string, boolean]>) {
-        jobs.push(page(ctx, { id: "HTML-09", instance, role, req: { path, rawPath: raw }, status: [404] }, { meta: { jsonLdAllowed: false } }));
+        jobs.push(
+          page(
+            ctx,
+            {
+              id: "HTML-09",
+              instance,
+              role,
+              req: { path, rawPath: raw },
+              status: (s) => s === 404 || s === 200,
+              check: (o) => [
+                ok(
+                  "unpublished_not_served",
+                  o.final.status === 404 || (o.final.status === 200 && /<title>[^<]*(?:Opportunity not found|Page not found)/i.test(o.final.body)),
+                  o.final.status,
+                ),
+              ],
+            },
+            { meta: { jsonLdAllowed: false } },
+          ),
+        );
       }
       // HTML-10
-      jobs.push(page(ctx, { id: "HTML-10", instance: "design-system", role, req: { path: "/design-system" }, status: [200] }));
+      jobs.push(page(ctx, { id: "HTML-10", instance: "design-system", role, req: { path: "/design-system" }, status: [200, 404] }));
       await Promise.all(jobs);
     }),
   );

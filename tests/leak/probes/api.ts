@@ -247,7 +247,13 @@ export async function appProbes(ctx: Ctx, roles: Role[] = NON_PRO_ROLES): Promis
         }
         return Promise.all([
           ctx.run({ ...base, status: [200], ...extra }),
-          ctx.run({ ...base, id: "RSC-01", instance: `${id}:${instance}`, req: { ...base.req, rsc: "rsc" as const }, requireRsc: true }),
+          ctx.run({
+            ...base,
+            id: "RSC-01",
+            instance: `${id}:${instance}`,
+            req: { ...base.req, rsc: "rsc" as const, followRedirects: true },
+            requireRsc: true,
+          }),
         ]);
       };
       for (const path of ["/app", "/app/profile", "/app/settings", "/app/billing", "/app/searches"]) {
@@ -278,10 +284,14 @@ export async function appProbes(ctx: Ctx, roles: Role[] = NON_PRO_ROLES): Promis
       }
       jobs.push(
         view("APP-03", "/app/saved", "/app/saved", {
-          check: (o) => [
-            ok("lists_B1", slugsIn(o.final.body).has(ctx.row("B1").slug) || o.final.body.includes(titles.get("B1") ?? "\u0000"), "B1 missing"),
-            ok("held_saved_rows_dropped", !o.final.body.includes(ctx.row("A1").deal_id) && !o.final.body.includes(ctx.row("E1").deal_id), "A1/E1 id present"),
-          ],
+          check: (o) => {
+            const listsB1 = slugsIn(o.final.body).has(ctx.row("B1").slug) || o.final.body.includes(titles.get("B1") ?? "\u0000");
+            return [
+              // Seed saves B1 for free only. Lapsed and expired have an empty list.
+              ...(role === "free" ? [ok("lists_B1", listsB1, "B1 missing")] : []),
+              ok("held_saved_rows_dropped", !o.final.body.includes(ctx.row("A1").deal_id) && !o.final.body.includes(ctx.row("E1").deal_id), "A1/E1 id present"),
+            ];
+          },
         }),
       );
       for (const rowId of PUB_ROWS) {
@@ -290,7 +300,23 @@ export async function appProbes(ctx: Ctx, roles: Role[] = NON_PRO_ROLES): Promis
       for (const rowId of [...heldRows(), "random"]) {
         const id = rowId === "random" ? "0badc0de-0000-4000-8000-000000000000" : ctx.row(rowId).deal_id;
         if (anon) jobs.push(view("APP-05", rowId, `/app/deals/${id}`));
-        else jobs.push(ctx.run({ id: "APP-05", instance: rowId, role, req: { path: `/app/deals/${id}` }, status: [404] }));
+        else
+          jobs.push(
+            ctx.run({
+              id: "APP-05",
+              instance: rowId,
+              role,
+              req: { path: `/app/deals/${id}` },
+              status: (s) => s === 404 || s === 200,
+              check: (o) => [
+                ok(
+                  "unpublished_not_served",
+                  o.final.status === 404 || (o.final.status === 200 && /Page not found|Opportunity not found/i.test(o.final.body)),
+                  o.final.status,
+                ),
+              ],
+            }),
+          );
       }
       for (const path of [
         "/app/buyers",
@@ -311,8 +337,19 @@ export async function appProbes(ctx: Ctx, roles: Role[] = NON_PRO_ROLES): Promis
               instance: rowId,
               role,
               req: { path: `/app/deals/${ctx.row(rowId).deal_id}` },
-              status: rowId === "B1" ? [200] : [404],
-              check: (o) => [ok("noindex", isNoindex(pageMeta(o.final.body), o.final.headers), pageMeta(o.final.body).metas.filter((m) => m.key === "robots"))],
+              status: rowId === "B1" ? [200] : (s: number) => s === 404 || s === 200,
+              check: (o) => [
+                ok("noindex", isNoindex(pageMeta(o.final.body), o.final.headers), pageMeta(o.final.body).metas.filter((m) => m.key === "robots")),
+                ...(rowId === "B1"
+                  ? []
+                  : [
+                      ok(
+                        "unpublished_not_served",
+                        o.final.status === 404 || (o.final.status === 200 && /Page not found|Opportunity not found/i.test(o.final.body)),
+                        o.final.status,
+                      ),
+                    ]),
+              ],
             }),
           );
         }

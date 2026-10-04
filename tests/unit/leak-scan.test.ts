@@ -159,6 +159,15 @@ describe("reflection parity (spec 4.4)", () => {
     expect(verdict.rows.filter((r) => r.tokenId === "T01").every((r) => r.pass)).toBe(true);
   });
 
+  it("counts a control that keeps separators variantPattern drops", () => {
+    const q = "ZQ/PROC/8812";
+    const { control } = controlValue(q, compiled, manifest.controls_alphabet);
+    expect(control).toContain("/");
+    expect(parity(page(q), page(control), q).verdict.pass).toBe(true);
+    expect(parity(page("1,234,567"), page(controlValue("1,234,567", compiled, manifest.controls_alphabet).control), "1,234,567").verdict.pass).toBe(true);
+    expect(parity(page("17/11"), page(controlValue("17/11", compiled, manifest.controls_alphabet).control), "17/11").verdict.pass).toBe(true);
+  });
+
   it("never masks: every probe-side occurrence is reported with its count", () => {
     const q = "Zarqwell";
     const leaked = page(q) + "<p>Zarqwell</p>";

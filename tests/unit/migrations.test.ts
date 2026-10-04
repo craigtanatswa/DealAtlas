@@ -188,6 +188,14 @@ describe("supabase migrations", () => {
     expect(gate).not.toMatch(
       /grant execute on function (public|private)\.(preview_leak_findings|detect_preview_leakage|admin_release_preview_hold)[\s\S]{0,120}to (anon|authenticated)/i,
     );
+    for (const signature of [
+      "get_preview_dto_by_deal_id(uuid)",
+      "resolve_preview_deal_id(text)",
+      "list_saved_deal_previews()",
+    ]) {
+      expect(gate).toContain(`revoke execute on function public.${signature} from anon`);
+      expect(gate).toContain(`grant execute on function public.${signature} to authenticated, service_role`);
+    }
   });
 
   it("revokes direct client access to deal_previews in a separate post-deploy migration", () => {

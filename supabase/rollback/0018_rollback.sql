@@ -153,6 +153,8 @@ drop function if exists public.search_preview_dtos(
   text, text, numeric, text, integer, integer
 );
 drop function if exists public.get_preview_dto_by_slug(text);
+-- Dropping these removes the signed-in grants and the direct anon EXECUTE
+-- revoke. They did not exist before 0018, so there is nothing to re-grant.
 drop function if exists public.get_preview_dto_by_deal_id(uuid);
 drop function if exists public.resolve_preview_deal_id(text);
 drop function if exists public.list_saved_deal_previews();

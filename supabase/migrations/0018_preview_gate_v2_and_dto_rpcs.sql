@@ -1824,7 +1824,6 @@ as $$
         q.text is null
         or to_tsvector('english'::regconfig, coalesce(dp.preview_title, '') || ' ' || coalesce(dp.preview_summary, '') || ' ' || coalesce(dp.main_category, ''))
              @@ websearch_to_tsquery('english'::regconfig, q.text)
-        or dp.preview_title operator(extensions.%) q.text
       )
   )
   select
@@ -2141,6 +2140,11 @@ grant execute on function public.count_preview_sitemap_entries() to anon, authen
 grant execute on function public.get_preview_dto_by_deal_id(uuid) to authenticated, service_role;
 grant execute on function public.resolve_preview_deal_id(text) to authenticated, service_role;
 grant execute on function public.list_saved_deal_previews() to authenticated, service_role;
+-- Hosted Supabase grants EXECUTE to anon via default privileges, which
+-- REVOKE FROM PUBLIC does not remove. These three are signed-in only.
+revoke execute on function public.get_preview_dto_by_deal_id(uuid) from anon;
+revoke execute on function public.resolve_preview_deal_id(text) from anon;
+revoke execute on function public.list_saved_deal_previews() from anon;
 
 comment on function public.search_preview_dtos is
   'Sanitised public/free preview search. No deal_id or timestamps. Relevance only for the caller''s own company profile (auth.uid()).';

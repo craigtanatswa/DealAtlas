@@ -78,37 +78,41 @@ async function login(context: BrowserContext, email: string, statePath: string):
   await page.close();
 }
 
-async function capture(page: Page, blankProps: string[]): Promise<Capture> {
-  const data = await page.evaluate((blank: string[]) => {
-    const seen = new WeakSet<object>();
-    const replacer = (_key: string, value: unknown) => {
-      if (typeof value === "function") return "[fn]";
-      if (typeof Node !== "undefined" && value instanceof Node) return "[node]";
-      if (value && typeof value === "object") {
-        if (seen.has(value)) return "[cycle]";
-        seen.add(value);
-      }
-      return value;
-    };
-    const w = window as unknown as Record<string, unknown>;
-    const props: Record<string, unknown> = {};
-    for (const key of Object.getOwnPropertyNames(window)) {
-      if (blank.includes(key)) continue;
-      try {
-        props[key] = JSON.parse(JSON.stringify(w[key], replacer) ?? "null");
-      } catch {
-        props[key] = "[unserialisable]";
-      }
+// A native function, not a tsx-compiled callback: Playwright stringifies the
+// function into the page, where the compiler's `__name` helper does not exist.
+const captureInPage = new Function(
+  "blank",
+  `const seen = new WeakSet();
+  const replacer = (_key, value) => {
+    if (typeof value === "function") return "[fn]";
+    if (typeof Node !== "undefined" && value instanceof Node) return "[node]";
+    if (value && typeof value === "object") {
+      if (seen.has(value)) return "[cycle]";
+      seen.add(value);
     }
-    const dump = (s: Storage) => Object.fromEntries(Array.from({ length: s.length }, (_v, i) => s.key(i)!).map((k) => [k, s.getItem(k)]));
-    return {
-      nextF: JSON.stringify((w.__next_f as unknown) ?? null),
-      windowProps: JSON.stringify(props).slice(0, 4_000_000),
-      storage: JSON.stringify({ localStorage: dump(localStorage), sessionStorage: dump(sessionStorage), cookie: document.cookie }),
-      analytics: JSON.stringify({ dataLayer: w.dataLayer ?? null, title: document.title, href: location.href }),
-      innerText: document.body?.innerText ?? "",
-    };
-  }, blankProps);
+    return value;
+  };
+  const props = {};
+  for (const key of Object.getOwnPropertyNames(window)) {
+    if (blank.includes(key)) continue;
+    try {
+      props[key] = JSON.parse(JSON.stringify(window[key], replacer) ?? "null");
+    } catch {
+      props[key] = "[unserialisable]";
+    }
+  }
+  const dump = (s) => Object.fromEntries(Array.from({ length: s.length }, (_v, i) => s.key(i)).map((k) => [k, s.getItem(k)]));
+  return {
+    nextF: JSON.stringify(window.__next_f ?? null),
+    windowProps: JSON.stringify(props).slice(0, 4000000),
+    storage: JSON.stringify({ localStorage: dump(localStorage), sessionStorage: dump(sessionStorage), cookie: document.cookie }),
+    analytics: JSON.stringify({ dataLayer: window.dataLayer ?? null, title: document.title, href: location.href }),
+    innerText: document.body?.innerText ?? "",
+  };`,
+) as (blank: string[]) => Capture;
+
+async function capture(page: Page, blankProps: string[]): Promise<Capture> {
+  const data = await page.evaluate(captureInPage, blankProps);
   let aria = "";
   try {
     aria = await page.locator("body").ariaSnapshot();

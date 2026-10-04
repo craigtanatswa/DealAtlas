@@ -431,9 +431,16 @@ export function controlValue(
  * counted exactly as the token would be.
  */
 export function compileControl(token: ManifestToken, pieces: string[]): CompiledToken {
-  const patterns = [...new Set(pieces.map((piece) => variantPattern(piece)).filter(Boolean))].map(
-    (source) => new RegExp(wrap(source, token.match.boundary), "gi"),
-  );
+  const sources = new Set<string>();
+  for (const piece of pieces) {
+    if (!piece) continue;
+    // variantPattern drops separators outside its class (`/`, `,`). The literal
+    // piece is what the control request actually echoed.
+    sources.add(escapeRe(piece));
+    const variant = variantPattern(piece);
+    if (variant) sources.add(variant);
+  }
+  const patterns = [...sources].map((source) => new RegExp(wrap(source, token.match.boundary), "gi"));
   const squashed = token.match.squash
     ? [...new Set(pieces.map((piece) => squash(normalise(piece))).filter((v) => v.length >= 8))]
     : [];
