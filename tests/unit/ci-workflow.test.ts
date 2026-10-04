@@ -292,13 +292,14 @@ describe("CI workflow", () => {
       "mv supabase/migrations/0019_",
       "npx supabase start",
       "node scripts/ci-guard-env.mjs",
-      "scripts/leak-regression/seed.ts",
       "npm run build",
-      "next start",
-      "--phase pre-0019",
+      "tests/leak/preflight.ts --baseline",
+      "tests/leak/seed/users.ts",
+      "tests/leak/run.ts --phase A",
       "npx supabase migration up --local",
-      "--phase post-0019",
+      "tests/leak/run.ts --phase B",
       "tests/integration/public-discovery.rest.test.ts",
+      "tests/leak/report.ts",
       "actions/upload-artifact",
     ].map((needle) => {
       expect(leak, needle).toContain(needle);

@@ -198,9 +198,11 @@ jobs:
   leak-regression:
     name: Leak regression (local)
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 90
     env:
-      LEAK_REGRESSION_APP_URL: http://127.0.0.1:3000
+      LEAK_APP_URL: http://127.0.0.1:3100
+      NEXT_PUBLIC_APP_URL: http://127.0.0.1:3100
+      NEXT_PUBLIC_GA_MEASUREMENT_ID: G-ZQLEAKTEST0
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
@@ -228,45 +230,56 @@ jobs:
           applied="$(psql "$DEALATLAS_DB_TEST_DB_URL" -XAt -c "select count(*) from supabase_migrations.schema_migrations where version like '0019%'")"
           test "$applied" = "0"
           test "$(psql "$DEALATLAS_DB_TEST_DB_URL" -XAt -c "select pg_catalog.to_regclass('private.pre_0019_acl') is null")" = "t"
-      - name: Seed the synthetic protected-token world
-        run: npx tsx scripts/leak-regression/seed.ts
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
       - run: npm run build
-      - name: Start the app (next start)
-        id: start-app
+      - name: Baseline crawl on the unseeded app
         run: |
-          nohup npx next start -H 127.0.0.1 -p 3000 > "$RUNNER_TEMP/next-start.log" 2>&1 &
-          for _ in $(seq 1 60); do
-            curl -fsS -o /dev/null "$LEAK_REGRESSION_APP_URL/api/health" && exit 0
-            sleep 2
-          done
-          cat "$RUNNER_TEMP/next-start.log"
-          exit 1
-      - name: Probes before 0019
-        run: npx tsx scripts/leak-regression/probe.ts --phase pre-0019 --out leak-report
+          bash tests/leak/start-app.sh baseline "$RUNNER_TEMP/next-start.log"
+          npx tsx tests/leak/preflight.ts --baseline
+          bash tests/leak/stop-app.sh
+      - name: Seed the synthetic protected-token world
+        run: |
+          npx tsx tests/leak/seed/users.ts
+          bash tests/leak/seed/apply.sh
+      - name: Preflight and phase A
+        run: |
+          date -u +%Y-%m-%dT%H:%M:%SZ > .leak/started-at
+          bash tests/leak/start-app.sh A "$RUNNER_TEMP/next-start.log"
+          npx tsx --import ./scripts/allow-server-only.mjs tests/leak/preflight.ts
+          npx tsx --import ./scripts/allow-server-only.mjs tests/leak/run.ts --phase A
+          bash tests/leak/stop-app.sh
       - name: Apply 0019
-        if: ${{ !cancelled() && steps.start-app.outcome == 'success' }}
+        if: ${{ !cancelled() }}
         run: |
           mv "$RUNNER_TEMP"/held-migrations/0019_*.sql supabase/migrations/
           npx supabase migration up --local
           test "$(psql "$DEALATLAS_DB_TEST_DB_URL" -XAt -c "select pg_catalog.to_regclass('private.pre_0019_acl') is not null")" = "t"
-      - name: Probes after 0019 (including REST deny/allow and Pro entitlement)
-        if: ${{ !cancelled() && steps.start-app.outcome == 'success' }}
-        run: npx tsx scripts/leak-regression/probe.ts --phase post-0019 --out leak-report
+      - name: Phase B
+        if: ${{ !cancelled() }}
+        run: |
+          bash tests/leak/start-app.sh B "$RUNNER_TEMP/next-start.log"
+          npx tsx --import ./scripts/allow-server-only.mjs tests/leak/run.ts --phase B
       - name: HTTP leak suite against the built app
-        if: ${{ !cancelled() && steps.start-app.outcome == 'success' }}
+        if: ${{ !cancelled() }}
         env:
-          DEALATLAS_APP_URL: ${{ env.LEAK_REGRESSION_APP_URL }}
+          DEALATLAS_APP_URL: http://127.0.0.1:3100
         run: npx vitest run tests/integration/public-discovery.rest.test.ts
-      - name: Collect app log
+      - name: Report
+        if: ${{ !cancelled() }}
+        run: |
+          bash tests/leak/stop-app.sh
+          npx tsx tests/leak/report.ts
+      - name: Name the artifact
         if: always()
-        run: cp "$RUNNER_TEMP/next-start.log" leak-report/ 2>/dev/null || true
-      - name: Upload leak regression report
+        run: echo "LEAK_ARTIFACT=leak-probes-${GITHUB_SHA::7}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" >> "$GITHUB_ENV"
+      - name: Upload leak probes
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: leak-regression-report
-          path: leak-report/
-          retention-days: 14
+          name: ${{ env.LEAK_ARTIFACT }}
+          path: leak-artifacts/
+          retention-days: 30
       - name: Stop local Supabase
         if: always()
         run: npx supabase stop --no-backup

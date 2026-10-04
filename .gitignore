@@ -43,6 +43,8 @@ yarn-error.log*
 
 # leak regression and write-timing outputs
 /.leak-regression/
+/.leak/
+/leak-artifacts/
 /leak-report/
 /write-timing/
 

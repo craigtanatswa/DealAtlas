@@ -1,0 +1,11 @@
+{
+  "$comment": "Spec section 7 rule 9: P2 findings fail unless waived here. Each waiver cites the Reviewer's written decision; an expired waiver fails the job.",
+  "waivers": [
+    {
+      "finding": "SEO-04",
+      "reason": "OQ-3 decision (Lawliet, 2026-10-04 00:29 CAT): intended sitemaps are /sitemap.xml and /deals/sitemap/{id}.xml; the robots / soft-404 fix is PR3; P2, non-blocking for PR1.",
+      "approved_by": "Reviewer",
+      "expires": "2026-12-31"
+    }
+  ]
+}
