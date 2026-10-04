@@ -73,7 +73,8 @@ grant execute on function public.search_deal_previews_for_profile(
 ) to service_role;
 
 -- Every other non-extension function in public loses its implicit PUBLIC
--- EXECUTE grant. Only the sanitised DTO RPCs stay client-callable.
+-- EXECUTE grant. The sanitised DTO RPCs stay client-callable, plus the two
+-- boolean helpers the free saved-deal policy and the app-deal 404 use.
 do $$
 declare
   f record;
@@ -97,7 +98,9 @@ begin
         'resolve_preview_deal_id',
         'list_saved_deal_previews',
         'list_preview_sitemap_entries',
-        'count_preview_sitemap_entries'
+        'count_preview_sitemap_entries',
+        'saved_deal_row_visible',
+        'caller_misses_published_preview'
       )
   loop
     execute format('revoke execute on function %s from public, anon, authenticated', f.signature);

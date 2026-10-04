@@ -68,6 +68,26 @@ select ok(
   not has_function_privilege('authenticated', 'public.search_deal_previews_for_profile(uuid, text, text, public.buyer_sector, public.deal_type, text, public.deal_status, text, text, numeric, text, integer, integer)', 'execute'),
   'authenticated cannot execute the legacy profile search RPC'
 );
+select ok(
+  not has_function_privilege('anon', 'public.search_deal_previews_for_profile(uuid, text, text, public.buyer_sector, public.deal_type, text, public.deal_status, text, text, numeric, text, integer, integer)', 'execute'),
+  'anon cannot execute the legacy profile search RPC after 0019'
+);
+select ok(
+  has_function_privilege('authenticated', 'public.saved_deal_row_visible(uuid)', 'execute'),
+  'authenticated can evaluate saved-deal visibility'
+);
+select ok(
+  not has_function_privilege('anon', 'public.saved_deal_row_visible(uuid)', 'execute'),
+  'anon cannot evaluate saved-deal visibility'
+);
+select ok(
+  has_function_privilege('authenticated', 'public.caller_misses_published_preview(uuid)', 'execute'),
+  'authenticated can check a missing published preview'
+);
+select ok(
+  not has_function_privilege('anon', 'public.caller_misses_published_preview(uuid)', 'execute'),
+  'anon cannot check a missing published preview'
+);
 select ok(not has_function_privilege('anon', 'public.admin_release_preview_hold(uuid)', 'execute'), 'anon cannot release preview holds');
 select ok(not has_function_privilege('authenticated', 'public.admin_release_preview_hold(uuid)', 'execute'), 'authenticated cannot release preview holds');
 select ok(

@@ -196,6 +196,14 @@ describe("supabase migrations", () => {
       expect(gate).toContain(`revoke execute on function public.${signature} from anon`);
       expect(gate).toContain(`grant execute on function public.${signature} to authenticated, service_role`);
     }
+    expect(gate).toContain("security definer");
+    expect(gate).toMatch(
+      /grant execute on function public\.search_deal_previews_for_profile\([\s\S]*?\) to anon, authenticated, service_role/,
+    );
+    expect(gate).not.toMatch(/preview_title % p_query/);
+    expect(gate).toContain("public.saved_deal_row_visible(deal_id)");
+    expect(gate).toContain("revoke all on function public.caller_misses_published_preview(uuid) from public, anon");
+    expect(gate).toContain("grant execute on function public.caller_misses_published_preview(uuid) to authenticated, service_role");
   });
 
   it("revokes direct client access to deal_previews in a separate post-deploy migration", () => {
@@ -203,6 +211,8 @@ describe("supabase migrations", () => {
     expect(revoke).toContain(
       "revoke all on table public.deal_previews from public, anon, authenticated",
     );
+    expect(revoke).toContain("'saved_deal_row_visible'");
+    expect(revoke).toContain("'caller_misses_published_preview'");
     expect(revoke).not.toMatch(/grant\s+(all|select)[\s\S]{0,60}to\s+(anon|authenticated)/i);
   });
 

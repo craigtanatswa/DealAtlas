@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  compileControl,
   compileTokens,
+  controlCounts,
   controlValue,
   decodeLayers,
   forbiddenFor,
@@ -157,6 +159,23 @@ describe("reflection parity (spec 4.4)", () => {
     expect(verdict.pass).toBe(false);
     expect(verdict.rows.filter((r) => !r.pass).map((r) => r.tokenId)).toContain("T16");
     expect(verdict.rows.filter((r) => r.tokenId === "T01").every((r) => r.pass)).toBe(true);
+  });
+
+  it("counts an @ control that the page echoes as %40", () => {
+    const token = manifest.tokens.find((entry) => entry.id === "T04");
+    expect(token).toBeDefined();
+    const piece = "bjkvxyq@yqbjkvxy.example";
+    const counts = controlCounts(decodeLayers(`echo ${piece.replaceAll("@", "%40")}`), compileControl(token!, [piece]));
+    expect(counts.L0).toBeGreaterThan(0);
+  });
+
+  it("does not match short date and postcode variants inside longer tokens", () => {
+    const noise = scanText("5161711516 DFwCzhzE9xNvHgnlH0xwdv", compiled);
+    expect(noise.tokens.has("T15")).toBe(false);
+    expect(noise.tokens.has("T20")).toBe(false);
+    const real = scanText("closes 17/11 near ZE9 7QX (ZE9)", compiled);
+    expect(real.tokens.has("T15")).toBe(true);
+    expect(real.tokens.has("T20")).toBe(true);
   });
 
   it("counts a control that keeps separators variantPattern drops", () => {

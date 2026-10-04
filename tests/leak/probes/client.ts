@@ -40,8 +40,39 @@ function isLoopback(url: string): boolean {
   }
 }
 
+// Runs before Next's inline flight scripts. `__next_f` is emptied once React
+// hydrates, so a post-load read of the array misses the payload the spec
+// scans (CLIENT-01). Record every push as it happens.
+const NEXT_F_HOOK = `(() => {
+  const w = window;
+  const log = [];
+  w.__leakNextF = log;
+  const attach = (arr) => {
+    if (!arr || arr.__leakHooked) return arr;
+    try { Object.defineProperty(arr, "__leakHooked", { value: true }); } catch (e) { return arr; }
+    const orig = arr.push;
+    arr.push = function () {
+      const result = orig.apply(this, arguments);
+      try { log.push(JSON.stringify([].slice.call(arguments))); } catch (e) {}
+      return result;
+    };
+    return arr;
+  };
+  let value = w.__next_f;
+  if (Array.isArray(value)) attach(value);
+  try {
+    Object.defineProperty(w, "__next_f", {
+      configurable: true,
+      enumerable: true,
+      get() { return value; },
+      set(next) { value = Array.isArray(next) ? attach(next) : next; },
+    });
+  } catch (e) {}
+})();`;
+
 async function newContext(browser: Browser, ctx: Ctx, tracker: Tracker, storageState?: string): Promise<BrowserContext> {
   const context = await browser.newContext({ baseURL: ctx.env.appUrl, storageState });
+  await context.addInitScript({ content: NEXT_F_HOOK });
   await context.route("**/*", async (route) => {
     const request = route.request();
     if (!isLoopback(request.url())) {
@@ -103,7 +134,7 @@ const captureInPage = new Function(
   }
   const dump = (s) => Object.fromEntries(Array.from({ length: s.length }, (_v, i) => s.key(i)).map((k) => [k, s.getItem(k)]));
   return {
-    nextF: JSON.stringify(window.__next_f ?? null),
+    nextF: JSON.stringify(window.__next_f ?? null) + "\\n" + JSON.stringify(window.__leakNextF ?? []),
     windowProps: JSON.stringify(props).slice(0, 4000000),
     storage: JSON.stringify({ localStorage: dump(localStorage), sessionStorage: dump(sessionStorage), cookie: document.cookie }),
     analytics: JSON.stringify({ dataLayer: window.dataLayer ?? null, title: document.title, href: location.href }),

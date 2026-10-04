@@ -414,7 +414,11 @@ export async function restProbes(ctx: Ctx): Promise<void> {
         role: "anon",
         req,
         status: (s) => s >= 400 && s < 500,
-        check: (o) => [deniedNoData(o)],
+        // Spec: 406 or any 4xx with no row payload. An error object is not data.
+        check: (o) => {
+          const empty = !Array.isArray(o.json) || (o.json as unknown[]).length === 0;
+          return [ok("no_data", o.final.status >= 400 && o.final.status < 500 && empty, { status: o.final.status, body: o.final.body.slice(0, 200) })];
+        },
       }),
     );
   }
@@ -631,19 +635,37 @@ function writeFingerprint(ctx: Ctx): string {
 
 /** Non-anon public tables and every private.* object (REST-13 PRIVATE_NAMES). */
 function privateObjectNames(ctx: Ctx): string[] {
+  // Privilege checks must use the relation oid. Formatting every relname as
+  // public.<name> is planned before the schema filter and throws on auth.*
+  // and private.* relations (relation "public.instances" does not exist).
   const names = ctx.psqlJson<Array<{ n: string }>>(
-    `select tablename as n from pg_tables where schemaname = 'public' and not has_table_privilege('anon', format('public.%I', tablename), 'select')
-     union select c.relname from pg_class c where c.relnamespace = 'private'::regnamespace and c.relkind in ('r', 'v', 'm')
-     union select p.proname from pg_proc p where p.pronamespace = 'private'::regnamespace`,
+    `select c.relname as n
+       from pg_class c
+       join pg_namespace ns on ns.oid = c.relnamespace
+      where ns.nspname = 'public'
+        and c.relkind in ('r', 'p')
+        and not has_table_privilege('anon', c.oid, 'select')
+     union
+     select c.relname
+       from pg_class c
+      where c.relnamespace = 'private'::regnamespace
+        and c.relkind in ('r', 'v', 'm')
+     union
+     select p.proname
+       from pg_proc p
+      where p.pronamespace = 'private'::regnamespace`,
   ).map((r) => r.n);
   // OQ-8: after 0019 a hint naming deal_previews is acceptable.
   return ctx.phase === "B" ? names.filter((n) => n !== "deal_previews") : names;
 }
 
 /** B-LOCK-05: allowlists and result sets identical to Phase A. */
-export function lockCompare(ctx: Ctx, phaseA: Record<string, unknown>): void {
+export function lockCompare(ctx: Ctx, phaseA: Record<string, unknown>, phaseB: Record<string, unknown>): void {
   const keys = Object.keys(phaseA).filter((k) => /^REST-0[1-4]\||^REST-16\|/.test(k));
-  const diffs = keys.filter((k) => JSON.stringify(phaseA[k]) !== JSON.stringify(ctx.snapshots.get(k)));
+  // Compare the written deterministic snapshots. ctx.snapshots only holds the
+  // probes that called snap(), so the phase-A file (which also includes
+  // outcome fallbacks) would disagree even when every result is identical.
+  const diffs = keys.filter((k) => JSON.stringify(phaseA[k]) !== JSON.stringify(phaseB[k]));
   ctx.derive({
     id: "LOCK-05",
     instance: "rpc-results-vs-phase-A",

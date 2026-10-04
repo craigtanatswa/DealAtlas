@@ -240,12 +240,25 @@ function wrap(pattern: string, boundary: ManifestToken["match"]["boundary"]): st
   return `(?:${pattern})`;
 }
 
+/**
+ * Spec §3: a variant under 8 characters always carries a boundary. Numeric
+ * fragments (`17/11` → `1711`) use a digit boundary; other short variants
+ * (`ZE9`) use a word boundary. Longer variants keep the token's own boundary.
+ */
+export function shortVariantBoundary(variant: string): "word" | "digit" | null {
+  const compact = normalise(variant).replace(/[^a-z0-9]/g, "");
+  if (compact.length === 0 || compact.length >= 8) return null;
+  return /^\d+$/.test(compact) ? "digit" : "word";
+}
+
 export function compileTokens(manifest: Manifest): CompiledToken[] {
   return manifest.tokens.map((token) => {
     const sources = new Set<string>(token.regex);
     for (const variant of token.variants) {
       const pattern = variantPattern(variant);
-      if (pattern) sources.add(pattern);
+      if (!pattern) continue;
+      const boundary = token.match.boundary === "none" ? shortVariantBoundary(variant) : null;
+      sources.add(boundary ? wrap(pattern, boundary) : pattern);
     }
     const patterns = [...sources].map((source) => new RegExp(wrap(source, token.match.boundary), "gi"));
     const squashed = token.match.squash
@@ -437,6 +450,9 @@ export function compileControl(token: ManifestToken, pieces: string[]): Compiled
     // variantPattern drops separators outside its class (`/`, `,`). The literal
     // piece is what the control request actually echoed.
     sources.add(escapeRe(piece));
+    // T04's regex treats `@` and `%40` as the same token. A control echoed
+    // through a query string is percent-encoded; count that form too (§4.4).
+    if (piece.includes("@")) sources.add(escapeRe(piece).replaceAll("@", "(?:@|%40)"));
     const variant = variantPattern(piece);
     if (variant) sources.add(variant);
   }

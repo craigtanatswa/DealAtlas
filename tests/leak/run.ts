@@ -67,7 +67,7 @@ function deterministicSnapshots(ctx: Ctx): Record<string, unknown> {
 }
 
 function crossPhase(ctx: Ctx, phaseA: Record<string, unknown>, snapshots: Record<string, unknown>): void {
-  lockCompare(ctx, phaseA);
+  lockCompare(ctx, phaseA, snapshots);
   const keys = Object.keys(phaseA).filter((k) => DETERMINISTIC.test(k) && !k.startsWith("REST-08") && !k.startsWith("REST-09"));
   const diffs = keys.filter((k) => JSON.stringify(phaseA[k]) !== JSON.stringify(snapshots[k]));
   ctx.derive({ id: "XPH-01", instance: "deterministic-probes", role: "db", assertions: [ok("compared_any", keys.length > 0, keys.length), eq("equal", [], diffs)] });

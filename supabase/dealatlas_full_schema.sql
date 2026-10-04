@@ -5029,6 +5029,238 @@ comment on function public.resolve_preview_deal_id(text) is
 comment on function public.list_saved_deal_previews() is
   'Signed-in only. The caller''s saved deals with sanitised previews. Free callers get published deals only; Pro callers also get unpublished ones with null preview fields.';
 
+-- Legacy profile search is still callable in phase A (anon and authenticated)
+-- and must return deal_id for published rows only. SECURITY DEFINER so the
+-- 0018 revoke of deal_matches/deal_previews does not 401/403 it. Match rows
+-- are joined only for the caller's own profile, or for service_role (exports).
+-- Client roles receive empty preview_reasons: the stored B3 label is a source
+-- token, and this RPC is not the canned-reason DTO. Trigram similarity is
+-- omitted; it reverse-looked-up published slugs from source titles.
+create or replace function public.search_deal_previews_for_profile(
+  p_company_profile_id uuid,
+  p_query text default null,
+  p_category text default null,
+  p_buyer_sector public.buyer_sector default null,
+  p_deal_type public.deal_type default null,
+  p_region text default null,
+  p_status public.deal_status default null,
+  p_value_band text default null,
+  p_deadline_band text default null,
+  p_min_score numeric default null,
+  p_sort text default 'updated',
+  p_limit integer default 20,
+  p_offset integer default 0
+)
+returns table (
+  deal_id uuid,
+  slug text,
+  preview_title text,
+  preview_summary text,
+  deal_type public.deal_type,
+  buyer_sector public.buyer_sector,
+  stage public.deal_stage,
+  status public.deal_status,
+  main_category text,
+  broad_region text,
+  value_band text,
+  deadline_band text,
+  duration_band text,
+  sme_suitability text,
+  bid_complexity text,
+  competition_level text,
+  requirements_preview jsonb,
+  relevance_tags text[],
+  freshness_label text,
+  relevance_score numeric,
+  preview_reasons jsonb,
+  total_count bigint
+)
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  with ranked as (
+    select
+      dp.deal_id,
+      dp.slug,
+      dp.preview_title,
+      dp.preview_summary,
+      dp.deal_type,
+      dp.buyer_sector,
+      dp.stage,
+      dp.status,
+      dp.main_category,
+      dp.broad_region,
+      dp.value_band,
+      dp.deadline_band,
+      dp.duration_band,
+      dp.sme_suitability,
+      dp.bid_complexity,
+      dp.competition_level,
+      dp.requirements_preview,
+      dp.relevance_tags,
+      dp.freshness_label,
+      dm.relevance_score,
+      case
+        when auth.role() = 'service_role' then coalesce(dm.preview_reasons, '[]'::jsonb)
+        else '[]'::jsonb
+      end as preview_reasons,
+      dp.updated_at,
+      case
+        when p_query is null or btrim(p_query) = '' then 0
+        else ts_rank(
+          to_tsvector(
+            'english',
+            coalesce(dp.preview_title, '') || ' ' || coalesce(dp.preview_summary, '') || ' ' || coalesce(dp.main_category, '')
+          ),
+          websearch_to_tsquery('english', p_query)
+        )
+      end as query_rank
+    from public.deal_previews dp
+    left join public.deal_matches dm
+      on dm.deal_id = dp.deal_id
+     and dm.company_profile_id = p_company_profile_id
+     and (
+       auth.role() = 'service_role'
+       or exists (
+         select 1
+         from public.company_profiles cp
+         where cp.id = p_company_profile_id
+           and cp.user_id = auth.uid()
+       )
+     )
+    where dp.is_published = true
+      and dp.leakage_risk = 'LOW'
+      and (p_category is null or dp.main_category = p_category)
+      and (p_buyer_sector is null or dp.buyer_sector = p_buyer_sector)
+      and (p_deal_type is null or dp.deal_type = p_deal_type)
+      and (p_region is null or dp.broad_region = p_region)
+      and (p_status is null or dp.status = p_status)
+      and (p_value_band is null or dp.value_band = p_value_band)
+      and (p_deadline_band is null or dp.deadline_band = p_deadline_band)
+      and (
+        p_min_score is null
+        or coalesce(dm.relevance_score, -1) >= p_min_score
+      )
+      and (
+        p_query is null
+        or btrim(p_query) = ''
+        or to_tsvector(
+             'english',
+             coalesce(dp.preview_title, '') || ' ' || coalesce(dp.preview_summary, '') || ' ' || coalesce(dp.main_category, '')
+           ) @@ websearch_to_tsquery('english', p_query)
+      )
+  )
+  select
+    ranked.deal_id,
+    ranked.slug,
+    ranked.preview_title,
+    ranked.preview_summary,
+    ranked.deal_type,
+    ranked.buyer_sector,
+    ranked.stage,
+    ranked.status,
+    ranked.main_category,
+    ranked.broad_region,
+    ranked.value_band,
+    ranked.deadline_band,
+    ranked.duration_band,
+    ranked.sme_suitability,
+    ranked.bid_complexity,
+    ranked.competition_level,
+    ranked.requirements_preview,
+    ranked.relevance_tags,
+    ranked.freshness_label,
+    ranked.relevance_score,
+    ranked.preview_reasons,
+    count(*) over() as total_count
+  from ranked
+  order by
+    case when lower(coalesce(p_sort, 'updated')) = 'relevance'
+      then coalesce(ranked.relevance_score, -1)
+      else 0
+    end desc,
+    ranked.query_rank desc,
+    ranked.updated_at desc
+  limit greatest(1, least(coalesce(p_limit, 20), 50))
+  offset greatest(coalesce(p_offset, 0), 0);
+$$;
+
+revoke all on function public.search_deal_previews_for_profile(
+  uuid, text, text, public.buyer_sector, public.deal_type, text, public.deal_status,
+  text, text, numeric, text, integer, integer
+) from public;
+
+grant execute on function public.search_deal_previews_for_profile(
+  uuid, text, text, public.buyer_sector, public.deal_type, text, public.deal_status,
+  text, text, numeric, text, integer, integer
+) to anon, authenticated, service_role;
+
+comment on function public.search_deal_previews_for_profile(
+  uuid, text, text, public.buyer_sector, public.deal_type, text, public.deal_status,
+  text, text, numeric, text, integer, integer
+) is
+  'Phase A legacy search. Returns published deal_id rows. Client roles get empty preview_reasons. 0019 revokes client EXECUTE.';
+
+-- Free callers must not receive a held deal id from their own saved_deals row.
+-- The check is SECURITY DEFINER so it still works after 0019 revokes
+-- deal_previews and private schema usage from authenticated.
+create or replace function public.saved_deal_row_visible(p_deal_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select
+    private.is_user_pro(auth.uid())
+    or exists (
+      select 1
+      from public.deal_previews dp
+      where dp.deal_id = p_deal_id
+        and dp.is_published = true
+        and dp.leakage_risk = 'LOW'
+        and dp.unpublished_by_admin = false
+    );
+$$;
+
+revoke all on function public.saved_deal_row_visible(uuid) from public, anon;
+grant execute on function public.saved_deal_row_visible(uuid) to authenticated, service_role;
+
+drop policy if exists "users read own saved deals" on public.saved_deals;
+create policy "users read own saved deals"
+  on public.saved_deals for select to authenticated
+  using (
+    (select auth.uid()) = user_id
+    and public.saved_deal_row_visible(deal_id)
+  );
+
+-- Proxy uses this to return HTTP 404 for a signed-in free /app/deals/{id}
+-- before loading.tsx can stream a 200. Pro and anon (uid null) return false.
+create or replace function public.caller_misses_published_preview(p_deal_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select
+    auth.uid() is not null
+    and not private.is_user_pro(auth.uid())
+    and not exists (
+      select 1
+      from public.deal_previews dp
+      where dp.deal_id = p_deal_id
+        and dp.is_published = true
+        and dp.leakage_risk = 'LOW'
+        and dp.unpublished_by_admin = false
+    );
+$$;
+
+revoke all on function public.caller_misses_published_preview(uuid) from public, anon;
+grant execute on function public.caller_misses_published_preview(uuid) to authenticated, service_role;
+
 -- ============================================================================
 -- END 0018_preview_gate_v2_and_dto_rpcs.sql
 -- ============================================================================
@@ -5112,7 +5344,8 @@ grant execute on function public.search_deal_previews_for_profile(
 ) to service_role;
 
 -- Every other non-extension function in public loses its implicit PUBLIC
--- EXECUTE grant. Only the sanitised DTO RPCs stay client-callable.
+-- EXECUTE grant. The sanitised DTO RPCs stay client-callable, plus the two
+-- boolean helpers the free saved-deal policy and the app-deal 404 use.
 do $$
 declare
   f record;
@@ -5136,7 +5369,9 @@ begin
         'resolve_preview_deal_id',
         'list_saved_deal_previews',
         'list_preview_sitemap_entries',
-        'count_preview_sitemap_entries'
+        'count_preview_sitemap_entries',
+        'saved_deal_row_visible',
+        'caller_misses_published_preview'
       )
   loop
     execute format('revoke execute on function %s from public, anon, authenticated', f.signature);

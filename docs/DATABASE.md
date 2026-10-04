@@ -369,7 +369,7 @@ Indexes:
 
 `search_preview_dtos` is the public/free and signed-in search RPC. It only reads published LOW-risk, non-held `deal_previews` and the caller's own `deal_matches`, and accepts keyword, category, buyer sector, deal type, broad region, status or statuses, value band, closing window, minimum score, sort (`updated`/`relevance`), limit (max 50) and offset (max 10000).
 
-The legacy `search_deal_previews` / `search_deal_previews_for_profile` RPCs return `deal_id` and are service-role only after `0019`; Pro CSV export uses them with the admin client after the entitlement check. Protected Pro filters that need canonical tables still run through trusted server code after entitlement check.
+The legacy `search_deal_previews` / `search_deal_previews_for_profile` RPCs return `deal_id`. Until `0019` they are client-callable (`search_deal_previews_for_profile` is security definer, joins only the caller's own matches, and returns empty `preview_reasons` to client roles). After `0019` they are service-role only; Pro CSV export uses the profile search with the admin client after the entitlement check. Protected Pro filters that need canonical tables still run through trusted server code after entitlement check.
 
 ## 9. Migrations
 Included in the build pack:
@@ -517,7 +517,7 @@ Must test:
 - anon cannot select `deal_previews` directly and only receives published LOW-risk, non-held DTOs from the RPCs
 - anon cannot insert/update/delete previews
 - authenticated normal user cannot read canonical tables
-- user can manage only own saved deals/searches/company profile
+- user can manage only own saved deals/searches/company profile; a free caller does not receive saved rows whose deal is unpublished or held
 - subscription, billing event and export usage rows are not directly readable or writable by ordinary client roles; entitlement is read by trusted server code
 - user cannot write subscription state
 - user cannot promote own role
