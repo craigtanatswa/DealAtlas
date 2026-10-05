@@ -282,6 +282,7 @@ async function navigationScript(ctx: Ctx, browser: Browser, role: Role): Promise
       run: async () => {
         await page.locator('a[href="/deals"]').first().click();
         await page.waitForURL((u) => u.pathname === "/deals");
+        return "/deals";
       },
     },
     {
@@ -310,19 +311,19 @@ async function navigationScript(ctx: Ctx, browser: Browser, role: Role): Promise
   for (const step of steps) {
     const before = tracker.rsc.length;
     let error: string | undefined;
-    let cardPath = "";
+    let tiedPath = "";
     try {
       const tied = await step.run();
-      if (typeof tied === "string") cardPath = tied;
+      if (typeof tied === "string") tiedPath = tied;
       await page.waitForLoadState("networkidle", { timeout: 15_000 }).catch(() => undefined);
     } catch (e) {
       error = String(e);
     }
-    // The deals index prefetches visible cards, so the click often reuses that
-    // flight and records no new response. Count that prefetch, a flight fetched
-    // during the click, or an HTML document that inlines the payload.
-    const rsc = step.name === "card"
-      ? navigationRscCount(tracker, cardPath)
+    // Card and /deals clicks often reuse a prefetch or the document that
+    // already inlined the flight, so they record no new response. Count that
+    // flight. Search and category still require a new RSC response.
+    const rsc = tiedPath
+      ? navigationRscCount(tracker, tiedPath)
       : tracker.rsc.length - before;
     perStep.push({ step: step.name, rsc, error });
   }

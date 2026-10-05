@@ -48,6 +48,18 @@ describe("card navigation RSC count", () => {
     ).toBe(1);
   });
 
+  it("counts a prefetched /deals flight separately from a deal card", () => {
+    const tracker = {
+      rsc: [
+        { url: "http://127.0.0.1:3100/deals?_rsc=index" },
+        { url: `http://127.0.0.1:3100${slug}?_rsc=prefetch` },
+      ],
+      responses: [],
+    };
+    expect(navigationRscCount(tracker, "/deals")).toBe(1);
+    expect(navigationRscCount(tracker, slug)).toBe(1);
+  });
+
   it("is zero when nothing is tied to the card", () => {
     expect(navigationRscCount({ rsc: [{ url: "http://127.0.0.1:3100/deals?_rsc=1" }], responses: [] }, slug)).toBe(0);
     expect(navigationRscCount({ rsc: [], responses: [] }, "")).toBe(0);
