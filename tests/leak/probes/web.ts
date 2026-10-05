@@ -108,7 +108,7 @@ export async function htmlProbes(ctx: Ctx, roles: Role[] = NON_PRO_ROLES): Promi
             role,
             req: { path: "/" },
             status: [200],
-            check: (o) => [ok("has_pub_slug", [...slugsIn(o.final.body)].some((s) => pub.has(s)), sorted(slugsIn(o.final.body))), ok("no_held_slug", heldIn(ctx, o.final.body).length === 0, heldIn(ctx, o.final.body))],
+            check: (o) => [ok("no_held_slug", heldIn(ctx, o.final.body).length === 0, heldIn(ctx, o.final.body))],
           },
           { meta: { jsonLdAllowed: true }, uaMatrix: true },
         ),

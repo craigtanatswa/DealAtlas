@@ -5476,8 +5476,8 @@ $$;
 revoke all on function public.retire_preview_slug(text) from public, anon, authenticated;
 grant execute on function public.retire_preview_slug(text) to service_role;
 
-revoke all on function public.preview_slug_is_retired(text) from public;
-grant execute on function public.preview_slug_is_retired(text) to anon, authenticated, service_role;
+revoke all on function public.preview_slug_is_retired(text) from public, anon, authenticated;
+grant execute on function public.preview_slug_is_retired(text) to service_role;
 
 alter index public.deals_leak_source_tsv_idx set (fastupdate = off);
 

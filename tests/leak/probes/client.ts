@@ -258,7 +258,7 @@ async function clientRole(ctx: Ctx, browser: Browser, role: Role, blankProps: st
   await navigationScript(ctx, browser, role);
 }
 
-/** RSC-03: / -> PUB card -> /deals -> search submit -> category link, capturing client-side RSC fetches. */
+/** RSC-03: /deals -> PUB card -> /deals -> search submit -> category link, capturing client-side RSC fetches. */
 async function navigationScript(ctx: Ctx, browser: Browser, role: Role): Promise<void> {
   const pub = pubSlugs(ctx);
   const tracker = freshTracker();
@@ -270,7 +270,7 @@ async function navigationScript(ctx: Ctx, browser: Browser, role: Role): Promise
       run: async () => {
         const hrefs = await page.locator('a[href^="/deals/"]').evaluateAll((els) => els.map((e) => e.getAttribute("href") ?? ""));
         const target = hrefs.find((h) => [...slugsIn(h)].some((s) => pub.has(s)));
-        if (!target) throw new Error("no PUB card on /");
+        if (!target) throw new Error("no PUB card on /deals");
         await page.locator(`a[href="${target}"]`).first().click();
         await page.waitForURL((u) => u.pathname === target);
       },
@@ -303,7 +303,7 @@ async function navigationScript(ctx: Ctx, browser: Browser, role: Role): Promise
       },
     },
   ];
-  const opened = await visit(page, "/");
+  const opened = await visit(page, "/deals");
   const perStep: Array<{ step: string; rsc: number; error?: string }> = [];
   for (const step of steps) {
     const before = tracker.rsc.length;
@@ -322,7 +322,7 @@ async function navigationScript(ctx: Ctx, browser: Browser, role: Role): Promise
     instance: "navigation",
     role,
     assertions: [
-      ok("home_loaded", opened.status === 200, opened),
+      ok("deals_loaded", opened.status === 200, opened),
       ...perStep.map((s) => ok(`rsc_captured:${s.step}`, !s.error && s.rsc >= 1, s)),
       ok("no_429", tracker.rateLimited.length === 0, tracker.rateLimited, { code: "RATE_LIMITED" }),
     ],

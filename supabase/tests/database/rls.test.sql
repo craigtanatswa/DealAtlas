@@ -89,8 +89,16 @@ select ok(
   'anon cannot check a missing published preview'
 );
 select ok(
-  has_function_privilege('anon', 'public.preview_slug_is_retired(text)', 'execute'),
-  'anon can check whether a preview slug is retired'
+  not has_function_privilege('anon', 'public.preview_slug_is_retired(text)', 'execute'),
+  'anon cannot check whether a preview slug is retired'
+);
+select ok(
+  not has_function_privilege('authenticated', 'public.preview_slug_is_retired(text)', 'execute'),
+  'authenticated cannot check whether a preview slug is retired'
+);
+select ok(
+  has_function_privilege('service_role', 'public.preview_slug_is_retired(text)', 'execute'),
+  'service role can check whether a preview slug is retired'
 );
 select ok(
   not has_function_privilege('anon', 'public.retire_preview_slug(text)', 'execute'),
@@ -126,7 +134,7 @@ select ok(
     join pg_namespace n on n.oid = p.pronamespace
     where n.nspname = 'public'
       and has_function_privilege('anon', p.oid, 'execute')
-      and p.proname not in ('search_preview_dtos', 'get_preview_dto_by_slug', 'list_preview_sitemap_entries', 'count_preview_sitemap_entries', 'preview_slug_is_retired')
+      and p.proname not in ('search_preview_dtos', 'get_preview_dto_by_slug', 'list_preview_sitemap_entries', 'count_preview_sitemap_entries')
       and not exists (select 1 from pg_depend dep where dep.objid = p.oid and dep.deptype = 'e')
   ),
   'anon can only execute the public DTO RPCs in schema public'

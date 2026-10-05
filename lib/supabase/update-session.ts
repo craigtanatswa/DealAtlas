@@ -5,6 +5,7 @@ import { resolveProtectedRouteRedirect } from "@/lib/auth/redirect";
 import type { PublicDatabase } from "@/lib/db/public-schema";
 import { parseDealIdParam } from "@/lib/deals/paths";
 import { getPublicEnv } from "@/lib/env/public";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 function copyCookies(from: NextResponse, to: NextResponse): NextResponse {
   from.cookies.getAll().forEach((cookie) => {
@@ -61,7 +62,7 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
   if (missing) {
     return copyCookies(supabaseResponse, unpublishedDealResponse());
   }
-  if (await retiredPublicSlug(gate, pathname)) {
+  if (await retiredPublicSlug(pathname)) {
     return copyCookies(supabaseResponse, goneSlugResponse());
   }
 
@@ -69,16 +70,10 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
 }
 
 type GateClient = {
-  rpc: {
-    (
-      fn: "caller_misses_published_preview",
-      args: { p_deal_id: string },
-    ): PromiseLike<{ data: boolean | null; error: { message: string } | null }>;
-    (
-      fn: "preview_slug_is_retired",
-      args: { p_slug: string },
-    ): PromiseLike<{ data: boolean | null; error: { message: string } | null }>;
-  };
+  rpc: (
+    fn: "caller_misses_published_preview",
+    args: { p_deal_id: string },
+  ) => PromiseLike<{ data: boolean | null; error: { message: string } | null }>;
 };
 
 /**
@@ -109,7 +104,7 @@ async function missingAppDealForFree(
   return !error && data === true;
 }
 
-async function retiredPublicSlug(supabase: GateClient, pathname: string): Promise<boolean> {
+async function retiredPublicSlug(pathname: string): Promise<boolean> {
   const match = pathname.match(/^\/deals\/([^/]+)$/);
   if (!match || match[1] === "sitemap.xml") return false;
   let slug = match[1];
@@ -118,8 +113,13 @@ async function retiredPublicSlug(supabase: GateClient, pathname: string): Promis
   } catch {
     return false;
   }
-  const { data, error } = await supabase.rpc("preview_slug_is_retired", { p_slug: slug });
-  return !error && data === true;
+  try {
+    const admin = createSupabaseAdminClient();
+    const { data, error } = await admin.rpc("preview_slug_is_retired", { p_slug: slug });
+    return !error && data === true;
+  } catch {
+    return false;
+  }
 }
 
 export function goneSlugResponse(): NextResponse {
