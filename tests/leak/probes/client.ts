@@ -11,7 +11,7 @@ import { LEAK_DIR, LEAK_PASSWORD } from "../lib/env";
 import { reserve } from "../lib/http";
 import type { Assertion, Ctx } from "../lib/probe";
 import { ok, slugsIn } from "../lib/probe";
-import { navigationRscCount } from "../lib/rsc-nav";
+import { abortPrefetch, APP_ROUTER_FROM_NODES_SOURCE, navigationRscCount, type PrefetchAllow } from "../lib/rsc-nav";
 import type { Role } from "../lib/scan";
 import { pubSlugs } from "./common";
 import { previewTitles } from "./web";
@@ -71,16 +71,14 @@ const NEXT_F_HOOK = `(() => {
   } catch (e) {}
 })();`;
 
-function isNextPrefetch(headers: Record<string, string>): boolean {
-  return headers["next-router-prefetch"] === "1" || Boolean(headers["next-router-segment-prefetch"]);
-}
+type PrefetchGate = { allow: PrefetchAllow | null };
 
 async function newContext(
   browser: Browser,
   ctx: Ctx,
   tracker: Tracker,
   storageState?: string,
-  options?: { blockPrefetch?: boolean },
+  options?: { blockPrefetch?: boolean; gate?: PrefetchGate },
 ): Promise<BrowserContext> {
   const context = await browser.newContext({ baseURL: ctx.env.appUrl, storageState });
   await context.addInitScript({ content: NEXT_F_HOOK });
@@ -91,9 +89,14 @@ async function newContext(
       await route.abort("blockedbyclient");
       return;
     }
-    // A prefetch that finishes before the click must not satisfy RSC-03.
-    // Dropping it makes the soft navigation request its own flight during the step.
-    if (options?.blockPrefetch && isNextPrefetch(request.headers())) {
+    // Viewport prefetches finish before the click and must not satisfy RSC-03.
+    // The step's own target is allowed through: Next sends that cache-miss as
+    // a prefetch-header flight, and aborting it leaves the loading shell (no
+    // card links) or falls back to a document navigation (no flight to count).
+    if (
+      options?.blockPrefetch &&
+      abortPrefetch(request.headers(), request.url(), options.gate?.allow ?? null)
+    ) {
       await route.abort("blockedbyclient");
       return;
     }
@@ -217,7 +220,7 @@ async function contextFor(
   browser: Browser,
   role: Role,
   tracker: Tracker,
-  options?: { blockPrefetch?: boolean },
+  options?: { blockPrefetch?: boolean; gate?: PrefetchGate },
 ): Promise<BrowserContext> {
   const statePath = path.join(LEAK_DIR, `state-${role}-${ctx.phase}.json`);
   if (role === "anon") return newContext(browser, ctx, tracker, undefined, options);
@@ -281,50 +284,117 @@ async function clientRole(ctx: Ctx, browser: Browser, role: Role, blankProps: st
   await navigationScript(ctx, browser, role);
 }
 
-/** RSC-03: / -> /deals link -> PUB card -> search submit -> category link, capturing client-side RSC fetches. */
+// Runs in the page. The header search form is a native GET, so submitting it
+// replaces the document and produces no flight. Pushing the same destination
+// through the app router is the soft navigation RSC-03 has to capture.
+const pushAppRouterHref = new Function(
+  "href",
+  `const find = new Function("roots", ${JSON.stringify(APP_ROUTER_FROM_NODES_SOURCE)});
+  const nodes = [];
+  if (document.body) nodes.push(document.body);
+  document.querySelectorAll("a").forEach(function (node) { nodes.push(node); });
+  const router = find(nodes);
+  if (!router) return false;
+  router.push(href);
+  return true;`,
+) as (href: string) => boolean;
+
+function waitForFlight(page: Page, path: string, query?: Record<string, string>): Promise<unknown> {
+  return page.waitForResponse(
+    (response) => flightForPath(response.url(), response.headers()["content-type"] ?? "", path, query),
+    { timeout: 15_000 },
+  );
+}
+
+function flightForPath(url: string, contentType: string, path: string, query?: Record<string, string>): boolean {
+  try {
+    const parsed = new URL(url);
+    if (parsed.pathname !== path) return false;
+    if (query) {
+      for (const [key, value] of Object.entries(query)) {
+        if (parsed.searchParams.get(key) !== value) return false;
+      }
+    }
+    return parsed.search.includes("_rsc=") || contentType.includes("text/x-component");
+  } catch {
+    return false;
+  }
+}
+
+/** RSC-03: / -> /deals link -> PUB card -> search -> category, capturing client-side RSC flights. */
 async function navigationScript(ctx: Ctx, browser: Browser, role: Role): Promise<void> {
   const pub = pubSlugs(ctx);
   const tracker = freshTracker();
-  const context = await contextFor(ctx, browser, role, tracker, { blockPrefetch: true });
+  const gate: PrefetchGate = { allow: null };
+  const context = await contextFor(ctx, browser, role, tracker, { blockPrefetch: true, gate });
   const page = await context.newPage();
-  const steps: Array<{ name: string; run: () => Promise<string | void> }> = [
+  const steps: Array<{ name: string; allow: PrefetchAllow | null; run: () => Promise<string> }> = [
     {
       name: "deals",
+      allow: { exact: "/deals" },
       run: async () => {
+        const flight = waitForFlight(page, "/deals");
         await page.locator('a[href="/deals"]').first().click();
         await page.waitForURL((u) => u.pathname === "/deals");
+        await flight;
         return "/deals";
       },
     },
     {
       name: "card",
+      allow: null,
       run: async () => {
+        await page.locator('a[href^="/deals/"]').first().waitFor({ timeout: 15_000 });
         const hrefs = await page.locator('a[href^="/deals/"]').evaluateAll((els) => els.map((e) => e.getAttribute("href") ?? ""));
         const target = hrefs.find((h) => [...slugsIn(h)].some((s) => pub.has(s)));
-        if (!target) throw new Error("no PUB card on /deals");
+        if (!target) throw new Error(`no PUB card on /deals (${hrefs.length} deal links)`);
+        const targetPath = new URL(target, "http://127.0.0.1").pathname;
+        gate.allow = { exact: targetPath };
+        const flight = waitForFlight(page, targetPath);
         await page.locator(`a[href="${target}"]`).first().click();
-        await page.waitForURL((u) => u.pathname === target);
-        return target;
+        await page.waitForURL((u) => u.pathname === targetPath);
+        await flight;
+        return targetPath;
       },
     },
     {
       name: "search",
+      allow: null,
       run: async () => {
-        const input = page.locator('input[name="q"]').first();
-        await input.fill("grounds");
-        await input.press("Enter");
-        await page.waitForURL((u) => u.searchParams.get("q") === "grounds");
+        await page.locator('input[name="q"]').first().fill("grounds");
+        gate.allow = { exact: "/deals" };
+        const flight = waitForFlight(page, "/deals", { q: "grounds" });
+        const pushed = await page.evaluate(pushAppRouterHref, "/deals?q=grounds");
+        if (!pushed) throw new Error("search soft navigation did not start");
+        await page.waitForURL((u) => u.pathname === "/deals" && u.searchParams.get("q") === "grounds");
+        await flight;
+        return "/deals";
       },
     },
     {
       name: "category",
+      allow: { prefix: "/categories" },
       run: async () => {
         if ((await page.locator('a[href^="/categories/"]').count()) === 0) {
+          const indexFlight = waitForFlight(page, "/categories");
           await page.locator('a[href="/categories"]').first().click();
           await page.waitForURL((u) => u.pathname === "/categories");
+          await indexFlight;
         }
+        const categoryFlight = page.waitForResponse((response) => {
+          try {
+            const url = new URL(response.url());
+            if (!url.pathname.startsWith("/categories/") || url.pathname === "/categories") return false;
+            const type = response.headers()["content-type"] ?? "";
+            return url.search.includes("_rsc=") || type.includes("text/x-component");
+          } catch {
+            return false;
+          }
+        }, { timeout: 15_000 });
         await page.locator('a[href^="/categories/"]').first().click();
-        await page.waitForURL((u) => u.pathname.startsWith("/categories/"));
+        await page.waitForURL((u) => u.pathname.startsWith("/categories/") && u.pathname !== "/categories");
+        await categoryFlight;
+        return new URL(page.url()).pathname;
       },
     },
   ];
@@ -332,20 +402,20 @@ async function navigationScript(ctx: Ctx, browser: Browser, role: Role): Promise
   const perStep: Array<{ step: string; rsc: number; error?: string }> = [];
   for (const step of steps) {
     const since = { rsc: tracker.rsc.length, responses: tracker.responses.length };
+    gate.allow = step.allow;
     let error: string | undefined;
     let tiedPath = "";
     try {
-      const tied = await step.run();
-      if (typeof tied === "string") tiedPath = tied;
+      tiedPath = await step.run();
       await page.waitForLoadState("networkidle", { timeout: 15_000 }).catch(() => undefined);
     } catch (e) {
       error = String(e);
+    } finally {
+      gate.allow = null;
     }
     // Only flights recorded after this click. The document RSC-03 already
     // loaded, and any earlier prefetch, do not count.
-    const rsc = tiedPath
-      ? navigationRscCount(tracker, tiedPath, since)
-      : tracker.rsc.length - since.rsc;
+    const rsc = navigationRscCount(tracker, tiedPath, since);
     perStep.push({ step: step.name, rsc, error });
   }
   await context.close();
