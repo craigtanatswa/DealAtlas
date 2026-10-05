@@ -1,6 +1,7 @@
 /**
- * Explicit deal_previews columns for public/free query paths.
- * Never select every column in public deal code.
+ * Explicit deal_previews columns for trusted server-side (admin client) reads.
+ * Client roles have no table access; they use the preview DTO RPCs instead.
+ * Never select every column in deal code.
  */
 export const DEAL_PREVIEW_PUBLIC_COLUMNS = [
   "deal_id",
@@ -31,27 +32,5 @@ export type DealPreviewPublicColumn =
 
 export const DEAL_PREVIEW_PUBLIC_SELECT =
   DEAL_PREVIEW_PUBLIC_COLUMNS.join(", ");
-
-/**
- * Explicit columns for sitemap indexability checks. URLs emitted to sitemap
- * XML use slug only — never buyer/source identity or alternate text.
- */
-export const DEAL_PREVIEW_SITEMAP_COLUMNS = [
-  "slug",
-  "preview_title",
-  "preview_summary",
-  "main_category",
-  "broad_region",
-  "value_band",
-  "deadline_band",
-  "status",
-  "updated_at",
-] as const;
-
-export type DealPreviewSitemapColumn =
-  (typeof DEAL_PREVIEW_SITEMAP_COLUMNS)[number];
-
-export const DEAL_PREVIEW_SITEMAP_SELECT =
-  DEAL_PREVIEW_SITEMAP_COLUMNS.join(", ");
 
 export const DEAL_PREVIEW_SITEMAP_PAGE_SIZE = 1000;

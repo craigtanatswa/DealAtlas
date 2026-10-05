@@ -67,7 +67,10 @@ export function sanitisedDetailReasons(
   return selected;
 }
 
-export function parseStoredReasons(value: unknown): SanitisedMatchReason[] {
+function parseReasons(
+  value: unknown,
+  labelFor: (code: MatchReasonCode, stored: string | null) => string,
+): SanitisedMatchReason[] {
   if (!Array.isArray(value)) {
     return [];
   }
@@ -83,18 +86,31 @@ export function parseStoredReasons(value: unknown): SanitisedMatchReason[] {
     if (record.kind !== "match" && record.kind !== "mismatch") {
       continue;
     }
-    const fallback = PREVIEW_REASON_LABELS[record.code];
-    const label =
-      typeof record.label === "string" && record.label.trim()
-        ? record.label.trim()
-        : fallback;
+    const stored = typeof record.label === "string" && record.label.trim() ? record.label.trim() : null;
     parsed.push({
       code: record.code,
       kind: record.kind,
-      label: label.slice(0, 180),
+      label: labelFor(record.code, stored).slice(0, 180),
     });
   }
   return parsed;
+}
+
+/**
+ * Preview-surface reasons (anon, free and the preview part of Pro views). The
+ * label always comes from PREVIEW_REASON_LABELS[code]; stored label text is
+ * never rendered and unknown codes are dropped.
+ */
+export function parseStoredReasons(value: unknown): SanitisedMatchReason[] {
+  return parseReasons(value, (code) => PREVIEW_REASON_LABELS[code]);
+}
+
+/** Pro-only detail reasons, loaded with the admin client after entitlement. */
+export function parseStoredDetailReasons(value: unknown): SanitisedMatchReason[] {
+  return parseReasons(
+    value,
+    (code, stored) => stored ?? DETAIL_REASON_LABELS[code] ?? PREVIEW_REASON_LABELS[code],
+  );
 }
 
 export function reasonsToJson(reasons: SanitisedMatchReason[]): Array<{

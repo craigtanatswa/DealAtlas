@@ -7,6 +7,7 @@ import {
   createFixtureSubscriptionLoader,
   createSubscriptionFixture,
   entitlementSubscriptionFixtures,
+  isPaidThrough,
   resolveEntitlement,
   resolveUserEntitlement,
 } from "@/lib/entitlements";
@@ -54,6 +55,17 @@ describe("entitlement policy", () => {
     expect(
       resolveEntitlement(entitlementSubscriptionFixtures.notCurrent(), now)
         .plan,
+    ).toBe(PLANS.FREE);
+  });
+
+  it("fails closed when the paid-through period end is missing or invalid", () => {
+    expect(isPaidThrough(null, now)).toBe(false);
+    expect(isPaidThrough("not-a-date", now)).toBe(false);
+    expect(
+      resolveEntitlement(
+        createSubscriptionFixture({ status: "ACTIVE", currentPeriodEnd: null }),
+        now,
+      ).plan,
     ).toBe(PLANS.FREE);
   });
 

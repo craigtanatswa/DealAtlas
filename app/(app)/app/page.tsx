@@ -30,7 +30,7 @@ export default async function AppHomePage() {
   const client = await createSupabaseServerClient();
   const [savedDeals, savedSearches, alerts, latest, closingSoon] =
     await Promise.all([
-      countSavedDeals(client, user.id),
+      countSavedDeals(client),
       countSavedSearches(client, user.id),
       listAlertCentre({ userId: user.id, limit: 5 }),
       searchDealPreviewsForUser({

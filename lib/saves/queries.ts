@@ -1,10 +1,8 @@
 import "server-only";
 
 import type { PublicSupabaseClient } from "@/lib/db/previews";
-import { DEAL_PREVIEW_PUBLIC_SELECT } from "@/lib/db/preview-columns";
 import { throwIfQueryError } from "@/lib/db/errors";
-import type { DealPreviewPublic } from "@/lib/db/previews";
-import { toPublicDealPreview } from "@/lib/search/dto";
+import { toPublicDealPreview, type PreviewDtoFields } from "@/lib/search/dto";
 import { parseSavedSearchFilters } from "@/lib/saves/filters";
 import type { SavedDealView, SavedSearchView } from "@/lib/saves/types";
 
@@ -15,19 +13,18 @@ export type DealSaveState = {
   used: number;
 };
 
-export async function countSavedDeals(
-  client: PublicSupabaseClient,
-  userId: string,
-): Promise<number> {
-  const { count, error } = await client
-    .from("saved_deals")
-    .select("id", { count: "exact", head: true })
-    .eq("user_id", userId);
-  throwIfQueryError("Failed to count saved deals", {
-    data: count ?? 0,
+/**
+ * Counts the saves the viewer can see (list_saved_deal_previews scopes rows to
+ * auth.uid() and drops held deals for free users), so counts and quotas never
+ * reveal a save the list hides.
+ */
+export async function countSavedDeals(client: PublicSupabaseClient): Promise<number> {
+  const { data, error } = await client.rpc("list_saved_deal_previews");
+  const rows = throwIfQueryError("Failed to count saved deals", {
+    data: data ?? [],
     error,
   });
-  return count ?? 0;
+  return rows.length;
 }
 
 export async function countSavedSearches(
@@ -70,47 +67,26 @@ export async function loadDealSaveState(
 ): Promise<DealSaveState> {
   const [saved, used] = await Promise.all([
     isDealSaved(client, userId, dealId),
-    countSavedDeals(client, userId),
+    countSavedDeals(client),
   ]);
   return { saved, used };
 }
 
+/** Lists the signed-in viewer's saves; the RPC scopes rows to auth.uid(). */
 export async function listSavedDeals(
   client: PublicSupabaseClient,
-  userId: string,
 ): Promise<SavedDealView[]> {
-  const { data, error } = await client
-    .from("saved_deals")
-    .select("id, deal_id, notes, created_at")
-    .eq("user_id", userId)
-    .order("created_at", { ascending: false });
+  const { data, error } = await client.rpc("list_saved_deal_previews");
   const rows = throwIfQueryError("Failed to list saved deals", {
     data: data ?? [],
     error,
   });
-  if (rows.length === 0) {
-    return [];
-  }
-  const dealIds = rows.map((row) => row.deal_id);
-  const { data: previewData, error: previewError } = await client
-    .from("deal_previews")
-    .select(DEAL_PREVIEW_PUBLIC_SELECT)
-    .in("deal_id", dealIds)
-    .eq("is_published", true)
-    .eq("leakage_risk", "LOW");
-  const previews = throwIfQueryError("Failed to load saved deal previews", {
-    data: (previewData as DealPreviewPublic[] | null) ?? [],
-    error: previewError,
-  });
-  const previewByDeal = new Map(
-    previews.map((row) => [row.deal_id, toPublicDealPreview(row)]),
-  );
   return rows.map((row) => ({
-    id: row.id,
+    id: row.saved_deal_id,
     dealId: row.deal_id,
-    createdAt: row.created_at,
+    createdAt: row.saved_at,
     notes: row.notes,
-    preview: previewByDeal.get(row.deal_id) ?? null,
+    preview: row.slug ? toPublicDealPreview(row as PreviewDtoFields) : null,
   }));
 }
 

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  parseStoredDetailReasons,
   parseStoredReasons,
   sanitisedDetailReasons,
   sanitisedPreviewReasons,
@@ -117,18 +118,23 @@ describe("sanitised match reasons", () => {
     expect(kept[0]?.label).toContain("Keyword overlap");
   });
 
-  it("ignores unknown stored reason codes", () => {
+  it("renders canned labels only and drops unknown codes or kinds", () => {
     expect(
       parseStoredReasons([
-        { code: "KEYWORD_OVERLAP", kind: "match", label: "Keyword overlap with the sanitised preview" },
+        { code: "KEYWORD_OVERLAP", kind: "match", label: "Matches Pellingworth Borough Council history" },
         { code: "SECRET_SOURCE", kind: "match", label: "CANARY SOURCE TITLE NEVER FREE" },
+        { code: "REGION_MATCH", kind: "sideways", label: "Pellingworth depot" },
+        { code: "REGION_MISMATCH", kind: "mismatch" },
       ]),
     ).toEqual([
-      {
-        code: "KEYWORD_OVERLAP",
-        kind: "match",
-        label: "Keyword overlap with the sanitised preview",
-      },
+      { code: "KEYWORD_OVERLAP", kind: "match", label: PREVIEW_REASON_LABELS.KEYWORD_OVERLAP },
+      { code: "REGION_MISMATCH", kind: "mismatch", label: PREVIEW_REASON_LABELS.REGION_MISMATCH },
     ]);
+  });
+
+  it("keeps stored labels for Pro detail reasons only", () => {
+    expect(
+      parseStoredDetailReasons([{ code: "VALUE_OUT_OF_RANGE", kind: "mismatch", label: "Exact value is above your maximum" }]),
+    ).toEqual([{ code: "VALUE_OUT_OF_RANGE", kind: "mismatch", label: "Exact value is above your maximum" }]);
   });
 });

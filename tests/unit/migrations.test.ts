@@ -48,7 +48,7 @@ describe("supabase migrations", () => {
   const files = listMigrations();
   const sql = files.map(readMigration).join("\n");
 
-  it("are numbered 0001-0017 in order with no gaps", () => {
+  it("are numbered 0001-0019 in order with no gaps", () => {
     expect(files).toEqual([
       "0001_extensions_and_types.sql",
       "0002_core_schema.sql",
@@ -67,6 +67,8 @@ describe("supabase migrations", () => {
       "0015_export_usage_quota.sql",
       "0016_admin_operations.sql",
       "0017_job_runs.sql",
+      "0018_preview_gate_v2_and_dto_rpcs.sql",
+      "0019_revoke_client_preview_table_access.sql",
     ]);
   });
 
@@ -104,6 +106,9 @@ describe("supabase migrations", () => {
     expect(privileges).toContain("on table public.deal_matches to authenticated");
     expect(privileges).not.toMatch(
       /grant select \([\s\S]*detail_reasons[\s\S]*\) on table public\.deal_matches to authenticated/,
+    );
+    expect(readMigration("0018_preview_gate_v2_and_dto_rpcs.sql")).toContain(
+      "revoke select (preview_reasons) on table public.deal_matches from anon, authenticated;",
     );
   });
 
@@ -160,6 +165,55 @@ describe("supabase migrations", () => {
     expect(jobs).not.toMatch(
       /grant (select|insert|update|delete|all) on table public\.job_runs to (anon|authenticated)/i,
     );
+  });
+
+  it("gates every preview write and exposes previews only through sanitised DTO RPCs", () => {
+    const gate = readMigration("0018_preview_gate_v2_and_dto_rpcs.sql");
+    expect(gate).toMatch(/before insert or update\s+on public\.deal_previews/);
+    expect(gate).toContain(
+      "alter table public.deal_previews enable always trigger enforce_preview_safety",
+    );
+    expect(gate).toContain("private.preview_leak_findings");
+    expect(gate).toContain("current_period_end is not null");
+    for (const fn of [
+      "search_preview_dtos",
+      "get_preview_dto_by_slug",
+      "list_preview_sitemap_entries",
+      "count_preview_sitemap_entries",
+    ]) {
+      expect(gate).toMatch(
+        new RegExp(String.raw`grant execute on function public\.${fn}\([^)]*\)\s+to anon`, "i"),
+      );
+    }
+    expect(gate).not.toMatch(
+      /grant execute on function (public|private)\.(preview_leak_findings|detect_preview_leakage|admin_release_preview_hold)[\s\S]{0,120}to (anon|authenticated)/i,
+    );
+    for (const signature of [
+      "get_preview_dto_by_deal_id(uuid)",
+      "resolve_preview_deal_id(text)",
+      "list_saved_deal_previews()",
+    ]) {
+      expect(gate).toContain(`revoke execute on function public.${signature} from anon`);
+      expect(gate).toContain(`grant execute on function public.${signature} to authenticated, service_role`);
+    }
+    expect(gate).toContain("security definer");
+    expect(gate).toMatch(
+      /grant execute on function public\.search_deal_previews_for_profile\([\s\S]*?\) to anon, authenticated, service_role/,
+    );
+    expect(gate).not.toMatch(/preview_title % p_query/);
+    expect(gate).toContain("public.saved_deal_row_visible(deal_id)");
+    expect(gate).toContain("revoke all on function public.caller_misses_published_preview(uuid) from public, anon");
+    expect(gate).toContain("grant execute on function public.caller_misses_published_preview(uuid) to authenticated, service_role");
+  });
+
+  it("revokes direct client access to deal_previews in a separate post-deploy migration", () => {
+    const revoke = readMigration("0019_revoke_client_preview_table_access.sql");
+    expect(revoke).toContain(
+      "revoke all on table public.deal_previews from public, anon, authenticated",
+    );
+    expect(revoke).toContain("'saved_deal_row_visible'");
+    expect(revoke).toContain("'caller_misses_published_preview'");
+    expect(revoke).not.toMatch(/grant\s+(all|select)[\s\S]{0,60}to\s+(anon|authenticated)/i);
   });
 
   it("never disable RLS", () => {

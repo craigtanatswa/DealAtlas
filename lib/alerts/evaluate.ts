@@ -4,13 +4,13 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { Database, Json } from "@/lib/db/database.types";
 import { throwIfQueryError } from "@/lib/db/errors";
-import { DEAL_PREVIEW_PUBLIC_SELECT } from "@/lib/db/preview-columns";
 import { safeHttpUrl } from "@/lib/deals/urls";
 import { isProEntitlement } from "@/lib/entitlements/policy";
 import { getCurrentEntitlement } from "@/lib/entitlements/service";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { parseSavedSearchFilters, type SavedSearchFilters } from "@/lib/saves/filters";
-import { toAlertDto } from "@/lib/alerts/dto";
+import { alertsVisibleTo, toAlertDto } from "@/lib/alerts/dto";
+import { loadPublishedAlertPreviews } from "@/lib/alerts/published";
 import { isDigestDue, shouldEvaluateSavedSearch } from "@/lib/alerts/dedupe";
 import { NEW_MATCH_MIN_SCORE } from "@/lib/alerts/dedupe";
 import {
@@ -134,19 +134,6 @@ function previewMatchesFilters(
   return true;
 }
 
-function contextFromPreview(row: PreviewRow): AlertDealContext {
-  return {
-    dealId: row.deal_id,
-    previewTitle: row.preview_title,
-    previewSummary: row.preview_summary,
-    deadlineBand: row.deadline_band,
-    valueBand: row.value_band,
-    category: row.main_category,
-    region: row.broad_region,
-    slug: row.slug,
-  };
-}
-
 async function insertPlannedAlerts(
   admin: AdminClient,
   alerts: PlannedAlert[],
@@ -206,16 +193,17 @@ async function loadCanonicalContext(
     return contexts;
   }
   for (const ids of chunk(dealIds, 100)) {
-    const { data: previews, error: previewError } = await admin
-      .from("deal_previews")
-      .select(DEAL_PREVIEW_PUBLIC_SELECT)
-      .in("deal_id", ids);
-    const previewRows = throwIfQueryError("Failed to load alert preview context", {
-      data: (previews as PreviewRow[] | null) ?? [],
-      error: previewError,
-    });
-    for (const row of previewRows) {
-      contexts.set(row.deal_id, contextFromPreview(row));
+    for (const preview of (await loadPublishedAlertPreviews(admin, ids)).values()) {
+      contexts.set(preview.dealId, {
+        dealId: preview.dealId,
+        previewTitle: preview.previewTitle,
+        previewSummary: preview.previewSummary,
+        deadlineBand: preview.deadlineBand,
+        valueBand: preview.valueBand,
+        category: preview.category,
+        region: preview.region,
+        slug: preview.slug,
+      });
     }
 
     const { data: deals, error: dealError } = await admin
@@ -372,6 +360,7 @@ export async function evaluateAlerts(options?: {
     )
     .eq("is_published", true)
     .eq("leakage_risk", "LOW")
+    .eq("unpublished_by_admin", false)
     .gte("updated_at", matchSince)
     .order("updated_at", { ascending: false })
     .limit(RECENT_PREVIEW_LIMIT);
@@ -687,7 +676,15 @@ async function sendDueDigests(input: {
     }
 
     const entitlement = await getCurrentEntitlement(pref.user_id, input.now);
-    const dtos = rows.map((row) => toAlertDto(row, entitlement));
+    const previews = await loadPublishedAlertPreviews(
+      input.admin,
+      rows.map((row) => row.deal_id),
+    );
+    const visible = alertsVisibleTo(rows, entitlement, previews);
+    if (visible.length === 0) {
+      continue;
+    }
+    const dtos = visible.map((row) => toAlertDto(row, entitlement, previews));
     if (!isProEntitlement(entitlement)) {
       for (const dto of dtos) {
         delete dto.sourceTitle;
@@ -725,7 +722,7 @@ async function sendDueDigests(input: {
       continue;
     }
 
-    const ids = rows.map((row) => row.id);
+    const ids = visible.map((row) => row.id);
     const sentAt = input.now.toISOString();
     const { error: sentError } = await input.admin
       .from("alerts")

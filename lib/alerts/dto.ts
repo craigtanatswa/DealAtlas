@@ -82,12 +82,51 @@ function compact<T extends Record<string, unknown>>(value: T): T {
   ) as T;
 }
 
+/** Coarse fields of a deal's preview while it is published, LOW risk and not held. */
+export type PublishedAlertPreview = {
+  previewTitle: string;
+  deadlineBand: string | null;
+  valueBand: string | null;
+  category: string | null;
+  region: string | null;
+};
+
+export type PublishedAlertPreviews = ReadonlyMap<string, PublishedAlertPreview>;
+
+/**
+ * Preview fields stored in the payload are a snapshot from when the alert was
+ * planned; they are replaced by the deal's current publishable preview, and
+ * dropped when it is held, unpublished or no longer LOW risk.
+ */
+function withCurrentPreview(
+  payload: AlertProtectedPayload,
+  dealId: string | null,
+  previews: PublishedAlertPreviews,
+): AlertProtectedPayload {
+  const current = dealId ? previews.get(dealId) : undefined;
+  return {
+    ...payload,
+    previewTitle: current?.previewTitle,
+    previewSummary: undefined,
+    slug: undefined,
+    deadlineBand: current?.deadlineBand,
+    valueBand: current?.valueBand,
+    category: current?.category,
+    region: current?.region,
+  };
+}
+
 export function toAlertDto(
   record: AlertRecord,
   entitlement: EntitlementSnapshot,
+  previews: PublishedAlertPreviews,
 ): AlertDto {
   const type = isAlertType(record.alert_type) ? record.alert_type : "NEW_MATCH";
-  const payload = parseProtectedPayload(record.protected_payload);
+  const payload = withCurrentPreview(
+    parseProtectedPayload(record.protected_payload),
+    record.deal_id,
+    previews,
+  );
   const entitled = isProEntitlement(entitlement);
   const copy = entitled ? proAlertCopy(type, payload) : freeAlertCopy(type, payload);
   const href = record.deal_id ? appDealPath(record.deal_id) : "/app/alerts";
@@ -126,14 +165,32 @@ export function toAlertDto(
   return compact(dto);
 }
 
+/**
+ * Free users never see an alert about a deal whose preview is held,
+ * unpublished or no longer LOW risk: no list item, no unread count, no digest
+ * line. Alerts without a deal (buyer activity) are kept.
+ */
+export function alertsVisibleTo<T extends Pick<AlertRecord, "deal_id">>(
+  records: T[],
+  entitlement: EntitlementSnapshot,
+  previews: PublishedAlertPreviews,
+): T[] {
+  if (isProEntitlement(entitlement)) {
+    return records;
+  }
+  return records.filter((record) => !record.deal_id || previews.has(record.deal_id));
+}
+
 export function toAlertCentreDto(
   records: AlertRecord[],
   entitlement: EntitlementSnapshot,
+  previews: PublishedAlertPreviews,
 ): AlertCentreDto {
-  const items = records.map((record) => toAlertDto(record, entitlement));
+  const visible = alertsVisibleTo(records, entitlement, previews);
+  const items = visible.map((record) => toAlertDto(record, entitlement, previews));
   return {
     plan: entitlement.plan,
-    unreadCount: records.filter((record) => record.status === "UNREAD").length,
+    unreadCount: visible.filter((record) => record.status === "UNREAD").length,
     items,
   };
 }

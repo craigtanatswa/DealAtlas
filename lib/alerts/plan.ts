@@ -1,4 +1,4 @@
-import { freeAlertCopy } from "@/lib/alerts/content";
+import { FREE_ALERT_COPY } from "@/lib/alerts/content";
 import {
   alertDedupeKey,
   daysUntil,
@@ -92,7 +92,7 @@ function planned(
   payload: AlertProtectedPayload,
   extraKey?: string | number,
 ): PlannedAlert {
-  const copy = freeAlertCopy(type, payload);
+  const copy = FREE_ALERT_COPY[type];
   return {
     userId,
     dealId,

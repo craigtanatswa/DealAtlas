@@ -11,9 +11,11 @@ DealAtlas uses PostgreSQL/Supabase. The database is intentionally split between:
 The browser must never have direct access to source-bearing canonical procurement tables.
 
 ## 2. Security boundary
-### Directly readable by anonymous/authenticated clients
-- `deal_previews` (published sanitised rows only)
+### Reachable by anonymous/authenticated clients
+- published sanitised previews **only through the preview DTO RPCs** (`search_preview_dtos`, `get_preview_dto_by_slug`, `list_preview_sitemap_entries`, `count_preview_sitemap_entries` for anon; plus `get_preview_dto_by_deal_id`, `resolve_preview_deal_id`, `list_saved_deal_previews` for signed-in users). After `0019` client roles have no table grant or policy on `deal_previews`.
 - user-owned tables only through RLS policies appropriate to the user
+
+The DTO RPCs are `SECURITY DEFINER` with an empty `search_path`. They return no `deal_id` (except the signed-in resolve/saved RPCs), no timestamps and no source, buyer, reference, contact or document fields. Relevance comes from the caller's own company profile via `auth.uid()`. After `0019` client roles have no USAGE on any schema except `public` and `auth`, and no EXECUTE on any other public function.
 
 `subscriptions`, `billing_events` and `export_usage` have no anon/authenticated grants. Ordinary clients must not read billing state directly; trusted server code reads the subscription mirror after authentication.
 
@@ -126,6 +128,7 @@ Contains exact/source information and Deal lifecycle fields.
 ### deal_previews
 Separate publishable sanitised record.
 Must never contain protected source identity.
+Server-only table (service role) after `0019`; clients use the DTO RPCs.
 
 ### notices
 Source notice/release/event belonging to a Deal.
@@ -184,7 +187,7 @@ DealAtlas-derived intelligence such as summary, ideal supplier, risk flags, incu
 ### deal_matches
 Per-company-profile relevance score and sanitised match/mismatch reasons.
 
-`preview_reasons` is readable by the owning authenticated user and must contain only canned, non-source-identifying labels. `detail_reasons` is a server-only column: table-level SELECT is revoked from `anon`/`authenticated`, then preview-safe columns are granted to `authenticated`. Entitled Pro mismatch notes may refer to protected requirement *types* without copying source identity.
+`preview_reasons` is not readable by clients (0018 revokes the 0012 column grant); the DTO RPCs project canned labels from the reason code only (`private.preview_dto_reasons`), so stored label text never reaches a client. `detail_reasons` is a server-only column: table-level SELECT is revoked from `anon`/`authenticated`, then preview-safe columns are granted to `authenticated`. Entitled Pro mismatch notes may refer to protected requirement *types* without copying source identity.
 
 Score columns: `relevance_score` (0–100), plus optional `category_score`, `keyword_score`, `location_score`, `value_score`, `sector_score`, `certification_score`, `semantic_score`.
 
@@ -285,7 +288,25 @@ At minimum:
 Never include source ID, organization ID exposed as discoverable identifier, exact source text, URL, exact reference, exact buyer, domain or contact in this table.
 
 ## 6. Preview leakage tests
-Before `is_published=true`, reject or flag preview if it contains:
+The database publish gate (`0018`) decides publication. `private.enforce_preview_safety` runs `private.detect_preview_leakage` on every `deal_previews` insert and update, including `session_replication_role = replica` (`enable always trigger`). Risk can only be raised by the writer; any non-LOW risk or admin hold forces `is_published = false`; a gate error fails closed to `REVIEW`. `private.preview_leak_findings` returns the per-rule findings. The TypeScript scanner in `lib/redaction/scan.ts` mirrors the same rules so ingestion can regenerate before writing; shared synthetic fixtures in `tests/fixtures/leak-gate/cases.json` keep the two in parity (`npm run db:gen-leak-parity` regenerates the pgTAP file). Vocabulary lives in `lib/redaction/gate-vocabulary.ts` and is seeded into `private.leak_gate_terms`; changing it needs a new migration.
+
+The gate flags (HIGH unless noted):
+- buyer name, aliases, acronyms/initials, distinctive buyer tokens (4-letter tokens are REVIEW) and buyer web/email domains. Acronym-style aliases (all caps, or mixed case with two or more capitals) match case-insensitively in prose and slug; other 2–3 character aliases are REVIEW
+- any organisation name or alias from the full `organizations`/`organization_aliases` tables of 3+ characters, ignoring Ltd/Limited/LLP/plc suffixes (single distinctive token is REVIEW; names under 5 characters also skip generic acronyms and proper words), plus Title-Case runs ending in a legal suffix
+- copied source title (also for titles shorter than 20 characters), slug or description similarity, and any copied 6-word phrase
+- reference numbers, OCIDs, notice IDs and UUIDs; other reference-like patterns are REVIEW
+- source dates in Europe/London time within ±1 day in common written forms, including yearless `DD/MM`, `D/M`, `DD.MM`, `D.M`, `DD-MM`, `D-M` and `DD MM` (digit boundaries, so decimals such as `14.035` are not dates); any other exact date is REVIEW, never LOW (day + month with or without a year, `May 14`, yearless `D/M` other than `24/7`, `D-Mon-YYYY`)
+- full postcodes, outward codes of known buyer/linked/location postcodes; other outward-code shapes (in prose, or as slug words) are REVIEW
+- exact location fragments and buyer address terms, and single distinctive words of them in any case and in the slug (`LOCATION_TOKEN`, HIGH from 5 characters, otherwise REVIEW; place-type words such as "Depot" or "Yard" are generic); project names; exact source amounts; URLs, emails, phones and source platform markers
+- programme acronyms (HIGH when copied from source, otherwise REVIEW) and Title-Case place/site runs in prose (REVIEW unless copied)
+- source names in any case, including the slug (`SOURCE_NAME_TOKEN`): standalone source acronyms (HIGH) and capitalised words that follow a lowercase word in the source and never appear lowercase there (HIGH from 5 characters, otherwise REVIEW). All-caps runs and fields, generic vocabulary and capitalised defined terms ("the Contractor") are ignored
+- rare source words (`SOURCE_RARE_WORD`, REVIEW, database-only): capitalised source words in any position (Title-Case titles, sentence starts, ALL-CAPS headings) that the source never writes in lowercase, appear anywhere in the preview or slug, and occur in fewer than three other deals (`deals_leak_source_tsv_idx`, up to 20 candidates)
+- combination risk: when four distinctive copied source words (title, prose and slug) match fewer than three deals in total, REVIEW (k < 3)
+- the slug is scanned with its trailing 8-hex suffix removed
+
+Admin holds (`unpublished_by_admin`) are recorded per deal in `private.preview_holds`, which no API role (including `service_role`) can read or write. While a hold row exists the gate forces `unpublished_by_admin = true`, so ingestion upserts that reset the flag, forged session settings, deleting/re-inserting the preview and deleting/re-creating the deal (the table has no foreign key) all keep the hold. Only `public.admin_release_preview_hold` (service role, called after the app's ADMIN check) deletes the hold row.
+
+Original minimum checklist (all covered by the gate) — before `is_published=true`, reject or flag preview if it contains:
 - canonical buyer name
 - known buyer aliases
 - buyer domain
@@ -331,7 +352,7 @@ protected_source_access=true
 ```
 
 ## 8. Search strategy
-Free search is against `deal_previews` only.
+Free search is against `deal_previews` only, through `search_preview_dtos`.
 
 Indexes:
 - GIN full-text expression index on preview title + summary
@@ -346,9 +367,9 @@ Indexes:
 - btree updated_at
 - btree is_published
 
-`search_deal_previews` is the public/free RPC. It only reads `deal_previews` and accepts keyword, category, buyer sector, deal type, broad region, status, value band, closing window, limit, and offset.
+`search_preview_dtos` is the public/free and signed-in search RPC. It only reads published LOW-risk, non-held `deal_previews` and the caller's own `deal_matches`, and accepts keyword, category, buyer sector, deal type, broad region, status or statuses, value band, closing window, minimum score, sort (`updated`/`relevance`), limit (max 50) and offset (max 10000).
 
-Signed-in relevance sort/filter uses `search_deal_previews_for_profile`, which still reads published `deal_previews` and RLS-constrained `deal_matches` only. It is granted to `authenticated` and `service_role`, not `anon`. Protected Pro filters that need canonical tables still run through trusted server code after entitlement check.
+The legacy `search_deal_previews` / `search_deal_previews_for_profile` RPCs return `deal_id`. Until `0019` they are client-callable (`search_deal_previews_for_profile` is security definer, joins only the caller's own matches, and returns empty `preview_reasons` to client roles). After `0019` they are service-role only; Pro CSV export uses the profile search with the admin client after the entitlement check. Protected Pro filters that need canonical tables still run through trusted server code after entitlement check.
 
 ## 9. Migrations
 Included in the build pack:
@@ -369,8 +390,42 @@ Included in the build pack:
 - `0015_export_usage_quota.sql`
 - `0016_admin_operations.sql`
 - `0017_job_runs.sql`
+- `0018_preview_gate_v2_and_dto_rpcs.sql` (additive; apply before the app release that uses the DTO RPCs)
+- `0019_revoke_client_preview_table_access.sql` (apply only after that app release is live)
 
-Apply in numeric order with the Supabase CLI (`npx supabase db reset` locally, or `npx supabase db push` to a linked project). Never reset or drop a linked production database.
+Apply in numeric order with the Supabase CLI (`npx supabase db reset` locally, or `npx supabase db push` to a linked project). Never reset or drop a linked production database. `db push` applies every pending file, so roll out `0018` and `0019` as separate pushes (push from a checkout without `0019`, deploy the app, then push again) or apply them manually in order.
+
+#### 0018/0019 rollout checks
+Before applying `0018`, count current subscriptions that would lose Pro under the fail-closed paid-through rule:
+
+```sql
+select count(*) from public.subscriptions
+where is_current and current_period_end is null
+  and (status = 'ACTIVE' or (status = 'CANCELLED' and cancel_at_period_end));
+```
+
+`0018` gates new writes only; existing previews keep their old verdict until rewritten. After `0018`, dry-run the new gate over **every** preview (published, unpublished and held), then re-gate all of them, so the stored risk of unpublished and held rows also reflects the v2 rules and the admin review queue starts from the current verdict. Replica mode skips the `updated_at` touch trigger, while the gate trigger is `ALWAYS` and still fires. Holds stay in place because they are recorded in `private.preview_holds`:
+
+```sql
+-- dry run: what the new gate says for every preview
+select dp.is_published, dp.unpublished_by_admin, dp.leakage_risk as stored_risk,
+       private.detect_preview_leakage(
+         dp.deal_id, dp.slug, dp.preview_title, dp.preview_summary,
+         dp.requirements_preview, dp.relevance_tags, dp.broad_region
+       ) as new_risk,
+       count(*)
+from public.deal_previews dp
+group by 1, 2, 3, 4
+order by 1, 2, 3, 4;
+
+-- re-gate every preview in place (risk can only rise)
+begin;
+set local session_replication_role = replica;
+update public.deal_previews set leakage_risk = leakage_risk;
+commit;
+```
+
+Rollback scripts for `0018` and `0019` are in `supabase/rollback/`; see `DATABASE_SETUP.md`.
 
 `supabase/dealatlas_full_schema.sql` is a generated concatenation of those files for SQL Editor use on a fresh project. Regenerate it with `npm run db:bundle` after changing a migration. Do not run the combined file after individual migrations have already been applied.
 
@@ -385,8 +440,8 @@ npm run db:types
 This writes `lib/db/database.types.ts`. Do not edit that file by hand.
 
 ### Query modules
-- Public/free: `lib/db/previews.ts` and `lib/search/public.ts` — `deal_previews` and `search_deal_previews` only, with an explicit column list (never `select('*')`). Public search JSON is `/api/search`. Public HTML is `/deals` and `/deals/[slug]`.
-- Signed-in relevance: `lib/matching/search.ts` may join `deal_matches` for the caller’s company profile. `lib/matching/persist.ts` writes matches with the admin client. `detail_reasons` is never selected on the user client.
+- Public/free: `lib/db/previews.ts` and `lib/search/public.ts` — preview DTO RPCs only, never a table read on `deal_previews`. Public search JSON is `/api/search`. Public HTML is `/deals` and `/deals/[slug]`. Anonymous payloads never carry `deal_id`; signed-in slug pages resolve it with `resolve_preview_deal_id` for save/reveal controls.
+- Signed-in relevance: `lib/matching/search.ts` reads the caller's match from `search_preview_dtos` (resolved from `auth.uid()` inside the RPC). `lib/matching/persist.ts` writes matches with the admin client. `detail_reasons` is never selected on the user client.
 - Browser and cookie-based SSR clients are typed with the granted public surface only (`lib/db/public-schema.ts`).
 - Protected canonical tables: `lib/db/canonical.ts` is `server-only` and uses the privileged admin client after an explicit Pro/admin access argument.
 - Paid buyer/supplier/contract intelligence: `lib/intelligence/load.ts` reads organisations, deals, awards, contracts, related processes, payments and performance after `getCurrentEntitlement` confirms Pro. Aggregation is query-time. There is no materialized history table; indexes in `0014_intelligence_query_indexes.sql` keep those lookups refreshable as source data changes.
@@ -395,9 +450,12 @@ This writes `lib/db/database.types.ts`. Do not edit that file by hand.
 
 ### Database tests
 ```bash
-npm run db:test      # pgTAP via supabase test db
+npm run db:test      # pgTAP via supabase test db --local
 npm run test:db      # pgTAP plus PostgREST RLS smoke tests against local Supabase
+npm run db:gen-leak-parity  # regenerate leak_gate_parity.test.sql from the shared fixtures
 ```
+
+Database tests refuse non-loopback targets (`scripts/db-target-guard.mjs`, enforced in vitest `globalSetup`, `scripts/run-db-tests.mjs` and Playwright helpers). A disposable remote project needs `DEALATLAS_DB_TEST_ALLOW_REMOTE=1`, `DEALATLAS_DB_TEST_REMOTE_HOST=<host>` and `DEALATLAS_PROD_SUPABASE_URL` or `DEALATLAS_PROD_SUPABASE_PROJECT_REF`; the production project is always refused.
 
 ## 10. Destructive change rule
 Never edit an already-applied production migration. Add a new migration.
@@ -438,7 +496,7 @@ Pick values you can actually honour (for example: PITR with hourly granularity, 
 
 ## 11. Query patterns
 ### Public/free
-Only query `deal_previews`.
+Only call the preview DTO RPCs over `deal_previews`.
 
 ### Subscriber source reveal
 Server code:
@@ -456,10 +514,10 @@ Use Supabase database tests/pgTAP where practical.
 
 Must test:
 - RLS enabled on client-facing tables
-- anon can only select published previews
+- anon cannot select `deal_previews` directly and only receives published LOW-risk, non-held DTOs from the RPCs
 - anon cannot insert/update/delete previews
 - authenticated normal user cannot read canonical tables
-- user can manage only own saved deals/searches/company profile
+- user can manage only own saved deals/searches/company profile; a free caller does not receive saved rows whose deal is unpublished or held
 - subscription, billing event and export usage rows are not directly readable or writable by ordinary client roles; entitlement is read by trusted server code
 - user cannot write subscription state
 - user cannot promote own role

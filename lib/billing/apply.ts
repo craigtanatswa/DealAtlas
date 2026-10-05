@@ -40,7 +40,11 @@ function toStored(
   userId: string,
   snapshot: SubscriptionSnapshot,
   occurredAt: string | null,
+  existing: StoredSubscription | null,
 ): StoredSubscription {
+  // Some provider events omit the billing period; a missing value must not
+  // wipe the known period of the same subscription.
+  const sameSubscription = existing?.dodoSubscriptionId === snapshot.dodoSubscriptionId;
   return {
     userId,
     dodoCustomerId: snapshot.dodoCustomerId,
@@ -49,8 +53,10 @@ function toStored(
     planKey: snapshot.planKey ?? "PRO",
     status: snapshot.status,
     billingInterval: snapshot.billingInterval,
-    currentPeriodStart: snapshot.currentPeriodStart,
-    currentPeriodEnd: snapshot.currentPeriodEnd,
+    currentPeriodStart:
+      snapshot.currentPeriodStart ?? (sameSubscription ? existing.currentPeriodStart : null),
+    currentPeriodEnd:
+      snapshot.currentPeriodEnd ?? (sameSubscription ? existing.currentPeriodEnd : null),
     cancelAtPeriodEnd: snapshot.cancelAtPeriodEnd,
     cancelledAt: snapshot.cancelledAt,
     lastProviderEventAt: occurredAt,
@@ -108,7 +114,7 @@ async function applySnapshot(
   }
 
   await store.upsertCurrentSubscription(
-    toStored(userId, nextSnapshot, incomingTime ?? storedTime),
+    toStored(userId, nextSnapshot, incomingTime ?? storedTime, existing ?? null),
   );
   await store.markEvent(event.providerEventId, "PROCESSED");
   return { outcome: "applied" };

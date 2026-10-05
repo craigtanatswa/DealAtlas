@@ -22,6 +22,23 @@ Tests must request:
 
 Fail if canary values occur.
 
+## CI checks (`.github/workflows/ci.yml`)
+Every job runs on a throwaway local Supabase stack or with placeholders, never with secrets or production values, and runs `scripts/ci-guard-env.mjs` first.
+
+| Job name | What it runs | Required |
+| --- | --- | --- |
+| Lint / Typecheck / Unit tests / Build | `npm run lint`, `npm run typecheck`, `npx vitest run tests/unit`, `npm run build` | yes |
+| Database tests (pgTAP + REST) | `npm run test:db`: all pgTAP files, `scripts/check-rollbacks.mjs` (needs `psql`) and `tests/integration` | yes |
+| E2E (Playwright) | `npm run test:e2e` against `next start` | yes |
+| Gate parity (TS/SQL) | the generated pgTAP parity file is current, then both scanners over `tests/fixtures/leak-gate/cases.json` | yes |
+| Leak regression (local) | the protected-token probes below, before and after `0019` | yes |
+| Preview write timing (informational) | `scripts/preview-write-timing.mjs`: preview INSERT/UPDATE p50/p95 after a 20,000-deal bulk insert, with and without maintenance | no |
+
+### Leak regression (local)
+The job starts the local stack with migrations `0001`–`0018`, builds the app and crawls it before seeding (PF-02), then seeds `tests/leak/seed/` and runs `tests/leak/preflight.ts` and `tests/leak/run.ts --phase A`. It applies `0019`, restarts the same build and runs phase B. Forbidden tokens are judged by control-request count parity (`tests/leak/lib/scan.ts`); nothing is masked. The artifact `leak-probes-<sha7>-<run_id>-<attempt>` holds `run.json`, `summary.json` and `summary.md`. `<sha7>` and `run.json.head_sha` are the pull request head (the push SHA on a branch push); `run.json.merge_sha` is the merge ref Actions checked out.
+
+- **Running locally:** `tests/leak/run-local.sh` (loopback stack only).
+
 ## Billing tests
 - monthly checkout allowlist
 - annual checkout allowlist
@@ -54,7 +71,7 @@ Attempt to run ingestion for:
 ## Security launch tests
 - direct REST/client select on `deals` fails for anon/authenticated
 - direct select on `organizations` fails
-- `deal_previews` shows LOW + published only
+- direct select on `deal_previews` fails for anon/authenticated; the DTO RPCs return LOW + published + non-held rows only, with no `deal_id` for anon
 - user cannot update `profiles.role`
 - user cannot write subscriptions/billing_events/export_usage
 - free saved/search limits enforced even via direct Supabase client

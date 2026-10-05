@@ -2,6 +2,8 @@ import { spawnSync } from "node:child_process";
 
 import { loadEnvConfig } from "@next/env";
 
+import { assertSafeDbTestTargets } from "../../../scripts/db-target-guard.mjs";
+
 loadEnvConfig(process.cwd());
 
 export type SupabaseTestEnv = {
@@ -53,12 +55,15 @@ export function fromSupabaseStatus(): SupabaseTestEnv {
 }
 
 export function requireSupabaseEnv(): SupabaseTestEnv {
-  return fromDealAtlasTestEnv() ?? fromSupabaseStatus();
+  const env = fromDealAtlasTestEnv() ?? fromSupabaseStatus();
+  assertSafeDbTestTargets([["e2e Supabase URL", env.url]]);
+  return env;
 }
 
 export function bindLocalSupabaseEnv(
   env: SupabaseTestEnv = requireSupabaseEnv(),
 ): SupabaseTestEnv {
+  assertSafeDbTestTargets([["e2e Supabase URL", env.url]]);
   process.env.DEALATLAS_DB_TEST_URL = env.url;
   process.env.DEALATLAS_DB_TEST_ANON_KEY = env.anonKey;
   process.env.DEALATLAS_DB_TEST_SECRET_KEY = env.secretKey;

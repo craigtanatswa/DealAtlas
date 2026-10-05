@@ -178,10 +178,10 @@ Webhook processing must be idempotent and recorded in `billing_events` before/wh
 
 ## 8. Request paths
 ### Public search
-Browser → public search endpoint/query → `deal_previews` only.
+Browser → public search endpoint/query → `search_preview_dtos` (SECURITY DEFINER DTO RPC over `deal_previews`) only. `/api/search` and the public preview pages are rate limited per client IP (`lib/security/rate-limit.ts`; shared through Upstash when `UPSTASH_REDIS_REST_URL`/`UPSTASH_REDIS_REST_TOKEN` are set, otherwise per instance).
 
 ### Free detail
-Browser → `/deals/[slug]` → `deal_previews` only. Authenticated upgrade CTAs start Dodo checkout with a server-mapped plan key. Checkout redirects are not entitlement.
+Browser → `/deals/[slug]` → `get_preview_dto_by_slug` only. Anonymous payloads carry no `deal_id`; signed-in viewers resolve it with `resolve_preview_deal_id` for save/reveal links. Authenticated upgrade CTAs start Dodo checkout with a server-mapped plan key. Checkout redirects are not entitlement.
 
 ### Pro detail
 Browser → `/app/deals/[id]` or `/api/deals/[id]` → authenticate → server entitlement check → protected canonical tables → explicit paid DTO.
@@ -204,12 +204,12 @@ Do not expose source-bearing fields through search snippets.
 
 Paid advanced search may query protected dimensions server-side but must return protected results only after entitlement verification.
 
-Signed-in relevance sort/filter uses stored `deal_matches` rows (0–100) plus sanitised `preview_reasons`. Semantic similarity is included only when an embedding model and API key are configured. Free clients receive limited canned reasons. Pro mismatch notes that depend on protected requirement types are loaded server-side from `detail_reasons` after entitlement checks and still must not copy source identity. Authenticated clients are granted SELECT on preview-safe `deal_matches` columns only; `detail_reasons` is not included.
+Signed-in relevance sort/filter uses stored `deal_matches` rows (0–100) plus sanitised `preview_reasons`. Semantic similarity is included only when an embedding model and API key are configured. Free clients receive limited canned reasons. Pro mismatch notes that depend on protected requirement types are loaded server-side from `detail_reasons` after entitlement checks and still must not copy source identity. Authenticated clients are granted SELECT on preview-safe `deal_matches` columns only; neither `preview_reasons` nor `detail_reasons` is included, and the DTO RPCs return canned labels derived from reason codes.
 
 ## 10. Preview generation/redaction
 Every canonical deal gets a separate `deal_previews` row.
 
-Preview generation lives in `ingestion/preview` and leak scanning in `lib/redaction`. The database trigger on `deal_previews` is a failsafe only; it must not be treated as the scanner.
+Preview generation lives in `ingestion/preview` and leak scanning in `lib/redaction`. The database publish gate (`private.enforce_preview_safety`, migration `0018`) makes the final publish decision on every insert/update: it re-scans the preview against the canonical deal and organisation tables, defaults to REVIEW when unsure, can only raise the writer's risk, and keeps admin holds. The TypeScript scanner mirrors its rules so generation can retry before writing; `tests/fixtures/leak-gate/cases.json` keeps both in parity.
 
 Preview generation rules:
 - create a non-verbatim DealAtlas title;
@@ -403,21 +403,21 @@ Pro routes `/app/buyers`, `/app/buyers/[id]`, `/app/suppliers`, `/app/suppliers/
 ### Database integration
 Committed migrations in `supabase/migrations` remain the schema source of truth. Local `supabase/config.toml` is configured so new public tables are not auto-exposed to `anon`/`authenticated`. Database TypeScript types are generated with `npm run db:types` into `lib/db/database.types.ts`.
 
-Public/free query helpers in `lib/db/previews.ts` may touch `deal_previews` only. Canonical source-bearing query helpers in `lib/db/canonical.ts` are `server-only` and use `lib/supabase/admin.ts`. Browser and SSR clients are typed with the granted public table surface, not the canonical tables.
+Public/free query helpers in `lib/db/previews.ts` call the preview DTO RPCs only; client roles have no table access to `deal_previews` after `0019`. Canonical source-bearing query helpers in `lib/db/canonical.ts` are `server-only` and use `lib/supabase/admin.ts`. Browser and SSR clients are typed with the granted public table surface, not the canonical tables.
 
 pgTAP tests live in `supabase/tests/database`. PostgREST RLS smoke tests live in `tests/integration/rls.rest.test.ts` and require a running local stack (`npm run test:db`). Auth integration tests live in `tests/integration/auth.rest.test.ts`. Public/free discovery leak tests live in `tests/integration/public-discovery.rest.test.ts` and `tests/unit/deal-preview-leak.test.tsx`.
 
 ### Technical SEO and public trust pages
 Public marketing routes now include `/`, `/deals`, `/deals/[slug]`, `/categories`, `/categories/[slug]`, `/pricing`, `/how-it-works`, `/contact`, `/privacy`, `/terms`, and `/cookies`. Category landings are a fixed catalogue from `lib/seo/category-landings.ts` (`dynamicParams = false`); search/filter combinations stay noindex and are not mass-generated as pages.
 
-`app/robots.ts` and `app/sitemap.ts` expose crawl policy and static/category URLs. Published Deal preview URLs are listed from `deal_previews` only via `app/(marketing)/deals/sitemap.ts`. Metadata, OpenGraph, JSON-LD, and sitemap loc values use sanitised preview fields or static product copy — never buyer/source identity.
+`app/robots.ts` and `app/sitemap.ts` expose crawl policy and static/category URLs. Published Deal preview URLs are listed via `list_preview_sitemap_entries` only (`app/(marketing)/deals/sitemap.ts`), with week-truncated last-modified dates. Metadata, OpenGraph, JSON-LD, and sitemap loc values use sanitised preview fields or static product copy — never buyer/source identity.
 
 Internal `/app`, `/admin`, `/auth`, `/api`, and checkout confirmation routes are noindex (and disallowed in robots.txt where appropriate). Google Search Console verification and GA/GTM scripts are optional `NEXT_PUBLIC_*` placeholders and must not receive source URLs on free pages.
 
 Privacy, terms, and cookies pages are draft trust copy with explicit “Requires final business/legal review” markers.
 
 ### Public/free discovery
-The public homepage (`/`) is a discovery surface: it shows sanitised `deal_previews` under a real search form that submits to `/deals`. Latest opportunities prefer `OPEN` and `UPCOMING` rows, then fill remaining slots with `AWARDED` when fewer live listings are published. Closing soon still uses `searchDealPreviewsForUser`. Anonymous and free visitors also search and view `/deals` and `/deals/[slug]` through `lib/search/public.ts`. Those helpers only call `deal_previews` / `search_deal_previews`. Metadata, JSON (`/api/search`), and HTML/RSC payloads use the explicit public preview DTO. Signed-in HTML search may attach `deal_matches` scores and canned reasons without adding source identity.
+The public homepage (`/`) is a discovery surface: it shows sanitised `deal_previews` under a real search form that submits to `/deals`. Latest opportunities prefer `OPEN` and `UPCOMING` rows, then fill remaining slots with `AWARDED` when fewer live listings are published. Closing soon still uses `searchDealPreviewsForUser`. Anonymous and free visitors also search and view `/deals` and `/deals/[slug]` through `lib/search/public.ts`. Those helpers only call the preview DTO RPCs. Metadata, JSON (`/api/search`), and HTML/RSC payloads use the explicit public preview DTO. Signed-in HTML search may attach the viewer's own `deal_matches` score and canned reasons (resolved from `auth.uid()` inside the RPC) without adding source identity.
 
 Protected Deal JSON lives at `/api/deals/[id]`. The route authenticates with `getAuthUser()`, resolves FREE/PRO via `getCurrentEntitlement()` from the local `subscriptions` mirror, then loads canonical rows with the server-only admin client and maps an explicit paid DTO. Query parameters and client plan labels cannot grant Pro. `/app/deals/[id]` shows the paid UI for entitled users and the sanitised preview plus limited match reasons for free users.
 

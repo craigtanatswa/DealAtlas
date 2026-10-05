@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import { resolveProtectedRouteRedirect } from "@/lib/auth/redirect";
 import type { PublicDatabase } from "@/lib/db/public-schema";
+import { parseDealIdParam } from "@/lib/deals/paths";
 import { getPublicEnv } from "@/lib/env/public";
 
 function copyCookies(from: NextResponse, to: NextResponse): NextResponse {
@@ -48,12 +49,64 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
     request.nextUrl.searchParams.get("next"),
   );
 
-  if (!destination) {
-    return supabaseResponse;
+  if (destination) {
+    return copyCookies(
+      supabaseResponse,
+      NextResponse.redirect(new URL(destination, request.url)),
+    );
   }
 
-  return copyCookies(
-    supabaseResponse,
-    NextResponse.redirect(new URL(destination, request.url)),
-  );
+  const missing = await missingAppDealForFree(supabase as unknown as GateClient, pathname, Boolean(user));
+  if (missing) {
+    return copyCookies(supabaseResponse, unpublishedDealResponse());
+  }
+
+  return supabaseResponse;
+}
+
+type GateClient = {
+  rpc: (
+    fn: "caller_misses_published_preview",
+    args: { p_deal_id: string },
+  ) => PromiseLike<{ data: boolean | null; error: { message: string } | null }>;
+};
+
+/**
+ * Signed-in free /app/deals/{id} for a deal with no published preview.
+ * loading.tsx streams a 200 before the page can call notFound(); the proxy
+ * answers 404 before any body is sent. Anon still redirects to login.
+ * A gate error falls through so an outage is not reported as a missing deal.
+ */
+async function missingAppDealForFree(
+  supabase: GateClient,
+  pathname: string,
+  signedIn: boolean,
+): Promise<boolean> {
+  if (!signedIn) return false;
+  const match = pathname.match(/^\/app\/deals\/([^/]+)$/);
+  if (!match) return false;
+  let segment = match[1];
+  try {
+    segment = decodeURIComponent(segment);
+  } catch {
+    return true;
+  }
+  const dealId = parseDealIdParam(segment);
+  if (!dealId) return true;
+  const { data, error } = await supabase.rpc("caller_misses_published_preview", {
+    p_deal_id: dealId,
+  });
+  return !error && data === true;
+}
+
+function unpublishedDealResponse(): NextResponse {
+  const html = `<!doctype html><html><head><title>Page not found</title><meta name="robots" content="noindex"></head><body><main><h1>Page not found</h1></main></body></html>`;
+  return new NextResponse(html, {
+    status: 404,
+    headers: {
+      "content-type": "text/html; charset=utf-8",
+      "cache-control": "no-store",
+      "x-robots-tag": "noindex",
+    },
+  });
 }

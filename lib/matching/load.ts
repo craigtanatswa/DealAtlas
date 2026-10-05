@@ -2,8 +2,8 @@ import "server-only";
 
 import type { PublicSupabaseClient } from "@/lib/db/previews";
 import { throwIfQueryError } from "@/lib/db/errors";
-import { parseStoredReasons } from "@/lib/matching/reasons";
-import { MATCH_DETAIL_SELECT, MATCH_PREVIEW_SELECT } from "@/lib/matching/types";
+import { parseStoredDetailReasons, parseStoredReasons } from "@/lib/matching/reasons";
+import { MATCH_DETAIL_SELECT } from "@/lib/matching/types";
 import type { ProMatchView, SafeMatchView, SanitisedMatchReason } from "@/lib/matching/types";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
@@ -54,54 +54,6 @@ export async function loadCompanyProfileIdForUser(
   return row?.id ?? null;
 }
 
-export async function loadSafeMatchForDeal(input: {
-  client: PublicSupabaseClient;
-  companyProfileId: string;
-  dealId: string;
-}): Promise<SafeMatchView | null> {
-  const { data, error } = await input.client
-    .from("deal_matches")
-    .select(MATCH_PREVIEW_SELECT)
-    .eq("company_profile_id", input.companyProfileId)
-    .eq("deal_id", input.dealId)
-    .maybeSingle();
-  const row = throwIfQueryError("Failed to load deal match", {
-    data,
-    error,
-  });
-  if (!row) {
-    return null;
-  }
-  return toSafeMatchView(Number(row.relevance_score), parseStoredReasons(row.preview_reasons));
-}
-
-export async function loadSafeMatchesForDeals(input: {
-  client: PublicSupabaseClient;
-  companyProfileId: string;
-  dealIds: string[];
-}): Promise<Map<string, SafeMatchView>> {
-  const result = new Map<string, SafeMatchView>();
-  if (input.dealIds.length === 0) {
-    return result;
-  }
-  const { data, error } = await input.client
-    .from("deal_matches")
-    .select(MATCH_PREVIEW_SELECT)
-    .eq("company_profile_id", input.companyProfileId)
-    .in("deal_id", input.dealIds);
-  const rows = throwIfQueryError("Failed to load deal matches", {
-    data: data ?? [],
-    error,
-  });
-  for (const row of rows) {
-    result.set(
-      row.deal_id,
-      toSafeMatchView(Number(row.relevance_score), parseStoredReasons(row.preview_reasons)),
-    );
-  }
-  return result;
-}
-
 export async function loadProMatchForDeal(input: {
   companyProfileId: string;
   dealId: string;
@@ -121,7 +73,7 @@ export async function loadProMatchForDeal(input: {
     return null;
   }
   const preview = parseStoredReasons(row.preview_reasons);
-  const detail = parseStoredReasons(row.detail_reasons);
+  const detail = parseStoredDetailReasons(row.detail_reasons);
   const mismatches = [
     ...preview.filter((reason) => reason.kind === "mismatch"),
     ...detail.filter((reason) => reason.kind === "mismatch"),

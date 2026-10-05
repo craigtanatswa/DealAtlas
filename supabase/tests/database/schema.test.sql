@@ -58,6 +58,18 @@ select has_function(
   'authenticated relevance search RPC exists'
 );
 
+select has_function('public', 'search_preview_dtos', 'sanitised preview search DTO RPC exists');
+select has_function('public', 'get_preview_dto_by_slug', 'preview DTO by slug RPC exists');
+select has_function('public', 'get_preview_dto_by_deal_id', 'signed-in preview DTO by deal id RPC exists');
+select has_function('public', 'resolve_preview_deal_id', 'signed-in slug to deal id RPC exists');
+select has_function('public', 'list_saved_deal_previews', 'saved deal preview DTO RPC exists');
+select has_function('public', 'list_preview_sitemap_entries', 'sitemap preview RPC exists');
+select has_function('public', 'count_preview_sitemap_entries', 'sitemap preview count RPC exists');
+select has_function('public', 'admin_release_preview_hold', 'admin preview hold release RPC exists');
+select has_function('private', 'preview_leak_findings', 'publish gate findings function exists');
+select has_function('private', 'detect_preview_leakage', 'publish gate risk function exists');
+select has_column('public', 'organizations', 'leak_match_name', 'organisation leak match name exists');
+
 select has_function(
   'private',
   'enforce_export_usage_limit',
@@ -78,11 +90,12 @@ select has_column(
 );
 
 select ok(
-  has_column_privilege('authenticated', 'public.deal_matches', 'preview_reasons', 'SELECT')
+  has_column_privilege('authenticated', 'public.deal_matches', 'relevance_score', 'SELECT')
+  and not has_column_privilege('authenticated', 'public.deal_matches', 'preview_reasons', 'SELECT')
   and not has_column_privilege('authenticated', 'public.deal_matches', 'detail_reasons', 'SELECT')
   and not has_table_privilege('anon', 'public.deal_matches', 'SELECT')
   and not has_table_privilege('authenticated', 'public.match_jobs', 'SELECT'),
-  'match preview columns are readable; detail_reasons and match_jobs are not'
+  'match scores are readable; preview_reasons, detail_reasons and match_jobs are not (stored reason text only via canned DTO labels)'
 );
 
 select ok(

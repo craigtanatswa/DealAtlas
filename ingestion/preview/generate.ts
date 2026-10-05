@@ -164,33 +164,70 @@ export function buildPreviewSummary(context: IntelligenceContext, aggressive = f
   return `A ${sector} is seeking ${category} through a ${DEAL_TYPE_LABELS[context.deal.dealType].toLowerCase()}.${regionClause} Estimated value ${value}. Closing window: ${deadline}.${smeClause}`;
 }
 
-function leakInput(context: IntelligenceContext, draft: Pick<PreviewDraft, "previewTitle" | "previewSummary" | "requirementsPreview" | "relevanceTags">): LeakScanInput {
+export function leakScanInputFromContext(
+  context: IntelligenceContext,
+  draft: Pick<PreviewDraft, "previewTitle" | "previewSummary" | "requirementsPreview" | "relevanceTags">,
+  extra: Pick<LeakScanInput, "slug" | "broadRegion"> = {},
+): LeakScanInput {
+  const { deal, lots, buyer } = context;
   return {
     previewTitle: draft.previewTitle,
     previewSummary: draft.previewSummary,
     requirementsPreview: draft.requirementsPreview,
     relevanceTags: draft.relevanceTags,
-    sourceTitle: context.deal.sourceTitle,
-    sourceDescription: context.deal.sourceDescription,
-    ocid: context.deal.ocid,
-    reference: context.deal.reference,
-    externalPrimaryId: context.deal.externalPrimaryId,
+    slug: extra.slug ?? null,
+    broadRegion: extra.broadRegion ?? null,
+    sourceTitle: deal.sourceTitle,
+    sourceDescription: deal.sourceDescription,
+    sourceExtraText: [
+      ...lots.flatMap((lot) => [lot.sourceTitle, lot.sourceDescription]),
+      ...context.requirements.flatMap((item) => [item.name, item.description]),
+    ].filter((item): item is string => Boolean(item)),
+    ocid: deal.ocid,
+    reference: deal.reference,
+    externalPrimaryId: deal.externalPrimaryId,
     noticeIdentifiers: context.noticeIdentifiers,
-    sourceUrl: context.deal.sourceUrl,
-    applicationUrl: context.deal.applicationUrl,
+    extraReferences: lots
+      .map((lot) => lot.sourceLotId)
+      .filter((item): item is string => Boolean(item)),
+    sourceUrl: deal.sourceUrl,
+    applicationUrl: deal.applicationUrl,
     sourceName: context.source.name,
     sourceKey: context.source.sourceKey,
-    buyerName: context.buyer?.canonicalName ?? null,
+    buyerName: buyer?.canonicalName ?? null,
     buyerAliases: context.buyerAliases,
-    buyerDomain: context.buyer?.domain ?? null,
-    buyerEmail: context.buyer?.email ?? null,
-    buyerPhone: context.buyer?.phone ?? null,
-    exactValueText: context.deal.exactValueText,
-    valueMinExVat: context.deal.valueMinExVat,
-    valueMaxExVat: context.deal.valueMaxExVat,
-    submissionDeadline: context.deal.submissionDeadline,
-    exactLocationText: context.deal.exactLocationText,
+    buyerDomain: buyer?.domain ?? null,
+    buyerWebsite: buyer?.website ?? null,
+    buyerEmail: buyer?.email ?? null,
+    buyerPhone: buyer?.phone ?? null,
+    exactValueText: deal.exactValueText,
+    valueMinExVat: deal.valueMinExVat,
+    valueMaxExVat: deal.valueMaxExVat,
+    sourceAmounts: lots.flatMap((lot) => [lot.valueMin, lot.valueMax]),
+    submissionDeadline: deal.submissionDeadline,
+    sourceDates: [
+      deal.enquiryDeadline,
+      deal.firstPublishedAt,
+      deal.awardDecisionDate,
+      deal.contractStartDate,
+      deal.contractEndDate,
+      deal.extensionEndDate,
+      deal.nextProcurementDate,
+      deal.estimatedRenewalDate,
+      ...lots.flatMap((lot) => [lot.submissionDeadline, lot.contractStartDate, lot.contractEndDate]),
+    ],
+    exactLocationText: deal.exactLocationText,
+    lotLocationTexts: lots.map((lot) => lot.exactLocationText),
+    locationTerms: [buyer?.city ?? null, buyer?.addressLine1 ?? null],
+    knownPostcodes: [buyer?.postcode ?? null],
   };
+}
+
+function leakInput(
+  context: IntelligenceContext,
+  draft: Pick<PreviewDraft, "previewTitle" | "previewSummary" | "requirementsPreview" | "relevanceTags">,
+): LeakScanInput {
+  return leakScanInputFromContext(context, draft);
 }
 
 function applyFindingTokens(text: string, findings: LeakFinding[]): string {

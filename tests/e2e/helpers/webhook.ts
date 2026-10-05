@@ -6,6 +6,8 @@ import {
   billingWebhookFixtures,
 } from "../../../lib/billing/fixtures";
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
 export function signedWebhookHeaders(body: string, webhookId: string) {
   const webhook = new Webhook(BILLING_FIXTURE_WEBHOOK_SECRET);
   const timestamp = new Date();
@@ -23,15 +25,19 @@ export function proActiveWebhookPayload(input: {
   email: string;
   subscriptionId: string;
   customerId: string;
+  now?: Date;
 }) {
   const payload = billingWebhookFixtures.monthlyActive();
-  payload.timestamp = "2026-09-16T10:00:00.000Z";
+  // The app checks the period end against the real clock, so the fixture
+  // period is always relative to the run.
+  const now = input.now ?? new Date();
+  payload.timestamp = now.toISOString();
   payload.data = {
     ...payload.data,
     product_id: BILLING_FIXTURE_PRODUCTS.PRO_MONTHLY,
     subscription_id: input.subscriptionId,
-    previous_billing_date: "2026-09-01T00:00:00.000Z",
-    next_billing_date: "2026-10-16T00:00:00.000Z",
+    previous_billing_date: new Date(now.getTime() - DAY_MS).toISOString(),
+    next_billing_date: new Date(now.getTime() + 30 * DAY_MS).toISOString(),
     customer: {
       customer_id: input.customerId,
       email: input.email,
