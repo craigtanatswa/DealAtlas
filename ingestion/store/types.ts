@@ -303,6 +303,9 @@ export type IngestionStore = {
   listDeals(limit?: number): Promise<DealRecord[]>;
   getDealById(id: string): Promise<DealRecord | null>;
   getDealPreview(dealId: string): Promise<DealPreviewRecord | null>;
+  previewSlugInUse(slug: string, dealId: string): Promise<boolean>;
+  retirePreviewSlug(slug: string): Promise<void>;
+  maintainDealsLeakIndex(): Promise<void>;
   upsertDealPreview(input: DealPreviewRecord): Promise<DealPreviewRecord>;
   upsertDealInsight(input: DealInsightRecord): Promise<void>;
   getDealInsight(dealId: string): Promise<DealInsightRecord | null>;

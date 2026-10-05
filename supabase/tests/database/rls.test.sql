@@ -88,6 +88,35 @@ select ok(
   not has_function_privilege('anon', 'public.caller_misses_published_preview(uuid)', 'execute'),
   'anon cannot check a missing published preview'
 );
+select ok(
+  has_function_privilege('anon', 'public.preview_slug_is_retired(text)', 'execute'),
+  'anon can check whether a preview slug is retired'
+);
+select ok(
+  not has_function_privilege('anon', 'public.retire_preview_slug(text)', 'execute'),
+  'anon cannot retire preview slugs'
+);
+select ok(
+  not has_function_privilege('anon', 'public.maintain_deals_leak_index()', 'execute'),
+  'anon cannot maintain the leak-source index'
+);
+select ok(
+  exists (
+    select 1
+    from pg_options_to_table((select reloptions from pg_class where oid = 'public.deals_leak_source_tsv_idx'::regclass))
+      as opts(option_name text, option_value text)
+    where opts.option_name = 'fastupdate' and opts.option_value = 'off'
+  ),
+  'deals leak-source GIN index has fastupdate off'
+);
+select lives_ok(
+  $$select public.retire_preview_slug('synthetic-retired-slug')$$,
+  'service owner can retire a slug by hash'
+);
+select ok(
+  public.preview_slug_is_retired('synthetic-retired-slug'),
+  'a retired slug that is not the current preview slug is gone'
+);
 select ok(not has_function_privilege('anon', 'public.admin_release_preview_hold(uuid)', 'execute'), 'anon cannot release preview holds');
 select ok(not has_function_privilege('authenticated', 'public.admin_release_preview_hold(uuid)', 'execute'), 'authenticated cannot release preview holds');
 select ok(
@@ -97,7 +126,7 @@ select ok(
     join pg_namespace n on n.oid = p.pronamespace
     where n.nspname = 'public'
       and has_function_privilege('anon', p.oid, 'execute')
-      and p.proname not in ('search_preview_dtos', 'get_preview_dto_by_slug', 'list_preview_sitemap_entries', 'count_preview_sitemap_entries')
+      and p.proname not in ('search_preview_dtos', 'get_preview_dto_by_slug', 'list_preview_sitemap_entries', 'count_preview_sitemap_entries', 'preview_slug_is_retired')
       and not exists (select 1 from pg_depend dep where dep.objid = p.oid and dep.deptype = 'e')
   ),
   'anon can only execute the public DTO RPCs in schema public'

@@ -7,5 +7,5 @@ export {
   generatePreviewDraft,
   generalizeRequirementText,
   requirementsPreviewFromContext,
-  stripIdentity,
+  REQUIREMENT_PREVIEW_LABELS,
 } from "@/ingestion/preview/generate";

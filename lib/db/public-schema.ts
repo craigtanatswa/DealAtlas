@@ -25,6 +25,7 @@ export const PUBLIC_FUNCTION_NAMES = [
   "list_saved_deal_previews",
   "list_preview_sitemap_entries",
   "count_preview_sitemap_entries",
+  "preview_slug_is_retired",
 ] as const;
 
 export type PublicFunctionName = (typeof PUBLIC_FUNCTION_NAMES)[number];

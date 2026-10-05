@@ -2,18 +2,6 @@
   "$comment": "Spec section 7 rule 9: P2 findings fail unless waived here. Each waiver cites the Reviewer's written decision; an expired waiver fails the job.",
   "waivers": [
     {
-      "finding": "SEO-04",
-      "scope": {
-        "role": "anon",
-        "path": "/deals/sitemap.xml",
-        "instances": ["deals-sitemap-xml@chromium", "deals-sitemap-xml@googlebot"],
-        "assertions": ["xml_or_404"]
-      },
-      "reason": "OQ-3 decision (Lawliet, 2026-10-04 00:29 CAT): intended sitemaps are /sitemap.xml and /deals/sitemap/{id}.xml; the robots / soft-404 fix is PR3; P2, non-blocking for PR1. Scope is the anon deals-sitemap status and content-type check for chromium and googlebot.",
-      "approved_by": "Reviewer",
-      "expires": "2026-12-31"
-    },
-    {
       "finding": "REST-13",
       "codes": ["PGRST205", "PGRST202"],
       "names": ["deals", "alerts", "organizations", "subscriptions"],

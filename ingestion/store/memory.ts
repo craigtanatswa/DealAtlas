@@ -1,5 +1,7 @@
 import { randomUUID } from "node:crypto";
 
+import { previewSlugHash } from "@/lib/deals/public-slug";
+
 import { normalizeTitle } from "@/ingestion/normalizers/text";
 import type {
   AwardRecord,
@@ -64,6 +66,7 @@ export type MemoryIngestionState = {
   previews: DealPreviewRecord[];
   insights: DealInsightRecord[];
   previewRuns: PreviewGenerationRunRecord[];
+  retiredSlugHashes: string[];
 };
 
 export function createMemoryIngestionStore(seed?: {
@@ -101,6 +104,7 @@ export function createMemoryIngestionStore(seed?: {
     previews: [],
     insights: [],
     previewRuns: [],
+    retiredSlugHashes: [],
   };
 
   const store: IngestionStore & MemoryIngestionState = {
@@ -151,6 +155,14 @@ export function createMemoryIngestionStore(seed?: {
     async getDealPreview(dealId) {
       return state.previews.find((item) => item.dealId === dealId) ?? null;
     },
+    async previewSlugInUse(slug, dealId) {
+      return state.previews.some((item) => item.slug === slug && item.dealId !== dealId);
+    },
+    async retirePreviewSlug(slug) {
+      const hash = previewSlugHash(slug);
+      if (!state.retiredSlugHashes.includes(hash)) state.retiredSlugHashes.push(hash);
+    },
+    async maintainDealsLeakIndex() {},
     async upsertDealPreview(input) {
       const index = state.previews.findIndex((item) => item.dealId === input.dealId);
       const held = index >= 0 && state.previews[index].unpublishedByAdmin === true;

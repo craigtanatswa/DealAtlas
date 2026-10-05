@@ -3052,7 +3052,10 @@ export type Database = {
           value_band: string
         }[]
       }
+      maintain_deals_leak_index: { Args: never; Returns: undefined }
+      preview_slug_is_retired: { Args: { p_slug: string }; Returns: boolean }
       resolve_preview_deal_id: { Args: { p_slug: string }; Returns: string }
+      retire_preview_slug: { Args: { p_slug: string }; Returns: undefined }
       search_deal_previews: {
         Args: {
           p_buyer_sector?: Database["public"]["Enums"]["buyer_sector"]

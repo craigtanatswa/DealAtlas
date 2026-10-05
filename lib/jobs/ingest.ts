@@ -217,6 +217,10 @@ export async function runScheduledIngestion(options: {
     }
   }
 
+  if (results.some((item) => item.ok)) {
+    await options.store.maintainDealsLeakIndex();
+  }
+
   const failures = results.filter((item) => !item.ok).length;
   const status =
     selected.length === 0

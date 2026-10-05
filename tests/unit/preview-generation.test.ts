@@ -1,7 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { runIngestion } from "@/ingestion/core/pipeline";
+import { REQUIREMENT_PREVIEW_LABELS } from "@/ingestion/preview/generate";
 import { persistIntelligenceAndPreview } from "@/ingestion/preview/publish";
+import { previewSlugHash } from "@/lib/deals/public-slug";
 import { contextFromCandidate } from "@/ingestion/intelligence/types";
 import type { LanguageModelProvider } from "@/ingestion/intelligence/provider";
 import { createFindATenderAdapter } from "@/ingestion/sources/find-a-tender/adapter";
@@ -84,6 +86,9 @@ describe("preview generation from canonical records", () => {
     expect(preview.deadlineBand).toBe("Within 30 days");
     expect(preview.broadRegion).toBe("North West England");
     expect(preview.smeSuitability).toBe("HIGH");
+    expect(preview.slug).toMatch(/^[a-z0-9]+(?:-[a-z0-9]+)*-[0-9a-f]{8}$/);
+    expect(preview.slug.endsWith(deal.id.replace(/-/g, "").slice(0, 8))).toBe(false);
+    expect(preview.requirementsPreview.every((item) => (REQUIREMENT_PREVIEW_LABELS as readonly string[]).includes(item))).toBe(true);
     expect(preview.previewTitle.toLowerCase()).not.toBe(deal.sourceTitle.toLowerCase());
     expect(combined).not.toContain("Example City Council");
     expect(combined).not.toContain("ocds-h6vhtk-fixture1");
@@ -294,5 +299,128 @@ describe("preview generation from canonical records", () => {
     expect(outcome.published).toBe(false);
     expect(store.previews[0]?.unpublishedByAdmin).toBe(true);
     expect(store.previews[0]?.isPublished).toBe(false);
+  });
+
+  it("replaces the slug and retires the previous one by hash", async () => {
+    const { store } = await ingestNormal();
+    const first = store.previews[0]!.slug;
+    const deal = store.deals[0]!;
+    await persistIntelligenceAndPreview({
+      store,
+      context: contextFromCandidate({
+        deal,
+        source: store.sources[0]!,
+        buyer: store.organizations[0]!,
+        buyerAliases: [],
+        lots: store.lots,
+        candidate: {
+          sourceKey: "find-a-tender",
+          ocid: deal.ocid ?? "",
+          externalPrimaryId: deal.externalPrimaryId ?? "",
+          noticeIdentifier: "000001-2026",
+          releaseId: "000001-2026",
+          reference: deal.reference,
+          sourceTitle: deal.sourceTitle,
+          sourceDescription: deal.sourceDescription,
+          sourceUrl: deal.sourceUrl ?? "",
+          dealType: deal.dealType,
+          buyerSector: deal.buyerSector,
+          stage: deal.stage,
+          status: deal.status,
+          mainCategory: deal.mainCategory,
+          currency: deal.currency ?? "GBP",
+          valueMinExVat: deal.valueMinExVat,
+          valueMaxExVat: deal.valueMaxExVat,
+          exactValueText: deal.exactValueText,
+          exactLocationText: deal.exactLocationText,
+          submissionDeadline: deal.submissionDeadline,
+          organizations: [],
+          lots: [],
+          requirements: [],
+          awardCriteria: [],
+          awards: [],
+          contracts: [],
+          documents: [],
+          classifications: [],
+          relatedOcids: [],
+        },
+        now: NOW,
+      }),
+    });
+    expect(store.previews[0]?.slug).not.toBe(first);
+    expect(store.retiredSlugHashes).toContain(previewSlugHash(first));
+  });
+});
+
+function wordWindows(text: string, size = 6): string[] {
+  const words = text.toLowerCase().match(/[a-z0-9']+/g) ?? [];
+  const phrases: string[] = [];
+  for (let index = 0; index <= words.length - size; index += 1) {
+    phrases.push(words.slice(index, index + size).join(" "));
+  }
+  return phrases;
+}
+
+describe("template-only free copy", () => {
+  it("cannot carry a 6-word source substring or a source-only proper noun", async () => {
+    const { store } = await ingestNormal();
+    const deal = {
+      ...store.deals[0]!,
+      sourceTitle: "Quellmoor Vantrexo bridges the river works programme today",
+      sourceDescription:
+        "alpha bravo charlie delta echo foxtrot supplied by Quellmoor Vantrexo for the riverside estate",
+    };
+    const outcome = await persistIntelligenceAndPreview({
+      store,
+      context: contextFromCandidate({
+        deal,
+        source: store.sources[0]!,
+        buyer: store.organizations[0]!,
+        buyerAliases: ["Example Council"],
+        lots: store.lots,
+        candidate: {
+          sourceKey: "find-a-tender",
+          ocid: deal.ocid ?? "",
+          externalPrimaryId: deal.externalPrimaryId ?? "",
+          noticeIdentifier: "000001-2026",
+          releaseId: "000001-2026",
+          reference: deal.reference,
+          sourceTitle: deal.sourceTitle,
+          sourceDescription: deal.sourceDescription,
+          sourceUrl: deal.sourceUrl ?? "",
+          dealType: deal.dealType,
+          buyerSector: deal.buyerSector,
+          stage: deal.stage,
+          status: deal.status,
+          mainCategory: deal.mainCategory,
+          currency: deal.currency ?? "GBP",
+          valueMinExVat: deal.valueMinExVat,
+          valueMaxExVat: deal.valueMaxExVat,
+          exactValueText: deal.exactValueText,
+          exactLocationText: deal.exactLocationText,
+          submissionDeadline: deal.submissionDeadline,
+          organizations: [],
+          lots: [],
+          requirements: [],
+          awardCriteria: [],
+          awards: [],
+          contracts: [],
+          documents: [],
+          classifications: [],
+          relatedOcids: [],
+        },
+        now: NOW,
+      }),
+    });
+    const free = `${outcome.previewTitle} ${outcome.previewSummary} ${outcome.slug} ${store.previews.at(-1)?.requirementsPreview.join(" ")}`;
+    const source = `${deal.sourceTitle} ${deal.sourceDescription}`;
+    for (const phrase of wordWindows(source)) {
+      expect(free.toLowerCase()).not.toContain(phrase);
+    }
+    for (const noun of ["Quellmoor", "Vantrexo"]) {
+      expect(free).not.toContain(noun);
+    }
+    expect(free).not.toMatch(/\b\d{1,2}\s+(January|February|March|April|May|June|July|August|September|October|November|December)\b/);
+    expect(outcome.previewTitle).toMatch(/for a /);
   });
 });

@@ -27,7 +27,7 @@ import {
 } from "@/lib/seo/json-ld";
 import { marketingPageMetadata } from "@/lib/seo/metadata";
 import { PUBLIC_INDEXABLE_PATHS, PUBLIC_PAGE_COPY } from "@/lib/seo/pages";
-import { buildRobotsPolicy, staticSitemapEntries } from "@/lib/seo/sitemap";
+import { buildRobotsPolicy, dealsSitemapIndexXml, staticSitemapEntries } from "@/lib/seo/sitemap";
 import {
   findForbiddenPublicKeys,
   findProtectedMarkerLeaks,
@@ -229,6 +229,15 @@ describe("sitemaps, robots and category architecture", () => {
       ]),
     );
     expect(robots.host).toBe("localhost:3000");
+  });
+
+  it("serves /deals/sitemap.xml as an XML sitemap index, not an HTML page", () => {
+    const xml = dealsSitemapIndexXml(ORIGIN, 2);
+    expect(xml.startsWith("<?xml")).toBe(true);
+    expect(xml).toContain("<sitemapindex");
+    expect(xml).toContain(`${ORIGIN}/deals/sitemap/0.xml`);
+    expect(xml).toContain(`${ORIGIN}/deals/sitemap/1.xml`);
+    expect(xml).not.toContain("<html");
   });
 
   it("lists only curated public URLs in the static sitemap", () => {
