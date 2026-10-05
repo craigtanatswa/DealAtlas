@@ -13,8 +13,8 @@ import { ARTIFACTS_DIR, RAW_DIR, readJson, sha256, writeJson } from "./lib/artif
 import { LEAK_DIR, ROOT } from "./lib/env";
 import type { ProbeRecord } from "./lib/probe";
 import { compileTokens, heuristicHits, loadManifest, MANIFEST_PATH } from "./lib/scan";
+import { appliedWaiver, waiverProblems, type Waiver } from "./lib/waiver";
 
-type Waiver = { finding: string; reason: string; approved_by: string; expires: string };
 type PhaseRecords = { phase: "A" | "B"; fatal: string | null; records: Array<ProbeRecord & { detail?: unknown }> };
 
 const WAIVERS_PATH = path.join(ROOT, "tests/leak/waivers.json");
@@ -52,19 +52,15 @@ function isResidual(r: ProbeRecord): boolean {
   return /(^|[^A-Z0-9])R[12]([^0-9]|$)/.test(r.instance);
 }
 
-function waiverFor(r: ProbeRecord, waivers: Waiver[]): Waiver | null {
-  const key = `${r.probe_id}|${r.role}|${r.instance}`;
-  const bare = r.probe_id.replace(/^[AB]-/, "");
-  return waivers.find((w) => w.finding === r.probe_id || w.finding === bare || key.startsWith(`${w.finding}|`) || key === w.finding) ?? null;
+function waiverFor(r: ProbeRecord, waivers: Waiver[], now: Date): Waiver | null {
+  return appliedWaiver(r, waivers, now);
 }
 
 function main(): void {
   const manifest = loadManifest();
   const waivers = (fs.existsSync(WAIVERS_PATH) ? (JSON.parse(fs.readFileSync(WAIVERS_PATH, "utf8")) as { waivers: Waiver[] }).waivers : []) ?? [];
   const now = new Date();
-  const waiverErrors = waivers
-    .filter((w) => w.approved_by !== "Reviewer" || Number.isNaN(Date.parse(w.expires)) || Date.parse(w.expires) < now.getTime())
-    .map((w) => `${w.finding}: ${w.approved_by !== "Reviewer" ? "not approved by the Reviewer" : "expired or invalid expiry"}`);
+  const waiverErrors = waiverProblems(waivers, now);
 
   const phases = (["A", "B"] as const).map((p) => readJson<PhaseRecords>(`phase-${p}/records.json`));
   const preflight = readJson<{ pass: boolean; results: Array<{ id: string; pass: boolean }> }>("preflight/summary.json");
@@ -84,7 +80,7 @@ function main(): void {
   for (const phase of phases) {
     if (!phase) continue;
     for (const r of phase.records) {
-      const waiver = !r.pass ? waiverFor(r, waivers) : null;
+      const waiver = !r.pass ? waiverFor(r, waivers, now) : null;
       const residual = isResidual(r);
       const waived = Boolean(!r.pass && (residual || (waiver && !waiverErrors.some((e) => e.startsWith(`${waiver.finding}:`)))));
       if (!r.pass && residual) residuals.push({ probe_id: r.probe_id, role: r.role, instance: r.instance, tokens: r.tokens_present });
@@ -161,6 +157,7 @@ function main(): void {
     migrations_phase_A: migrations("A"),
     migrations_phase_B: migrations("B"),
     sha256: { manifest: sha256(fs.readFileSync(MANIFEST_PATH)), seed: hashFiles(SEED_FILES), harness: hashFiles(HARNESS_FILES) },
+    waivers_applied: waiversApplied,
   };
   if (run.next_build_id.A && run.next_build_id.B && run.next_build_id.A !== run.next_build_id.B) missing.push("BUILD_ID changed between phases");
   const finalPass = pass && missing.length === 0;

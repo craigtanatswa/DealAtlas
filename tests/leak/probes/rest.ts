@@ -2,6 +2,7 @@
 import type { Assertion, Ctx, ProbeOutcome, RequestSpec } from "../lib/probe";
 import { eq, ok, sorted } from "../lib/probe";
 import type { Role } from "../lib/scan";
+import { restErrorIsNamesOnly } from "../lib/waiver";
 import {
   DTO_SNAKE_KEYS,
   FREE_ROLES,
@@ -441,11 +442,13 @@ export async function restProbes(ctx: Ctx): Promise<void> {
         severity: "P2",
         req,
         check: (o) => {
-          const json = (o.json ?? {}) as Record<string, unknown>;
-          const text = [json.message, json.hint, json.details].filter(Boolean).join(" | ");
+          const body = o.json;
+          const json = body && typeof body === "object" && !Array.isArray(body) ? (body as Record<string, unknown>) : {};
+          const text = [json.message, json.hint, json.details].filter((v): v is string => typeof v === "string" && v.length > 0).join(" | ");
           const requested = instance.replace(/^\/|^rpc\//, "");
           const named = privateNames.filter((n) => n !== requested && new RegExp(`(?<![a-z0-9_])${n}(?![a-z0-9_])`).test(text));
-          return [ok("hint_names_no_private_object", named.length === 0, { named, text }, { code: named.length ? "REST_HINT" : undefined })];
+          const { code, row } = restErrorIsNamesOnly(body);
+          return [ok("hint_names_no_private_object", named.length === 0, { named, text, code, row }, { code: named.length ? "REST_HINT" : undefined })];
         },
       }),
     );

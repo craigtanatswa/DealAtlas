@@ -6,6 +6,14 @@
       "reason": "OQ-3 decision (Lawliet, 2026-10-04 00:29 CAT): intended sitemaps are /sitemap.xml and /deals/sitemap/{id}.xml; the robots / soft-404 fix is PR3; P2, non-blocking for PR1.",
       "approved_by": "Reviewer",
       "expires": "2026-12-31"
+    },
+    {
+      "finding": "REST-13",
+      "codes": ["PGRST205", "PGRST202"],
+      "names": ["deals", "alerts", "organizations", "subscriptions"],
+      "reason": "PostgREST schema-cache typo hints name ungranted public tables (deals, alerts, organizations, subscriptions); names only, no source data; OQ-8 platform behaviour. Fix by moving non-anon tables out of the exposed schema post-launch.",
+      "approved_by": "Reviewer",
+      "expires": "2026-12-31"
     }
   ]
 }
