@@ -33,7 +33,11 @@ describe("private.preview_dto_reasons canned labels", () => {
 
   it("are the only label source in the client DTO RPCs", () => {
     const sql = fs.readFileSync(MIGRATION, "utf8");
-    const rpcs = sql.slice(sql.indexOf("create or replace function public.search_preview_dtos("));
+    const start = sql.indexOf("create or replace function public.search_preview_dtos(");
+    const end = sql.indexOf("create or replace function public.search_deal_previews_for_profile(");
+    expect(start).toBeGreaterThan(0);
+    expect(end).toBeGreaterThan(start);
+    const rpcs = sql.slice(start, end);
     expect(rpcs).not.toMatch(/coalesce\(\s*(?:dm\.preview_reasons|r\.match_reasons)/);
     expect(rpcs.match(/private\.preview_dto_reasons\(/g)?.length).toBe(3);
   });
