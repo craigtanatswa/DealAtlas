@@ -71,13 +71,29 @@ const NEXT_F_HOOK = `(() => {
   } catch (e) {}
 })();`;
 
-async function newContext(browser: Browser, ctx: Ctx, tracker: Tracker, storageState?: string): Promise<BrowserContext> {
+function isNextPrefetch(headers: Record<string, string>): boolean {
+  return headers["next-router-prefetch"] === "1" || Boolean(headers["next-router-segment-prefetch"]);
+}
+
+async function newContext(
+  browser: Browser,
+  ctx: Ctx,
+  tracker: Tracker,
+  storageState?: string,
+  options?: { blockPrefetch?: boolean },
+): Promise<BrowserContext> {
   const context = await browser.newContext({ baseURL: ctx.env.appUrl, storageState });
   await context.addInitScript({ content: NEXT_F_HOOK });
   await context.route("**/*", async (route) => {
     const request = route.request();
     if (!isLoopback(request.url())) {
       tracker.aborted.push({ url: request.url(), method: request.method(), postData: request.postData() });
+      await route.abort("blockedbyclient");
+      return;
+    }
+    // A prefetch that finishes before the click must not satisfy RSC-03.
+    // Dropping it makes the soft navigation request its own flight during the step.
+    if (options?.blockPrefetch && isNextPrefetch(request.headers())) {
       await route.abort("blockedbyclient");
       return;
     }
@@ -196,16 +212,22 @@ export async function clientProbes(ctx: Ctx, roles: Role[] = ["anon", "free"]): 
 
 const loggedIn = new Set<string>();
 
-async function contextFor(ctx: Ctx, browser: Browser, role: Role, tracker: Tracker): Promise<BrowserContext> {
+async function contextFor(
+  ctx: Ctx,
+  browser: Browser,
+  role: Role,
+  tracker: Tracker,
+  options?: { blockPrefetch?: boolean },
+): Promise<BrowserContext> {
   const statePath = path.join(LEAK_DIR, `state-${role}-${ctx.phase}.json`);
-  if (role === "anon") return newContext(browser, ctx, tracker);
+  if (role === "anon") return newContext(browser, ctx, tracker, undefined, options);
   if (!loggedIn.has(statePath)) {
     const setup = await newContext(browser, ctx, freshTracker());
     await login(setup, ctx.users[role as Exclude<Role, "anon">].email, statePath);
     await setup.close();
     loggedIn.add(statePath);
   }
-  return newContext(browser, ctx, tracker, statePath);
+  return newContext(browser, ctx, tracker, statePath, options);
 }
 
 async function clientRole(ctx: Ctx, browser: Browser, role: Role, blankProps: string[]): Promise<void> {
@@ -259,13 +281,21 @@ async function clientRole(ctx: Ctx, browser: Browser, role: Role, blankProps: st
   await navigationScript(ctx, browser, role);
 }
 
-/** RSC-03: /deals -> PUB card -> /deals -> search submit -> category link, capturing client-side RSC fetches. */
+/** RSC-03: / -> /deals link -> PUB card -> search submit -> category link, capturing client-side RSC fetches. */
 async function navigationScript(ctx: Ctx, browser: Browser, role: Role): Promise<void> {
   const pub = pubSlugs(ctx);
   const tracker = freshTracker();
-  const context = await contextFor(ctx, browser, role, tracker);
+  const context = await contextFor(ctx, browser, role, tracker, { blockPrefetch: true });
   const page = await context.newPage();
   const steps: Array<{ name: string; run: () => Promise<string | void> }> = [
+    {
+      name: "deals",
+      run: async () => {
+        await page.locator('a[href="/deals"]').first().click();
+        await page.waitForURL((u) => u.pathname === "/deals");
+        return "/deals";
+      },
+    },
     {
       name: "card",
       run: async () => {
@@ -275,14 +305,6 @@ async function navigationScript(ctx: Ctx, browser: Browser, role: Role): Promise
         await page.locator(`a[href="${target}"]`).first().click();
         await page.waitForURL((u) => u.pathname === target);
         return target;
-      },
-    },
-    {
-      name: "deals",
-      run: async () => {
-        await page.locator('a[href="/deals"]').first().click();
-        await page.waitForURL((u) => u.pathname === "/deals");
-        return "/deals";
       },
     },
     {
@@ -306,10 +328,10 @@ async function navigationScript(ctx: Ctx, browser: Browser, role: Role): Promise
       },
     },
   ];
-  const opened = await visit(page, "/deals");
+  const opened = await visit(page, "/");
   const perStep: Array<{ step: string; rsc: number; error?: string }> = [];
   for (const step of steps) {
-    const before = tracker.rsc.length;
+    const since = { rsc: tracker.rsc.length, responses: tracker.responses.length };
     let error: string | undefined;
     let tiedPath = "";
     try {
@@ -319,12 +341,11 @@ async function navigationScript(ctx: Ctx, browser: Browser, role: Role): Promise
     } catch (e) {
       error = String(e);
     }
-    // Card and /deals clicks often reuse a prefetch or the document that
-    // already inlined the flight, so they record no new response. Count that
-    // flight. Search and category still require a new RSC response.
+    // Only flights recorded after this click. The document RSC-03 already
+    // loaded, and any earlier prefetch, do not count.
     const rsc = tiedPath
-      ? navigationRscCount(tracker, tiedPath)
-      : tracker.rsc.length - before;
+      ? navigationRscCount(tracker, tiedPath, since)
+      : tracker.rsc.length - since.rsc;
     perStep.push({ step: step.name, rsc, error });
   }
   await context.close();
