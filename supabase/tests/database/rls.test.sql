@@ -104,7 +104,7 @@ select ok(
   exists (
     select 1
     from pg_options_to_table((select reloptions from pg_class where oid = 'public.deals_leak_source_tsv_idx'::regclass))
-      as opts(option_name text, option_value text)
+      as opts
     where opts.option_name = 'fastupdate' and opts.option_value = 'off'
   ),
   'deals leak-source GIN index has fastupdate off'

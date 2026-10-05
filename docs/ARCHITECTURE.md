@@ -410,7 +410,7 @@ pgTAP tests live in `supabase/tests/database`. PostgREST RLS smoke tests live in
 ### Technical SEO and public trust pages
 Public marketing routes now include `/`, `/deals`, `/deals/[slug]`, `/categories`, `/categories/[slug]`, `/pricing`, `/how-it-works`, `/contact`, `/privacy`, `/terms`, and `/cookies`. Category landings are a fixed catalogue from `lib/seo/category-landings.ts` (`dynamicParams = false`); search/filter combinations stay noindex and are not mass-generated as pages.
 
-`app/robots.ts` and `app/sitemap.ts` expose crawl policy and static/category URLs. Published Deal preview URLs are listed via `list_preview_sitemap_entries` only (`app/(marketing)/deals/sitemap.ts`), with week-truncated last-modified dates. Metadata, OpenGraph, JSON-LD, and sitemap loc values use sanitised preview fields or static product copy — never buyer/source identity.
+`app/robots.ts` and `app/sitemap.ts` expose crawl policy and static/category URLs. `/deals/sitemap.xml` is an XML sitemap index. Published Deal preview URLs are listed via `list_preview_sitemap_entries` only (`app/(marketing)/deals/sitemap/[id]/route.ts`), with week-truncated last-modified dates. Metadata, OpenGraph, JSON-LD, and sitemap loc values use sanitised preview fields or static product copy — never buyer/source identity.
 
 Internal `/app`, `/admin`, `/auth`, `/api`, and checkout confirmation routes are noindex (and disallowed in robots.txt where appropriate). Google Search Console verification and GA/GTM scripts are optional `NEXT_PUBLIC_*` placeholders and must not receive source URLs on free pages.
 

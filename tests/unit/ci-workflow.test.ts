@@ -292,6 +292,7 @@ describe("CI workflow", () => {
       "github.event.pull_request.head.sha",
       "LEAK_MERGE_SHA=${{ github.sha }}",
       "mv supabase/migrations/0019_",
+      "mv supabase/migrations/0020_",
       "npx supabase start",
       "node scripts/ci-guard-env.mjs",
       "npm run build",

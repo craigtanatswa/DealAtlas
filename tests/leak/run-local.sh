@@ -12,11 +12,13 @@ held="$(mktemp -d)"
 restore() {
   tests/leak/stop-app.sh || true
   if compgen -G "$held/0019_*.sql" >/dev/null; then mv "$held"/0019_*.sql supabase/migrations/; fi
+  if compgen -G "$held/0020_*.sql" >/dev/null; then mv "$held"/0020_*.sql supabase/migrations/; fi
 }
 trap restore EXIT
 
 npx supabase stop --no-backup >/dev/null 2>&1 || true
 mv supabase/migrations/0019_*.sql "$held/"
+mv supabase/migrations/0020_*.sql "$held/"
 npx supabase start -x studio,imgproxy,edge-runtime,logflare,vector,supavisor,postgres-meta,realtime,storage-api
 
 status="$(npx supabase status --output json --log-level error)"
@@ -51,6 +53,7 @@ npx tsx --import ./scripts/allow-server-only.mjs tests/leak/run.ts --phase A
 tests/leak/stop-app.sh
 
 mv "$held"/0019_*.sql supabase/migrations/
+mv "$held"/0020_*.sql supabase/migrations/
 npx supabase migration up --local
 tests/leak/start-app.sh B "$log"
 npx tsx --import ./scripts/allow-server-only.mjs tests/leak/run.ts --phase B
