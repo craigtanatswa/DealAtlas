@@ -11,6 +11,7 @@ import { LEAK_DIR, LEAK_PASSWORD } from "../lib/env";
 import { reserve } from "../lib/http";
 import type { Assertion, Ctx } from "../lib/probe";
 import { ok, slugsIn } from "../lib/probe";
+import { navigationRscCount } from "../lib/rsc-nav";
 import type { Role } from "../lib/scan";
 import { pubSlugs } from "./common";
 import { previewTitles } from "./web";
@@ -264,7 +265,7 @@ async function navigationScript(ctx: Ctx, browser: Browser, role: Role): Promise
   const tracker = freshTracker();
   const context = await contextFor(ctx, browser, role, tracker);
   const page = await context.newPage();
-  const steps: Array<{ name: string; run: () => Promise<void> }> = [
+  const steps: Array<{ name: string; run: () => Promise<string | void> }> = [
     {
       name: "card",
       run: async () => {
@@ -273,6 +274,7 @@ async function navigationScript(ctx: Ctx, browser: Browser, role: Role): Promise
         if (!target) throw new Error("no PUB card on /deals");
         await page.locator(`a[href="${target}"]`).first().click();
         await page.waitForURL((u) => u.pathname === target);
+        return target;
       },
     },
     {
@@ -308,13 +310,21 @@ async function navigationScript(ctx: Ctx, browser: Browser, role: Role): Promise
   for (const step of steps) {
     const before = tracker.rsc.length;
     let error: string | undefined;
+    let cardPath = "";
     try {
-      await step.run();
+      const tied = await step.run();
+      if (typeof tied === "string") cardPath = tied;
       await page.waitForLoadState("networkidle", { timeout: 15_000 }).catch(() => undefined);
     } catch (e) {
       error = String(e);
     }
-    perStep.push({ step: step.name, rsc: tracker.rsc.length - before, error });
+    // The deals index prefetches visible cards, so the click often reuses that
+    // flight and records no new response. Count that prefetch, a flight fetched
+    // during the click, or an HTML document that inlines the payload.
+    const rsc = step.name === "card"
+      ? navigationRscCount(tracker, cardPath)
+      : tracker.rsc.length - before;
+    perStep.push({ step: step.name, rsc, error });
   }
   await context.close();
   ctx.derive({
