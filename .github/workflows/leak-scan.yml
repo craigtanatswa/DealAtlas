@@ -1,0 +1,81 @@
+name: Leak scan
+
+# Hourly read-only check. Dispatch once before relying on the cron.
+on:
+  schedule:
+    - cron: "23 * * * *"
+  workflow_dispatch:
+    inputs:
+      include_held:
+        description: Also read admin-held rows
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dealatlas-leak-scan
+  cancel-in-progress: false
+
+jobs:
+  # state.json stays on the runner. Do not upload it.
+  scan:
+    name: Read-only leak scan
+    runs-on: ubuntu-latest
+    environment: leak-scan
+    timeout-minutes: 20
+    steps:
+      - name: Check out
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      - name: Read published rows
+        env:
+          INCLUDE_HELD: ${{ inputs.include_held }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          DEALATLAS_EMAIL_FROM: ${{ secrets.DEALATLAS_EMAIL_FROM }}
+          LEAK_ALERT_EMAIL_TO: ${{ secrets.LEAK_ALERT_EMAIL_TO }}
+        run: |
+          set -euo pipefail
+          case "${INCLUDE_HELD:-}" in
+            true|false|"") ;;
+            *) echo "include_held must be true or false" >&2; exit 1 ;;
+          esac
+          if [ "${INCLUDE_HELD:-}" = "true" ]; then
+            export LEAK_SCAN_INCLUDE_HELD=true
+          fi
+          npm run leak-scan -- --pass db
+
+      - name: Fetch public pages
+        if: always()
+        run: npm run leak-scan -- --pass http
+
+      - name: Notify
+        if: always()
+        env:
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          DEALATLAS_EMAIL_FROM: ${{ secrets.DEALATLAS_EMAIL_FROM }}
+          LEAK_ALERT_EMAIL_TO: ${{ secrets.LEAK_ALERT_EMAIL_TO }}
+        run: npm run leak-scan -- --pass notify
+
+      - name: Notify on failure
+        if: failure() || cancelled()
+        env:
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          DEALATLAS_EMAIL_FROM: ${{ secrets.DEALATLAS_EMAIL_FROM }}
+          LEAK_ALERT_EMAIL_TO: ${{ secrets.LEAK_ALERT_EMAIL_TO }}
+        run: npm run leak-scan -- --pass crash

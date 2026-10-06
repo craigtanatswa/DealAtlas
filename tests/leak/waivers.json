@@ -5,7 +5,8 @@
       "finding": "REST-13",
       "codes": ["PGRST205", "PGRST202"],
       "names": ["deals", "alerts", "organizations", "subscriptions"],
-      "reason": "PostgREST schema-cache typo hints name ungranted public tables (deals, alerts, organizations, subscriptions); names only, no source data; OQ-8 platform behaviour. Fix by moving non-anon tables out of the exposed schema post-launch.",
+      "reason": "PostgREST schema-cache typo hints name ungranted public tables (deals, alerts, organizations, subscriptions); names only, no source data; OQ-8 platform behaviour. Fix by moving non-anon tables out of the exposed schema post-launch. Follow-up: issue #3.",
+      "follow_up": "https://github.com/craigtanatswa/DealAtlas/issues/3",
       "approved_by": "Reviewer",
       "expires": "2026-12-31"
     }
