@@ -398,6 +398,21 @@ export function createSupabaseIngestionStore(
       const rows = throwIfQueryError("List deals", result) ?? [];
       return rows.map(mapDeal);
     },
+    async listPreviewRebuildDealIds(options) {
+      const limit = options?.limit ?? 100;
+      let query = client
+        .from("deal_previews")
+        .select("deal_id")
+        .or("is_published.eq.true,unpublished_by_admin.eq.true")
+        .order("deal_id", { ascending: true })
+        .limit(limit);
+      if (options?.afterId) {
+        query = query.gt("deal_id", options.afterId);
+      }
+      const result = await query;
+      const rows = throwIfQueryError("List preview rebuild deals", result) ?? [];
+      return rows.map((row) => row.deal_id);
+    },
     async getDealById(id) {
       const result = await client.from("deals").select("*").eq("id", id).maybeSingle();
       const row = throwIfQueryError("Load deal", result);

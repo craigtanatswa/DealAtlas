@@ -304,7 +304,7 @@ The gate flags (HIGH unless noted):
 - combination risk: when four distinctive copied source words (title, prose and slug) match fewer than three deals in total, REVIEW (k < 3)
 - the slug is scanned with its trailing 8 random hex characters removed
 
-`deals_leak_source_tsv_idx` is created with `fastupdate = off` (`0020`) so a bulk insert does not leave a GIN pending list in front of the next preview write. After each ingest or preview-rebuild batch the worker calls `public.maintain_deals_leak_index()` (`gin_clean_pending_list` plus `ANALYZE public.deals`). After the first bulk rebuild, an operator should also run `VACUUM (ANALYZE) public.deals` once; `VACUUM` cannot run inside that function. Rebuild stays `workflow_dispatch` on the scheduled-jobs workflow (`previews`). The cron stays disabled.
+`deals_leak_source_tsv_idx` is created with `fastupdate = off` (`0020`) so a bulk insert does not leave a GIN pending list in front of the next preview write. After each ingest or preview-rebuild batch the worker calls `public.maintain_deals_leak_index()` (`gin_clean_pending_list` plus `ANALYZE public.deals`). After the first bulk rebuild, an operator should also run `VACUUM (ANALYZE) public.deals` once; `VACUUM` cannot run inside that function. A full catalogue rebuild is `workflow_dispatch` only, on `.github/workflows/rebuild-previews.yml` (dry-run by default). It selects every held or published preview, does not publish or lift holds, and calls `maintain_deals_leak_index` after each batch. `.github/workflows/scheduled-jobs.yml` is unchanged and stays disabled.
 
 Old public slugs are not redirected. `0020` hashes every existing `deal_previews.slug` into `private.retired_preview_slugs` inside the database, and each later publish hashes the slug it replaces. `public.preview_slug_is_retired` is true only when that hash exists and the slug is no longer the current preview. Execute is `service_role` only. The proxy calls it with the server admin client and answers those requests with HTTP 410. Plaintext retired slugs are not stored and are not committed.
 
@@ -429,7 +429,7 @@ update public.deal_previews set leakage_risk = leakage_risk;
 commit;
 ```
 
-Rollback scripts for `0018` and `0019` are in `supabase/rollback/`; see `DATABASE_SETUP.md`.
+Rollback scripts for `0018`, `0019` and `0020` are in `supabase/rollback/`; see `DATABASE_SETUP.md`. `0020_rollback.sql` drops only the three functions and sets `fastupdate` back to `on`. It intentionally keeps `private.retired_preview_slugs`.
 
 `supabase/dealatlas_full_schema.sql` is a generated concatenation of those files for SQL Editor use on a fresh project. Regenerate it with `npm run db:bundle` after changing a migration. Do not run the combined file after individual migrations have already been applied.
 

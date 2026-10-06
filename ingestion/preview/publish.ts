@@ -62,6 +62,8 @@ export async function persistIntelligenceAndPreview(options: {
   store: IngestionStore;
   context: IntelligenceContext;
   provider?: LanguageModelProvider;
+  /** auto may publish a LOW preview. preserve never turns is_published on. */
+  publication?: "auto" | "preserve";
 }): Promise<PreviewPublishResult> {
   const provider = options.provider ?? createRulesLanguageModel();
   const { store, context } = options;
@@ -84,7 +86,11 @@ export async function persistIntelligenceAndPreview(options: {
   );
   const leakageRisk = finalScan.risk;
   const unpublishedByAdmin = existing?.unpublishedByAdmin === true;
-  const published = leakageRisk === "LOW" && !unpublishedByAdmin;
+  const gatePublished = leakageRisk === "LOW" && !unpublishedByAdmin;
+  const published =
+    options.publication === "preserve"
+      ? existing?.isPublished === true && gatePublished
+      : gatePublished;
 
   const preview: DealPreviewRecord = {
     dealId: context.deal.id,

@@ -149,6 +149,16 @@ export function createMemoryIngestionStore(seed?: {
     async listDeals(limit = 100) {
       return state.deals.slice(0, limit);
     },
+    async listPreviewRebuildDealIds(options) {
+      const limit = options?.limit ?? 100;
+      const afterId = options?.afterId ?? null;
+      return state.previews
+        .filter((item) => item.isPublished || item.unpublishedByAdmin === true)
+        .map((item) => item.dealId)
+        .sort((left, right) => (left < right ? -1 : left > right ? 1 : 0))
+        .filter((id) => afterId == null || id > afterId)
+        .slice(0, limit);
+    },
     async getDealById(id) {
       return state.deals.find((item) => item.id === id) ?? null;
     },

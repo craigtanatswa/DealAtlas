@@ -11,24 +11,67 @@ async function main() {
   const { createIngestionSupabaseClient } = await import(
     "@/ingestion/store/worker-client"
   );
-  const { rebuildChangedPreviews } = await import("@/lib/jobs/previews");
+  const { rebuildAllPreviews, rebuildChangedPreviews } = await import(
+    "@/lib/jobs/previews"
+  );
   const { structuredLog } = await import("@/lib/observability/log");
   const { createErrorReporter } = await import("@/lib/monitoring");
 
   const store = createSupabaseIngestionStore(createIngestionSupabaseClient());
+  const reporter = createErrorReporter();
+  const fullCatalogue = args.all || !args.changedSince;
+
+  if (fullCatalogue) {
+    const result = await rebuildAllPreviews({
+      store,
+      mode: args.mode,
+      batchSize: args.limit,
+      cursor: args.cursor,
+      reporter,
+    });
+    structuredLog({
+      job: "previews",
+      msg: "preview_rebuild_complete",
+      mode: result.mode,
+      dryRun: result.dryRun,
+      selected: result.selected,
+      processed: result.processed,
+      failures: result.failures,
+      batches: result.batches.length,
+      low: result.risks.LOW,
+      review: result.risks.REVIEW,
+      high: result.risks.HIGH,
+    });
+    console.log(
+      JSON.stringify(
+        {
+          mode: result.mode,
+          dryRun: result.dryRun,
+          selected: result.selected,
+          processed: result.processed,
+          failures: result.failures,
+          batches: result.batches.length,
+          risks: result.risks,
+          nextCursor: result.nextCursor,
+        },
+        null,
+        2,
+      ),
+    );
+    return;
+  }
+
   const result = await rebuildChangedPreviews({
     store,
     mode: args.mode,
     limit: args.limit,
     changedSince: args.changedSince,
-    all: args.all || !args.changedSince,
-    reporter: createErrorReporter(),
+    reporter,
     onPreviewPublished: async (dealId) => {
       const { enqueueDealMatches } = await import("@/lib/matching/queue");
       await enqueueDealMatches(dealId);
     },
   });
-
   let matches = null;
   if (!args.dryRun) {
     const { processMatchJobs } = await import("@/lib/matching/queue");

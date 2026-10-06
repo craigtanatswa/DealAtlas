@@ -1,0 +1,51 @@
+name: Rebuild previews
+
+# Manual full-catalogue preview rebuild. Dispatch only.
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: dry-run reports counts and writes nothing
+        type: choice
+        options:
+          - dry-run
+          - live
+        default: dry-run
+      batch_size:
+        description: Deals per batch
+        type: number
+        default: 100
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dealatlas-preview-rebuild
+  cancel-in-progress: false
+
+jobs:
+  previews:
+    name: Rebuild previews
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    env:
+      NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+      SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+    steps:
+      - name: Check out
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      - name: Rebuild previews
+        run: npm run job -- --job previews --all --mode "${{ inputs.mode }}" --limit "${{ inputs.batch_size }}"
