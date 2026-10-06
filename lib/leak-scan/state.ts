@@ -10,7 +10,7 @@ export type LegacySlug = {
   slug: string;
 };
 
-/** Source tokens for one deal. The HTTP pass uses them only on that deal's page. */
+/** Source tokens for one deal. Deal pages use that set plus the strong-token union. */
 export type DealTokenSet = {
   dealId: string;
   slug: string;

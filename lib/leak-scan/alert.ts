@@ -64,6 +64,32 @@ export async function deliverFindings(
   return { sent: true, severity };
 }
 
+export async function deliverIncomplete(
+  input: { scanned: number; failed: number; findings: LeakFindingReport[] },
+  deps: AlertDeps,
+): Promise<void> {
+  const extra = {
+    severity: "error" as const,
+    scanned: input.scanned,
+    failed: input.failed,
+    db_codes: codeCounts(input.findings, "db") || "0",
+    http_codes: "0",
+    incomplete: 1,
+  };
+  try {
+    await deps.sentry("DealAtlas leak scan incomplete", extra);
+  } catch {
+    structuredLog({ msg: "leak_scan_sentry_failed", severity: "error" });
+  }
+  await deps.email(
+    "DealAtlas leak scan incomplete",
+    [`severity=error`, `scanned=${input.scanned}`, `failed=${input.failed}`, `db_codes=${extra.db_codes}`, "incomplete=1"].join(
+      "\n",
+    ),
+  );
+  structuredLog({ msg: "leak_scan_incomplete", ...extra });
+}
+
 export async function deliverCrash(deps: AlertDeps): Promise<void> {
   const extra = {
     severity: "error" as const,

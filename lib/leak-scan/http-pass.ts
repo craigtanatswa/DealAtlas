@@ -1,6 +1,7 @@
 import { structuredLog } from "@/lib/observability/log";
 import { codeCounts, type LeakFindingReport } from "@/lib/leak-scan/report";
 import type { DealTokenSet, LegacySlug } from "@/lib/leak-scan/state";
+import { unionStrongTokens } from "@/lib/leak-scan/tokens";
 import { compileTokens, heuristicHits, scanText, type ManifestToken } from "@/tests/leak/lib/scan";
 
 export const PUBLIC_ORIGIN = "https://www.dealatlas.uk";
@@ -10,6 +11,10 @@ const LEGACY_PROBE_LIMIT = 20;
 
 /** Harness report heuristics that are identifier-shaped. Matched text is not kept. */
 const GLOBAL_FORBIDDEN = ["portal_name", "ocid_shape", "email", "uk_phone", "gov_domain", "reference_shape"] as const;
+
+/** First-party contact text that already appears on marketing pages. */
+const OWN_EMAIL = /@(?:[a-z0-9-]+\.)*dealatlas\.uk$/i;
+const OWN_PHONE_DIGITS = new Set(["442079460991", "02079460991"]);
 
 export type OldSlugStatus =
   | { status: "skipped"; reason: "db_pass_unavailable" | "no_legacy_slugs" }
@@ -93,14 +98,35 @@ function dealPaths(urls: string[], origin: string): string[] {
   return [...new Set(paths)];
 }
 
-function ownFindings(body: string, contentType: string, tokens: ManifestToken[], path: string, dealId: string): LeakFindingReport[] {
+function isDealPage(path: string): boolean {
+  return /^\/deals\/[^/]+$/.test(path) && !path.includes("sitemap");
+}
+
+function isListingPath(path: string): boolean {
+  return path === "/" || path === "/deals" || path === "/api/search" || path.includes("/sitemap");
+}
+
+function tokenFindings(body: string, contentType: string, tokens: ManifestToken[], path: string): LeakFindingReport[] {
   if (!tokens.length || !body) return [];
   const scanned = scanText(body, compileTokens(manifest(tokens)), contentType);
+  const byId = new Map(tokens.map((entry) => [entry.id, entry]));
   const findings: LeakFindingReport[] = [];
   for (const tokenScan of scanned.tokens.values()) {
+    const dealId = byId.get(tokenScan.tokenId)?.rows[0] ?? "";
     findings.push({ dealId, code: tokenScan.tokenClass, path, held: false, pass: "http" });
   }
   return findings;
+}
+
+function isOwnContact(code: string, hit: string): boolean {
+  if (code === "email") return OWN_EMAIL.test(hit.trim());
+  if (code === "uk_phone") return OWN_PHONE_DIGITS.has(hit.replace(/\D/g, ""));
+  if (code === "gov_domain") {
+    const host = hit.trim().toLowerCase();
+    return host === "dealatlas.uk" || host.endsWith(".dealatlas.uk");
+  }
+  if (code === "reference_shape") return /dealatlas/i.test(hit);
+  return false;
 }
 
 function globalFindings(body: string, path: string, dealId: string): LeakFindingReport[] {
@@ -108,7 +134,8 @@ function globalFindings(body: string, path: string, dealId: string): LeakFinding
   const hits = heuristicHits(body);
   const findings: LeakFindingReport[] = [];
   for (const code of GLOBAL_FORBIDDEN) {
-    if ((hits[code]?.length ?? 0) > 0) {
+    const values = (hits[code] ?? []).filter((hit) => !isOwnContact(code, hit));
+    if (values.length > 0) {
       findings.push({ dealId, code, path, held: false, pass: "http" });
     }
   }
@@ -126,17 +153,37 @@ export async function runHttpPass(options: {
   const origin = (options.origin ?? PUBLIC_ORIGIN).replace(/\/$/, "");
   const fetchImpl = options.fetchImpl ?? fetch;
   const seed = options.sampleSeed ?? Math.floor(Date.now() / 3_600_000);
-  const bySlug = new Map((options.dealTokens ?? []).map((entry) => [entry.slug, entry]));
+  const dealTokens = options.dealTokens ?? [];
+  const bySlug = new Map(dealTokens.map((entry) => [entry.slug, entry]));
+  const union = unionStrongTokens(dealTokens);
   const findings: LeakFindingReport[] = [];
+  const seen = new Set<string>();
   let fetched = 0;
+
+  const pushFindings = (next: LeakFindingReport[]) => {
+    for (const finding of next) {
+      const key = `${finding.dealId}\n${finding.code}\n${finding.path ?? ""}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      findings.push(finding);
+    }
+  };
 
   const note = (path: string, page: Fetched) => {
     if (page.status !== 200) return;
     const clean = path.split("?")[0] || path;
-    const slug = /^\/deals\/([^/]+)$/.exec(clean)?.[1];
-    const own = slug ? bySlug.get(decodeURIComponent(slug)) : undefined;
-    if (own) findings.push(...ownFindings(page.body, page.contentType, own.tokens, clean, own.dealId));
-    findings.push(...globalFindings(page.body, clean, own?.dealId ?? ""));
+    if (isDealPage(clean)) {
+      const slug = decodeURIComponent(clean.slice("/deals/".length));
+      const own = bySlug.get(slug);
+      if (own) pushFindings(tokenFindings(page.body, page.contentType, own.tokens, clean));
+      pushFindings(tokenFindings(page.body, page.contentType, union, clean));
+      pushFindings(globalFindings(page.body, clean, own?.dealId ?? ""));
+      return;
+    }
+    if (isListingPath(clean)) {
+      pushFindings(tokenFindings(page.body, page.contentType, union, clean));
+      pushFindings(globalFindings(page.body, clean, ""));
+    }
   };
 
   const pull = async (path: string, headers: Record<string, string> = {}) => {

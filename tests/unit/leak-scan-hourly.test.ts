@@ -3,11 +3,11 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { alertDepsFromEnv, deliverCrash, deliverFindings } from "@/lib/leak-scan/alert";
+import { alertDepsFromEnv, deliverCrash, deliverFindings, deliverIncomplete } from "@/lib/leak-scan/alert";
 import { runDbPass } from "@/lib/leak-scan/db-pass";
 import { rotatingSample, runHttpPass } from "@/lib/leak-scan/http-pass";
 import { createReadonlyClient, type ReadonlyFilter } from "@/lib/leak-scan/readonly-client";
-import { sourceManifestTokens } from "@/lib/leak-scan/tokens";
+import { sourceManifestTokens, unionStrongTokens } from "@/lib/leak-scan/tokens";
 
 const ROOT = path.resolve(__dirname, "../..");
 const DEAL_ID = "11111111-1111-4111-8111-111111111111";
@@ -71,6 +71,10 @@ function previewQuery(rows: Array<Record<string, unknown>>) {
       eqs.push([column, value]);
       return filter;
     },
+    in(column: string, values: readonly unknown[]) {
+      eqs.push([column, values]);
+      return filter;
+    },
     gt(column: string, value: string) {
       if (column === "deal_id") gtValue = value;
       return filter;
@@ -86,7 +90,9 @@ function previewQuery(rows: Array<Record<string, unknown>>) {
       onFulfilled: (value: { data: unknown[]; error: null }) => unknown,
       onRejected?: (reason: unknown) => unknown,
     ) {
-      let matched = rows.filter((row) => eqs.every(([column, value]) => row[column] === value));
+      let matched = rows.filter((row) =>
+        eqs.every(([column, value]) => (Array.isArray(value) ? value.includes(row[column]) : row[column] === value)),
+      );
       matched = [...matched].sort((a, b) => String(a.deal_id).localeCompare(String(b.deal_id)));
       if (gtValue) matched = matched.filter((row) => String(row.deal_id) > gtValue!);
       return Promise.resolve({ data: matched.slice(0, limit), error: null }).then(onFulfilled, onRejected);
@@ -250,7 +256,24 @@ describe("hourly leak scan", () => {
     const secret = "service-key-should-not-leak";
     const query = {
       headers: { apikey: secret },
+      insert() {
+        return secret;
+      },
+      update() {
+        return secret;
+      },
+      delete() {
+        return secret;
+      },
+      upsert() {
+        return secret;
+      },
+      url: secret,
+      method: "POST",
       eq() {
+        return query;
+      },
+      in() {
         return query;
       },
       gt() {
@@ -270,6 +293,20 @@ describe("hourly leak scan", () => {
       headers: { apikey: secret },
       rest: { url: secret },
       auth: { key: secret },
+      url: secret,
+      method: "POST",
+      insert() {
+        return secret;
+      },
+      update() {
+        return secret;
+      },
+      delete() {
+        return secret;
+      },
+      upsert() {
+        return secret;
+      },
       rpc() {
         return secret;
       },
@@ -284,11 +321,15 @@ describe("hourly leak scan", () => {
     };
     const client = createReadonlyClient(raw);
     const selected = client.from("deals").select("id");
+    const blocked = ["insert", "update", "delete", "upsert", "url", "method"] as const;
     for (const value of [client, client.from("deals"), selected]) {
       expect((value as { headers?: unknown }).headers).toBeUndefined();
       expect((value as { rest?: unknown }).rest).toBeUndefined();
       expect((value as { auth?: unknown }).auth).toBeUndefined();
       expect((value as { rpc?: unknown }).rpc).toBeUndefined();
+      for (const key of blocked) {
+        expect((value as unknown as Record<string, unknown>)[key]).toBeUndefined();
+      }
     }
     expect(JSON.stringify(client)).not.toContain(secret);
     expect(JSON.stringify(selected)).not.toContain(secret);
@@ -301,7 +342,7 @@ describe("hourly leak scan", () => {
     }).toThrow(TypeError);
   });
 
-  it("alerts when a deal page contains its own buyer name and ignores another deal's page", async () => {
+  it("alerts when a deal page contains its own buyer name or another deal's buyer name", async () => {
     const tokens = sourceManifestTokens({
       dealId: DEAL_ID,
       sourceTitle: "unrelated source title that is long enough",
@@ -331,11 +372,155 @@ describe("hourly leak scan", () => {
       legacySlugs: null,
       sampleSeed: 0,
     });
-    expect(result.findings.filter((finding) => finding.code === "BUYER_NAME")).toEqual([
-      expect.objectContaining({ dealId: DEAL_ID, path: `/deals/${OWN_SLUG}` }),
-    ]);
-    expect(result.findings.some((finding) => finding.path === `/deals/${OTHER_SLUG}`)).toBe(false);
+    expect(result.findings.filter((finding) => finding.code === "BUYER_NAME")).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ dealId: DEAL_ID, path: `/deals/${OWN_SLUG}` }),
+        expect.objectContaining({ dealId: DEAL_ID, path: `/deals/${OTHER_SLUG}` }),
+      ]),
+    );
     expect(JSON.stringify(result.findings)).not.toContain(BUYER);
+  });
+
+  it("alerts when a buyer name is planted on a listing page", async () => {
+    const tokens = sourceManifestTokens({
+      dealId: DEAL_ID,
+      sourceTitle: "unrelated source title that is long enough",
+      buyerName: BUYER,
+      ocid: null,
+      reference: null,
+      externalPrimaryId: null,
+      sourceUrl: null,
+      buyerEmail: null,
+    });
+    const origin = "https://www.dealatlas.uk";
+    const fetchImpl = (async (url: string) => {
+      const href = String(url);
+      const body = href.endsWith("/deals") || href.includes("/api/search") ? `<html>${BUYER}</html>` : "<html></html>";
+      return new Response(body, { status: 200, headers: { "content-type": "text/html" } });
+    }) as typeof fetch;
+    const result = await runHttpPass({
+      origin,
+      fetchImpl,
+      dealTokens: [{ dealId: DEAL_ID, slug: OWN_SLUG, tokens }],
+      legacySlugs: [],
+      sampleSeed: 0,
+    });
+    expect(result.findings.filter((finding) => finding.code === "BUYER_NAME")).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ dealId: DEAL_ID, path: "/deals" }),
+        expect.objectContaining({ dealId: DEAL_ID, path: "/api/search" }),
+      ]),
+    );
+    expect(JSON.stringify(result.findings)).not.toContain(BUYER);
+  });
+
+  it("does not alert on DealAtlas contact text", async () => {
+    const footer =
+      "support@dealatlas.uk info@dealatlas.uk +44 20 7946 0991 www.dealatlas.uk DEALATLAS-WEB-100234";
+    const origin = "https://www.dealatlas.uk";
+    const fetchImpl = (async (url: string) => {
+      const href = String(url);
+      let body = "<html></html>";
+      if (href.endsWith("/") || href.endsWith("/deals") || href.includes("/api/search")) body = `<html>${footer}</html>`;
+      if (href.endsWith("/sitemap.xml")) body = "<html>auditor@foreign.example dept.service.gov.uk</html>";
+      return new Response(body, { status: 200, headers: { "content-type": "text/html" } });
+    }) as typeof fetch;
+    const result = await runHttpPass({ origin, fetchImpl, dealTokens: [], legacySlugs: [], sampleSeed: 0 });
+    const noisy = new Set(["email", "uk_phone", "gov_domain", "reference_shape"]);
+    for (const path of ["/", "/deals", "/api/search"]) {
+      expect(result.findings.filter((finding) => finding.path === path && noisy.has(finding.code))).toEqual([]);
+    }
+    expect(result.findings).toContainEqual(expect.objectContaining({ code: "email", path: "/sitemap.xml" }));
+    expect(result.findings).toContainEqual(expect.objectContaining({ code: "gov_domain", path: "/sitemap.xml" }));
+  });
+
+  it("keeps generic names and source titles out of the strong-token union", () => {
+    const tokens = sourceManifestTokens({
+      dealId: DEAL_ID,
+      sourceTitle: "Very Specific Harbour Dredging Notice",
+      buyerName: "The Council",
+      ocid: null,
+      reference: null,
+      externalPrimaryId: null,
+      sourceUrl: null,
+      buyerEmail: null,
+      sourceName: "Public Services",
+    });
+    expect(unionStrongTokens([{ tokens }])).toEqual([]);
+    const strong = sourceManifestTokens({
+      dealId: DEAL_ID,
+      sourceTitle: "unrelated source title that is long enough",
+      buyerName: BUYER,
+      ocid: null,
+      reference: null,
+      externalPrimaryId: null,
+      sourceUrl: null,
+      buyerEmail: null,
+    });
+    expect(unionStrongTokens([{ tokens: strong }]).map((entry) => entry.class)).toEqual(["BUYER_NAME"]);
+  });
+
+  it("stops the database pass at the time budget and emails counts only", async () => {
+    const secondId = "33333333-3333-4333-8333-333333333333";
+    const previews = [DEAL_ID, secondId].map((id) => ({
+      deal_id: id,
+      slug: id === DEAL_ID ? PUBLISHED_SLUG : "second-published-page-cccc1111",
+      preview_title: "Public facilities notice",
+      preview_summary: "A public organisation is seeking facilities management.",
+      requirements_preview: [],
+      relevance_tags: [],
+      broad_region: "Nationwide",
+      is_published: true,
+      unpublished_by_admin: false,
+    }));
+    const deals = [dealRow(DEAL_ID, SOURCE_TITLE), dealRow(secondId, "Other Harbour Works Notice")];
+    const raw = {
+      from(table: string) {
+        return {
+          select() {
+            if (table === "deal_previews") return previewQuery(previews);
+            if (table === "deals") return previewQuery(deals);
+            return previewQuery([]);
+          },
+        };
+      },
+    };
+    let ticks = 0;
+    const logs: string[] = [];
+    const original = console.log;
+    console.log = (...args: unknown[]) => {
+      logs.push(args.map(String).join(" "));
+    };
+    let result: Awaited<ReturnType<typeof runDbPass>>;
+    try {
+      result = await runDbPass(createReadonlyClient(raw), {
+        batchSize: 1,
+        now: () => {
+          ticks += 1;
+          return ticks === 1 ? 0 : 16 * 60 * 1000;
+        },
+      });
+    } finally {
+      console.log = original;
+    }
+    expect(result.incomplete).toBe(true);
+    expect(result.scanned).toBe(1);
+    const emails: string[] = [];
+    await deliverIncomplete(result, {
+      sentry: async () => {},
+      email: async (_subject, text) => {
+        emails.push(text);
+      },
+    });
+    expect(emails[0]).toContain("incomplete=1");
+    expect(emails[0]).toContain("scanned=1");
+    expect(emails[0]).not.toContain(DEAL_ID);
+    expect(emails[0]).not.toContain(secondId);
+    const stdout = logs.join("\n");
+    expect(stdout).toContain('"batch_count"');
+    expect(stdout).not.toContain('"batches"');
+    expect(stdout).not.toContain(DEAL_ID);
+    expect(stdout).not.toContain(secondId);
   });
 
   it("rotates the public sample and still skips old slugs without a database pass", () => {
@@ -390,7 +575,13 @@ describe("hourly leak scan", () => {
     expect(workflow).not.toContain("actions/upload-artifact");
     expect(workflow).not.toMatch(/\b(ingest|previews|rebuild|alerts|renewals)\b/);
     expect(workflow.indexOf("npm ci")).toBeLessThan(workflow.indexOf("SUPABASE_SECRET_KEY"));
-    expect(workflow.indexOf("Fetch public pages")).toBeLessThan(workflow.indexOf("RESEND_API_KEY"));
+    const fetchAt = workflow.indexOf("- name: Fetch public pages");
+    const notifyAt = workflow.indexOf("- name: Notify\n");
+    expect(fetchAt).toBeGreaterThan(workflow.indexOf("RESEND_API_KEY"));
+    expect(notifyAt).toBeGreaterThan(fetchAt);
+    expect(workflow.slice(fetchAt, notifyAt)).not.toMatch(
+      /RESEND_API_KEY|SUPABASE_SECRET_KEY|SENTRY_DSN|DEALATLAS_EMAIL_FROM|LEAK_ALERT_EMAIL_TO/,
+    );
     expect(scheduled).toContain("schedule:");
     expect(scheduled).toContain("npm run job -- --job ingest --due");
     const waivers = JSON.parse(read("tests/leak/waivers.json")) as {

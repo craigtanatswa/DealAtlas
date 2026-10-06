@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 
 import type { Database } from "@/lib/db/database.types";
-import { alertDepsFromEnv, deliverCrash, deliverFindings } from "@/lib/leak-scan/alert";
+import { alertDepsFromEnv, deliverCrash, deliverFindings, deliverIncomplete } from "@/lib/leak-scan/alert";
 import { runDbPass } from "@/lib/leak-scan/db-pass";
 import { runHttpPass } from "@/lib/leak-scan/http-pass";
 import { createReadonlyClient } from "@/lib/leak-scan/readonly-client";
@@ -33,6 +33,13 @@ async function main(): Promise<void> {
       legacySlugs: result.legacySlugs,
       dealTokens: result.dealTokens,
     });
+    if (result.incomplete) {
+      await deliverIncomplete(
+        { scanned: result.scanned, failed: result.failed, findings: result.findings },
+        alertDepsFromEnv(process.env),
+      );
+      process.exitCode = 1;
+    }
     return;
   }
   if (pass === "http") {

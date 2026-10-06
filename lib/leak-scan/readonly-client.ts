@@ -4,7 +4,7 @@
  * headers, key, rest, auth and rpc stay inside closures and are not exposed.
  */
 
-const BLOCKED = ["insert", "update", "upsert", "delete", "rpc", "headers", "rest", "auth"] as const;
+const BLOCKED = ["insert", "update", "upsert", "delete", "rpc", "headers", "rest", "auth", "url", "method"] as const;
 
 export type QueryError = { message: string };
 
@@ -15,6 +15,7 @@ export type QueryResult<T> = {
 
 export interface ReadonlyFilter<T> extends PromiseLike<QueryResult<T>> {
   eq(column: string, value: string | number | boolean): ReadonlyFilter<T>;
+  in(column: string, values: string[]): ReadonlyFilter<T>;
   gt(column: string, value: string): ReadonlyFilter<T>;
   order(column: string, options: { ascending: boolean }): ReadonlyFilter<T>;
   limit(count: number): ReadonlyFilter<T>;
@@ -28,6 +29,7 @@ export interface ReadonlyClient {
 
 type RawQuery = {
   eq: (column: string, value: string | number | boolean) => RawQuery;
+  in: (column: string, values: string[]) => RawQuery;
   gt: (column: string, value: string) => RawQuery;
   order: (column: string, options: { ascending: boolean }) => RawQuery;
   limit: (count: number) => RawQuery;
@@ -47,6 +49,9 @@ function wrap(query: RawQuery): ReadonlyFilter<unknown[]> {
   const filter: ReadonlyFilter<unknown[]> = {
     eq(column, value) {
       return wrap(query.eq(column, value));
+    },
+    in(column, values) {
+      return wrap(query.in(column, values));
     },
     gt(column, value) {
       return wrap(query.gt(column, value));

@@ -8,6 +8,7 @@ import type { DealTokenSet, LegacySlug } from "@/lib/leak-scan/state";
 import { sourceManifestTokens } from "@/lib/leak-scan/tokens";
 
 export const PUBLISHED_BATCH = 100;
+export const DB_BUDGET_MS = 15 * 60 * 1000;
 
 const PREVIEW_COLUMNS =
   "deal_id, slug, preview_title, preview_summary, requirements_preview, relevance_tags, broad_region, is_published, unpublished_by_admin";
@@ -56,6 +57,7 @@ export type DbPassResult = {
   scanned: number;
   failed: number;
   skipped: number;
+  incomplete: boolean;
   findings: LeakFindingReport[];
   legacySlugs: LegacySlug[];
   dealTokens: DealTokenSet[];
@@ -161,160 +163,221 @@ function scanInput(preview: PreviewRow, deal: DealRow, extras: {
   };
 }
 
-async function one<T>(client: ReadonlyClient, table: string, columns: string, column: string, value: string): Promise<T | null> {
-  const rows = (await readRows(client.from(table).select(columns).eq(column, value).limit(1))) as T[];
-  return rows[0] ?? null;
+async function many<T>(
+  client: ReadonlyClient,
+  table: string,
+  columns: string,
+  column: string,
+  values: string[],
+  limit: number,
+): Promise<T[]> {
+  if (values.length === 0) return [];
+  return (await readRows(client.from(table).select(columns).in(column, values).limit(limit))) as T[];
 }
 
-async function loadKeyset(
-  client: ReadonlyClient,
-  column: "is_published" | "unpublished_by_admin",
-  batch: number,
-): Promise<PreviewRow[]> {
-  const rows: PreviewRow[] = [];
-  let after: string | null = null;
-  for (;;) {
-    let filter = client
-      .from("deal_previews")
-      .select(PREVIEW_COLUMNS)
-      .eq(column, true)
-      .order("deal_id", { ascending: true })
-      .limit(batch);
-    if (after) filter = filter.gt("deal_id", after);
-    const page = (await readRows(filter)) as PreviewRow[];
-    if (page.length === 0) break;
-    rows.push(...page);
-    const last = page[page.length - 1]?.deal_id;
-    if (!last || last === after || page.length < batch) break;
-    after = last;
+function indexBy<T>(rows: T[], key: (row: T) => string): Map<string, T> {
+  const map = new Map<string, T>();
+  for (const row of rows) map.set(key(row), row);
+  return map;
+}
+
+function groupBy<T>(rows: T[], key: (row: T) => string): Map<string, T[]> {
+  const map = new Map<string, T[]>();
+  for (const row of rows) {
+    const id = key(row);
+    const list = map.get(id);
+    if (list) list.push(row);
+    else map.set(id, [row]);
   }
-  return rows;
+  return map;
 }
 
 export async function runDbPass(
   client: ReadonlyClient,
-  options: { batchSize?: number; includeHeld?: boolean } = {},
+  options: { batchSize?: number; includeHeld?: boolean; now?: () => number; budgetMs?: number } = {},
 ): Promise<DbPassResult> {
   const batch = options.batchSize ?? PUBLISHED_BATCH;
-  const published = await loadKeyset(client, "is_published", batch);
-  const held = options.includeHeld ? await loadKeyset(client, "unpublished_by_admin", batch) : [];
-  const seen = new Set<string>();
-  const previews: PreviewRow[] = [];
-  for (const row of [...published, ...held]) {
-    if (seen.has(row.deal_id)) continue;
-    seen.add(row.deal_id);
-    previews.push(row);
-  }
-
+  const budgetMs = options.budgetMs ?? DB_BUDGET_MS;
+  const now = options.now ?? (() => Date.now());
+  const started = now();
+  const childLimit = Math.max(batch * 20, 20);
   const findings: LeakFindingReport[] = [];
   const legacySlugs: LegacySlug[] = [];
   const dealTokens: DealTokenSet[] = [];
+  const seen = new Set<string>();
   let publishedScanned = 0;
   let publishedFailed = 0;
   let skipped = 0;
+  let held = 0;
+  let batchCount = 0;
+  let incomplete = false;
 
-  for (const preview of previews) {
-    const deal = await one<DealRow>(client, "deals", DEAL_COLUMNS, "id", preview.deal_id);
-    if (!deal) {
-      skipped += 1;
-      continue;
-    }
-    const source = deal.primary_source_id
-      ? await one<{ name: string | null; source_key: string | null }>(
-          client,
-          "data_sources",
-          "name, source_key",
-          "id",
-          deal.primary_source_id,
-        )
-      : null;
-    const buyer = deal.buyer_organization_id
-      ? await one<{
-          canonical_name: string | null;
-          domain: string | null;
-          website: string | null;
-          email: string | null;
-          phone: string | null;
-          city: string | null;
-          postcode: string | null;
-        }>(
-          client,
-          "organizations",
-          "canonical_name, domain, website, email, phone, city, postcode",
-          "id",
-          deal.buyer_organization_id,
-        )
-      : null;
-    const aliases = deal.buyer_organization_id
-      ? ((await readRows(
-          client.from("organization_aliases").select("alias").eq("organization_id", deal.buyer_organization_id).limit(20),
-        )) as Array<{ alias: string }>)
-      : [];
-    const lots = (await readRows(
-      client
-        .from("lots")
-        .select("source_title, source_description, source_lot_id, exact_location_text, value_min, value_max")
-        .eq("deal_id", preview.deal_id)
-        .limit(20),
-    )) as Array<{
-      source_title: string | null;
-      source_description: string | null;
-      source_lot_id: string | null;
-      exact_location_text: string | null;
-      value_min: number | string | null;
-      value_max: number | string | null;
-    }>;
-    const requirements = (await readRows(
-      client.from("requirements").select("name, description").eq("deal_id", preview.deal_id).limit(20),
-    )) as Array<{ name: string | null; description: string | null }>;
-
-    const input = scanInput(preview, deal, {
-      sourceName: source?.name ?? null,
-      sourceKey: source?.source_key ?? null,
-      buyerName: buyer?.canonical_name ?? null,
-      buyerAliases: aliases.map((row) => row.alias).filter(Boolean),
-      buyerDomain: buyer?.domain ?? null,
-      buyerWebsite: buyer?.website ?? null,
-      buyerEmail: buyer?.email ?? null,
-      buyerPhone: buyer?.phone ?? null,
-      buyerCity: buyer?.city ?? null,
-      buyerPostcode: buyer?.postcode ?? null,
-      sourceExtraText: [
-        ...lots.flatMap((lot) => [lot.source_title, lot.source_description]),
-        ...requirements.flatMap((item) => [item.name, item.description]),
-      ].filter((item): item is string => Boolean(item)),
-      extraReferences: lots.map((lot) => lot.source_lot_id).filter((item): item is string => Boolean(item)),
-      lotLocations: lots.map((lot) => lot.exact_location_text),
-      sourceAmounts: lots.flatMap((lot) => [asNumber(lot.value_min), asNumber(lot.value_max)]),
+  const scanPage = async (page: PreviewRow[]) => {
+    const fresh = page.filter((row) => {
+      if (seen.has(row.deal_id)) return false;
+      seen.add(row.deal_id);
+      return true;
     });
-    const scan = scanPreviewLeaks(input);
-    const rowHeld = preview.unpublished_by_admin === true || preview.is_published !== true;
-    if (!rowHeld) publishedScanned += 1;
-    if (scan.risk !== "LOW") {
-      if (!rowHeld) publishedFailed += 1;
-      const path = rowHeld ? null : `/deals/${preview.slug}`;
-      for (const finding of scan.findings) {
-        findings.push({ dealId: preview.deal_id, code: finding.code, path, held: rowHeld, pass: "db" });
+    const dealIds = fresh.map((row) => row.deal_id);
+    const deals = await many<DealRow>(client, "deals", DEAL_COLUMNS, "id", dealIds, Math.max(dealIds.length, 1));
+    const dealsById = indexBy(deals, (row) => row.id);
+    const sourceIds = [...new Set(deals.map((row) => row.primary_source_id).filter((id): id is string => Boolean(id)))];
+    const orgIds = [...new Set(deals.map((row) => row.buyer_organization_id).filter((id): id is string => Boolean(id)))];
+    const [sources, orgs, aliases, lots, requirements] = await Promise.all([
+      many<{ id: string; name: string | null; source_key: string | null }>(
+        client,
+        "data_sources",
+        "id, name, source_key",
+        "id",
+        sourceIds,
+        Math.max(sourceIds.length, 1),
+      ),
+      many<{
+        id: string;
+        canonical_name: string | null;
+        domain: string | null;
+        website: string | null;
+        email: string | null;
+        phone: string | null;
+        city: string | null;
+        postcode: string | null;
+      }>(
+        client,
+        "organizations",
+        "id, canonical_name, domain, website, email, phone, city, postcode",
+        "id",
+        orgIds,
+        Math.max(orgIds.length, 1),
+      ),
+      many<{ organization_id: string; alias: string }>(
+        client,
+        "organization_aliases",
+        "organization_id, alias",
+        "organization_id",
+        orgIds,
+        childLimit,
+      ),
+      many<{
+        deal_id: string;
+        source_title: string | null;
+        source_description: string | null;
+        source_lot_id: string | null;
+        exact_location_text: string | null;
+        value_min: number | string | null;
+        value_max: number | string | null;
+      }>(
+        client,
+        "lots",
+        "deal_id, source_title, source_description, source_lot_id, exact_location_text, value_min, value_max",
+        "deal_id",
+        dealIds,
+        childLimit,
+      ),
+      many<{ deal_id: string; name: string | null; description: string | null }>(
+        client,
+        "requirements",
+        "deal_id, name, description",
+        "deal_id",
+        dealIds,
+        childLimit,
+      ),
+    ]);
+    const sourcesById = indexBy(sources, (row) => row.id);
+    const orgsById = indexBy(orgs, (row) => row.id);
+    const aliasesByOrg = groupBy(aliases, (row) => row.organization_id);
+    const lotsByDeal = groupBy(lots, (row) => row.deal_id);
+    const requirementsByDeal = groupBy(requirements, (row) => row.deal_id);
+
+    for (const preview of fresh) {
+      const deal = dealsById.get(preview.deal_id);
+      if (!deal) {
+        skipped += 1;
+        continue;
       }
-    }
-    if (!rowHeld) {
-      const legacy = legacySlug(preview.preview_title, preview.deal_id, preview.slug);
-      if (legacy) legacySlugs.push({ dealId: preview.deal_id, slug: legacy });
-    }
-    dealTokens.push({
-      dealId: preview.deal_id,
-      slug: preview.slug,
-      tokens: sourceManifestTokens({
-        dealId: preview.deal_id,
-        sourceTitle: deal.source_title,
+      const source = deal.primary_source_id ? sourcesById.get(deal.primary_source_id) : undefined;
+      const buyer = deal.buyer_organization_id ? orgsById.get(deal.buyer_organization_id) : undefined;
+      const dealLots = lotsByDeal.get(preview.deal_id) ?? [];
+      const dealRequirements = requirementsByDeal.get(preview.deal_id) ?? [];
+      const input = scanInput(preview, deal, {
+        sourceName: source?.name ?? null,
+        sourceKey: source?.source_key ?? null,
         buyerName: buyer?.canonical_name ?? null,
-        ocid: deal.ocid,
-        reference: deal.reference,
-        externalPrimaryId: deal.external_primary_id,
-        sourceUrl: deal.source_url,
+        buyerAliases: (aliasesByOrg.get(deal.buyer_organization_id ?? "") ?? []).map((row) => row.alias).filter(Boolean),
+        buyerDomain: buyer?.domain ?? null,
+        buyerWebsite: buyer?.website ?? null,
         buyerEmail: buyer?.email ?? null,
-      }),
-    });
+        buyerPhone: buyer?.phone ?? null,
+        buyerCity: buyer?.city ?? null,
+        buyerPostcode: buyer?.postcode ?? null,
+        sourceExtraText: [
+          ...dealLots.flatMap((lot) => [lot.source_title, lot.source_description]),
+          ...dealRequirements.flatMap((item) => [item.name, item.description]),
+        ].filter((item): item is string => Boolean(item)),
+        extraReferences: dealLots.map((lot) => lot.source_lot_id).filter((item): item is string => Boolean(item)),
+        lotLocations: dealLots.map((lot) => lot.exact_location_text),
+        sourceAmounts: dealLots.flatMap((lot) => [asNumber(lot.value_min), asNumber(lot.value_max)]),
+      });
+      const scan = scanPreviewLeaks(input);
+      const rowHeld = preview.unpublished_by_admin === true || preview.is_published !== true;
+      if (!rowHeld) publishedScanned += 1;
+      if (scan.risk !== "LOW") {
+        if (!rowHeld) publishedFailed += 1;
+        const path = rowHeld ? null : `/deals/${preview.slug}`;
+        for (const finding of scan.findings) {
+          findings.push({ dealId: preview.deal_id, code: finding.code, path, held: rowHeld, pass: "db" });
+        }
+      }
+      if (!rowHeld) {
+        const legacy = legacySlug(preview.preview_title, preview.deal_id, preview.slug);
+        if (legacy) legacySlugs.push({ dealId: preview.deal_id, slug: legacy });
+      }
+      dealTokens.push({
+        dealId: preview.deal_id,
+        slug: preview.slug,
+        tokens: sourceManifestTokens({
+          dealId: preview.deal_id,
+          sourceTitle: deal.source_title,
+          buyerName: buyer?.canonical_name ?? null,
+          ocid: deal.ocid,
+          reference: deal.reference,
+          externalPrimaryId: deal.external_primary_id,
+          sourceUrl: deal.source_url,
+          buyerEmail: buyer?.email ?? null,
+          sourceName: source?.name ?? null,
+        }),
+      });
+    }
+  };
+
+  const walk = async (column: "is_published" | "unpublished_by_admin") => {
+    let after: string | null = null;
+    for (;;) {
+      if (after !== null && now() - started >= budgetMs) {
+        incomplete = true;
+        return;
+      }
+      let filter = client
+        .from("deal_previews")
+        .select(PREVIEW_COLUMNS)
+        .eq(column, true)
+        .order("deal_id", { ascending: true })
+        .limit(batch);
+      if (after) filter = filter.gt("deal_id", after);
+      const page = (await readRows(filter)) as PreviewRow[];
+      if (page.length === 0) return;
+      batchCount += 1;
+      if (column === "unpublished_by_admin") held += page.length;
+      await scanPage(page);
+      const last = page[page.length - 1]?.deal_id;
+      if (!last || last === after || page.length < batch) return;
+      after = last;
+    }
+  };
+
+  await walk("is_published");
+  if (!incomplete && options.includeHeld) {
+    if (now() - started >= budgetMs) incomplete = true;
+    else await walk("unpublished_by_admin");
   }
 
   structuredLog({
@@ -322,8 +385,10 @@ export async function runDbPass(
     scanned: publishedScanned,
     failed: publishedFailed,
     skipped,
-    held: held.length,
-    batches: batch,
+    held,
+    batch_count: batchCount,
+    batch_size: batch,
+    incomplete: incomplete ? 1 : 0,
     db_codes: codeCounts(findings, "db") || "0",
   });
 
@@ -331,6 +396,7 @@ export async function runDbPass(
     scanned: publishedScanned,
     failed: publishedFailed,
     skipped,
+    incomplete,
     findings,
     legacySlugs,
     dealTokens,
