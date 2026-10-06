@@ -30,6 +30,8 @@ Rollback SQL lives in `supabase/rollback/`. Run it in the SQL Editor (or `psql`)
 
 After rolling back `0018`, holds are again kept only by the `unpublished_by_admin` column. Preview risk raised by the v2 gate is not lowered. After the rollback the migration history still lists `0018`/`0019`. Remove those rows from `supabase_migrations.schema_migrations` before re-applying them.
 
+`supabase/rollback/0020_rollback.sql` drops only `public.preview_slug_is_retired(text)`, `public.retire_preview_slug(text)` and `public.maintain_deals_leak_index()`, and sets `fastupdate` on `public.deals_leak_source_tsv_idx` back to `on`. It intentionally keeps `private.retired_preview_slugs`; those hashes cannot be rebuilt. Revert the app to a build that does not call `retire_preview_slug` or `maintain_deals_leak_index` before running `0020_rollback.sql`. Otherwise those calls throw, which fails safe.
+
 To check a rollback, capture `supabase/rollback/schema_snapshot.sql` output before applying the migrations and again after rolling back, then diff the two. It lists functions, tables, schema and default ACLs, policies, triggers, columns and indexes in `public`/`private`. The only expected differences are the order of entries inside an ACL and, after `0018_rollback.sql`, the body hash of `private.is_user_pro` (it matches the `0018` body). Both rollbacks were checked this way on a local PG17 database, followed by re-applying `0018` and `0019` and passing the pgTAP suite.
 
 ## Option 2 — One-pass Supabase SQL Editor

@@ -301,6 +301,10 @@ export type IngestionStore = {
   getOrganizationById(id: string): Promise<OrganizationRecord | null>;
   listOrganizationAliases(organizationId: string): Promise<string[]>;
   listDeals(limit?: number): Promise<DealRecord[]>;
+  listPreviewRebuildDealIds(options?: {
+    afterId?: string | null;
+    limit?: number;
+  }): Promise<string[]>;
   getDealById(id: string): Promise<DealRecord | null>;
   getDealPreview(dealId: string): Promise<DealPreviewRecord | null>;
   previewSlugInUse(slug: string, dealId: string): Promise<boolean>;

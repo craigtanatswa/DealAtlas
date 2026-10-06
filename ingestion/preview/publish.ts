@@ -6,10 +6,14 @@ import { createRulesLanguageModel } from "@/ingestion/intelligence/provider";
 import type {
   DealIntelligence,
   IntelligenceContext,
+  PreviewDraft,
   PreviewPublishResult,
 } from "@/ingestion/intelligence/types";
-import { generatePreviewDraft, leakScanInputFromContext } from "@/ingestion/preview/generate";
-import { buildPreviewSlug } from "@/lib/deals/public-slug";
+import {
+  generatePreviewDraft,
+  leakScanInputFromContext,
+} from "@/ingestion/preview/generate";
+import { buildPreviewSlug, isTemplatePreviewSlug } from "@/lib/deals/public-slug";
 import { scanPreviewLeaks } from "@/lib/redaction/scan";
 import type {
   DealInsightRecord,
@@ -58,25 +62,41 @@ function insightRecord(dealId: string, intelligence: DealIntelligence): DealInsi
   };
 }
 
+/** Same gate retry live publish uses: a non-LOW draft is rebuilt aggressively. */
+export async function generatePreviewDraftWithGateRetry(
+  context: IntelligenceContext,
+): Promise<{ draft: PreviewDraft; attempts: number }> {
+  let draft = await generatePreviewDraft(context);
+  if (draft.leakageRisk === "LOW") {
+    return { draft, attempts: 1 };
+  }
+  draft = await generatePreviewDraft(context, { aggressive: true });
+  return { draft, attempts: 2 };
+}
+
 export async function persistIntelligenceAndPreview(options: {
   store: IngestionStore;
   context: IntelligenceContext;
   provider?: LanguageModelProvider;
+  /** auto may publish a LOW preview. preserve never turns is_published on. */
+  publication?: "auto" | "preserve";
 }): Promise<PreviewPublishResult> {
   const provider = options.provider ?? createRulesLanguageModel();
   const { store, context } = options;
   const intelligence = await extractDealIntelligence(context, provider);
 
-  let draft = await generatePreviewDraft(context, { provider });
-  let attempts = 1;
-  if (draft.leakageRisk !== "LOW") {
-    draft = await generatePreviewDraft(context, { provider: createRulesLanguageModel(), aggressive: true });
-    attempts += 1;
-  }
+  const gated = await generatePreviewDraftWithGateRetry(context);
+  const draft = gated.draft;
+  const attempts = gated.attempts;
 
   const existing = await store.getDealPreview(context.deal.id);
-  const slug = await allocatePreviewSlug(store, draft.previewTitle, context.deal.id);
-  if (existing?.slug && existing.slug !== slug) {
+  const keptSlug =
+    existing?.slug &&
+    isTemplatePreviewSlug(existing.slug, draft.previewTitle, context.deal.id)
+      ? existing.slug
+      : null;
+  const slug = keptSlug ?? (await allocatePreviewSlug(store, draft.previewTitle, context.deal.id));
+  if (!keptSlug && existing?.slug && existing.slug !== slug) {
     await store.retirePreviewSlug(existing.slug);
   }
   const finalScan = scanPreviewLeaks(
@@ -84,7 +104,11 @@ export async function persistIntelligenceAndPreview(options: {
   );
   const leakageRisk = finalScan.risk;
   const unpublishedByAdmin = existing?.unpublishedByAdmin === true;
-  const published = leakageRisk === "LOW" && !unpublishedByAdmin;
+  const gatePublished = leakageRisk === "LOW" && !unpublishedByAdmin;
+  const published =
+    options.publication === "preserve"
+      ? existing?.isPublished === true && gatePublished
+      : gatePublished;
 
   const preview: DealPreviewRecord = {
     dealId: context.deal.id,

@@ -364,7 +364,7 @@ Production environment variables are configured in Vercel. The remaining human s
 
 Supabase migrations are source-controlled and applied deliberately.
 
-GitHub Actions ingestion uses repository/environment secrets with least privilege. It may use a Supabase secret/service credential because it is a trusted server worker; never expose that key to the client. The workflow is `.github/workflows/scheduled-jobs.yml` with `workflow_dispatch` and `--mode test|dry-run|live`.
+GitHub Actions ingestion uses repository/environment secrets with least privilege. It may use a Supabase secret/service credential because it is a trusted server worker; never expose that key to the client. The workflow is `.github/workflows/scheduled-jobs.yml` with `workflow_dispatch` and `--mode test|dry-run|live`. The full preview rebuild is `.github/workflows/rebuild-previews.yml` (`workflow_dispatch` only, dry-run by default). `.github/workflows/scheduled-jobs.yml` stays disabled.
 
 ## 20. Architectural acceptance tests
 - anonymous user cannot select canonical/source tables

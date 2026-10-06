@@ -16,7 +16,7 @@ async function main() {
 
   const { structuredLog, errorMessage } = await import("@/lib/observability/log");
   const { createErrorReporter } = await import("@/lib/monitoring");
-  const { triggerTypeFor } = await import("@/lib/jobs/cli");
+  const { jobProcessShouldFail, triggerTypeFor } = await import("@/lib/jobs/cli");
   const reporter = createErrorReporter();
   const scheduled = args.due || args.mode === "live";
 
@@ -66,12 +66,7 @@ async function main() {
         summary,
       });
     }
-    if (summary.status === "FAILED") {
-      process.exitCode = 1;
-    } else if (
-      summary.status === "PARTIAL" &&
-      (job === "ingest" || job === "alerts" || job === "renewals")
-    ) {
+    if (jobProcessShouldFail(job, summary.status)) {
       process.exitCode = 1;
     }
   } catch (error) {
@@ -140,8 +135,22 @@ async function dispatchJob(
     const { createIngestionSupabaseClient } = await import(
       "@/ingestion/store/worker-client"
     );
-    const { rebuildChangedPreviews } = await import("@/lib/jobs/previews");
+    const { previewRebuildStatus, rebuildAllPreviews, rebuildChangedPreviews } =
+      await import("@/lib/jobs/previews");
     const store = createSupabaseIngestionStore(createIngestionSupabaseClient());
+    if (args.all) {
+      const result = await rebuildAllPreviews({
+        store,
+        mode: args.mode,
+        batchSize: args.limit,
+        cursor: args.cursor,
+        reporter,
+      });
+      return {
+        ...result,
+        status: previewRebuildStatus(result),
+      };
+    }
     const result = await rebuildChangedPreviews({
       store,
       mode: args.mode,

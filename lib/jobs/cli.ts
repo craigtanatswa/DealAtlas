@@ -44,7 +44,7 @@ function asJobMode(value: string): JobMode | undefined {
 
 export function parseJobArgs(argv: string[]): JobCliArgs {
   const result: JobCliArgs = {
-    mode: "live",
+    mode: "dry-run",
     sources: [],
     smoke: false,
     force: false,
@@ -75,7 +75,7 @@ export function parseJobArgs(argv: string[]): JobCliArgs {
     } else if (arg === "--limit" && next) {
       result.limit = Number(next);
       index += 1;
-    } else if (arg === "--cursor" && next) {
+    } else if ((arg === "--cursor" || arg === "--after") && next) {
       result.cursor = next;
       index += 1;
     } else if (arg === "--updated-from" && next) {
@@ -129,6 +129,22 @@ export function ingestLimitForMode(
     return SMOKE_INGEST_LIMIT;
   }
   return LIVE_INGEST_DEFAULT_LIMIT;
+}
+
+const PARTIAL_FAIL_JOBS = new Set<string>([
+  "ingest",
+  "previews",
+  "alerts",
+  "renewals",
+]);
+
+export function jobProcessShouldFail(
+  job: string,
+  status: string | undefined,
+): boolean {
+  return (
+    status === "FAILED" || (status === "PARTIAL" && PARTIAL_FAIL_JOBS.has(job))
+  );
 }
 
 export function triggerTypeFor(

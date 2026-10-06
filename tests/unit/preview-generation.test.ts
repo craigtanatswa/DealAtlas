@@ -301,7 +301,7 @@ describe("preview generation from canonical records", () => {
     expect(store.previews[0]?.isPublished).toBe(false);
   });
 
-  it("replaces the slug and retires the previous one by hash", async () => {
+  it("keeps a template slug and retires a legacy slug", async () => {
     const { store } = await ingestNormal();
     const first = store.previews[0]!.slug;
     const deal = store.deals[0]!;
@@ -347,8 +347,53 @@ describe("preview generation from canonical records", () => {
         now: NOW,
       }),
     });
-    expect(store.previews[0]?.slug).not.toBe(first);
-    expect(store.retiredSlugHashes).toContain(previewSlugHash(first));
+    expect(store.previews[0]?.slug).toBe(first);
+    expect(store.retiredSlugHashes).not.toContain(previewSlugHash(first));
+    store.previews[0]!.slug = "legacy-notice-slug";
+    await persistIntelligenceAndPreview({
+      store,
+      context: contextFromCandidate({
+        deal,
+        source: store.sources[0]!,
+        buyer: store.organizations[0]!,
+        buyerAliases: [],
+        lots: store.lots,
+        candidate: {
+          sourceKey: "find-a-tender",
+          ocid: deal.ocid ?? "",
+          externalPrimaryId: deal.externalPrimaryId ?? "",
+          noticeIdentifier: "000001-2026",
+          releaseId: "000001-2026",
+          reference: deal.reference,
+          sourceTitle: deal.sourceTitle,
+          sourceDescription: deal.sourceDescription,
+          sourceUrl: deal.sourceUrl ?? "",
+          dealType: deal.dealType,
+          buyerSector: deal.buyerSector,
+          stage: deal.stage,
+          status: deal.status,
+          mainCategory: deal.mainCategory,
+          currency: deal.currency ?? "GBP",
+          valueMinExVat: deal.valueMinExVat,
+          valueMaxExVat: deal.valueMaxExVat,
+          exactValueText: deal.exactValueText,
+          exactLocationText: deal.exactLocationText,
+          submissionDeadline: deal.submissionDeadline,
+          organizations: [],
+          lots: [],
+          requirements: [],
+          awardCriteria: [],
+          awards: [],
+          contracts: [],
+          documents: [],
+          classifications: [],
+          relatedOcids: [],
+        },
+        now: NOW,
+      }),
+    });
+    expect(store.previews[0]?.slug).not.toBe("legacy-notice-slug");
+    expect(store.retiredSlugHashes).toContain(previewSlugHash("legacy-notice-slug"));
   });
 });
 
