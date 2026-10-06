@@ -5,16 +5,20 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: dry-run reports counts and writes nothing
+        description: dry-run counts preview risk and does not write preview rows. A job run row is still recorded.
         type: choice
         options:
           - dry-run
           - live
         default: dry-run
       batch_size:
-        description: Deals per batch
+        description: Deals per batch (1-1000)
         type: number
         default: 100
+      cursor:
+        description: Resume after this deal id. Empty starts from the beginning.
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -27,13 +31,8 @@ jobs:
   previews:
     name: Rebuild previews
     runs-on: ubuntu-latest
+    environment: production
     timeout-minutes: 360
-    env:
-      NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
-      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
-      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
-      SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
     steps:
       - name: Check out
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -48,4 +47,30 @@ jobs:
       - run: npm ci
 
       - name: Rebuild previews
-        run: npm run job -- --job previews --all --mode "${{ inputs.mode }}" --limit "${{ inputs.batch_size }}"
+        env:
+          MODE: ${{ inputs.mode }}
+          BATCH_SIZE: ${{ inputs.batch_size }}
+          CURSOR: ${{ inputs.cursor }}
+          NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+        run: |
+          set -euo pipefail
+          case "$MODE" in
+            dry-run|live) ;;
+            *) echo "mode must be dry-run or live" >&2; exit 1 ;;
+          esac
+          case "$BATCH_SIZE" in
+            ''|*[!0-9]*) echo "batch_size must be a positive integer" >&2; exit 1 ;;
+          esac
+          if [ "$BATCH_SIZE" -lt 1 ] || [ "$BATCH_SIZE" -gt 1000 ]; then
+            echo "batch_size must be from 1 to 1000" >&2
+            exit 1
+          fi
+          if [ -n "$CURSOR" ] && ! printf '%s' "$CURSOR" | grep -Eq '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'; then
+            echo "cursor must be empty or a UUID" >&2
+            exit 1
+          fi
+          npm run job -- --job previews --all --mode "$MODE" --limit "$BATCH_SIZE" --after "$CURSOR"

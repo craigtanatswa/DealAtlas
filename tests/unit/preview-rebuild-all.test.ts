@@ -4,11 +4,14 @@ import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 
 import { contextFromPersisted } from "@/ingestion/intelligence/types";
+import { generatePreviewDraft } from "@/ingestion/preview/generate";
+import { generatePreviewDraftWithGateRetry } from "@/ingestion/preview/publish";
 import { persistIntelligenceAndPreview } from "@/ingestion/preview/publish";
 import { findATenderSourceRecord } from "@/ingestion/sources/find-a-tender/seed";
 import { createMemoryIngestionStore } from "@/ingestion/store/memory";
 import type { DealPreviewRecord } from "@/ingestion/store/types";
 import { previewSlugHash } from "@/lib/deals/public-slug";
+import { jobProcessShouldFail, parseJobArgs } from "@/lib/jobs/cli";
 import { rebuildAllPreviews } from "@/lib/jobs/previews";
 
 const ROOT = path.resolve(__dirname, "../..");
@@ -31,7 +34,13 @@ function storeWithSource() {
 async function seedDeal(
   store: ReturnType<typeof storeWithSource>,
   n: number,
-  preview: { isPublished: boolean; unpublishedByAdmin?: boolean; slug?: string },
+  preview: {
+    isPublished: boolean;
+    unpublishedByAdmin?: boolean;
+    slug?: string;
+    title?: string;
+    leakageRisk?: DealPreviewRecord["leakageRisk"];
+  },
   source?: {
     sourceTitle?: string;
     reference?: string;
@@ -101,7 +110,7 @@ async function seedDeal(
   const row: DealPreviewRecord = {
     dealId: id,
     slug: preview.slug ?? `old-facilities-${n}-aaaaaaa${n}`,
-    previewTitle: "Facilities public tender for a public organisation",
+    previewTitle: preview.title ?? "Facilities public tender for a public organisation",
     previewSummary: "A public organisation is seeking facilities through a public tender.",
     dealType: "PUBLIC_TENDER",
     buyerSector: "PUBLIC",
@@ -118,7 +127,7 @@ async function seedDeal(
     requirementsPreview: [],
     relevanceTags: [],
     freshnessLabel: null,
-    leakageRisk: "LOW",
+    leakageRisk: preview.leakageRisk ?? "LOW",
     isPublished: preview.isPublished,
     unpublishedByAdmin: preview.unpublishedByAdmin ?? false,
   };
@@ -210,10 +219,11 @@ describe("full preview rebuild", () => {
     store.previews.push(
       stubPreview(dealId(101), { isPublished: false, unpublishedByAdmin: true }),
     );
-    const excluded = dealId(102);
-    store.previews.push(stubPreview(excluded, { isPublished: false, unpublishedByAdmin: false }));
+    const draft = dealId(102);
+    store.previews.push(stubPreview(draft, { isPublished: false, unpublishedByAdmin: false }));
+    const noPreview = dealId(103);
     await store.createDeal({
-      id: excluded,
+      id: noPreview,
       primarySourceId: "source-fat",
       externalPrimaryId: "ext-excluded",
       ocid: null,
@@ -251,7 +261,7 @@ describe("full preview rebuild", () => {
       dataQualityScore: null,
     });
     await store.insertDataChange({
-      dealId: excluded,
+      dealId: noPreview,
       sourceId: "source-fat",
       changeType: "deadline_change",
       fieldName: "submission_deadline",
@@ -267,8 +277,8 @@ describe("full preview rebuild", () => {
       limit: 100,
     });
     expect(firstPage).toHaveLength(100);
-    expect(secondPage).toEqual([dealId(101)]);
-    expect([...firstPage, ...secondPage]).not.toContain(excluded);
+    expect(secondPage).toEqual([dealId(101), draft]);
+    expect([...firstPage, ...secondPage]).not.toContain(noPreview);
 
     const before = JSON.stringify(store.previews);
     let maintains = 0;
@@ -281,8 +291,8 @@ describe("full preview rebuild", () => {
       mode: "dry-run",
       batchSize: 100,
     });
-    expect(result.selected).toBe(101);
-    expect(result.batches.map((batch) => batch.selected)).toEqual([100, 1]);
+    expect(result.selected).toBe(102);
+    expect(result.batches.map((batch) => batch.selected)).toEqual([100, 2]);
     expect(result.processed).toBe(0);
     expect(maintains).toBe(0);
     expect(JSON.stringify(store.previews)).toBe(before);
@@ -333,16 +343,29 @@ describe("full preview rebuild", () => {
     expect(maintains).toBe(1);
     expect(store.previews.find((item) => item.dealId === ids[0])?.slug).toBe(afterFirst.get(ids[0]));
     expect(store.previews.find((item) => item.dealId === ids[1])?.slug).toBe(afterFirst.get(ids[1]));
-    expect(store.previews.find((item) => item.dealId === ids[2])?.slug).not.toBe(afterFirst.get(ids[2]));
+    expect(store.previews.find((item) => item.dealId === ids[2])?.slug).toBe(afterFirst.get(ids[2]));
 
     const retiredBefore = [...store.retiredSlugHashes];
+    const slugsBefore = store.previews.map((item) => item.slug);
     await rebuildAllPreviews({ store, now: NOW, mode: "live", batchSize: 2 });
-    expect(new Set(store.retiredSlugHashes).size).toBe(store.retiredSlugHashes.length);
-    for (const hash of retiredBefore) {
-      expect(store.retiredSlugHashes.filter((item) => item === hash)).toHaveLength(1);
-    }
+    expect(store.retiredSlugHashes).toEqual(retiredBefore);
+    expect(store.previews.map((item) => item.slug)).toEqual(slugsBefore);
+    expect(new Set(slugsBefore).size).toBe(slugsBefore.length);
+  });
+
+  it("leaves template slugs unchanged on a second full run", async () => {
+    const store = storeWithSource();
+    await seedDeal(store, 1, { isPublished: true, slug: "legacy-notice-aaaa1111" });
+    await seedDeal(store, 2, { isPublished: false, unpublishedByAdmin: true, slug: "legacy-hold-bbbb2222" });
+    const first = await rebuildAllPreviews({ store, now: NOW, mode: "live", batchSize: 10 });
+    expect(first.processed).toBe(2);
     const slugs = store.previews.map((item) => item.slug);
-    expect(new Set(slugs).size).toBe(slugs.length);
+    const hashes = [...store.retiredSlugHashes];
+    expect(slugs).not.toContain("legacy-notice-aaaa1111");
+    const second = await rebuildAllPreviews({ store, now: NOW, mode: "live", batchSize: 10 });
+    expect(second.processed).toBe(2);
+    expect(store.previews.map((item) => item.slug)).toEqual(slugs);
+    expect(store.retiredSlugHashes).toEqual(hashes);
   });
 
   it("does not lift holds or publish", async () => {
@@ -361,14 +384,16 @@ describe("full preview rebuild", () => {
       isPublished: false,
       unpublishedByAdmin: false,
       slug: "dark-slug-cccc3333",
+      title: "Legacy council notice copy",
+      leakageRisk: "HIGH",
     });
     const heldBefore = store.previews.find((item) => item.dealId === held);
     const publishedBefore = store.previews.find((item) => item.dealId === published);
     const darkBefore = { ...store.previews.find((item) => item.dealId === unpublished)! };
 
     const result = await rebuildAllPreviews({ store, now: NOW, mode: "live", batchSize: 10 });
-    expect(result.selected).toBe(2);
-    expect(result.processed).toBe(2);
+    expect(result.selected).toBe(3);
+    expect(result.processed).toBe(3);
 
     const heldAfter = store.previews.find((item) => item.dealId === held);
     const publishedAfter = store.previews.find((item) => item.dealId === published);
@@ -381,7 +406,11 @@ describe("full preview rebuild", () => {
     expect(publishedAfter?.unpublishedByAdmin).toBe(false);
     expect(publishedAfter?.leakageRisk).toBe("LOW");
     expect(publishedAfter?.slug).not.toBe(publishedBefore?.slug);
-    expect(darkAfter).toEqual(darkBefore);
+    expect(darkAfter?.isPublished).toBe(false);
+    expect(darkAfter?.unpublishedByAdmin).toBe(false);
+    expect(darkAfter?.leakageRisk).toBe("LOW");
+    expect(darkAfter?.slug).not.toBe(darkBefore.slug);
+    expect(darkAfter?.previewTitle).not.toBe("Legacy council notice copy");
 
     const source = read("lib/jobs/previews.ts");
     const fn = source.slice(source.indexOf("export async function rebuildAllPreviews"));
@@ -411,7 +440,7 @@ describe("full preview rebuild", () => {
     expect(keptPreview?.unpublishedByAdmin).toBe(false);
   });
 
-  it("dry-run writes nothing and logs counts only", async () => {
+  it("dry-run writes no preview rows and logs counts only", async () => {
     const store = storeWithSource();
     const title = "Zebra notice 88421";
     const slug = "kept-slug-ab12cd34";
@@ -468,10 +497,121 @@ describe("full preview rebuild", () => {
       warn.mockRestore();
     }
   });
+
+  it("counts the aggressive gate retry in dry-run", async () => {
+    const store = storeWithSource();
+    const id = await seedDeal(
+      store,
+      9,
+      { isPublished: false, slug: "retry-slug-aaaa9999" },
+      { sourceTitle: "Facilities public tender for a public organisation" },
+    );
+    const deal = await store.getDealById(id);
+    const context = await contextFromPersisted({ store, deal: deal!, now: NOW });
+    const first = await generatePreviewDraft(context!);
+    const gated = await generatePreviewDraftWithGateRetry(context!);
+    expect(first.leakageRisk).not.toBe("LOW");
+    expect(gated.attempts).toBe(2);
+    const result = await rebuildAllPreviews({ store, now: NOW, mode: "dry-run", batchSize: 10 });
+    expect(result.processed).toBe(0);
+    expect(result.risks[gated.draft.leakageRisk]).toBe(1);
+    expect(result.risks.LOW + result.risks.REVIEW + result.risks.HIGH).toBe(1);
+  });
+
+  it("rebuilds a gate-held draft without publishing it", async () => {
+    const store = storeWithSource();
+    const id = await seedDeal(store, 8, {
+      isPublished: false,
+      unpublishedByAdmin: false,
+      slug: "gate-held-dddd4444",
+      title: "Legacy council notice copy",
+      leakageRisk: "REVIEW",
+    });
+    const result = await rebuildAllPreviews({ store, now: NOW, mode: "live", batchSize: 10 });
+    const preview = store.previews.find((item) => item.dealId === id);
+    expect(result.selected).toBe(1);
+    expect(result.processed).toBe(1);
+    expect(preview?.isPublished).toBe(false);
+    expect(preview?.unpublishedByAdmin).toBe(false);
+    expect(preview?.slug).not.toBe("gate-held-dddd4444");
+    expect(preview?.previewTitle).not.toBe("Legacy council notice copy");
+  });
+
+  it("does not write preview rows unless mode is live", async () => {
+    const store = storeWithSource();
+    await seedDeal(store, 1, { isPublished: true, slug: "legacy-live-eeee5555" });
+    const before = JSON.stringify(store.previews);
+    const testRun = await rebuildAllPreviews({ store, now: NOW, mode: "test", batchSize: 10 });
+    expect(testRun.dryRun).toBe(true);
+    expect(testRun.processed).toBe(0);
+    expect(JSON.stringify(store.previews)).toBe(before);
+    const implicit = await rebuildAllPreviews({ store, now: NOW, batchSize: 10 });
+    expect(implicit.mode).toBe("dry-run");
+    expect(implicit.dryRun).toBe(true);
+    expect(implicit.processed).toBe(0);
+    expect(JSON.stringify(store.previews)).toBe(before);
+  });
+
+  it("logs the batch cursor and failing deal id without source text", async () => {
+    const store = storeWithSource();
+    const title = "Zebra notice 88421";
+    const id = await seedDeal(
+      store,
+      1,
+      { isPublished: true, slug: "legacy-log-ffff6666" },
+      { sourceTitle: title },
+    );
+    store.getDealById = async () => {
+      throw new Error(title);
+    };
+    const lines: string[] = [];
+    const log = vi.spyOn(console, "log").mockImplementation((...args: unknown[]) => {
+      lines.push(args.map(String).join(" "));
+    });
+    const err = vi.spyOn(console, "error").mockImplementation((...args: unknown[]) => {
+      lines.push(args.map(String).join(" "));
+    });
+    try {
+      const result = await rebuildAllPreviews({ store, now: NOW, mode: "live", batchSize: 10 });
+      expect(result.failures).toBe(1);
+      expect(result.processed).toBe(0);
+      const logged = lines.join("\n");
+      expect(logged).toContain(`"dealId":"${id}"`);
+      expect(logged).toContain(`"cursor":"${id}"`);
+      expect(logged).not.toContain(title);
+    } finally {
+      log.mockRestore();
+      err.mockRestore();
+    }
+  });
+
+  it("defaults the CLI to dry-run and fails a partial preview job", () => {
+    const bare = parseJobArgs(["--job", "previews"]);
+    expect(bare.mode).toBe("dry-run");
+    expect(bare.dryRun).toBe(true);
+    expect(bare.all).toBe(false);
+    const resumed = parseJobArgs([
+      "--job",
+      "previews",
+      "--all",
+      "--mode",
+      "live",
+      "--after",
+      dealId(1),
+    ]);
+    expect(resumed.all).toBe(true);
+    expect(resumed.mode).toBe("live");
+    expect(resumed.cursor).toBe(dealId(1));
+    expect(jobProcessShouldFail("previews", "PARTIAL")).toBe(true);
+    expect(jobProcessShouldFail("data-quality", "PARTIAL")).toBe(false);
+    const script = read("scripts/rebuild-previews.ts");
+    expect(script).toContain("if (args.all)");
+    expect(script).not.toContain("!args.changedSince");
+  });
 });
 
 describe("rebuild previews workflow", () => {
-  it("is dispatch-only and runs only the previews job", () => {
+  it("is dispatch-only, environment-gated, and passes inputs through env", () => {
     const workflow = read(".github/workflows/rebuild-previews.yml");
     const blocks = parseTopLevel(workflow);
     const on = blocks.find((block) => block.key === "on");
@@ -480,14 +620,40 @@ describe("rebuild previews workflow", () => {
     expect(keysAt(on!.lines, 2)).toEqual(["workflow_dispatch"]);
     expect(keysAt(on!.lines, 2)).not.toContain("schedule");
     expect(workflow).not.toMatch(/^\s*schedule\s*:/m);
+    expect(workflow).not.toContain("writes nothing");
     expect(jobs).toBeTruthy();
     expect(keysAt(jobs!.lines, 2)).toEqual(["previews"]);
     const jobText = jobs!.lines.join("\n");
-    expect(jobText).toContain("--job previews");
-    expect(jobText).toContain("--all");
-    expect(jobText).not.toMatch(/--job\s+(ingest|alerts|renewals)/);
+    const stepsAt = jobText.indexOf("\n    steps:");
+    const jobHeader = jobText.slice(0, stepsAt);
+    expect(jobHeader).toContain("environment: production");
+    expect(jobHeader).not.toMatch(/^\s*env:/m);
+    expect(jobHeader).not.toContain("SUPABASE_SECRET_KEY");
+    const ciAt = jobText.indexOf("run: npm ci");
+    const stepAt = jobText.indexOf("- name: Rebuild previews");
+    expect(jobText.slice(0, stepAt)).not.toContain("SUPABASE_SECRET_KEY");
+    expect(ciAt).toBeGreaterThan(0);
+    expect(stepAt).toBeGreaterThan(ciAt);
+    const runAt = jobText.indexOf("name: Rebuild previews");
+    const runBlock = jobText.slice(runAt);
+    const scriptAt = runBlock.indexOf("run: |");
+    const runScript = runBlock.slice(scriptAt);
+    expect(runBlock.slice(0, scriptAt)).toContain("SUPABASE_SECRET_KEY:");
+    expect(runBlock.slice(0, scriptAt)).toContain("MODE: ${{ inputs.mode }}");
+    expect(runBlock.slice(0, scriptAt)).toContain("BATCH_SIZE: ${{ inputs.batch_size }}");
+    expect(runBlock.slice(0, scriptAt)).toContain("CURSOR: ${{ inputs.cursor }}");
+    expect(runScript).not.toContain("${{");
+    expect(runScript).toContain("--job previews");
+    expect(runScript).toContain("--all");
+    expect(runScript).toContain('--mode "$MODE"');
+    expect(runScript).toContain('--limit "$BATCH_SIZE"');
+    expect(runScript).toContain('--after "$CURSOR"');
+    expect(runScript).toContain("dry-run|live");
+    expect(runScript).toContain("exit 1");
+    expect(runScript).not.toMatch(/--job\s+(ingest|alerts|renewals)/);
     expect(fieldDefault(on!.lines, "mode")).toBe("dry-run");
     expect(fieldDefault(on!.lines, "batch_size")).toBe("100");
+    expect(fieldDefault(on!.lines, "cursor")).toBe("");
     expect(read(".github/workflows/scheduled-jobs.yml")).toContain("schedule:");
   });
 });

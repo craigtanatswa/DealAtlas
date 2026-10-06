@@ -19,9 +19,8 @@ async function main() {
 
   const store = createSupabaseIngestionStore(createIngestionSupabaseClient());
   const reporter = createErrorReporter();
-  const fullCatalogue = args.all || !args.changedSince;
 
-  if (fullCatalogue) {
+  if (args.all) {
     const result = await rebuildAllPreviews({
       store,
       mode: args.mode,

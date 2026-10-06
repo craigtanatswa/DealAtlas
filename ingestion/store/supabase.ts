@@ -403,7 +403,6 @@ export function createSupabaseIngestionStore(
       let query = client
         .from("deal_previews")
         .select("deal_id")
-        .or("is_published.eq.true,unpublished_by_admin.eq.true")
         .order("deal_id", { ascending: true })
         .limit(limit);
       if (options?.afterId) {

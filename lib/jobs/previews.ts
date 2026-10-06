@@ -1,6 +1,8 @@
 import { contextFromPersisted } from "@/ingestion/intelligence/types";
-import { generatePreviewDraft } from "@/ingestion/preview/generate";
-import { persistIntelligenceAndPreview } from "@/ingestion/preview/publish";
+import {
+  generatePreviewDraftWithGateRetry,
+  persistIntelligenceAndPreview,
+} from "@/ingestion/preview/publish";
 import type { IngestionStore } from "@/ingestion/store/types";
 import type { JobMode } from "@/lib/jobs/cli";
 import { errorMessage, structuredLog } from "@/lib/observability/log";
@@ -145,6 +147,7 @@ export type PreviewRebuildAllResult = {
 };
 
 const DEFAULT_PREVIEW_BATCH = 100;
+const MAX_PREVIEW_BATCH = 1000;
 
 function emptyRisks(): PreviewRiskCounts {
   return { LOW: 0, REVIEW: 0, HIGH: 0 };
@@ -160,7 +163,7 @@ function previewBatchSize(explicit?: number): number {
   if (explicit == null || !Number.isFinite(explicit) || explicit < 1) {
     return DEFAULT_PREVIEW_BATCH;
   }
-  return Math.floor(explicit);
+  return Math.min(Math.floor(explicit), MAX_PREVIEW_BATCH);
 }
 
 export async function rebuildAllPreviews(options: {
@@ -172,8 +175,8 @@ export async function rebuildAllPreviews(options: {
   reporter?: ErrorReporter;
 }): Promise<PreviewRebuildAllResult> {
   const now = options.now ?? new Date();
-  const mode = options.mode ?? "live";
-  const dryRun = mode === "dry-run";
+  const mode = options.mode ?? "dry-run";
+  const dryRun = mode !== "live";
   const reporter = options.reporter ?? createErrorReporter();
   const batchSize = previewBatchSize(options.batchSize);
   const risks = emptyRisks();
@@ -214,8 +217,8 @@ export async function rebuildAllPreviews(options: {
           continue;
         }
         if (dryRun) {
-          const draft = await generatePreviewDraft(context);
-          addRisk(batchRisks, draft.leakageRisk);
+          const gated = await generatePreviewDraftWithGateRetry(context);
+          addRisk(batchRisks, gated.draft.leakageRisk);
           continue;
         }
         const outcome = await persistIntelligenceAndPreview({
@@ -231,9 +234,11 @@ export async function rebuildAllPreviews(options: {
           job: "previews",
           msg: "preview_rebuild_all_failed",
           level: "error",
+          dealId,
         });
         await reporter.captureException(new Error("preview rebuild failed"), {
           job: "previews",
+          dealId,
         });
       }
     }
@@ -267,6 +272,7 @@ export async function rebuildAllPreviews(options: {
       low: batchRisks.LOW,
       review: batchRisks.REVIEW,
       high: batchRisks.HIGH,
+      cursor: lastId,
     });
     if (dealIds.length < batchSize) {
       break;

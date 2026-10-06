@@ -24,3 +24,12 @@ export function buildPreviewSlug(title: string, hex = randomBytes(4).toString("h
   }
   return `${sanitisedTitleFragment(title)}-${hex}`;
 }
+
+/** True when the slug is already the template fragment for this title plus 8 hex characters. */
+export function isTemplatePreviewSlug(slug: string, title: string): boolean {
+  const hex = /-([0-9a-f]{8})$/.exec(slug)?.[1];
+  if (!hex) {
+    return false;
+  }
+  return slug === buildPreviewSlug(title, hex);
+}
