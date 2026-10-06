@@ -1,4 +1,6 @@
+import { spawnSync } from "node:child_process";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 
 import { describe, expect, it } from "vitest";
@@ -7,6 +9,7 @@ import { alertDepsFromEnv, deliverCrash, deliverFindings, deliverIncomplete } fr
 import { rotateFloor, runDbPass } from "@/lib/leak-scan/db-pass";
 import { rotatingSample, runHttpPass } from "@/lib/leak-scan/http-pass";
 import { createReadonlyClient, type ReadonlyFilter } from "@/lib/leak-scan/readonly-client";
+import { emptyState, writeState } from "@/lib/leak-scan/state";
 import { sourceManifestTokens, unionStrongTokens } from "@/lib/leak-scan/tokens";
 
 const ROOT = path.resolve(__dirname, "../..");
@@ -62,9 +65,11 @@ function dealRow(id: string, title: string) {
   };
 }
 
-function previewQuery(rows: Array<Record<string, unknown>>) {
+function previewQuery(rows: Array<Record<string, unknown>>, maxRows?: number) {
   const eqs: Array<[string, unknown]> = [];
+  let gtColumn: string | null = null;
   let gtValue: string | null = null;
+  let orderColumn = "deal_id";
   let limit = rows.length;
   const filter = {
     eq(column: string, value: unknown) {
@@ -76,14 +81,16 @@ function previewQuery(rows: Array<Record<string, unknown>>) {
       return filter;
     },
     gt(column: string, value: string) {
-      if (column === "deal_id") gtValue = value;
+      gtColumn = column;
+      gtValue = value;
       return filter;
     },
-    order() {
+    order(column: string) {
+      orderColumn = column;
       return filter;
     },
     limit(count: number) {
-      limit = count;
+      limit = maxRows === undefined ? count : Math.min(count, maxRows);
       return filter;
     },
     then(
@@ -93,8 +100,12 @@ function previewQuery(rows: Array<Record<string, unknown>>) {
       let matched = rows.filter((row) =>
         eqs.every(([column, value]) => (Array.isArray(value) ? value.includes(row[column]) : row[column] === value)),
       );
-      matched = [...matched].sort((a, b) => String(a.deal_id).localeCompare(String(b.deal_id)));
-      if (gtValue) matched = matched.filter((row) => String(row.deal_id) > gtValue!);
+      matched = [...matched].sort((a, b) => String(a[orderColumn] ?? "").localeCompare(String(b[orderColumn] ?? "")));
+      if (gtColumn && gtValue) {
+        const column = gtColumn;
+        const value = gtValue;
+        matched = matched.filter((row) => String(row[column] ?? "") > value);
+      }
       return Promise.resolve({ data: matched.slice(0, limit), error: null }).then(onFulfilled, onRejected);
     },
   };
@@ -415,11 +426,13 @@ describe("hourly leak scan", () => {
   });
 
   it("allowlists only the exact site contact address", async () => {
-    const planted = "evil@sub.dealatlas.uk notdealatlas.uk ABC-DEALATLAS-123 +44 20 7946 0991 support@dealatlas.example";
+    const planted = "notdealatlas.uk ABC-DEALATLAS-123 +44 20 7946 0991 support@dealatlas.example dept.service.gov.uk";
     const origin = "https://www.dealatlas.uk";
     const fetchImpl = (async (url: string) => {
       const href = String(url);
-      const body = href.endsWith("/deals") ? `<html>${planted}</html>` : "<html></html>";
+      let body = "<html></html>";
+      if (href.endsWith("/deals")) body = `<html>${planted}</html>`;
+      if (href.includes("/api/search")) body = "<html>auditor@foreign.example</html>";
       return new Response(body, { status: 200, headers: { "content-type": "text/html" } });
     }) as typeof fetch;
     const tokens = sourceManifestTokens({
@@ -440,17 +453,16 @@ describe("hourly leak scan", () => {
       sampleSeed: 0,
     });
     const onDeals = result.findings.filter((finding) => finding.path === "/deals");
+    expect(onDeals.filter((finding) => finding.code === "email")).toEqual([]);
     expect(onDeals).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ code: "email" }),
         expect.objectContaining({ code: "uk_phone" }),
         expect.objectContaining({ code: "reference_shape" }),
         expect.objectContaining({ code: "SOURCE_DOMAIN" }),
+        expect.objectContaining({ code: "gov_domain" }),
       ]),
     );
-    expect(onDeals.some((finding) => finding.code === "email" && finding.path === "/deals")).toBe(true);
-    expect(JSON.stringify(result.findings)).not.toContain("support@dealatlas.example");
-    expect(result.findings.filter((finding) => finding.code === "email")).toHaveLength(1);
+    expect(result.findings).toContainEqual(expect.objectContaining({ code: "email", path: "/api/search" }));
   });
 
   it("keeps generic names and source titles out of the strong-token union", () => {
@@ -466,6 +478,33 @@ describe("hourly leak scan", () => {
       sourceName: "Public Services",
     });
     expect(unionStrongTokens([{ tokens }])).toEqual([]);
+    for (const name of ["THE COUNCIL", "PUBLIC SERVICES", "BOROUGH COUNCIL", "THE TRUST", "N/A", "TBC", "Unknown", "NONE"]) {
+      const upper = sourceManifestTokens({
+        dealId: DEAL_ID,
+        sourceTitle: "Very Specific Harbour Dredging Notice",
+        buyerName: name,
+        ocid: null,
+        reference: null,
+        externalPrimaryId: null,
+        sourceUrl: null,
+        buyerEmail: null,
+        sourceName: name,
+      });
+      const classes = unionStrongTokens([{ tokens: upper }]).map((entry) => entry.class);
+      expect(classes).not.toContain("BUYER_NAME");
+      expect(classes).not.toContain("PORTAL_NAME");
+    }
+    const portal = sourceManifestTokens({
+      dealId: DEAL_ID,
+      sourceTitle: "Very Specific Harbour Dredging Notice",
+      buyerName: null,
+      ocid: null,
+      reference: null,
+      externalPrimaryId: null,
+      sourceUrl: "https://www.contractsfinder.service.gov.uk/notice/1",
+      buyerEmail: null,
+    });
+    expect(unionStrongTokens([{ tokens: portal }]).map((entry) => entry.class)).toContain("SOURCE_DOMAIN");
     const strong = sourceManifestTokens({
       dealId: DEAL_ID,
       sourceTitle: "unrelated source title that is long enough",
@@ -485,6 +524,7 @@ describe("hourly leak scan", () => {
       { dealId: "55555555-5555-4555-8555-555555555555", name: "Thames Water" },
       { dealId: "66666666-6666-4666-8666-666666666666", name: "Met Office" },
       { dealId: "77777777-7777-4777-8777-777777777777", name: "HMRC" },
+      { dealId: "99999999-9999-4999-8999-999999999999", name: "NHS" },
     ];
     const alias = "Veltham Registry";
     const aliasDeal = "88888888-8888-4888-8888-888888888888";
@@ -577,6 +617,102 @@ describe("hourly leak scan", () => {
     expect(unionStrongTokens(result.dealTokens).map((entry) => entry.canonical)).toEqual(["Veltham Registry"]);
     expect(rotateFloor(0)).toBeNull();
     expect(rotateFloor(2)).toBe("1fffffff-ffff-ffff-ffff-ffffffffffff");
+  });
+
+  it("starts the database pass at the hourly cursor", async () => {
+    const secondId = "33333333-3333-4333-8333-333333333333";
+    const previews = [DEAL_ID, secondId].map((id) => ({
+      deal_id: id,
+      slug: id === DEAL_ID ? PUBLISHED_SLUG : "second-published-page-cccc1111",
+      preview_title: "Public facilities notice",
+      preview_summary: "A public organisation is seeking facilities management.",
+      requirements_preview: [],
+      relevance_tags: [],
+      broad_region: "Nationwide",
+      is_published: true,
+      unpublished_by_admin: false,
+    }));
+    const raw = {
+      from(table: string) {
+        return {
+          select() {
+            if (table === "deal_previews") return previewQuery(previews);
+            if (table === "deals") return previewQuery([dealRow(DEAL_ID, SOURCE_TITLE), dealRow(secondId, "Other Harbour Works Notice")]);
+            return previewQuery([]);
+          },
+        };
+      },
+    };
+    const result = await runDbPass(createReadonlyClient(raw), { batchSize: 10, cursorSeed: 2 });
+    expect(result.incomplete).toBe(false);
+    expect(result.scanned).toBe(2);
+    expect(result.dealTokens.map((entry) => entry.dealId)).toEqual([secondId, DEAL_ID]);
+  });
+
+  it("pages related rows past the PostgREST cap", async () => {
+    const orgId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+    const last = "Zebrax Procurement Unit";
+    const aliases = Array.from({ length: 1001 }, (_, index) => ({
+      id: `${String(index).padStart(8, "0")}-0000-4000-8000-000000000000`,
+      organization_id: orgId,
+      alias: index === 1000 ? last : `Batch Alias ${index}`,
+    }));
+    const previews = [
+      {
+        deal_id: DEAL_ID,
+        slug: PUBLISHED_SLUG,
+        preview_title: "Public facilities notice",
+        preview_summary: "A public organisation is seeking facilities management.",
+        requirements_preview: [],
+        relevance_tags: [],
+        broad_region: "Nationwide",
+        is_published: true,
+        unpublished_by_admin: false,
+      },
+    ];
+    const raw = {
+      from(table: string) {
+        return {
+          select() {
+            if (table === "deal_previews") return previewQuery(previews);
+            if (table === "deals") return previewQuery([{ ...dealRow(DEAL_ID, SOURCE_TITLE), buyer_organization_id: orgId }]);
+            if (table === "organizations") {
+              return previewQuery([{ id: orgId, canonical_name: "The Council", domain: null, website: null, email: null, phone: null, city: null, postcode: null }]);
+            }
+            if (table === "organization_aliases") return previewQuery(aliases, 1000);
+            return previewQuery([], 1000);
+          },
+        };
+      },
+    };
+    const result = await runDbPass(createReadonlyClient(raw), { batchSize: 10 });
+    expect(result.incomplete).toBe(false);
+    expect(result.dealTokens[0]?.tokens.some((entry) => entry.canonical === last)).toBe(true);
+  });
+
+  it("skips the crash email after the incomplete alert was sent", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "leak-scan-"));
+    const file = path.join(dir, "state.json");
+    const run = (alerted: boolean) => {
+      writeState({ ...emptyState(), incompleteAlerted: alerted }, file);
+      return spawnSync(
+        "npx",
+        ["tsx", "--import", "./scripts/allow-server-only.mjs", "scripts/leak-scan.ts", "--pass", "crash"],
+        {
+          cwd: ROOT,
+          encoding: "utf8",
+          env: {
+            ...process.env,
+            LEAK_SCAN_STATE: file,
+            RESEND_API_KEY: "",
+            DEALATLAS_EMAIL_FROM: "",
+            LEAK_ALERT_EMAIL_TO: "",
+          },
+        },
+      );
+    };
+    expect(run(true).status).toBe(0);
+    expect(run(false).status).not.toBe(0);
   });
 
   it("stops the database pass at the time budget and emails counts only", async () => {
