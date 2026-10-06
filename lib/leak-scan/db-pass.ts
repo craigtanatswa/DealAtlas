@@ -163,6 +163,8 @@ function scanInput(preview: PreviewRow, deal: DealRow, extras: {
   };
 }
 
+const PAGE_ROWS = 1000;
+
 async function many<T>(
   client: ReadonlyClient,
   table: string,
@@ -173,6 +175,30 @@ async function many<T>(
 ): Promise<T[]> {
   if (values.length === 0) return [];
   return (await readRows(client.from(table).select(columns).in(column, values).limit(limit))) as T[];
+}
+
+/** PostgREST max-rows is 1000. Keep requesting until a short page comes back. */
+async function manyPaged<T extends { id?: string }>(
+  client: ReadonlyClient,
+  table: string,
+  columns: string,
+  column: string,
+  values: string[],
+): Promise<{ rows: T[]; complete: boolean }> {
+  if (values.length === 0) return { rows: [], complete: true };
+  const rows: T[] = [];
+  let after: string | null = null;
+  for (;;) {
+    let filter = client.from(table).select(columns).in(column, values).order("id", { ascending: true }).limit(PAGE_ROWS);
+    if (after) filter = filter.gt("id", after);
+    const page = (await readRows(filter)) as T[];
+    if (page.length === 0) return { rows, complete: true };
+    rows.push(...page);
+    if (page.length < PAGE_ROWS) return { rows, complete: true };
+    const last = page[page.length - 1]?.id;
+    if (!last || last === after) return { rows, complete: false };
+    after = last;
+  }
 }
 
 function indexBy<T>(rows: T[], key: (row: T) => string): Map<string, T> {
@@ -208,7 +234,6 @@ export async function runDbPass(
   const budgetMs = options.budgetMs ?? DB_BUDGET_MS;
   const now = options.now ?? (() => Date.now());
   const started = now();
-  const childLimit = Math.max(batch * 20, 20);
   const findings: LeakFindingReport[] = [];
   const legacySlugs: LegacySlug[] = [];
   const dealTokens: DealTokenSet[] = [];
@@ -220,7 +245,7 @@ export async function runDbPass(
   let batchCount = 0;
   let incomplete = false;
 
-  const scanPage = async (page: PreviewRow[]) => {
+  const scanPage = async (page: PreviewRow[]): Promise<boolean> => {
     const fresh = page.filter((row) => {
       if (seen.has(row.deal_id)) return false;
       seen.add(row.deal_id);
@@ -257,15 +282,15 @@ export async function runDbPass(
         orgIds,
         Math.max(orgIds.length, 1),
       ),
-      many<{ organization_id: string; alias: string }>(
+      manyPaged<{ id: string; organization_id: string; alias: string }>(
         client,
         "organization_aliases",
-        "organization_id, alias",
+        "id, organization_id, alias",
         "organization_id",
         orgIds,
-        childLimit,
       ),
-      many<{
+      manyPaged<{
+        id: string;
         deal_id: string;
         source_title: string | null;
         source_description: string | null;
@@ -276,25 +301,24 @@ export async function runDbPass(
       }>(
         client,
         "lots",
-        "deal_id, source_title, source_description, source_lot_id, exact_location_text, value_min, value_max",
+        "id, deal_id, source_title, source_description, source_lot_id, exact_location_text, value_min, value_max",
         "deal_id",
         dealIds,
-        childLimit,
       ),
-      many<{ deal_id: string; name: string | null; description: string | null }>(
+      manyPaged<{ id: string; deal_id: string; name: string | null; description: string | null }>(
         client,
         "requirements",
-        "deal_id, name, description",
+        "id, deal_id, name, description",
         "deal_id",
         dealIds,
-        childLimit,
       ),
     ]);
+    if (!aliases.complete || !lots.complete || !requirements.complete) incomplete = true;
     const sourcesById = indexBy(sources, (row) => row.id);
     const orgsById = indexBy(orgs, (row) => row.id);
-    const aliasesByOrg = groupBy(aliases, (row) => row.organization_id);
-    const lotsByDeal = groupBy(lots, (row) => row.deal_id);
-    const requirementsByDeal = groupBy(requirements, (row) => row.deal_id);
+    const aliasesByOrg = groupBy(aliases.rows, (row) => row.organization_id);
+    const lotsByDeal = groupBy(lots.rows, (row) => row.deal_id);
+    const requirementsByDeal = groupBy(requirements.rows, (row) => row.deal_id);
 
     for (const preview of fresh) {
       const deal = dealsById.get(preview.deal_id);
@@ -356,6 +380,7 @@ export async function runDbPass(
         }),
       });
     }
+    return !incomplete;
   };
 
   const floor = rotateFloor(options.cursorSeed ?? 0);
@@ -391,7 +416,7 @@ export async function runDbPass(
       if (slice.length === 0) return;
       batchCount += 1;
       if (column === "unpublished_by_admin") held += slice.length;
-      await scanPage(slice);
+      if (!(await scanPage(slice))) return;
       if (wrapped && floor && slice.length < page.length) return;
       const last = page[page.length - 1]?.deal_id;
       if (!last || last === after || page.length < batch) {
