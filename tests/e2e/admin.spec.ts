@@ -17,7 +17,7 @@ test.describe("Admin journey", () => {
 
     const findATender = page.getByRole("row").filter({ hasText: "Find a Tender" });
     await findATender.getByRole("button", { name: "Run ingestion" }).click();
-    const ingestOutcome = page.getByRole("status").or(page.getByRole("alert")).first();
+    const ingestOutcome = findATender.getByRole("status").or(findATender.getByRole("alert"));
     await expect(ingestOutcome).toBeVisible({ timeout: 90_000 });
     await expect(ingestOutcome).toContainText(/Ingestion |skipped|failed|could not/i);
 

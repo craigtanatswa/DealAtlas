@@ -6,7 +6,6 @@ import {
 import { broadRegionFromLocation } from "@/lib/preview/region";
 import {
   scanPreviewLeaks,
-  type LeakFinding,
   type LeakScanInput,
 } from "@/lib/redaction/scan";
 import { DEAL_TYPE_LABELS } from "@/lib/search/filters";
@@ -15,7 +14,6 @@ import {
   inferCompetitionLevel,
   inferSmeSuitability,
 } from "@/ingestion/intelligence/extract";
-import { createRulesLanguageModel } from "@/ingestion/intelligence/provider";
 import type { LanguageModelProvider } from "@/ingestion/intelligence/provider";
 import { RULES_MODEL, sectorOrganisationNoun } from "@/ingestion/intelligence/types";
 import type {
@@ -23,50 +21,21 @@ import type {
   PreviewDraft,
 } from "@/ingestion/intelligence/types";
 
-const URL_RE = /\b(?:https?:\/\/|www\.)\S+/gi;
-const EMAIL_RE = /\b[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}\b/gi;
-const OCID_RE = /\bocds-[a-z0-9]{3,}-[a-z0-9\-]+\b/gi;
-const PHONE_RE =
-  /(?<!\d)(?:\+|00)?(?:44)[\s().-]*(?:\d[\s().-]*){9,11}(?!\d)|(?<!\d)0[\s().-]*(?:\d[\s().-]*){9,10}(?!\d)/g;
+/** Closed set. Free requirements never echo source wording. */
+export const REQUIREMENT_PREVIEW_LABELS = [
+  "financial capacity evidence",
+  "information-security capability",
+  "appropriate insurance cover",
+  "data-protection capability",
+  "evidence of comparable delivery",
+  "social value contribution",
+  "ongoing support capability",
+  "implementation and mobilisation capability",
+] as const;
 
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
+export type RequirementPreviewLabel = (typeof REQUIREMENT_PREVIEW_LABELS)[number];
 
-export function stripPatternLeaks(text: string): string {
-  return text
-    .replace(URL_RE, "")
-    .replace(EMAIL_RE, "")
-    .replace(OCID_RE, "")
-    .replace(PHONE_RE, "")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-export function stripIdentity(text: string, context: IntelligenceContext): string {
-  const replacements = [
-    context.buyer?.canonicalName,
-    ...context.buyerAliases,
-    context.buyer?.domain,
-    context.deal.ocid,
-    context.deal.reference,
-    context.deal.externalPrimaryId,
-    context.source.name,
-    context.source.sourceKey,
-    ...context.noticeIdentifiers,
-  ]
-    .filter((item): item is string => Boolean(item && item.trim().length >= 3))
-    .sort((left, right) => right.length - left.length);
-
-  let next = stripPatternLeaks(text);
-  const fallback = sectorOrganisationNoun(context.deal.buyerSector);
-  for (const token of replacements) {
-    next = next.replace(new RegExp(escapeRegExp(token), "gi"), fallback);
-  }
-  return next.replace(/\s+/g, " ").trim();
-}
-
-export function generalizeRequirementText(name: string, description?: string | null): string | null {
+export function generalizeRequirementText(name: string, description?: string | null): RequirementPreviewLabel | null {
   const blob = `${name} ${description ?? ""}`.toLowerCase();
   if (/turnover|credit rating|financial/.test(blob)) return "financial capacity evidence";
   if (/iso\s*27001|cyber|information security|security clear/.test(blob)) {
@@ -80,11 +49,7 @@ export function generalizeRequirementText(name: string, description?: string | n
   if (/social value/.test(blob)) return "social value contribution";
   if (/support|maintenance|service desk/.test(blob)) return "ongoing support capability";
   if (/implementation|mobilisation|mobilization/.test(blob)) return "implementation and mobilisation capability";
-  const cleaned = name.replace(/\d[\d,]*/g, "").replace(/\s+/g, " ").trim();
-  if (cleaned.length < 8 || cleaned.length > 80) {
-    return "relevant domain capability";
-  }
-  return cleaned.toLowerCase();
+  return null;
 }
 
 export function requirementsPreviewFromContext(
@@ -93,7 +58,7 @@ export function requirementsPreviewFromContext(
 ): string[] {
   const items = context.requirements
     .map((item) => generalizeRequirementText(item.name, item.description))
-    .filter((item): item is string => Boolean(item));
+    .filter((item): item is RequirementPreviewLabel => item !== null);
   return [...new Set(items)].slice(0, limit);
 }
 
@@ -230,59 +195,6 @@ function leakInput(
   return leakScanInputFromContext(context, draft);
 }
 
-function applyFindingTokens(text: string, findings: LeakFinding[]): string {
-  let next = text;
-  for (const finding of findings) {
-    if (finding.token && finding.token.length >= 3) {
-      next = next.replace(new RegExp(escapeRegExp(finding.token), "gi"), "");
-    }
-  }
-  return next.replace(/\s+/g, " ").trim();
-}
-
-async function maybeLlmRewrite(
-  provider: LanguageModelProvider,
-  purpose: "preview_title" | "preview_summary",
-  fallback: string,
-  context: IntelligenceContext,
-): Promise<{ text: string; usedLlm: boolean; model: string; version: string }> {
-  if (provider.id === "rules") {
-    return { text: fallback, usedLlm: false, model: RULES_MODEL.id, version: RULES_MODEL.version };
-  }
-  try {
-    const result = await provider.generate({
-      purpose,
-      system:
-        "Write a sanitised DealAtlas preview. Never include buyer names, aliases, domains, URLs, emails, phones, OCIDs, notice IDs, source platform names, exact amounts, exact dates or exact addresses. Paraphrase. Keep it useful and generic.",
-      prompt: `Purpose: ${purpose}\nFallback: ${fallback}\nCategory: ${context.deal.mainCategory ?? ""}\nType: ${context.deal.dealType}`,
-    });
-    const text = result?.text?.trim();
-    if (!result || !text) {
-      return { text: fallback, usedLlm: false, model: RULES_MODEL.id, version: RULES_MODEL.version };
-    }
-    const sanitized = stripIdentity(text, context);
-    const scan = scanPreviewLeaks(
-      leakInput(context, {
-        previewTitle: purpose === "preview_title" ? sanitized : "Opportunity",
-        previewSummary: purpose === "preview_summary" ? sanitized : "A sanitised summary.",
-        requirementsPreview: [],
-        relevanceTags: [],
-      }),
-    );
-    if (scan.risk !== "LOW") {
-      return { text: fallback, usedLlm: false, model: RULES_MODEL.id, version: RULES_MODEL.version };
-    }
-    return {
-      text: sanitized,
-      usedLlm: true,
-      model: result.model,
-      version: result.version,
-    };
-  } catch {
-    return { text: fallback, usedLlm: false, model: RULES_MODEL.id, version: RULES_MODEL.version };
-  }
-}
-
 function assembleDraft(
   context: IntelligenceContext,
   title: string,
@@ -296,31 +208,20 @@ function assembleDraft(
   const competition = inferCompetitionLevel(context).level;
   const requirements = requirementsPreviewFromContext(context, aggressive ? 2 : 4);
   const tags = relevanceTags(context);
-  const cleanedTitle = stripIdentity(title, context);
-  const cleanedSummary = stripIdentity(summary, context);
   const draft = {
-    previewTitle: cleanedTitle,
-    previewSummary: cleanedSummary,
-    requirementsPreview: requirements.map((item) => stripIdentity(item, context)),
+    previewTitle: title,
+    previewSummary: summary,
+    requirementsPreview: requirements,
     relevanceTags: tags,
   };
-  const firstScan = scanPreviewLeaks(leakInput(context, draft));
-  const redacted = {
-    previewTitle: applyFindingTokens(draft.previewTitle, firstScan.findings) || cleanedTitle,
-    previewSummary: applyFindingTokens(draft.previewSummary, firstScan.findings) || cleanedSummary,
-    requirementsPreview: draft.requirementsPreview
-      .map((item) => applyFindingTokens(item, firstScan.findings))
-      .filter(Boolean),
-    relevanceTags: tags,
-  };
-  const scan = scanPreviewLeaks(leakInput(context, redacted));
+  const scan = scanPreviewLeaks(leakInput(context, draft));
   const region = broadRegionFromLocation([
     context.deal.exactLocationText,
     ...context.lots.map((lot) => lot.exactLocationText),
   ]);
   return {
-    previewTitle: redacted.previewTitle,
-    previewSummary: redacted.previewSummary,
+    previewTitle: draft.previewTitle,
+    previewSummary: draft.previewSummary,
     broadRegion: region,
     valueBand: valueBandFromAmounts(context.deal.valueMinExVat, context.deal.valueMaxExVat),
     deadlineBand: deadlineBandFromDeadline(
@@ -336,7 +237,7 @@ function assembleDraft(
     smeSuitability: sme,
     bidComplexity: complexity,
     competitionLevel: competition,
-    requirementsPreview: redacted.requirementsPreview,
+    requirementsPreview: draft.requirementsPreview,
     relevanceTags: tags,
     freshnessLabel: freshnessLabel(context),
     leakageRisk: scan.risk,
@@ -353,20 +254,16 @@ export async function generatePreviewDraft(
     aggressive?: boolean;
   },
 ): Promise<PreviewDraft> {
-  const provider = options?.provider ?? createRulesLanguageModel();
+  // Free and anonymous copy is template-only. Model output is not a preview source.
+  void options?.provider;
   const aggressive = options?.aggressive ?? false;
-  const titleFallback = buildPreviewTitle(context, aggressive);
-  const summaryFallback = buildPreviewSummary(context, aggressive);
-  const title = await maybeLlmRewrite(provider, "preview_title", titleFallback, context);
-  const summary = await maybeLlmRewrite(provider, "preview_summary", summaryFallback, context);
-  const usedLlm = title.usedLlm || summary.usedLlm;
   let draft = assembleDraft(
     context,
-    title.text,
-    summary.text,
+    buildPreviewTitle(context, aggressive),
+    buildPreviewSummary(context, aggressive),
     aggressive,
-    usedLlm ? "HYBRID" : "RULES",
-    usedLlm ? `${title.model}/${title.version}` : `${RULES_MODEL.id}/${RULES_MODEL.version}`,
+    "RULES",
+    `${RULES_MODEL.id}/${RULES_MODEL.version}`,
   );
 
   if (draft.leakageRisk !== "LOW") {

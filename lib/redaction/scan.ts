@@ -82,7 +82,7 @@ export type LeakScanInput = {
   previewSummary: string;
   requirementsPreview: string[];
   relevanceTags?: string[];
-  /** Published slug; its trailing 8-hex deal suffix is ignored. */
+  /** Published slug; its trailing 8 random hex characters are ignored. */
   slug?: string | null;
   broadRegion?: string | null;
   sourceTitle: string;

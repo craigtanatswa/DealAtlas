@@ -105,6 +105,10 @@ export async function rebuildChangedPreviews(options: {
     }
   }
 
+  if (processed > 0) {
+    await options.store.maintainDealsLeakIndex();
+  }
+
   return {
     mode,
     dryRun: false,

@@ -5,6 +5,7 @@ import { resolveProtectedRouteRedirect } from "@/lib/auth/redirect";
 import type { PublicDatabase } from "@/lib/db/public-schema";
 import { parseDealIdParam } from "@/lib/deals/paths";
 import { getPublicEnv } from "@/lib/env/public";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 function copyCookies(from: NextResponse, to: NextResponse): NextResponse {
   from.cookies.getAll().forEach((cookie) => {
@@ -56,9 +57,13 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
     );
   }
 
-  const missing = await missingAppDealForFree(supabase as unknown as GateClient, pathname, Boolean(user));
+  const gate = supabase as unknown as GateClient;
+  const missing = await missingAppDealForFree(gate, pathname, Boolean(user));
   if (missing) {
     return copyCookies(supabaseResponse, unpublishedDealResponse());
+  }
+  if (await retiredPublicSlug(pathname)) {
+    return copyCookies(supabaseResponse, goneSlugResponse());
   }
 
   return supabaseResponse;
@@ -97,6 +102,36 @@ async function missingAppDealForFree(
     p_deal_id: dealId,
   });
   return !error && data === true;
+}
+
+async function retiredPublicSlug(pathname: string): Promise<boolean> {
+  const match = pathname.match(/^\/deals\/([^/]+)$/);
+  if (!match || match[1] === "sitemap.xml") return false;
+  let slug = match[1];
+  try {
+    slug = decodeURIComponent(slug);
+  } catch {
+    return false;
+  }
+  try {
+    const admin = createSupabaseAdminClient();
+    const { data, error } = await admin.rpc("preview_slug_is_retired", { p_slug: slug });
+    return !error && data === true;
+  } catch {
+    return false;
+  }
+}
+
+export function goneSlugResponse(): NextResponse {
+  const html = `<!doctype html><html><head><title>Gone</title><meta name="robots" content="noindex"></head><body><main><h1>This page has gone</h1></main></body></html>`;
+  return new NextResponse(html, {
+    status: 410,
+    headers: {
+      "content-type": "text/html; charset=utf-8",
+      "cache-control": "no-store",
+      "x-robots-tag": "noindex",
+    },
+  });
 }
 
 function unpublishedDealResponse(): NextResponse {

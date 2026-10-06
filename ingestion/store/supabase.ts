@@ -412,6 +412,24 @@ export function createSupabaseIngestionStore(
       const row = throwIfQueryError("Load deal preview", result);
       return row ? mapPreview(row) : null;
     },
+    async previewSlugInUse(slug, dealId) {
+      const result = await client
+        .from("deal_previews")
+        .select("deal_id")
+        .eq("slug", slug)
+        .neq("deal_id", dealId)
+        .limit(1);
+      const rows = throwIfQueryError("Check preview slug", result);
+      return (rows?.length ?? 0) > 0;
+    },
+    async retirePreviewSlug(slug) {
+      const result = await client.rpc("retire_preview_slug", { p_slug: slug });
+      throwIfQueryError("Retire preview slug", result);
+    },
+    async maintainDealsLeakIndex() {
+      const result = await client.rpc("maintain_deals_leak_index");
+      throwIfQueryError("Maintain deals leak index", result);
+    },
     async upsertDealPreview(input) {
       const result = await client
         .from("deal_previews")

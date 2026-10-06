@@ -11,6 +11,13 @@ export const ANON_DTO_RPCS = ["search_preview_dtos", "get_preview_dto_by_slug", 
 export const SIGNED_IN_RPCS = ["get_preview_dto_by_deal_id", "resolve_preview_deal_id", "list_saved_deal_previews"];
 const DTO_RPCS = [...ANON_DTO_RPCS, ...SIGNED_IN_RPCS];
 
+/** 0020 functions. They appear only in phase B, and only service_role may execute them. */
+const PHASE_B_ADDED_FUNCTIONS = new Set([
+  "preview_slug_is_retired",
+  "retire_preview_slug",
+  "maintain_deals_leak_index",
+]);
+
 export type Acl = {
   functions: Record<string, { name: string; anon: boolean; authenticated: boolean }>;
   tables: Record<string, Record<"anon" | "authenticated", Record<"select" | "insert" | "update" | "delete", boolean>>>;
@@ -244,7 +251,13 @@ export function aclDiff(a: Acl, b: Acl): { intended: string[]; unintended: strin
     const fa = a.functions[sig];
     const fb = b.functions[sig];
     if (!fa || !fb) {
-      unintended.push(`${sig}: ${fa ? "dropped" : "added"}`);
+      const added = !fa && fb;
+      const serviceOnly =
+        added &&
+        PHASE_B_ADDED_FUNCTIONS.has(fb.name) &&
+        fb.anon === false &&
+        fb.authenticated === false;
+      (serviceOnly ? intended : unintended).push(`${sig}: ${fa ? "dropped" : "added"}`);
       continue;
     }
     const revocable = !DTO_RPCS.includes(fa.name);

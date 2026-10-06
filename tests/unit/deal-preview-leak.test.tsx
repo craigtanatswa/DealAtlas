@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
-import { render } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { cleanup, render } from "@testing-library/react";
+import { afterEach, describe, expect, it } from "vitest";
+
+afterEach(cleanup);
 
 import { DealPreviewDetail } from "@/components/deals/deal-preview-detail";
 import { DealSearchResults } from "@/components/deals/deal-search-results";

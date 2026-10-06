@@ -1,3 +1,5 @@
+import { randomBytes } from "node:crypto";
+
 import { extractDealIntelligence } from "@/ingestion/intelligence/extract";
 import type { LanguageModelProvider } from "@/ingestion/intelligence/provider";
 import { createRulesLanguageModel } from "@/ingestion/intelligence/provider";
@@ -7,6 +9,7 @@ import type {
   PreviewPublishResult,
 } from "@/ingestion/intelligence/types";
 import { generatePreviewDraft, leakScanInputFromContext } from "@/ingestion/preview/generate";
+import { buildPreviewSlug } from "@/lib/deals/public-slug";
 import { scanPreviewLeaks } from "@/lib/redaction/scan";
 import type {
   DealInsightRecord,
@@ -19,15 +22,16 @@ function toJson(value: unknown): DealInsightRecord["fieldProvenance"] {
   return JSON.parse(JSON.stringify(value)) as DealInsightRecord["fieldProvenance"];
 }
 
-function slugifyPreview(title: string, dealId: string): string {
-  const base = title
-    .toLowerCase()
-    .normalize("NFKD")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 48);
-  const suffix = dealId.replace(/-/g, "").slice(0, 8);
-  return `${base || "opportunity"}-${suffix}`;
+async function allocatePreviewSlug(
+  store: IngestionStore,
+  title: string,
+  dealId: string,
+): Promise<string> {
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const slug = buildPreviewSlug(title, randomBytes(4).toString("hex"));
+    if (!(await store.previewSlugInUse(slug, dealId))) return slug;
+  }
+  return buildPreviewSlug(title, randomBytes(4).toString("hex"));
 }
 
 function insightRecord(dealId: string, intelligence: DealIntelligence): DealInsightRecord {
@@ -71,7 +75,10 @@ export async function persistIntelligenceAndPreview(options: {
   }
 
   const existing = await store.getDealPreview(context.deal.id);
-  const slug = existing?.slug ?? slugifyPreview(draft.previewTitle, context.deal.id);
+  const slug = await allocatePreviewSlug(store, draft.previewTitle, context.deal.id);
+  if (existing?.slug && existing.slug !== slug) {
+    await store.retirePreviewSlug(existing.slug);
+  }
   const finalScan = scanPreviewLeaks(
     leakScanInputFromContext(context, draft, { slug, broadRegion: draft.broadRegion }),
   );

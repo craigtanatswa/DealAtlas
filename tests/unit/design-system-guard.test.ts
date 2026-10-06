@@ -177,12 +177,9 @@ describe("design-system anti-bypass guards", () => {
       "utf8",
     );
 
-    expect(page).toContain("HomeOpportunitySections");
-    expect(page).toContain("searchHomeLatestDealPreviews");
+    expect(page).not.toContain("HomeOpportunitySections");
+    expect(page).not.toContain("searchHomeLatestDealPreviews");
     expect(page).toContain("HomeTestimonialsSection");
-    expect(page.indexOf("HomeOpportunitySections")).toBeLessThan(
-      page.indexOf("HomeTestimonialsSection"),
-    );
     expect(data).toContain(
       "Placeholder testimonial content — replace with verified customer",
     );

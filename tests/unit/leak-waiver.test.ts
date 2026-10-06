@@ -90,10 +90,23 @@ function seo(phase: "A" | "B", ua: "chromium" | "googlebot", extra: Partial<Waiv
   };
 }
 
+const scopedSeo: Waiver = {
+  finding: "SEO-04",
+  scope: {
+    role: "anon",
+    path: "/deals/sitemap.xml",
+    instances: ["deals-sitemap-xml@chromium", "deals-sitemap-xml@googlebot"],
+    assertions: ["xml_or_404"],
+  },
+  reason: "matcher fixture",
+  approved_by: "Reviewer",
+  expires: "2026-12-31",
+};
+
 describe("waiver scope", () => {
   it("never covers a forbidden-token or INTERNAL_ID hit", () => {
-    expect(appliedWaiver(seo("A", "chromium", { tokens_present: ["T01"] }), file.waivers, now)).toBeNull();
-    expect(appliedWaiver(seo("B", "googlebot", { tokens_present: ["T31"] }), file.waivers, now)).toBeNull();
+    expect(appliedWaiver(seo("A", "chromium", { tokens_present: ["T01"] }), [scopedSeo], now)).toBeNull();
+    expect(appliedWaiver(seo("B", "googlebot", { tokens_present: ["T31"] }), [scopedSeo], now)).toBeNull();
     expect(
       appliedWaiver(
         seo("A", "chromium", {
@@ -102,7 +115,7 @@ describe("waiver scope", () => {
             { id: "no_forbidden_tokens", pass: false },
           ],
         }),
-        file.waivers,
+        [scopedSeo],
         now,
       ),
     ).toBeNull();
@@ -110,15 +123,16 @@ describe("waiver scope", () => {
   });
 
   it("SEO-04 matches only the anon deals-sitemap status and content-type check", () => {
+    expect(file.waivers.map((waiver) => waiver.finding)).toEqual(["REST-13"]);
     for (const phase of ["A", "B"] as const) {
       for (const ua of ["chromium", "googlebot"] as const) {
-        expect(appliedWaiver(seo(phase, ua), file.waivers, now)?.finding).toBe("SEO-04");
+        expect(appliedWaiver(seo(phase, ua), [scopedSeo], now)?.finding).toBe("SEO-04");
       }
     }
-    expect(appliedWaiver(seo("A", "chromium", { role: "free" }), file.waivers, now)).toBeNull();
-    expect(appliedWaiver(seo("A", "chromium", { instance: "sitemap@chromium" }), file.waivers, now)).toBeNull();
-    expect(appliedWaiver(seo("A", "chromium", { url: "http://127.0.0.1:3000/sitemap.xml" }), file.waivers, now)).toBeNull();
-    expect(appliedWaiver(seo("A", "chromium", { assertions: [{ id: "slug_union_is_indexable_PUB", pass: false }] }), file.waivers, now)).toBeNull();
+    expect(appliedWaiver(seo("A", "chromium", { role: "free" }), [scopedSeo], now)).toBeNull();
+    expect(appliedWaiver(seo("A", "chromium", { instance: "sitemap@chromium" }), [scopedSeo], now)).toBeNull();
+    expect(appliedWaiver(seo("A", "chromium", { url: "http://127.0.0.1:3000/sitemap.xml" }), [scopedSeo], now)).toBeNull();
+    expect(appliedWaiver(seo("A", "chromium", { assertions: [{ id: "slug_union_is_indexable_PUB", pass: false }] }), [scopedSeo], now)).toBeNull();
     expect(
       appliedWaiver(
         seo("A", "googlebot", {
@@ -127,7 +141,7 @@ describe("waiver scope", () => {
             { id: "lists_deals_sitemap_xml", pass: false },
           ],
         }),
-        file.waivers,
+        [scopedSeo],
         now,
       ),
     ).toBeNull();

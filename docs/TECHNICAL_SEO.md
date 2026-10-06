@@ -44,10 +44,10 @@ Search/filter result pages should generally be canonical/noindex unless a delibe
 Avoid infinite combinations generating crawl traps.
 
 ## 6. Sitemaps
-Separate sitemaps if scale warrants:
-- static pages
-- category pages
-- published Deal previews
+Separate sitemaps:
+- `/sitemap.xml` for static pages and category landings
+- `/deals/sitemap.xml` is an XML sitemap index, not an HTML page
+- `/deals/sitemap/{id}.xml` lists published preview slugs only
 
 Only include canonical indexable URLs.
 
