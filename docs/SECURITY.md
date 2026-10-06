@@ -189,3 +189,10 @@ Commit `.env.example`, never `.env.local` or production values.
 - admin endpoint rejects Pro user
 - preview leak scanner catches buyer/source strings
 - CSV formula injection test passes
+
+## 22. Hourly read-only leak scan
+`.github/workflows/leak-scan.yml` runs on an hourly cron and on `workflow_dispatch`. It never starts ingestion, preview rebuild, user notification or renewal jobs, and it does not edit `scheduled-jobs.yml`.
+
+The public pass fetches `https://www.dealatlas.uk` with no secrets and greps responses with the leak-probe token rules. The database pass re-runs the preview gate on a bounded set of published rows through a select-only client. Neither pass writes. A failure rate above 5% of scanned published rows raises alert severity only.
+
+Notifications go to the address in `LEAK_ALERT_EMAIL_TO` and to Sentry. The body is deal id, rule code and URL path. A failed or cancelled run sends the same kind of notice.

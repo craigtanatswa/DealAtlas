@@ -230,6 +230,8 @@ Paid intelligence is stored on `deal_insights` with per-field provenance, confid
 
 Rebuild stale deadline bands with `npm run rebuild-previews`.
 
+An hourly read-only leak scan lives in `leak-scan.yml`. It checks the public site and re-runs the preview gate. It does not publish, unpublish, hold rows or write to the database. `scheduled-jobs.yml` is left unchanged.
+
 ## 11. Source compliance gate
 Automated ingestion calls `canIngestSource(source)` before fetching.
 
