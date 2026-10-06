@@ -25,10 +25,18 @@ export function buildPreviewSlug(title: string, hex = randomBytes(4).toString("h
   return `${sanitisedTitleFragment(title)}-${hex}`;
 }
 
-/** True when the slug is already the template fragment for this title plus 8 hex characters. */
-export function isTemplatePreviewSlug(slug: string, title: string): boolean {
-  const hex = /-([0-9a-f]{8})$/.exec(slug)?.[1];
+/**
+ * True when the slug is already this title's template fragment plus 8 random hex
+ * characters. A suffix equal to the first 8 hex of the deal id is a PR1 slug and
+ * is never kept, even when the fragment matches.
+ */
+export function isTemplatePreviewSlug(slug: string, title: string, dealId: string): boolean {
+  const hex = /-([0-9a-fA-F]{8})$/.exec(slug)?.[1]?.toLowerCase();
   if (!hex) {
+    return false;
+  }
+  const dealPrefix = dealId.replace(/-/g, "").slice(0, 8).toLowerCase();
+  if (hex === dealPrefix) {
     return false;
   }
   return slug === buildPreviewSlug(title, hex);

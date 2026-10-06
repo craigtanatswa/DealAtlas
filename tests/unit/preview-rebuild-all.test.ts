@@ -10,9 +10,9 @@ import { persistIntelligenceAndPreview } from "@/ingestion/preview/publish";
 import { findATenderSourceRecord } from "@/ingestion/sources/find-a-tender/seed";
 import { createMemoryIngestionStore } from "@/ingestion/store/memory";
 import type { DealPreviewRecord } from "@/ingestion/store/types";
-import { previewSlugHash } from "@/lib/deals/public-slug";
+import { isTemplatePreviewSlug, previewSlugHash, sanitisedTitleFragment } from "@/lib/deals/public-slug";
 import { jobProcessShouldFail, parseJobArgs } from "@/lib/jobs/cli";
-import { rebuildAllPreviews } from "@/lib/jobs/previews";
+import { previewRebuildStatus, rebuildAllPreviews } from "@/lib/jobs/previews";
 
 const ROOT = path.resolve(__dirname, "../..");
 const NOW = new Date("2026-09-15T12:00:00.000Z");
@@ -48,8 +48,9 @@ async function seedDeal(
     sourceUrl?: string;
     buyerName?: string;
   },
+  idOverride?: string,
 ) {
-  const id = dealId(n);
+  const id = idOverride ?? dealId(n);
   if (source?.buyerName) {
     store.organizations.push({
       id: `buyer-${n}`,
@@ -353,6 +354,40 @@ describe("full preview rebuild", () => {
     expect(new Set(slugsBefore).size).toBe(slugsBefore.length);
   });
 
+  it("rotates a deal-id slug and keeps a random template slug", async () => {
+    const store = storeWithSource();
+    const title = "Facilities public tender for a public organisation";
+    const fragment = sanitisedTitleFragment(title);
+    const legacyId = "abcdef12-0000-4000-8000-000000000021";
+    const upperId = "abcdef12-0000-4000-8000-000000000022";
+    const keptId = "bbbbbbbb-0000-4000-8000-000000000023";
+    const legacySlug = `${fragment}-abcdef12`;
+    const upperSlug = `${fragment}-ABCDEF12`;
+    const keptSlug = `${fragment}-deadbeef`;
+    expect(isTemplatePreviewSlug(legacySlug, title, legacyId)).toBe(false);
+    expect(isTemplatePreviewSlug(upperSlug, title, upperId)).toBe(false);
+    expect(isTemplatePreviewSlug(keptSlug, title, keptId)).toBe(true);
+    await seedDeal(store, 21, { isPublished: true, slug: legacySlug, title }, undefined, legacyId);
+    await seedDeal(store, 22, { isPublished: true, slug: upperSlug, title }, undefined, upperId);
+    await seedDeal(store, 23, { isPublished: true, slug: keptSlug, title }, undefined, keptId);
+    const retired: string[] = [];
+    const retire = store.retirePreviewSlug.bind(store);
+    store.retirePreviewSlug = async (slug) => {
+      retired.push(slug);
+      await retire(slug);
+    };
+    const result = await rebuildAllPreviews({ store, now: NOW, mode: "live", batchSize: 10 });
+    expect(result.failures).toBe(0);
+    expect(result.processed).toBe(3);
+    expect(retired).toEqual([legacySlug, upperSlug]);
+    expect(store.retiredSlugHashes).toContain(previewSlugHash(legacySlug));
+    expect(store.retiredSlugHashes).toContain(previewSlugHash(upperSlug));
+    expect(store.retiredSlugHashes).not.toContain(previewSlugHash(keptSlug));
+    expect(store.previews.find((item) => item.dealId === legacyId)?.slug).not.toBe(legacySlug);
+    expect(store.previews.find((item) => item.dealId === upperId)?.slug).not.toBe(upperSlug);
+    expect(store.previews.find((item) => item.dealId === keptId)?.slug).toBe(keptSlug);
+  });
+
   it("leaves template slugs unchanged on a second full run", async () => {
     const store = storeWithSource();
     await seedDeal(store, 1, { isPublished: true, slug: "legacy-notice-aaaa1111" });
@@ -550,6 +585,101 @@ describe("full preview rebuild", () => {
     expect(implicit.dryRun).toBe(true);
     expect(implicit.processed).toBe(0);
     expect(JSON.stringify(store.previews)).toBe(before);
+  });
+
+  it("unpublishes a row with no deal or source in live mode and only counts it in dry-run", async () => {
+    const live = storeWithSource();
+    const missingDeal = dealId(31);
+    const missingSource = dealId(32);
+    live.previews.push(
+      stubPreview(missingDeal, { isPublished: true, unpublishedByAdmin: true }),
+    );
+    const heldSlug = live.previews[0]!.slug;
+    await live.createDeal({
+      id: missingSource,
+      primarySourceId: null,
+      externalPrimaryId: null,
+      ocid: null,
+      reference: null,
+      sourceTitle: "Zebra notice 88421",
+      sourceDescription: null,
+      buyerOrganizationId: null,
+      dealType: "PUBLIC_TENDER",
+      buyerSector: "PUBLIC",
+      stage: "LIVE",
+      status: "OPEN",
+      mainCategory: "Facilities",
+      procurementMethod: null,
+      specialRegime: null,
+      currency: "GBP",
+      valueMinExVat: null,
+      valueMaxExVat: null,
+      exactValueText: null,
+      exactLocationText: null,
+      enquiryDeadline: null,
+      submissionDeadline: null,
+      awardDecisionDate: null,
+      contractStartDate: null,
+      contractEndDate: null,
+      extensionEndDate: null,
+      nextProcurementDate: null,
+      estimatedRenewalDate: null,
+      smeSuitable: null,
+      vcseSuitable: null,
+      sourceUrl: null,
+      applicationUrl: null,
+      firstPublishedAt: null,
+      latestSourceAt: null,
+      lastVerifiedAt: null,
+      dataQualityScore: null,
+    });
+    live.previews.push(stubPreview(missingSource, { isPublished: true, unpublishedByAdmin: false }));
+    const sourceSlug = live.previews[1]!.slug;
+    const lines: string[] = [];
+    const log = vi.spyOn(console, "log").mockImplementation((...args: unknown[]) => {
+      lines.push(args.map(String).join(" "));
+    });
+    const err = vi.spyOn(console, "error").mockImplementation((...args: unknown[]) => {
+      lines.push(args.map(String).join(" "));
+    });
+    try {
+      const result = await rebuildAllPreviews({ store: live, now: NOW, mode: "live", batchSize: 10 });
+      expect(result.skipped).toBe(2);
+      expect(result.processed).toBe(0);
+      expect(result.failures).toBe(0);
+      expect(previewRebuildStatus(result)).toBe("PARTIAL");
+      expect(jobProcessShouldFail("previews", previewRebuildStatus(result))).toBe(true);
+      const held = live.previews.find((item) => item.dealId === missingDeal);
+      const sourceless = live.previews.find((item) => item.dealId === missingSource);
+      expect(held?.isPublished).toBe(false);
+      expect(held?.unpublishedByAdmin).toBe(true);
+      expect(held?.slug).toBe(heldSlug);
+      expect(sourceless?.isPublished).toBe(false);
+      expect(sourceless?.unpublishedByAdmin).toBe(false);
+      expect(sourceless?.slug).toBe(sourceSlug);
+      expect(live.retiredSlugHashes).toEqual([]);
+      const logged = lines.join("\n");
+      expect(logged).toContain(missingDeal);
+      expect(logged).toContain(missingSource);
+      expect(logged).not.toContain("Zebra notice 88421");
+    } finally {
+      log.mockRestore();
+      err.mockRestore();
+    }
+
+    const dry = storeWithSource();
+    const dryId = dealId(33);
+    dry.previews.push(stubPreview(dryId, { isPublished: true }));
+    const before = JSON.stringify(dry.previews);
+    const dryResult = await rebuildAllPreviews({ store: dry, now: NOW, mode: "dry-run", batchSize: 10 });
+    expect(dryResult.skipped).toBe(1);
+    expect(dryResult.processed).toBe(0);
+    expect(dryResult.dryRun).toBe(true);
+    expect(previewRebuildStatus(dryResult)).toBe("SUCCEEDED");
+    expect(JSON.stringify(dry.previews)).toBe(before);
+    expect(dry.retiredSlugHashes).toEqual([]);
+    expect(dry.insights).toHaveLength(0);
+    expect(dry.previewRuns).toHaveLength(0);
   });
 
   it("logs the batch cursor and failing deal id without source text", async () => {

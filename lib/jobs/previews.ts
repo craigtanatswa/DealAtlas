@@ -130,6 +130,7 @@ export type PreviewRiskCounts = {
 export type PreviewRebuildBatch = {
   selected: number;
   processed: number;
+  skipped: number;
   failures: number;
   risks: PreviewRiskCounts;
 };
@@ -140,6 +141,7 @@ export type PreviewRebuildAllResult = {
   all: true;
   selected: number;
   processed: number;
+  skipped: number;
   failures: number;
   batches: PreviewRebuildBatch[];
   risks: PreviewRiskCounts;
@@ -166,6 +168,17 @@ function previewBatchSize(explicit?: number): number {
   return Math.min(Math.floor(explicit), MAX_PREVIEW_BATCH);
 }
 
+export function previewRebuildStatus(result: {
+  failures: number;
+  skipped: number;
+  dryRun: boolean;
+}): "PARTIAL" | "SUCCEEDED" {
+  if (result.failures > 0 || (result.skipped > 0 && !result.dryRun)) {
+    return "PARTIAL";
+  }
+  return "SUCCEEDED";
+}
+
 export async function rebuildAllPreviews(options: {
   store: IngestionStore;
   now?: Date;
@@ -184,6 +197,7 @@ export async function rebuildAllPreviews(options: {
   let cursor = options.cursor || null;
   let selected = 0;
   let processed = 0;
+  let skipped = 0;
   let failures = 0;
 
   for (;;) {
@@ -201,19 +215,34 @@ export async function rebuildAllPreviews(options: {
 
     const batchRisks = emptyRisks();
     let batchProcessed = 0;
+    let batchSkipped = 0;
     let batchFailures = 0;
     for (const dealId of dealIds) {
       try {
         const deal = await options.store.getDealById(dealId);
-        if (!deal) {
-          continue;
-        }
-        const context = await contextFromPersisted({
-          store: options.store,
-          deal,
-          now,
-        });
+        const context = deal
+          ? await contextFromPersisted({
+              store: options.store,
+              deal,
+              now,
+            })
+          : null;
         if (!context) {
+          batchSkipped += 1;
+          structuredLog({
+            job: "previews",
+            msg: "preview_rebuild_all_skipped",
+            dealId,
+          });
+          if (!dryRun) {
+            const preview = await options.store.getDealPreview(dealId);
+            if (preview?.isPublished) {
+              await options.store.upsertDealPreview({
+                ...preview,
+                isPublished: false,
+              });
+            }
+          }
           continue;
         }
         if (dryRun) {
@@ -249,6 +278,7 @@ export async function rebuildAllPreviews(options: {
 
     selected += dealIds.length;
     processed += batchProcessed;
+    skipped += batchSkipped;
     failures += batchFailures;
     risks.LOW += batchRisks.LOW;
     risks.REVIEW += batchRisks.REVIEW;
@@ -256,6 +286,7 @@ export async function rebuildAllPreviews(options: {
     batches.push({
       selected: dealIds.length,
       processed: batchProcessed,
+      skipped: batchSkipped,
       failures: batchFailures,
       risks: batchRisks,
     });
@@ -268,6 +299,7 @@ export async function rebuildAllPreviews(options: {
       batch: batches.length,
       selected: dealIds.length,
       processed: batchProcessed,
+      skipped: batchSkipped,
       failures: batchFailures,
       low: batchRisks.LOW,
       review: batchRisks.REVIEW,
@@ -286,6 +318,7 @@ export async function rebuildAllPreviews(options: {
     dryRun,
     selected,
     processed,
+    skipped,
     failures,
     batches: batches.length,
     low: risks.LOW,
@@ -299,6 +332,7 @@ export async function rebuildAllPreviews(options: {
     all: true,
     selected,
     processed,
+    skipped,
     failures,
     batches,
     risks,

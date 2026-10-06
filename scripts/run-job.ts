@@ -135,9 +135,8 @@ async function dispatchJob(
     const { createIngestionSupabaseClient } = await import(
       "@/ingestion/store/worker-client"
     );
-    const { rebuildAllPreviews, rebuildChangedPreviews } = await import(
-      "@/lib/jobs/previews"
-    );
+    const { previewRebuildStatus, rebuildAllPreviews, rebuildChangedPreviews } =
+      await import("@/lib/jobs/previews");
     const store = createSupabaseIngestionStore(createIngestionSupabaseClient());
     if (args.all) {
       const result = await rebuildAllPreviews({
@@ -149,7 +148,7 @@ async function dispatchJob(
       });
       return {
         ...result,
-        status: result.failures > 0 ? "PARTIAL" : "SUCCEEDED",
+        status: previewRebuildStatus(result),
       };
     }
     const result = await rebuildChangedPreviews({

@@ -91,7 +91,8 @@ export async function persistIntelligenceAndPreview(options: {
 
   const existing = await store.getDealPreview(context.deal.id);
   const keptSlug =
-    existing?.slug && isTemplatePreviewSlug(existing.slug, draft.previewTitle)
+    existing?.slug &&
+    isTemplatePreviewSlug(existing.slug, draft.previewTitle, context.deal.id)
       ? existing.slug
       : null;
   const slug = keptSlug ?? (await allocatePreviewSlug(store, draft.previewTitle, context.deal.id));
