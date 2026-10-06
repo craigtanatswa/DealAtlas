@@ -23,7 +23,7 @@ async function main(): Promise<void> {
     const raw = createClient<Database>(url, key, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
-    const result = await runDbPass(createReadonlyClient(raw), {
+    const result = await runDbPass(createReadonlyClient(raw as never), {
       includeHeld: process.env.LEAK_SCAN_INCLUDE_HELD === "true",
     });
     writeState({
@@ -31,14 +31,14 @@ async function main(): Promise<void> {
       failed: result.failed,
       findings: result.findings,
       legacySlugs: result.legacySlugs,
-      tokens: result.tokens,
+      dealTokens: result.dealTokens,
     });
     return;
   }
   if (pass === "http") {
     const state = readState();
     const result = await runHttpPass({
-      tokens: state?.tokens ?? [],
+      dealTokens: state?.dealTokens ?? [],
       legacySlugs: state ? state.legacySlugs : null,
     });
     const base = state ?? emptyState();
@@ -47,7 +47,7 @@ async function main(): Promise<void> {
       failed: base.failed,
       findings: [...base.findings, ...result.findings],
       legacySlugs: [],
-      tokens: [],
+      dealTokens: [],
     });
     return;
   }

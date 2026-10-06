@@ -10,12 +10,19 @@ export type LegacySlug = {
   slug: string;
 };
 
+/** Source tokens for one deal. The HTTP pass uses them only on that deal's page. */
+export type DealTokenSet = {
+  dealId: string;
+  slug: string;
+  tokens: ManifestToken[];
+};
+
 export type ScanState = {
   scanned: number;
   failed: number;
   findings: LeakFindingReport[];
   legacySlugs: LegacySlug[];
-  tokens: ManifestToken[];
+  dealTokens: DealTokenSet[];
 };
 
 export function statePath(): string {
@@ -23,7 +30,7 @@ export function statePath(): string {
 }
 
 export function emptyState(): ScanState {
-  return { scanned: 0, failed: 0, findings: [], legacySlugs: [], tokens: [] };
+  return { scanned: 0, failed: 0, findings: [], legacySlugs: [], dealTokens: [] };
 }
 
 export function writeState(state: ScanState, file = statePath()): void {
@@ -41,6 +48,6 @@ export function readState(file = statePath()): ScanState | null {
     failed: parsed.failed ?? 0,
     findings: Array.isArray(parsed.findings) ? parsed.findings : [],
     legacySlugs: Array.isArray(parsed.legacySlugs) ? parsed.legacySlugs : [],
-    tokens: Array.isArray(parsed.tokens) ? parsed.tokens : [],
+    dealTokens: Array.isArray(parsed.dealTokens) ? parsed.dealTokens : [],
   };
 }

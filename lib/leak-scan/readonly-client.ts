@@ -1,9 +1,10 @@
 /**
  * Select-only view over a Supabase query builder.
- * The scan modules receive this type and cannot call insert, update, upsert, delete or rpc.
+ * Callers get a frozen from().select() surface. The service client, its
+ * headers, key, rest, auth and rpc stay inside closures and are not exposed.
  */
 
-const BLOCKED = new Set(["insert", "update", "upsert", "delete", "rpc"]);
+const BLOCKED = ["insert", "update", "upsert", "delete", "rpc", "headers", "rest", "auth"] as const;
 
 export type QueryError = { message: string };
 
@@ -14,6 +15,7 @@ export type QueryResult<T> = {
 
 export interface ReadonlyFilter<T> extends PromiseLike<QueryResult<T>> {
   eq(column: string, value: string | number | boolean): ReadonlyFilter<T>;
+  gt(column: string, value: string): ReadonlyFilter<T>;
   order(column: string, options: { ascending: boolean }): ReadonlyFilter<T>;
   limit(count: number): ReadonlyFilter<T>;
 }
@@ -24,57 +26,54 @@ export interface ReadonlyClient {
   };
 }
 
+type RawQuery = {
+  eq: (column: string, value: string | number | boolean) => RawQuery;
+  gt: (column: string, value: string) => RawQuery;
+  order: (column: string, options: { ascending: boolean }) => RawQuery;
+  limit: (count: number) => RawQuery;
+  then: (
+    onFulfilled?: ((value: QueryResult<unknown[]>) => unknown) | null,
+    onRejected?: ((reason: unknown) => unknown) | null,
+  ) => unknown;
+};
+
 type RawSelect = {
   from: (table: string) => {
-    select: (columns: string) => unknown;
+    select: (columns: string) => RawQuery;
   };
 };
 
-function seal<T>(query: unknown): ReadonlyFilter<T> {
-  if (!query || typeof query !== "object") {
-    throw new Error("leak scan select returned no query");
-  }
-  return new Proxy(query, {
-    get(target, prop, receiver) {
-      if (typeof prop === "string" && BLOCKED.has(prop)) {
-        return () => {
-          throw new Error("leak scan client is select-only");
-        };
-      }
-      const value = Reflect.get(target, prop, receiver);
-      if (typeof value !== "function") {
-        return value;
-      }
-      return (...args: unknown[]) => {
-        const next = (value as (...inner: unknown[]) => unknown).apply(target, args);
-        if (next && typeof next === "object" && prop !== "then") {
-          return seal(next);
-        }
-        return next;
-      };
+function wrap(query: RawQuery): ReadonlyFilter<unknown[]> {
+  const filter: ReadonlyFilter<unknown[]> = {
+    eq(column, value) {
+      return wrap(query.eq(column, value));
     },
-  }) as ReadonlyFilter<T>;
+    gt(column, value) {
+      return wrap(query.gt(column, value));
+    },
+    order(column, options) {
+      return wrap(query.order(column, options));
+    },
+    limit(count) {
+      return wrap(query.limit(count));
+    },
+    then(onFulfilled, onRejected) {
+      return Promise.resolve(query).then(onFulfilled, onRejected);
+    },
+  };
+  return Object.freeze(filter);
 }
 
 export function createReadonlyClient(raw: RawSelect): ReadonlyClient {
-  return {
-    from(table: string) {
-      const builder = raw.from(table);
-      const view = {
-        select(columns: string) {
-          return seal<unknown[]>(builder.select(columns));
-        },
-      };
-      return new Proxy(view, {
-        get(target, prop, receiver) {
-          if (typeof prop === "string" && BLOCKED.has(prop)) {
-            return () => {
-              throw new Error("leak scan client is select-only");
-            };
-          }
-          return Reflect.get(target, prop, receiver);
-        },
-      });
-    },
+  const from = (table: string) => {
+    const select = (columns: string) => wrap(raw.from(table).select(columns));
+    return Object.freeze({ select });
   };
+  const client = Object.freeze({ from });
+  for (const key of BLOCKED) {
+    if (key in client) {
+      throw new Error("leak scan client is select-only");
+    }
+  }
+  return client;
 }

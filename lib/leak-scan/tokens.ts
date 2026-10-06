@@ -44,7 +44,7 @@ export function sourceManifestTokens(input: {
   const add = (field: string, tokenClass: string, value: string | null, min: number) => {
     const trimmed = value?.trim() ?? "";
     if (trimmed.length < min) return;
-    out.push(token(`${input.dealId}:${field}`, tokenClass, trimmed, input.dealId));
+    out.push(token(field, tokenClass, trimmed, input.dealId));
   };
   add("title", "SOURCE_TITLE", input.sourceTitle, 12);
   add("buyer", "BUYER_NAME", input.buyerName, 8);

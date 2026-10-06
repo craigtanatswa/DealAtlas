@@ -1,15 +1,13 @@
 import { buildPreviewSlug } from "@/lib/deals/public-slug";
 import { structuredLog } from "@/lib/observability/log";
 import { scanPreviewLeaks, type LeakScanInput } from "@/lib/redaction/scan";
-import type { ManifestToken } from "@/tests/leak/lib/scan";
 
+import { codeCounts, type LeakFindingReport } from "@/lib/leak-scan/report";
 import type { ReadonlyClient } from "@/lib/leak-scan/readonly-client";
-import type { LeakFindingReport } from "@/lib/leak-scan/report";
-import type { LegacySlug } from "@/lib/leak-scan/state";
+import type { DealTokenSet, LegacySlug } from "@/lib/leak-scan/state";
 import { sourceManifestTokens } from "@/lib/leak-scan/tokens";
 
-export const PUBLISHED_SCAN_LIMIT = 100;
-const TOKEN_CAP = 200;
+export const PUBLISHED_BATCH = 100;
 
 const PREVIEW_COLUMNS =
   "deal_id, slug, preview_title, preview_summary, requirements_preview, relevance_tags, broad_region, is_published, unpublished_by_admin";
@@ -60,7 +58,7 @@ export type DbPassResult = {
   skipped: number;
   findings: LeakFindingReport[];
   legacySlugs: LegacySlug[];
-  tokens: ManifestToken[];
+  dealTokens: DealTokenSet[];
 };
 
 function asNumber(value: unknown): number | null {
@@ -168,43 +166,57 @@ async function one<T>(client: ReadonlyClient, table: string, columns: string, co
   return rows[0] ?? null;
 }
 
+async function loadKeyset(
+  client: ReadonlyClient,
+  column: "is_published" | "unpublished_by_admin",
+  batch: number,
+): Promise<PreviewRow[]> {
+  const rows: PreviewRow[] = [];
+  let after: string | null = null;
+  for (;;) {
+    let filter = client
+      .from("deal_previews")
+      .select(PREVIEW_COLUMNS)
+      .eq(column, true)
+      .order("deal_id", { ascending: true })
+      .limit(batch);
+    if (after) filter = filter.gt("deal_id", after);
+    const page = (await readRows(filter)) as PreviewRow[];
+    if (page.length === 0) break;
+    rows.push(...page);
+    const last = page[page.length - 1]?.deal_id;
+    if (!last || last === after || page.length < batch) break;
+    after = last;
+  }
+  return rows;
+}
+
 export async function runDbPass(
   client: ReadonlyClient,
-  options: { limit?: number; includeHeld?: boolean } = {},
+  options: { batchSize?: number; includeHeld?: boolean } = {},
 ): Promise<DbPassResult> {
-  const limit = options.limit ?? PUBLISHED_SCAN_LIMIT;
-  const published = (await readRows(
-    client.from("deal_previews").select(PREVIEW_COLUMNS).eq("is_published", true).order("deal_id", { ascending: true }).limit(limit),
-  )) as PreviewRow[];
-  const held = options.includeHeld
-    ? ((await readRows(
-        client
-          .from("deal_previews")
-          .select(PREVIEW_COLUMNS)
-          .eq("unpublished_by_admin", true)
-          .order("deal_id", { ascending: true })
-          .limit(limit),
-      )) as PreviewRow[])
-    : [];
+  const batch = options.batchSize ?? PUBLISHED_BATCH;
+  const published = await loadKeyset(client, "is_published", batch);
+  const held = options.includeHeld ? await loadKeyset(client, "unpublished_by_admin", batch) : [];
   const seen = new Set<string>();
   const previews: PreviewRow[] = [];
   for (const row of [...published, ...held]) {
-    if (seen.has(row.deal_id) || previews.length >= limit) continue;
+    if (seen.has(row.deal_id)) continue;
     seen.add(row.deal_id);
     previews.push(row);
   }
 
   const findings: LeakFindingReport[] = [];
   const legacySlugs: LegacySlug[] = [];
-  const tokens: ManifestToken[] = [];
-  let failed = 0;
+  const dealTokens: DealTokenSet[] = [];
+  let publishedScanned = 0;
+  let publishedFailed = 0;
   let skipped = 0;
 
   for (const preview of previews) {
     const deal = await one<DealRow>(client, "deals", DEAL_COLUMNS, "id", preview.deal_id);
     if (!deal) {
       skipped += 1;
-      structuredLog({ msg: "leak_scan_skipped", dealId: preview.deal_id });
       continue;
     }
     const source = deal.primary_source_id
@@ -276,45 +288,51 @@ export async function runDbPass(
       sourceAmounts: lots.flatMap((lot) => [asNumber(lot.value_min), asNumber(lot.value_max)]),
     });
     const scan = scanPreviewLeaks(input);
+    const rowHeld = preview.unpublished_by_admin === true || preview.is_published !== true;
+    if (!rowHeld) publishedScanned += 1;
     if (scan.risk !== "LOW") {
-      failed += 1;
-      const path = `/deals/${preview.slug}`;
+      if (!rowHeld) publishedFailed += 1;
+      const path = rowHeld ? null : `/deals/${preview.slug}`;
       for (const finding of scan.findings) {
-        findings.push({ dealId: preview.deal_id, code: finding.code, path });
+        findings.push({ dealId: preview.deal_id, code: finding.code, path, held: rowHeld, pass: "db" });
       }
     }
-    const legacy = legacySlug(preview.preview_title, preview.deal_id, preview.slug);
-    if (legacy) legacySlugs.push({ dealId: preview.deal_id, slug: legacy });
-    if (tokens.length < TOKEN_CAP) {
-      tokens.push(
-        ...sourceManifestTokens({
-          dealId: preview.deal_id,
-          sourceTitle: deal.source_title,
-          buyerName: buyer?.canonical_name ?? null,
-          ocid: deal.ocid,
-          reference: deal.reference,
-          externalPrimaryId: deal.external_primary_id,
-          sourceUrl: deal.source_url,
-          buyerEmail: buyer?.email ?? null,
-        }).slice(0, TOKEN_CAP - tokens.length),
-      );
+    if (!rowHeld) {
+      const legacy = legacySlug(preview.preview_title, preview.deal_id, preview.slug);
+      if (legacy) legacySlugs.push({ dealId: preview.deal_id, slug: legacy });
     }
+    dealTokens.push({
+      dealId: preview.deal_id,
+      slug: preview.slug,
+      tokens: sourceManifestTokens({
+        dealId: preview.deal_id,
+        sourceTitle: deal.source_title,
+        buyerName: buyer?.canonical_name ?? null,
+        ocid: deal.ocid,
+        reference: deal.reference,
+        externalPrimaryId: deal.external_primary_id,
+        sourceUrl: deal.source_url,
+        buyerEmail: buyer?.email ?? null,
+      }),
+    });
   }
 
   structuredLog({
     msg: "leak_scan_db",
-    scanned: previews.length,
-    failed,
+    scanned: publishedScanned,
+    failed: publishedFailed,
     skipped,
-    findings: findings.length,
+    held: held.length,
+    batches: batch,
+    db_codes: codeCounts(findings, "db") || "0",
   });
 
   return {
-    scanned: previews.length,
-    failed,
+    scanned: publishedScanned,
+    failed: publishedFailed,
     skipped,
     findings,
     legacySlugs,
-    tokens,
+    dealTokens,
   };
 }
