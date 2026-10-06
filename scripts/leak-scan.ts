@@ -25,19 +25,23 @@ async function main(): Promise<void> {
     });
     const result = await runDbPass(createReadonlyClient(raw as never), {
       includeHeld: process.env.LEAK_SCAN_INCLUDE_HELD === "true",
+      cursorSeed: Math.floor(Date.now() / 3_600_000),
     });
-    writeState({
+    const saved = {
       scanned: result.scanned,
       failed: result.failed,
       findings: result.findings,
       legacySlugs: result.legacySlugs,
       dealTokens: result.dealTokens,
-    });
+      incompleteAlerted: false,
+    };
+    writeState(saved);
     if (result.incomplete) {
       await deliverIncomplete(
         { scanned: result.scanned, failed: result.failed, findings: result.findings },
         alertDepsFromEnv(process.env),
       );
+      writeState({ ...saved, incompleteAlerted: true });
       process.exitCode = 1;
     }
     return;
@@ -55,6 +59,7 @@ async function main(): Promise<void> {
       findings: [...base.findings, ...result.findings],
       legacySlugs: [],
       dealTokens: [],
+      incompleteAlerted: base.incompleteAlerted === true,
     });
     return;
   }
@@ -67,6 +72,7 @@ async function main(): Promise<void> {
     return;
   }
   if (pass === "crash") {
+    if (readState()?.incompleteAlerted) return;
     await deliverCrash(alertDepsFromEnv(process.env));
     return;
   }

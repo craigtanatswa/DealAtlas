@@ -35,9 +35,19 @@ const GENERIC_NAME_WORDS = new Set([
   "organization", "borough", "district", "county", "ministry", "office", "trust", "board",
 ]);
 
+const STOP_WORDS = new Set(["a", "an", "of", "to", "in", "on", "at", "by", "or", "as"]);
+
+/** Exact DealAtlas hosts. Subdomains and lookalike suffixes are not ours. */
+export const OWN_HOSTS = new Set(["dealatlas.uk", "www.dealatlas.uk"]);
+
 export function isGenericName(value: string): boolean {
-  const words = value.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
-  return words.length === 0 || words.every((word) => word.length < 4 || GENERIC_NAME_WORDS.has(word));
+  const words = value.split(/[^A-Za-z0-9]+/).filter(Boolean);
+  if (words.length === 0) return true;
+  return words.every((word) => {
+    if (/^[A-Z]{3,}$/.test(word)) return false;
+    const lower = word.toLowerCase();
+    return GENERIC_NAME_WORDS.has(lower) || STOP_WORDS.has(lower);
+  });
 }
 
 const STRONG_CLASSES = new Set(["BUYER_NAME", "OCID", "REFERENCE", "SOURCE_URL", "SOURCE_DOMAIN", "PORTAL_NAME"]);
@@ -74,6 +84,7 @@ export function sourceManifestTokens(input: {
   externalPrimaryId: string | null;
   sourceUrl: string | null;
   buyerEmail: string | null;
+  buyerAliases?: string[] | null;
   sourceName?: string | null;
 }): ManifestToken[] {
   const out: ManifestToken[] = [];
@@ -83,16 +94,19 @@ export function sourceManifestTokens(input: {
     out.push(token(field, tokenClass, trimmed, input.dealId));
   };
   add("title", "SOURCE_TITLE", input.sourceTitle, 12);
-  add("buyer", "BUYER_NAME", input.buyerName, 8);
+  add("buyer", "BUYER_NAME", input.buyerName, 3);
+  for (const [index, alias] of (input.buyerAliases ?? []).entries()) {
+    add(`alias-${index}`, "BUYER_NAME", alias, 3);
+  }
   add("ocid", "OCID", input.ocid, 8);
   add("reference", "REFERENCE", input.reference, 6);
   add("external", "REFERENCE", input.externalPrimaryId, 8);
   const url = input.sourceUrl?.trim() ?? "";
   const host = url ? hostOf(url) : null;
-  if (url.length >= 12 && host && !host.endsWith("dealatlas.uk") && !PLATFORM_HOSTS.has(host)) {
+  if (url.length >= 12 && host && !OWN_HOSTS.has(host) && !PLATFORM_HOSTS.has(host)) {
     add("url", "SOURCE_URL", url, 12);
   }
-  if (host && host.length >= 8 && !host.endsWith("dealatlas.uk")) {
+  if (host && host.length >= 8 && !OWN_HOSTS.has(host)) {
     add("domain", "SOURCE_DOMAIN", host, 8);
   }
   add("email", "EMAIL", input.buyerEmail, 8);

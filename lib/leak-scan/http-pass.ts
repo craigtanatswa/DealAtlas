@@ -1,7 +1,7 @@
 import { structuredLog } from "@/lib/observability/log";
 import { codeCounts, type LeakFindingReport } from "@/lib/leak-scan/report";
 import type { DealTokenSet, LegacySlug } from "@/lib/leak-scan/state";
-import { unionStrongTokens } from "@/lib/leak-scan/tokens";
+import { OWN_HOSTS, unionStrongTokens } from "@/lib/leak-scan/tokens";
 import { compileTokens, heuristicHits, scanText, type ManifestToken } from "@/tests/leak/lib/scan";
 
 export const PUBLIC_ORIGIN = "https://www.dealatlas.uk";
@@ -12,9 +12,8 @@ const LEGACY_PROBE_LIMIT = 20;
 /** Harness report heuristics that are identifier-shaped. Matched text is not kept. */
 const GLOBAL_FORBIDDEN = ["portal_name", "ocid_shape", "email", "uk_phone", "gov_domain", "reference_shape"] as const;
 
-/** First-party contact text that already appears on marketing pages. */
-const OWN_EMAIL = /@(?:[a-z0-9-]+\.)*dealatlas\.uk$/i;
-const OWN_PHONE_DIGITS = new Set(["442079460991", "02079460991"]);
+/** Addresses that appear in site source. Compared trimmed and lowercased. */
+const OWN_EMAILS = new Set(["support@dealatlas.example"]);
 
 export type OldSlugStatus =
   | { status: "skipped"; reason: "db_pass_unavailable" | "no_legacy_slugs" }
@@ -106,10 +105,15 @@ function isListingPath(path: string): boolean {
   return path === "/" || path === "/deals" || path === "/api/search" || path.includes("/sitemap");
 }
 
-function tokenFindings(body: string, contentType: string, tokens: ManifestToken[], path: string): LeakFindingReport[] {
-  if (!tokens.length || !body) return [];
-  const scanned = scanText(body, compileTokens(manifest(tokens)), contentType);
-  const byId = new Map(tokens.map((entry) => [entry.id, entry]));
+function tokenFindings(
+  body: string,
+  contentType: string,
+  compiled: ReturnType<typeof compileTokens>,
+  path: string,
+): LeakFindingReport[] {
+  if (!compiled.length || !body) return [];
+  const scanned = scanText(body, compiled, contentType);
+  const byId = new Map(compiled.map((entry) => [entry.token.id, entry.token]));
   const findings: LeakFindingReport[] = [];
   for (const tokenScan of scanned.tokens.values()) {
     const dealId = byId.get(tokenScan.tokenId)?.rows[0] ?? "";
@@ -119,13 +123,9 @@ function tokenFindings(body: string, contentType: string, tokens: ManifestToken[
 }
 
 function isOwnContact(code: string, hit: string): boolean {
-  if (code === "email") return OWN_EMAIL.test(hit.trim());
-  if (code === "uk_phone") return OWN_PHONE_DIGITS.has(hit.replace(/\D/g, ""));
-  if (code === "gov_domain") {
-    const host = hit.trim().toLowerCase();
-    return host === "dealatlas.uk" || host.endsWith(".dealatlas.uk");
-  }
-  if (code === "reference_shape") return /dealatlas/i.test(hit);
+  const value = hit.trim().toLowerCase();
+  if (code === "email") return OWN_EMAILS.has(value);
+  if (code === "gov_domain") return OWN_HOSTS.has(value);
   return false;
 }
 
@@ -156,6 +156,8 @@ export async function runHttpPass(options: {
   const dealTokens = options.dealTokens ?? [];
   const bySlug = new Map(dealTokens.map((entry) => [entry.slug, entry]));
   const union = unionStrongTokens(dealTokens);
+  const unionCompiled = compileTokens(manifest(union));
+  const ownCompiled = new Map(dealTokens.map((entry) => [entry.slug, compileTokens(manifest(entry.tokens))]));
   const findings: LeakFindingReport[] = [];
   const seen = new Set<string>();
   let fetched = 0;
@@ -175,13 +177,14 @@ export async function runHttpPass(options: {
     if (isDealPage(clean)) {
       const slug = decodeURIComponent(clean.slice("/deals/".length));
       const own = bySlug.get(slug);
-      if (own) pushFindings(tokenFindings(page.body, page.contentType, own.tokens, clean));
-      pushFindings(tokenFindings(page.body, page.contentType, union, clean));
+      const ownSet = ownCompiled.get(slug);
+      if (ownSet) pushFindings(tokenFindings(page.body, page.contentType, ownSet, clean));
+      pushFindings(tokenFindings(page.body, page.contentType, unionCompiled, clean));
       pushFindings(globalFindings(page.body, clean, own?.dealId ?? ""));
       return;
     }
     if (isListingPath(clean)) {
-      pushFindings(tokenFindings(page.body, page.contentType, union, clean));
+      pushFindings(tokenFindings(page.body, page.contentType, unionCompiled, clean));
       pushFindings(globalFindings(page.body, clean, ""));
     }
   };

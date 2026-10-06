@@ -23,6 +23,7 @@ export type ScanState = {
   findings: LeakFindingReport[];
   legacySlugs: LegacySlug[];
   dealTokens: DealTokenSet[];
+  incompleteAlerted?: boolean;
 };
 
 export function statePath(): string {
@@ -49,5 +50,6 @@ export function readState(file = statePath()): ScanState | null {
     findings: Array.isArray(parsed.findings) ? parsed.findings : [],
     legacySlugs: Array.isArray(parsed.legacySlugs) ? parsed.legacySlugs : [],
     dealTokens: Array.isArray(parsed.dealTokens) ? parsed.dealTokens : [],
+    incompleteAlerted: parsed.incompleteAlerted === true,
   };
 }

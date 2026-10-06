@@ -4,7 +4,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { alertDepsFromEnv, deliverCrash, deliverFindings, deliverIncomplete } from "@/lib/leak-scan/alert";
-import { runDbPass } from "@/lib/leak-scan/db-pass";
+import { rotateFloor, runDbPass } from "@/lib/leak-scan/db-pass";
 import { rotatingSample, runHttpPass } from "@/lib/leak-scan/http-pass";
 import { createReadonlyClient, type ReadonlyFilter } from "@/lib/leak-scan/readonly-client";
 import { sourceManifestTokens, unionStrongTokens } from "@/lib/leak-scan/tokens";
@@ -414,24 +414,43 @@ describe("hourly leak scan", () => {
     expect(JSON.stringify(result.findings)).not.toContain(BUYER);
   });
 
-  it("does not alert on DealAtlas contact text", async () => {
-    const footer =
-      "support@dealatlas.uk info@dealatlas.uk +44 20 7946 0991 www.dealatlas.uk DEALATLAS-WEB-100234";
+  it("allowlists only the exact site contact address", async () => {
+    const planted = "evil@sub.dealatlas.uk notdealatlas.uk ABC-DEALATLAS-123 +44 20 7946 0991 support@dealatlas.example";
     const origin = "https://www.dealatlas.uk";
     const fetchImpl = (async (url: string) => {
       const href = String(url);
-      let body = "<html></html>";
-      if (href.endsWith("/") || href.endsWith("/deals") || href.includes("/api/search")) body = `<html>${footer}</html>`;
-      if (href.endsWith("/sitemap.xml")) body = "<html>auditor@foreign.example dept.service.gov.uk</html>";
+      const body = href.endsWith("/deals") ? `<html>${planted}</html>` : "<html></html>";
       return new Response(body, { status: 200, headers: { "content-type": "text/html" } });
     }) as typeof fetch;
-    const result = await runHttpPass({ origin, fetchImpl, dealTokens: [], legacySlugs: [], sampleSeed: 0 });
-    const noisy = new Set(["email", "uk_phone", "gov_domain", "reference_shape"]);
-    for (const path of ["/", "/deals", "/api/search"]) {
-      expect(result.findings.filter((finding) => finding.path === path && noisy.has(finding.code))).toEqual([]);
-    }
-    expect(result.findings).toContainEqual(expect.objectContaining({ code: "email", path: "/sitemap.xml" }));
-    expect(result.findings).toContainEqual(expect.objectContaining({ code: "gov_domain", path: "/sitemap.xml" }));
+    const tokens = sourceManifestTokens({
+      dealId: DEAL_ID,
+      sourceTitle: "unrelated source title that is long enough",
+      buyerName: null,
+      ocid: null,
+      reference: null,
+      externalPrimaryId: null,
+      sourceUrl: "https://notdealatlas.uk/notice/1",
+      buyerEmail: null,
+    });
+    const result = await runHttpPass({
+      origin,
+      fetchImpl,
+      dealTokens: [{ dealId: DEAL_ID, slug: OWN_SLUG, tokens }],
+      legacySlugs: [],
+      sampleSeed: 0,
+    });
+    const onDeals = result.findings.filter((finding) => finding.path === "/deals");
+    expect(onDeals).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: "email" }),
+        expect.objectContaining({ code: "uk_phone" }),
+        expect.objectContaining({ code: "reference_shape" }),
+        expect.objectContaining({ code: "SOURCE_DOMAIN" }),
+      ]),
+    );
+    expect(onDeals.some((finding) => finding.code === "email" && finding.path === "/deals")).toBe(true);
+    expect(JSON.stringify(result.findings)).not.toContain("support@dealatlas.example");
+    expect(result.findings.filter((finding) => finding.code === "email")).toHaveLength(1);
   });
 
   it("keeps generic names and source titles out of the strong-token union", () => {
@@ -458,6 +477,106 @@ describe("hourly leak scan", () => {
       buyerEmail: null,
     });
     expect(unionStrongTokens([{ tokens: strong }]).map((entry) => entry.class)).toEqual(["BUYER_NAME"]);
+  });
+
+  it("keeps short buyer names and an alias in the union and alerts on /deals", async () => {
+    const names = [
+      { dealId: "44444444-4444-4444-8444-444444444444", name: "Ofwat" },
+      { dealId: "55555555-5555-4555-8555-555555555555", name: "Thames Water" },
+      { dealId: "66666666-6666-4666-8666-666666666666", name: "Met Office" },
+      { dealId: "77777777-7777-4777-8777-777777777777", name: "HMRC" },
+    ];
+    const alias = "Veltham Registry";
+    const aliasDeal = "88888888-8888-4888-8888-888888888888";
+    const sets = [
+      ...names.map((entry) => ({
+        tokens: sourceManifestTokens({
+          dealId: entry.dealId,
+          sourceTitle: "unrelated source title that is long enough",
+          buyerName: entry.name,
+          ocid: null,
+          reference: null,
+          externalPrimaryId: null,
+          sourceUrl: null,
+          buyerEmail: null,
+        }),
+      })),
+      {
+        tokens: sourceManifestTokens({
+          dealId: aliasDeal,
+          sourceTitle: "unrelated source title that is long enough",
+          buyerName: null,
+          buyerAliases: [alias],
+          ocid: null,
+          reference: null,
+          externalPrimaryId: null,
+          sourceUrl: null,
+          buyerEmail: null,
+        }),
+      },
+    ];
+    const union = unionStrongTokens(sets);
+    expect(union.map((entry) => entry.canonical)).toEqual(
+      expect.arrayContaining([...names.map((entry) => entry.name), alias]),
+    );
+    const origin = "https://www.dealatlas.uk";
+    const planted = [...names.map((entry) => entry.name), alias].join(" ");
+    const fetchImpl = (async (url: string) => {
+      const body = String(url).endsWith("/deals") ? `<html>${planted}</html>` : "<html></html>";
+      return new Response(body, { status: 200, headers: { "content-type": "text/html" } });
+    }) as typeof fetch;
+    const result = await runHttpPass({
+      origin,
+      fetchImpl,
+      dealTokens: sets.map((set, index) => ({
+        dealId: set.tokens[0]?.rows[0] ?? "",
+        slug: `buyer-${index}`,
+        tokens: set.tokens,
+      })),
+      legacySlugs: [],
+      sampleSeed: 0,
+    });
+    for (const entry of names) {
+      expect(result.findings).toContainEqual(expect.objectContaining({ code: "BUYER_NAME", dealId: entry.dealId, path: "/deals" }));
+    }
+    expect(result.findings).toContainEqual(expect.objectContaining({ code: "BUYER_NAME", dealId: aliasDeal, path: "/deals" }));
+  });
+
+  it("tokenises an organisation alias loaded with the deal", async () => {
+    const orgId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+    const deal = { ...dealRow(DEAL_ID, SOURCE_TITLE), buyer_organization_id: orgId };
+    const previews = [
+      {
+        deal_id: DEAL_ID,
+        slug: PUBLISHED_SLUG,
+        preview_title: "Public facilities notice",
+        preview_summary: "A public organisation is seeking facilities management.",
+        requirements_preview: [],
+        relevance_tags: [],
+        broad_region: "Nationwide",
+        is_published: true,
+        unpublished_by_admin: false,
+      },
+    ];
+    const raw = {
+      from(table: string) {
+        return {
+          select() {
+            if (table === "deal_previews") return previewQuery(previews);
+            if (table === "deals") return previewQuery([deal]);
+            if (table === "organizations") {
+              return previewQuery([{ id: orgId, canonical_name: "The Council", domain: null, website: null, email: null, phone: null, city: null, postcode: null }]);
+            }
+            if (table === "organization_aliases") return previewQuery([{ organization_id: orgId, alias: "Veltham Registry" }]);
+            return previewQuery([]);
+          },
+        };
+      },
+    };
+    const result = await runDbPass(createReadonlyClient(raw), { batchSize: 10 });
+    expect(unionStrongTokens(result.dealTokens).map((entry) => entry.canonical)).toEqual(["Veltham Registry"]);
+    expect(rotateFloor(0)).toBeNull();
+    expect(rotateFloor(2)).toBe("1fffffff-ffff-ffff-ffff-ffffffffffff");
   });
 
   it("stops the database pass at the time budget and emails counts only", async () => {

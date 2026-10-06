@@ -192,9 +192,17 @@ function groupBy<T>(rows: T[], key: (row: T) => string): Map<string, T[]> {
   return map;
 }
 
+/** Hour bucket 0 starts at the first id. Later buckets resume after the previous nibble. */
+export function rotateFloor(seed: number): string | null {
+  const bucket = ((seed % 16) + 16) % 16;
+  if (bucket === 0) return null;
+  const prev = (bucket - 1).toString(16);
+  return `${prev}fffffff-ffff-ffff-ffff-ffffffffffff`;
+}
+
 export async function runDbPass(
   client: ReadonlyClient,
-  options: { batchSize?: number; includeHeld?: boolean; now?: () => number; budgetMs?: number } = {},
+  options: { batchSize?: number; includeHeld?: boolean; now?: () => number; budgetMs?: number; cursorSeed?: number } = {},
 ): Promise<DbPassResult> {
   const batch = options.batchSize ?? PUBLISHED_BATCH;
   const budgetMs = options.budgetMs ?? DB_BUDGET_MS;
@@ -338,6 +346,7 @@ export async function runDbPass(
           dealId: preview.deal_id,
           sourceTitle: deal.source_title,
           buyerName: buyer?.canonical_name ?? null,
+          buyerAliases: (aliasesByOrg.get(deal.buyer_organization_id ?? "") ?? []).map((row) => row.alias),
           ocid: deal.ocid,
           reference: deal.reference,
           externalPrimaryId: deal.external_primary_id,
@@ -349,10 +358,14 @@ export async function runDbPass(
     }
   };
 
+  const floor = rotateFloor(options.cursorSeed ?? 0);
+
   const walk = async (column: "is_published" | "unpublished_by_admin") => {
-    let after: string | null = null;
+    let after: string | null = floor;
+    let wrapped = floor === null;
+    let resumed = false;
     for (;;) {
-      if (after !== null && now() - started >= budgetMs) {
+      if (resumed && now() - started >= budgetMs) {
         incomplete = true;
         return;
       }
@@ -364,12 +377,31 @@ export async function runDbPass(
         .limit(batch);
       if (after) filter = filter.gt("deal_id", after);
       const page = (await readRows(filter)) as PreviewRow[];
-      if (page.length === 0) return;
+      resumed = true;
+      if (page.length === 0) {
+        if (!wrapped) {
+          wrapped = true;
+          after = null;
+          continue;
+        }
+        return;
+      }
+      const rows = wrapped || !floor ? page : page.filter((row) => row.deal_id > floor);
+      const slice = wrapped && floor ? page.filter((row) => row.deal_id <= floor) : rows;
+      if (slice.length === 0) return;
       batchCount += 1;
-      if (column === "unpublished_by_admin") held += page.length;
-      await scanPage(page);
+      if (column === "unpublished_by_admin") held += slice.length;
+      await scanPage(slice);
+      if (wrapped && floor && slice.length < page.length) return;
       const last = page[page.length - 1]?.deal_id;
-      if (!last || last === after || page.length < batch) return;
+      if (!last || last === after || page.length < batch) {
+        if (!wrapped) {
+          wrapped = true;
+          after = null;
+          continue;
+        }
+        return;
+      }
       after = last;
     }
   };
