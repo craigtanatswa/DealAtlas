@@ -69,7 +69,9 @@ export function retryAfterToMs(retryAfterHeader: string | null): number | null {
 
   const seconds = Number(retryAfterHeader);
   if (Number.isFinite(seconds) && seconds >= 0) {
-    return Math.min(60_000, seconds * 1000);
+    // Find a Tender has been observed to send Retry-After around the 120s
+    // window. Capping below that retries into another 429.
+    return Math.min(180_000, seconds * 1000);
   }
 
   const date = Date.parse(retryAfterHeader);
@@ -77,5 +79,5 @@ export function retryAfterToMs(retryAfterHeader: string | null): number | null {
     return null;
   }
 
-  return Math.max(0, Math.min(60_000, date - Date.now()));
+  return Math.max(0, Math.min(180_000, date - Date.now()));
 }
