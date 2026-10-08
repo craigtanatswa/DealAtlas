@@ -345,6 +345,7 @@ export async function runIngestion(
                   candidate,
                   now,
                 }),
+                publication: "preserve",
               });
               if (previewResult.published) {
                 counters.previewsPublished += 1;

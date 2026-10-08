@@ -27,8 +27,6 @@ export async function rebuildChangedPreviews(options: {
   changedSince?: string;
   /** When set, rebuild these deals instead of querying material changes. */
   dealIds?: string[];
-  /** preserve never turns is_published on. */
-  publication?: "auto" | "preserve";
   /** Omit identifiers from logs. */
   countsOnly?: boolean;
   reporter?: ErrorReporter;
@@ -92,7 +90,7 @@ export async function rebuildChangedPreviews(options: {
       const outcome = await persistIntelligenceAndPreview({
         store: options.store,
         context,
-        publication: options.publication,
+        publication: "preserve",
       });
       processed += 1;
       if (outcome.published) {
