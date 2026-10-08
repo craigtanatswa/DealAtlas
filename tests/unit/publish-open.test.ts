@@ -11,16 +11,16 @@ import {
 
 function client(opts: {
   count: number;
-  rpc?: (fn: string) => unknown;
-  onRpc?: (fn: string) => void;
+  rpc?: (fn: string, args?: Record<string, unknown>) => unknown;
+  onRpc?: (fn: string, args?: Record<string, unknown>) => void;
 }): PublishJobClient {
   return {
-    async rpc(fn) {
-      opts.onRpc?.(fn);
+    async rpc(fn, args) {
+      opts.onRpc?.(fn, args);
       if (!opts.rpc) {
         throw new Error("rpc called");
       }
-      return { data: opts.rpc(fn), error: null };
+      return { data: opts.rpc(fn, args), error: null };
     },
     from: () => ({
       select: () => ({
@@ -144,5 +144,39 @@ describe("publish jobs", () => {
     expect(alert.status).toBe("PARTIAL");
     expect(messages[0]).toContain("published_live=40");
     expect(messages[0]).not.toMatch(/[0-9a-f]{8}-/);
+  });
+
+  it("sends the live alert through the real email config", async () => {
+    const bodies: string[] = [];
+    const rpcArgs: Record<string, unknown>[] = [];
+    const fetchImpl = (async (_url: string, init?: RequestInit) => {
+      bodies.push(String(init?.body ?? ""));
+      return new Response("{}", { status: 200 });
+    }) as typeof fetch;
+    const result = await runPublishEligible({
+      mode: "live",
+      client: client({
+        count: 12,
+        rpc: (_fn, args) => {
+          if (args) rpcArgs.push(args);
+          return { selected: 3, published: 1, skipped_cap: 2 };
+        },
+      }),
+      env: {
+        RESEND_API_KEY: "re_test",
+        DEALATLAS_EMAIL_FROM: "alerts@dealatlas.uk",
+        LEAK_ALERT_EMAIL_TO: "craig@example.com",
+        GITHUB_RUN_ID: "4242",
+      },
+      fetchImpl,
+    });
+    expect(result.status).toBe("PARTIAL");
+    expect(rpcArgs).toEqual([{ p_cap: 300, p_run_id: "4242" }]);
+    const payload = JSON.parse(bodies[0] ?? "{}") as { to?: string; text?: string };
+    expect(payload.to).toBe("craig@example.com");
+    expect(payload.text).toContain("published=1");
+    expect(payload.text).toContain("published_live=12");
+    expect(payload.text).toContain("skipped_cap=2");
+    expect(payload.text).not.toMatch(/[0-9a-f]{8}-[0-9a-f]{4}-/);
   });
 });

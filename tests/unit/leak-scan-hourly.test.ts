@@ -426,7 +426,7 @@ describe("hourly leak scan", () => {
   });
 
   it("allowlists only the exact site contact address", async () => {
-    const planted = "notdealatlas.uk ABC-DEALATLAS-123 +44 20 7946 0991 support@dealatlas.example dept.service.gov.uk";
+    const planted = "notdealatlas.uk ABC-DEALATLAS-123 +44 20 7946 0991 support@dealatlas.example evil@sub.dealatlas.uk dept.service.gov.uk";
     const origin = "https://www.dealatlas.uk";
     const fetchImpl = (async (url: string) => {
       const href = String(url);
@@ -453,7 +453,9 @@ describe("hourly leak scan", () => {
       sampleSeed: 0,
     });
     const onDeals = result.findings.filter((finding) => finding.path === "/deals");
-    expect(onDeals.filter((finding) => finding.code === "email")).toEqual([]);
+    expect(onDeals.filter((finding) => finding.code === "email")).toEqual([
+      expect.objectContaining({ code: "email", path: "/deals" }),
+    ]);
     expect(onDeals).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ code: "uk_phone" }),
@@ -688,6 +690,46 @@ describe("hourly leak scan", () => {
     const result = await runDbPass(createReadonlyClient(raw), { batchSize: 10 });
     expect(result.incomplete).toBe(false);
     expect(result.dealTokens[0]?.tokens.some((entry) => entry.canonical === last)).toBe(true);
+  });
+
+  it("pages past a server cap lower than the requested page", async () => {
+    const orgId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+    const aliases = Array.from({ length: 7 }, (_, index) => ({
+      id: `${String(index).padStart(8, "0")}-0000-4000-8000-000000000001`,
+      organization_id: orgId,
+      alias: `Cap Alias ${index}`,
+    }));
+    const previews = [
+      {
+        deal_id: DEAL_ID,
+        slug: PUBLISHED_SLUG,
+        preview_title: "Public facilities notice",
+        preview_summary: "A public organisation is seeking facilities management.",
+        requirements_preview: [],
+        relevance_tags: [],
+        broad_region: "Nationwide",
+        is_published: true,
+        unpublished_by_admin: false,
+      },
+    ];
+    const raw = {
+      from(table: string) {
+        return {
+          select() {
+            if (table === "deal_previews") return previewQuery(previews);
+            if (table === "deals") return previewQuery([{ ...dealRow(DEAL_ID, SOURCE_TITLE), buyer_organization_id: orgId }]);
+            if (table === "organizations") {
+              return previewQuery([{ id: orgId, canonical_name: "The Council", domain: null, website: null, email: null, phone: null, city: null, postcode: null }]);
+            }
+            if (table === "organization_aliases") return previewQuery(aliases, 3);
+            return previewQuery([], 3);
+          },
+        };
+      },
+    };
+    const result = await runDbPass(createReadonlyClient(raw), { batchSize: 10 });
+    expect(result.incomplete).toBe(false);
+    expect(result.dealTokens[0]?.tokens.filter((entry) => entry.canonical.startsWith("Cap Alias"))).toHaveLength(7);
   });
 
   it("skips the crash email after the incomplete alert was sent", () => {

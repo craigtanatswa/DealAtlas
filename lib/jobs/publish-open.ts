@@ -105,7 +105,10 @@ export async function runPublishEligible(input: {
   if (input.mode !== "live") {
     return { status: "SUCCEEDED", dryRun: true, publishedLive, counts: {} };
   }
-  const { data, error } = await input.client.rpc("publish_eligible_previews", { p_cap: 300 });
+  const { data, error } = await input.client.rpc("publish_eligible_previews", {
+    p_cap: 300,
+    p_run_id: input.env?.GITHUB_RUN_ID ?? null,
+  });
   const counts = error ? null : numericCounts(data);
   const after = await countPublished(input.client);
   if (!counts) {
@@ -148,7 +151,9 @@ export async function runUnpublishStale(input: {
   if (input.mode !== "live") {
     return { status: "SUCCEEDED", dryRun: true, publishedLive, counts: {} };
   }
-  const { data, error } = await input.client.rpc("unpublish_stale_previews");
+  const { data, error } = await input.client.rpc("unpublish_stale_previews", {
+    p_run_id: input.env?.GITHUB_RUN_ID ?? null,
+  });
   const counts = error ? null : numericCounts(data);
   const after = await countPublished(input.client);
   if (!counts) {

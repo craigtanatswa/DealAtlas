@@ -82,6 +82,7 @@ export async function rebuildChangedPreviews(options: {
       const outcome = await persistIntelligenceAndPreview({
         store: options.store,
         context,
+        publication: "preserve",
       });
       processed += 1;
       if (outcome.published) {

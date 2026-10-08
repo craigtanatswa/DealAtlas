@@ -236,12 +236,12 @@ async function dispatchJob(
     );
     const client = createIngestionSupabaseClient() as never;
     if (job === "publish-eligible") {
-      return runPublishEligible({ mode: args.mode, client });
+      return runPublishEligible({ mode: args.mode, client, env: process.env });
     }
     if (job === "unpublish-stale") {
-      return runUnpublishStale({ mode: args.mode, client });
+      return runUnpublishStale({ mode: args.mode, client, env: process.env });
     }
-    return runPublishAlert({ mode: args.mode, client });
+    return runPublishAlert({ mode: args.mode, client, env: process.env });
   }
 
   const { createSupabaseIngestionStore } = await import(

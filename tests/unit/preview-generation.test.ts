@@ -67,18 +67,18 @@ async function ingestNormal() {
 }
 
 describe("preview generation from canonical records", () => {
-  it("publishes a useful LOW-risk preview without source identity", async () => {
+  it("builds a useful LOW-risk preview without source identity", async () => {
     const { store, result } = await ingestNormal();
     expect(result.status).toBe("SUCCEEDED");
-    expect(result.counters.previewsPublished).toBe(1);
-    expect(result.counters.previewsBlocked).toBe(0);
+    expect(result.counters.previewsPublished).toBe(0);
+    expect(result.counters.previewsBlocked).toBe(1);
     expect(store.previews).toHaveLength(1);
 
     const preview = store.previews[0]!;
     const deal = store.deals[0]!;
     const combined = `${preview.previewTitle} ${preview.previewSummary} ${preview.requirementsPreview.join(" ")}`;
 
-    expect(preview.isPublished).toBe(true);
+    expect(preview.isPublished).toBe(false);
     expect(preview.leakageRisk).toBe("LOW");
     expect(preview.previewTitle.length).toBeGreaterThan(12);
     expect(preview.previewSummary.length).toBeGreaterThan(24);
@@ -97,6 +97,33 @@ describe("preview generation from canonical records", () => {
     expect(combined.toLowerCase()).not.toContain("find a tender");
     expect(combined).not.toContain("Manchester");
     expect(combined).not.toContain("£250,000");
+  });
+
+  it("a default ingest publishes nothing and queues no match jobs", async () => {
+    const queued: string[] = [];
+    const store = createMemoryIngestionStore({
+      sources: [findATenderSourceRecord({ id: "source-fat" })],
+    });
+    const adapter = createFindATenderAdapter({
+      http: createFixtureHttpClient(() => packageFromFixtures(["normal.json"])),
+      now: () => NOW,
+    });
+    const result = await runIngestion({
+      sourceKey: "find-a-tender",
+      store,
+      adapter,
+      now: NOW,
+      limit: 1,
+      triggerType: "TEST",
+      onPreviewPublished: async (dealId) => {
+        queued.push(dealId);
+      },
+    });
+    expect(result.counters.previewsPublished).toBe(0);
+    expect(result.counters.previewsBlocked).toBe(1);
+    expect(store.previews[0]?.isPublished).toBe(false);
+    expect(store.previews[0]?.leakageRisk).toBe("LOW");
+    expect(queued).toEqual([]);
   });
 
   it("stores paid intelligence with per-field provenance", async () => {

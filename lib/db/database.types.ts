@@ -3054,8 +3054,8 @@ export type Database = {
       }
       maintain_deals_leak_index: { Args: never; Returns: undefined }
       preview_slug_is_retired: { Args: { p_slug: string }; Returns: boolean }
-      publish_eligible_previews: { Args: { p_cap?: number }; Returns: Json }
-      unpublish_stale_previews: { Args: never; Returns: Json }
+      publish_eligible_previews: { Args: { p_cap?: number; p_run_id?: string }; Returns: Json }
+      unpublish_stale_previews: { Args: { p_run_id?: string }; Returns: Json }
       resolve_preview_deal_id: { Args: { p_slug: string }; Returns: string }
       retire_preview_slug: { Args: { p_slug: string }; Returns: undefined }
       search_deal_previews: {

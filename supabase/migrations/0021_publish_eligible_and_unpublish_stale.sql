@@ -60,7 +60,13 @@ $$;
 revoke all on function private.preview_slug_is_template(text, text, uuid)
   from public, anon, authenticated, service_role;
 
-create or replace function public.publish_eligible_previews(p_cap integer default 300)
+drop function if exists public.publish_eligible_previews(integer);
+drop function if exists public.publish_eligible_previews(integer, text);
+
+create or replace function public.publish_eligible_previews(
+  p_cap integer default 300,
+  p_run_id text default null
+)
 returns jsonb
 language plpgsql
 security definer
@@ -83,15 +89,31 @@ begin
         when not exists (
           select 1 from public.data_sources s
           where s.id = d.primary_source_id
-            and s.reuse_status in ('OPEN_LICENSE', 'PERMISSION_GRANTED', 'LICENSED', 'TERMS_REVIEWED')
+            and s.enabled
+            and s.access_method = 'OCDS_API'::public.access_method
+            and s.reuse_status in ('OPEN_LICENSE'::public.reuse_status, 'PERMISSION_GRANTED'::public.reuse_status)
         ) then 'source'
         when not (
-          (
-            d.status in ('OPEN', 'CLOSING_SOON')
-            or (d.status = 'UPCOMING' and d.submission_deadline is not null)
+          dp.status = d.status
+          and (
+            (
+              d.status in ('OPEN', 'CLOSING_SOON')
+              and d.stage = 'LIVE'
+              and dp.stage = 'LIVE'
+              and d.submission_deadline is not null
+            )
+            or (
+              d.status = 'UPCOMING'
+              and d.stage = 'PLANNING'
+              and dp.stage = 'PLANNING'
+              and d.submission_deadline is not null
+              and exists (
+                select 1 from public.data_sources s
+                where s.id = d.primary_source_id
+                  and s.source_key in ('find-a-tender'::text, 'contracts-finder'::text)
+              )
+            )
           )
-          and dp.status = d.status
-          and dp.stage = d.stage
         ) then 'status'
         when d.submission_deadline is null
           or d.submission_deadline <= pg_catalog.now() + interval '24 hours'
@@ -132,9 +154,10 @@ begin
     returning dp.deal_id, dp.is_published
   ),
   audited as (
-    insert into public.admin_audit_events (actor_id, action, entity_type, entity_id, summary)
+    insert into public.admin_audit_events (actor_id, action, entity_type, entity_id, summary, metadata)
     select null, 'preview.publish'::text, 'deal_preview'::text, f.deal_id::text,
-      'Published LOW-risk preview for deal '::text || f.deal_id::text
+      'Published LOW-risk preview for deal '::text || f.deal_id::text,
+      pg_catalog.jsonb_build_object('actor'::text, 'system:ingest-open'::text, 'run_id'::text, p_run_id)
     from flipped f
     where f.is_published
     returning id
@@ -160,10 +183,13 @@ begin
 end;
 $$;
 
-revoke all on function public.publish_eligible_previews(integer) from public, anon, authenticated;
-grant execute on function public.publish_eligible_previews(integer) to service_role;
+revoke all on function public.publish_eligible_previews(integer, text) from public, anon, authenticated;
+grant execute on function public.publish_eligible_previews(integer, text) to service_role;
 
-create or replace function public.unpublish_stale_previews()
+drop function if exists public.unpublish_stale_previews();
+drop function if exists public.unpublish_stale_previews(text);
+
+create or replace function public.unpublish_stale_previews(p_run_id text default null)
 returns jsonb
 language plpgsql
 security definer
@@ -178,9 +204,40 @@ begin
     join public.deals d on d.id = dp.deal_id
     where dp.is_published
       and (
-        (d.submission_deadline is not null and d.submission_deadline <= pg_catalog.now())
-        or d.status in ('AWARDED', 'CANCELLED', 'CLOSED', 'EXPIRED')
-        or dp.status in ('AWARDED', 'CANCELLED', 'CLOSED', 'EXPIRED')
+        d.submission_deadline is null
+        or d.submission_deadline <= pg_catalog.now()
+        or d.status is distinct from dp.status
+        or d.stage is distinct from dp.stage
+        or not exists (
+          select 1 from public.data_sources s
+          where s.id = d.primary_source_id
+            and s.enabled
+            and s.access_method = 'OCDS_API'::public.access_method
+            and s.reuse_status in (
+              'OPEN_LICENSE'::public.reuse_status,
+              'PERMISSION_GRANTED'::public.reuse_status
+            )
+        )
+        or exists (
+          select 1 from private.publish_denylist x where x.deal_id = dp.deal_id
+        )
+        or not (
+          (
+            d.status in ('OPEN', 'CLOSING_SOON')
+            and d.stage = 'LIVE'
+            and dp.stage = 'LIVE'
+          )
+          or (
+            d.status = 'UPCOMING'
+            and d.stage = 'PLANNING'
+            and dp.stage = 'PLANNING'
+            and exists (
+              select 1 from public.data_sources s
+              where s.id = d.primary_source_id
+                and s.source_key in ('find-a-tender'::text, 'contracts-finder'::text)
+            )
+          )
+        )
       )
   ),
   flipped as (
@@ -192,9 +249,10 @@ begin
     returning dp.deal_id, dp.is_published
   ),
   audited as (
-    insert into public.admin_audit_events (actor_id, action, entity_type, entity_id, summary)
+    insert into public.admin_audit_events (actor_id, action, entity_type, entity_id, summary, metadata)
     select null, 'preview.unpublish'::text, 'deal_preview'::text, f.deal_id::text,
-      'Unpublished stale preview for deal '::text || f.deal_id::text
+      'Unpublished stale preview for deal '::text || f.deal_id::text,
+      pg_catalog.jsonb_build_object('actor'::text, 'system:ingest-open'::text, 'run_id'::text, p_run_id)
     from flipped f
     where not f.is_published
     returning id
@@ -209,5 +267,5 @@ begin
 end;
 $$;
 
-revoke all on function public.unpublish_stale_previews() from public, anon, authenticated;
-grant execute on function public.unpublish_stale_previews() to service_role;
+revoke all on function public.unpublish_stale_previews(text) from public, anon, authenticated;
+grant execute on function public.unpublish_stale_previews(text) to service_role;

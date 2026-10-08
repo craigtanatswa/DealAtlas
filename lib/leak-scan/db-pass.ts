@@ -163,7 +163,7 @@ function scanInput(preview: PreviewRow, deal: DealRow, extras: {
   };
 }
 
-const PAGE_ROWS = 1000;
+const PAGE_ROWS = 500;
 
 async function many<T>(
   client: ReadonlyClient,
@@ -177,7 +177,7 @@ async function many<T>(
   return (await readRows(client.from(table).select(columns).in(column, values).limit(limit))) as T[];
 }
 
-/** PostgREST max-rows is 1000. Keep requesting until a short page comes back. */
+/** Ask for 500 rows. A short page can still be the server cap, so continue until a page is empty. */
 async function manyPaged<T extends { id?: string }>(
   client: ReadonlyClient,
   table: string,
@@ -194,7 +194,6 @@ async function manyPaged<T extends { id?: string }>(
     const page = (await readRows(filter)) as T[];
     if (page.length === 0) return { rows, complete: true };
     rows.push(...page);
-    if (page.length < PAGE_ROWS) return { rows, complete: true };
     const last = page[page.length - 1]?.id;
     if (!last || last === after) return { rows, complete: false };
     after = last;
