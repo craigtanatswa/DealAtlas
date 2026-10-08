@@ -33,6 +33,16 @@ export type RunIngestionOptions = {
   minFetchIntervalMs?: number;
   sleep?: (ms: number) => Promise<void>;
   onPreviewPublished?: (dealId: string) => Promise<void>;
+  /** Fetch and count only. No run rows, raw rows, canonical rows, or previews. */
+  dryRun?: boolean;
+  /** Persist canonical rows, then let the caller build previews. */
+  skipPreview?: boolean;
+  /** A discover/page failure is PARTIAL and does not discard rows already written. */
+  failureMode?: "throw" | "partial";
+  onPersisted?: (info: {
+    dealId: string;
+    outcome: "new" | "updated" | "unchanged" | "linked";
+  }) => void;
 };
 
 function emptyCounters(): IngestionCounters {
@@ -83,6 +93,22 @@ export async function runIngestion(
 
   const decision = canIngestSource(toComplianceInput(source));
   if (!decision.allowed) {
+    if (options.dryRun) {
+      return {
+        status: "SKIPPED",
+        sourceKey: source.sourceKey,
+        runId: null,
+        reason: decision.reason,
+        counters: { ...counters, durationMs: Date.now() - started },
+        errors: [
+          {
+            stage: "compliance",
+            code: decision.code,
+            message: decision.reason,
+          },
+        ],
+      };
+    }
     const run = await options.store.createRun({
       sourceId: source.id,
       status: "SKIPPED",
@@ -111,6 +137,16 @@ export async function runIngestion(
   }
 
   if (!options.force && sourceShouldPause(source.consecutiveFailures)) {
+    if (options.dryRun) {
+      return {
+        status: "SKIPPED",
+        sourceKey: source.sourceKey,
+        runId: null,
+        reason: "Source paused after repeated access failures",
+        counters: { ...counters, durationMs: Date.now() - started },
+        errors: [],
+      };
+    }
     const run = await options.store.createRun({
       sourceId: source.id,
       status: "SKIPPED",
@@ -134,13 +170,16 @@ export async function runIngestion(
 
   assertCanIngestSource(toComplianceInput(source));
 
-  const run = await options.store.createRun({
-    sourceId: source.id,
-    status: "RUNNING",
-    triggerType: options.triggerType ?? "MANUAL",
-    cursorValue: options.cursor ?? null,
-    startedAt: now.toISOString(),
-  });
+  const run = options.dryRun
+    ? null
+    : await options.store.createRun({
+        sourceId: source.id,
+        status: "RUNNING",
+        triggerType: options.triggerType ?? "MANUAL",
+        cursorValue: options.cursor ?? null,
+        startedAt: now.toISOString(),
+      });
+  const runId = run?.id ?? null;
 
   let cursor = options.cursor;
   let remaining = options.limit ?? Number.POSITIVE_INFINITY;
@@ -155,12 +194,27 @@ export async function runIngestion(
         Number.isFinite(remaining) ? remaining : 20,
         100,
       );
-      const page = await options.adapter.discover(cursor, {
-        limit: pageLimit,
-        updatedFrom: options.updatedFrom,
-        updatedTo: options.updatedTo,
-        stages: options.stages,
-      });
+      let page;
+      try {
+        page = await options.adapter.discover(cursor, {
+          limit: pageLimit,
+          updatedFrom: options.updatedFrom,
+          updatedTo: options.updatedTo,
+          stages: options.stages,
+        });
+      } catch (error) {
+        const ingestionError = asIngestionError(error, "discover");
+        counters.errorCount += 1;
+        errors.push({
+          stage: ingestionError.stage,
+          code: ingestionError.code,
+          message: ingestionError.message,
+        });
+        if (options.failureMode === "partial") {
+          break;
+        }
+        throw error;
+      }
       const items = page.items.slice(
         0,
         Number.isFinite(remaining) ? remaining : page.items.length,
@@ -179,9 +233,38 @@ export async function runIngestion(
           lastFetchAt = Date.now();
           counters.fetched += 1;
           const hash = contentHash(unwrapReleasePayload(raw.payload) ?? raw.payload);
+          if (options.dryRun) {
+            const existingRaw = await options.store.findRawRecord(
+              source.id,
+              raw.externalRecordId,
+              hash,
+            );
+            const existingNotice = await options.store.findNotice(
+              source.id,
+              raw.externalRecordId,
+              raw.externalRecordId,
+            );
+            if (existingRaw && existingNotice) {
+              counters.unchanged += 1;
+              continue;
+            }
+            try {
+              const candidates = await options.adapter.parse(raw);
+              if (existingNotice) {
+                counters.updated += 1;
+              } else {
+                counters.new += candidates.length;
+              }
+            } catch (error) {
+              counters.parseFailures += 1;
+              throw asIngestionError(error, "parse", "PARSE_FAILED");
+            }
+            continue;
+          }
+
           const snapshot = await options.store.insertRawRecord({
             sourceId: source.id,
-            ingestionRunId: run.id,
+            ingestionRunId: runId ?? "",
             externalRecordId: raw.externalRecordId,
             sourceUrl: raw.sourceUrl ?? null,
             publishedAt: raw.publishedAt ?? null,
@@ -233,6 +316,13 @@ export async function runIngestion(
             } else {
               counters.unchanged += 1;
             }
+            options.onPersisted?.({
+              dealId: persisted.deal.id,
+              outcome: persisted.outcome,
+            });
+            if (options.skipPreview) {
+              continue;
+            }
 
             try {
               const buyer = persisted.deal.buyerOrganizationId
@@ -265,7 +355,7 @@ export async function runIngestion(
                     const ingestionError = asIngestionError(matchError, "preview");
                     await options.store.insertError({
                       sourceId: source.id,
-                      ingestionRunId: run.id,
+                      ingestionRunId: runId,
                       rawRecordId: snapshot.record.id,
                       externalRecordId: candidate.noticeIdentifier,
                       errorStage: "preview",
@@ -284,7 +374,7 @@ export async function runIngestion(
               const ingestionError = asIngestionError(previewError, "preview");
               await options.store.insertError({
                 sourceId: source.id,
-                ingestionRunId: run.id,
+                ingestionRunId: runId,
                 rawRecordId: snapshot.record.id,
                 externalRecordId: candidate.noticeIdentifier,
                 errorStage: "preview",
@@ -304,20 +394,22 @@ export async function runIngestion(
             code: ingestionError.code,
             message: ingestionError.message,
           });
-          await options.store.insertError({
-            sourceId: source.id,
-            ingestionRunId: run.id,
-            rawRecordId: null,
-            externalRecordId: item.externalRecordId,
-            errorStage: ingestionError.stage,
-            errorCode: ingestionError.code,
-            message: ingestionError.message,
-            retryable: ingestionError.retryable,
-            details: {
-              ...ingestionError.details,
-              ocid: item.ocid ?? null,
-            },
-          });
+          if (!options.dryRun && runId) {
+            await options.store.insertError({
+              sourceId: source.id,
+              ingestionRunId: runId,
+              rawRecordId: null,
+              externalRecordId: item.externalRecordId,
+              errorStage: ingestionError.stage,
+              errorCode: ingestionError.code,
+              message: ingestionError.message,
+              retryable: ingestionError.retryable,
+              details: {
+                ...ingestionError.details,
+                ocid: item.ocid ?? null,
+              },
+            });
+          }
         }
       }
 
@@ -329,60 +421,98 @@ export async function runIngestion(
     }
 
     const status =
-      counters.errorCount === 0
-        ? "SUCCEEDED"
-        : counters.new + counters.updated + counters.unchanged > 0
-          ? "PARTIAL"
-          : "FAILED";
+      options.failureMode === "partial" && counters.errorCount > 0
+        ? "PARTIAL"
+        : counters.errorCount === 0
+          ? "SUCCEEDED"
+          : counters.new + counters.updated + counters.unchanged > 0
+            ? "PARTIAL"
+            : "FAILED";
 
-    await options.store.updateRun(run.id, {
-      status,
-      finishedAt: new Date().toISOString(),
-      cursorValue: cursor ?? null,
-      discoveredCount: counters.discovered,
-      fetchedCount: counters.fetched,
-      newCount: counters.new,
-      updatedCount: counters.updated,
-      unchangedCount: counters.unchanged,
-      errorCount: counters.errorCount,
-      metadata: {
-        parseFailures: counters.parseFailures,
-        duplicatesLinked: counters.duplicatesLinked,
-        previewsPublished: counters.previewsPublished,
-        previewsBlocked: counters.previewsBlocked,
-      },
-    });
+    if (runId) {
+      await options.store.updateRun(runId, {
+        status,
+        finishedAt: new Date().toISOString(),
+        cursorValue: cursor ?? null,
+        discoveredCount: counters.discovered,
+        fetchedCount: counters.fetched,
+        newCount: counters.new,
+        updatedCount: counters.updated,
+        unchangedCount: counters.unchanged,
+        errorCount: counters.errorCount,
+        metadata: {
+          parseFailures: counters.parseFailures,
+          duplicatesLinked: counters.duplicatesLinked,
+          previewsPublished: counters.previewsPublished,
+          previewsBlocked: counters.previewsBlocked,
+        },
+      });
 
-    await options.store.updateSource(source.id, {
-      lastSuccessAt: status === "FAILED" ? source.lastSuccessAt : new Date().toISOString(),
-      consecutiveFailures: status === "FAILED" ? source.consecutiveFailures + 1 : 0,
-    });
+      await options.store.updateSource(source.id, {
+        lastSuccessAt: status === "FAILED" ? source.lastSuccessAt : new Date().toISOString(),
+        consecutiveFailures: status === "FAILED" ? source.consecutiveFailures + 1 : 0,
+      });
+    }
 
     counters.durationMs = Date.now() - started;
     return {
       status,
       sourceKey: source.sourceKey,
-      runId: run.id,
+      runId,
       cursor: cursor ?? null,
       counters,
       errors,
     };
   } catch (error) {
     const ingestionError = asIngestionError(error, "run");
-    await options.store.updateRun(run.id, {
-      status: "FAILED",
-      finishedAt: new Date().toISOString(),
-      discoveredCount: counters.discovered,
-      fetchedCount: counters.fetched,
-      newCount: counters.new,
-      updatedCount: counters.updated,
-      unchangedCount: counters.unchanged,
-      errorCount: counters.errorCount + 1,
-      metadata: { code: ingestionError.code, message: ingestionError.message },
-    });
-    await options.store.updateSource(source.id, {
-      consecutiveFailures: source.consecutiveFailures + 1,
-    });
+    if (options.failureMode === "partial") {
+      counters.errorCount += 1;
+      counters.durationMs = Date.now() - started;
+      if (runId) {
+        await options.store.updateRun(runId, {
+          status: "PARTIAL",
+          finishedAt: new Date().toISOString(),
+          discoveredCount: counters.discovered,
+          fetchedCount: counters.fetched,
+          newCount: counters.new,
+          updatedCount: counters.updated,
+          unchangedCount: counters.unchanged,
+          errorCount: counters.errorCount,
+          metadata: { code: ingestionError.code },
+        });
+      }
+      return {
+        status: "PARTIAL",
+        sourceKey: source.sourceKey,
+        runId,
+        cursor: cursor ?? null,
+        counters,
+        errors: [
+          ...errors,
+          {
+            stage: ingestionError.stage,
+            code: ingestionError.code,
+            message: ingestionError.message,
+          },
+        ],
+      };
+    }
+    if (runId) {
+      await options.store.updateRun(runId, {
+        status: "FAILED",
+        finishedAt: new Date().toISOString(),
+        discoveredCount: counters.discovered,
+        fetchedCount: counters.fetched,
+        newCount: counters.new,
+        updatedCount: counters.updated,
+        unchangedCount: counters.unchanged,
+        errorCount: counters.errorCount + 1,
+        metadata: { code: ingestionError.code, message: ingestionError.message },
+      });
+      await options.store.updateSource(source.id, {
+        consecutiveFailures: source.consecutiveFailures + 1,
+      });
+    }
     throw ingestionError;
   }
 }

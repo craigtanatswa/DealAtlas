@@ -223,12 +223,13 @@ jobs:
       - name: Install PostgreSQL client
         run: sudo apt-get update -q && sudo apt-get install -y -q --no-install-recommends postgresql-client
       # The pre-0019 phase models production after the app deploy and before the lockdown.
-      # 0020 is held with it: migration up cannot insert 0019 behind an already-applied 0020.
-      - name: Hold back migrations 0019 and 0020
+      # 0020 and 0021 are held with it: migration up cannot insert 0019 behind a later applied version.
+      - name: Hold back migrations 0019, 0020 and 0021
         run: |
           mkdir -p "$RUNNER_TEMP/held-migrations"
           mv supabase/migrations/0019_*.sql "$RUNNER_TEMP/held-migrations/"
           mv supabase/migrations/0020_*.sql "$RUNNER_TEMP/held-migrations/"
+          mv supabase/migrations/0021_*.sql "$RUNNER_TEMP/held-migrations/"
       - name: Start local Supabase (migrations 0001-0018)
         run: npx supabase start -x studio,imgproxy,edge-runtime,logflare,vector,supavisor,postgres-meta,realtime,storage-api
       - name: Export local Supabase connection details
@@ -259,11 +260,12 @@ jobs:
           npx tsx --import ./scripts/allow-server-only.mjs tests/leak/preflight.ts
           npx tsx --import ./scripts/allow-server-only.mjs tests/leak/run.ts --phase A
           bash tests/leak/stop-app.sh
-      - name: Apply 0019 and 0020
+      - name: Apply 0019, 0020 and 0021
         if: ${{ !cancelled() }}
         run: |
           mv "$RUNNER_TEMP"/held-migrations/0019_*.sql supabase/migrations/
           mv "$RUNNER_TEMP"/held-migrations/0020_*.sql supabase/migrations/
+          mv "$RUNNER_TEMP"/held-migrations/0021_*.sql supabase/migrations/
           npx supabase migration up --local
           test "$(psql "$DEALATLAS_DB_TEST_DB_URL" -XAt -c "select pg_catalog.to_regclass('private.pre_0019_acl') is not null")" = "t"
       - name: Phase B

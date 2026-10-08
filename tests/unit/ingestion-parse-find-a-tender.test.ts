@@ -46,6 +46,7 @@ describe("Find a Tender OCDS parse", () => {
       NOW,
     );
     expect(candidate.stage).toBe("PLANNING");
+    expect(candidate.status).toBe("UPCOMING");
     expect(candidate.valueMaxExVat).toBeNull();
     expect(candidate.lots).toEqual([]);
   });

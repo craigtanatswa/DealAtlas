@@ -29,6 +29,7 @@ const STATUS_META: Record<
   CANCELLED: { label: "Cancelled", variant: "destructive", icon: XCircleIcon },
   EXPIRED: { label: "Expired", variant: "outline", icon: TimerIcon },
   WITHDRAWN: { label: "Withdrawn", variant: "destructive", icon: BanIcon },
+  UNCLASSIFIED: { label: "Unclassified", variant: "outline", icon: CircleDotIcon },
 };
 
 export function DealStatusBadge({ status }: { status: DealStatus }) {

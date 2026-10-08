@@ -5499,3 +5499,14 @@ grant execute on function public.maintain_deals_leak_index() to service_role;
 -- ============================================================================
 -- END 0020_template_slugs_and_gin_fastupdate.sql
 -- ============================================================================
+
+-- ============================================================================
+-- BEGIN 0021_unclassified_deal_status.sql
+-- ============================================================================
+
+-- Notices that are not a live tender or a dated planning notice.
+alter type public.deal_status add value if not exists 'UNCLASSIFIED';
+
+-- ============================================================================
+-- END 0021_unclassified_deal_status.sql
+-- ============================================================================
