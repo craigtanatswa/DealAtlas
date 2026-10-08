@@ -106,16 +106,30 @@ export function mapDealStage(input: {
   return "LIVE";
 }
 
+const TENDER_TAGS = new Set(["tender", "tenderupdate", "tenderamendment"]);
+const PLANNING_TAGS = new Set(["planning", "planningupdate"]);
+
+function instant(value: string | null | undefined): number | null {
+  if (!value) {
+    return null;
+  }
+  const parsed = new Date(value).getTime();
+  return Number.isNaN(parsed) ? null : parsed;
+}
+
 export function mapDealStatus(input: {
   tenderStatus?: string | null;
   lotStatus?: string | null;
   tags: string[];
   submissionDeadline?: string | null;
+  /** Planning notices: the dated moment a future tender is expected. */
+  futureTenderDate?: string | null;
   now: Date;
   hasAwards: boolean;
 }): DealStatus {
   const status = (input.lotStatus ?? input.tenderStatus ?? "").toLowerCase();
-  if (status === "withdrawn") {
+  const tags = input.tags.map((tag) => tag.toLowerCase());
+  if (status === "withdrawn" || tags.includes("tendercancellation")) {
     return "WITHDRAWN";
   }
   if (status === "cancelled") {
@@ -124,31 +138,34 @@ export function mapDealStatus(input: {
   if (status === "unsuccessful") {
     return "CLOSED";
   }
-  if (status === "planned") {
-    return "UPCOMING";
-  }
-  if (status === "complete" || input.hasAwards || input.tags.includes("award")) {
+  if (status === "complete" || input.hasAwards || tags.includes("award")) {
     return input.hasAwards ? "AWARDED" : "CLOSED";
   }
-  if (input.tags.includes("contract") && status !== "active") {
+  if (tags.includes("contract") && status !== "active") {
     return "ACTIVE";
   }
-  if (status === "active" || input.tags.includes("tender")) {
-    if (input.submissionDeadline) {
-      const deadline = new Date(input.submissionDeadline);
-      if (!Number.isNaN(deadline.getTime())) {
-        if (deadline.getTime() < input.now.getTime()) {
-          return "CLOSED";
-        }
-        const sevenDays = 7 * 24 * 60 * 60 * 1000;
-        if (deadline.getTime() - input.now.getTime() <= sevenDays) {
-          return "CLOSING_SOON";
-        }
-      }
+
+  const tenderNotice = tags.some((tag) => TENDER_TAGS.has(tag));
+  const deadline = instant(input.submissionDeadline);
+  if (tenderNotice && deadline != null) {
+    if (deadline < input.now.getTime()) {
+      return "CLOSED";
+    }
+    const sevenDays = 7 * 24 * 60 * 60 * 1000;
+    if (deadline - input.now.getTime() <= sevenDays) {
+      return "CLOSING_SOON";
     }
     return "OPEN";
   }
-  return "OPEN";
+
+  const planningNotice =
+    status === "planned" || tags.some((tag) => PLANNING_TAGS.has(tag));
+  const futureTender = instant(input.futureTenderDate);
+  if (planningNotice && futureTender != null && futureTender > input.now.getTime()) {
+    return "UPCOMING";
+  }
+
+  return "UNCLASSIFIED";
 }
 
 export function mapRequirementType(value: string | null | undefined): "TECHNICAL" | "FINANCIAL" | "LEGAL" | "SECURITY" | "COMPLIANCE" | "INSURANCE" | "EXPERIENCE" | "SOCIAL_VALUE" | "OTHER" {

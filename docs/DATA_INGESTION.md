@@ -271,7 +271,7 @@ MVP recommendation:
 - static pipeline pages: daily/weekly depending on expected change
 - renewal recalculation: weekly
 
-GitHub Actions runs `npm run job -- --job ingest --due`, which selects enabled, compliant, registered sources whose cron is due, then ingests them sequentially with per-source isolation and `rate_limit_per_minute` spacing.
+GitHub Actions runs `npm run job -- --job ingest --due`, which selects enabled, compliant, registered sources whose cron is due, then ingests them sequentially with per-source isolation and `rate_limit_per_minute` spacing. `.github/workflows/scheduled-jobs.yml` stays disabled. Open UK tenders use `.github/workflows/ingest-open.yml`, which calls Find a Tender `ocdsReleasePackages` only (`stages=tender`), honours Retry-After, and does not fetch each notice when the package already contains the release. A source error finishes PARTIAL and leaves existing rows in place. `dry_run=true` counts without writing. Changed deals get template previews with `is_published` left as it was. Ingest never publishes. A daily unpublish-only run sets `is_published` false when a deadline has passed, and does not delete rows.
 
 ## 20. Retry and resilience
 - exponential backoff for transient failures

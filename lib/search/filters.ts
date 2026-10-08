@@ -49,6 +49,7 @@ export const DEAL_STATUSES = [
   "ACTIVE",
   "EXPIRED",
   "WITHDRAWN",
+  "UNCLASSIFIED",
 ] as const satisfies ReadonlyArray<Database["public"]["Enums"]["deal_status"]>;
 
 export type DealStatus = (typeof DEAL_STATUSES)[number];
@@ -63,6 +64,7 @@ export const DEAL_STATUS_LABELS: Record<DealStatus, string> = {
   ACTIVE: "Active",
   EXPIRED: "Expired",
   WITHDRAWN: "Withdrawn",
+  UNCLASSIFIED: "Unclassified",
 };
 
 export const DEAL_STAGES = [

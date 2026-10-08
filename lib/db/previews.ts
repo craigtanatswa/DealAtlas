@@ -54,6 +54,7 @@ const DEAL_STATUS_VALUES = [
   "ACTIVE",
   "EXPIRED",
   "WITHDRAWN",
+  "UNCLASSIFIED",
 ] as const;
 
 const previewListSchema = paginationSchema.extend({
@@ -90,7 +91,7 @@ const previewListSchema = paginationSchema.extend({
   valueBand: z.string().trim().min(1).max(80).optional(),
   deadlineBand: z.string().trim().min(1).max(80).optional(),
   status: z.enum(DEAL_STATUS_VALUES).optional(),
-  statuses: z.array(z.enum(DEAL_STATUS_VALUES)).min(1).max(9).optional(),
+  statuses: z.array(z.enum(DEAL_STATUS_VALUES)).min(1).max(DEAL_STATUS_VALUES.length).optional(),
 });
 
 const previewSearchSchema = previewListSchema.extend({

@@ -67,18 +67,18 @@ async function ingestNormal() {
 }
 
 describe("preview generation from canonical records", () => {
-  it("publishes a useful LOW-risk preview without source identity", async () => {
+  it("writes a useful LOW-risk preview without publishing or source identity", async () => {
     const { store, result } = await ingestNormal();
     expect(result.status).toBe("SUCCEEDED");
-    expect(result.counters.previewsPublished).toBe(1);
-    expect(result.counters.previewsBlocked).toBe(0);
+    expect(result.counters.previewsPublished).toBe(0);
+    expect(result.counters.previewsBlocked).toBe(1);
     expect(store.previews).toHaveLength(1);
 
     const preview = store.previews[0]!;
     const deal = store.deals[0]!;
     const combined = `${preview.previewTitle} ${preview.previewSummary} ${preview.requirementsPreview.join(" ")}`;
 
-    expect(preview.isPublished).toBe(true);
+    expect(preview.isPublished).toBe(false);
     expect(preview.leakageRisk).toBe("LOW");
     expect(preview.previewTitle.length).toBeGreaterThan(12);
     expect(preview.previewSummary.length).toBeGreaterThan(24);

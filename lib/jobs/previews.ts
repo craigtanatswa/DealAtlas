@@ -25,6 +25,10 @@ export async function rebuildChangedPreviews(options: {
   mode?: JobMode;
   limit?: number;
   changedSince?: string;
+  /** When set, rebuild these deals instead of querying material changes. */
+  dealIds?: string[];
+  /** Omit identifiers from logs. */
+  countsOnly?: boolean;
   reporter?: ErrorReporter;
   onPreviewPublished?: (dealId: string) => Promise<void>;
 }): Promise<PreviewRebuildResult> {
@@ -37,15 +41,19 @@ export async function rebuildChangedPreviews(options: {
     options.changedSince ??
     new Date(now.getTime() - lookbackHours * 60 * 60 * 1000).toISOString();
   const limit = options.limit ?? (mode === "test" ? 10 : 100);
-  const dealIds = await options.store.listChangedDealIds(changedSince, limit);
+  const dealIds = (
+    options.dealIds ?? (await options.store.listChangedDealIds(changedSince, limit))
+  ).slice(0, limit);
 
-  structuredLog({
-    job: "previews",
-    msg: "preview_rebuild_selected",
-    mode,
-    changedSince,
-    selected: dealIds.length,
-  });
+  if (!options.countsOnly) {
+    structuredLog({
+      job: "previews",
+      msg: "preview_rebuild_selected",
+      mode,
+      changedSince,
+      selected: dealIds.length,
+    });
+  }
 
   if (dryRun) {
     return {
@@ -82,6 +90,7 @@ export async function rebuildChangedPreviews(options: {
       const outcome = await persistIntelligenceAndPreview({
         store: options.store,
         context,
+        publication: "preserve",
       });
       processed += 1;
       if (outcome.published) {
@@ -94,14 +103,16 @@ export async function rebuildChangedPreviews(options: {
       }
     } catch (error) {
       failures += 1;
-      structuredLog({
-        job: "previews",
-        msg: "preview_rebuild_failed",
-        level: "error",
-        dealId,
-        error: errorMessage(error),
-      });
-      await reporter.captureException(error, { job: "previews", dealId });
+      if (!options.countsOnly) {
+        structuredLog({
+          job: "previews",
+          msg: "preview_rebuild_failed",
+          level: "error",
+          dealId,
+          error: errorMessage(error),
+        });
+        await reporter.captureException(error, { job: "previews", dealId });
+      }
     }
   }
 

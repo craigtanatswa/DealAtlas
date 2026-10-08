@@ -339,6 +339,7 @@ export function mapFindATenderRelease(
     : awardValue.currency;
 
   const submissionDeadline = toTimestamptz(tender?.tenderPeriod?.endDate);
+  const futureTenderDate = toTimestamptz(tender?.communication?.futureNoticeDate);
   const enquiryDeadline = toTimestamptz(tender?.enquiryPeriod?.endDate);
   const hasFramework = Boolean(tender?.techniques?.hasFrameworkAgreement);
   const hasDynamicMarket = Boolean(tender?.techniques?.hasDynamicPurchasingSystem);
@@ -380,6 +381,7 @@ export function mapFindATenderRelease(
         lotStatus: lot.status,
         tags,
         submissionDeadline,
+        futureTenderDate,
         now,
         hasAwards: awards.some((award) => award.relatedLots?.includes(String(lot.id))),
       }),
@@ -476,6 +478,7 @@ export function mapFindATenderRelease(
       tenderStatus: tender?.status,
       tags,
       submissionDeadline,
+      futureTenderDate,
       now,
       hasAwards: awards.length > 0,
     }),

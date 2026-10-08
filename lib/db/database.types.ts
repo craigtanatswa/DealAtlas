@@ -3220,6 +3220,7 @@ export type Database = {
         | "ACTIVE"
         | "EXPIRED"
         | "WITHDRAWN"
+        | "UNCLASSIFIED"
       deal_type:
         | "PUBLIC_TENDER"
         | "PRIVATE_TENDER"
@@ -3464,6 +3465,7 @@ export const Constants = {
         "ACTIVE",
         "EXPIRED",
         "WITHDRAWN",
+        "UNCLASSIFIED",
       ],
       deal_type: [
         "PUBLIC_TENDER",

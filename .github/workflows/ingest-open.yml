@@ -1,0 +1,124 @@
+name: Ingest open notices
+
+# Find a Tender only, via the official OCDS release-package API.
+# Manual dispatch defaults to dry_run so a click fetches and counts without writing.
+# The every-third-day cron ingests. A separate daily cron only unpublishes expired deals.
+# scheduled-jobs.yml is not part of this workflow.
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Fetch and count without writing
+        type: boolean
+        default: true
+      backfill_days:
+        description: Days of Find a Tender tender releases to read
+        type: number
+        default: 7
+  schedule:
+    - cron: "41 4 */3 * *"
+    - cron: "17 5 * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dealatlas-ingest-open
+  cancel-in-progress: false
+
+jobs:
+  ingest:
+    name: Ingest Find a Tender
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '41 4 */3 * *'
+    runs-on: ubuntu-latest
+    environment: ingest
+    timeout-minutes: 30
+    env:
+      NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+      SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+    steps:
+      - name: Check out
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      - name: Ingest open Find a Tender notices
+        id: ingest
+        env:
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'false' }}
+          BACKFILL_DAYS: ${{ github.event_name == 'workflow_dispatch' && inputs.backfill_days || '7' }}
+          OPEN_INGEST_PHASE: ingest
+          OPEN_INGEST_STATE: ${{ runner.temp }}/open-ingest-changed.json
+        run: |
+          set -euo pipefail
+          case "$DRY_RUN" in
+            true|false) ;;
+            *) echo "dry_run must be true or false" >&2; exit 1 ;;
+          esac
+          case "$BACKFILL_DAYS" in
+            ''|*[!0-9]*) echo "backfill_days must be a positive integer" >&2; exit 1 ;;
+          esac
+          if [ "$BACKFILL_DAYS" -lt 1 ] || [ "$BACKFILL_DAYS" -gt 366 ]; then
+            echo "backfill_days must be from 1 to 366" >&2
+            exit 1
+          fi
+          npm run ingest-open
+
+      - name: Build previews
+        if: always() && steps.ingest.outcome != 'cancelled' && (github.event_name != 'workflow_dispatch' || inputs.dry_run == false)
+        env:
+          DRY_RUN: "false"
+          OPEN_INGEST_PHASE: previews
+          OPEN_INGEST_STATE: ${{ runner.temp }}/open-ingest-changed.json
+        run: npm run ingest-open
+
+      - name: Unpublish expired deals
+        if: always() && steps.ingest.outcome != 'cancelled' && (github.event_name != 'workflow_dispatch' || inputs.dry_run == false)
+        run: npm run unpublish-expired
+
+      - name: Alert
+        if: always()
+        env:
+          INGEST_COUNTS: ${{ steps.ingest.outputs.counts }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          DEALATLAS_EMAIL_FROM: ${{ secrets.DEALATLAS_EMAIL_FROM }}
+          INGEST_ALERT_EMAIL_TO: ${{ secrets.INGEST_ALERT_EMAIL_TO }}
+        run: npm run ingest-alert
+
+  unpublish:
+    name: Unpublish expired deals
+    if: github.event.schedule == '17 5 * * *'
+    runs-on: ubuntu-latest
+    environment: ingest
+    timeout-minutes: 30
+    env:
+      NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+      SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+    steps:
+      - name: Check out
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      - name: Unpublish expired deals
+        run: npm run unpublish-expired
