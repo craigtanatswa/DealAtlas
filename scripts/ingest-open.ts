@@ -22,6 +22,33 @@ function emit(line: string) {
   if (summary) {
     fs.appendFileSync(summary, `${line}\n`);
   }
+  const output = process.env.GITHUB_OUTPUT;
+  if (output) {
+    fs.appendFileSync(output, `counts=${line}\n`);
+  }
+}
+
+function phaseFromEnv(): "ingest" | "previews" | "all" {
+  const phase = (process.env.OPEN_INGEST_PHASE ?? "all").trim();
+  if (phase === "ingest" || phase === "previews" || phase === "all") {
+    return phase;
+  }
+  throw new Error("OPEN_INGEST_PHASE must be ingest, previews, or all");
+}
+
+function readChangedDealIds(filePath: string | undefined): string[] {
+  if (!filePath || !fs.existsSync(filePath)) {
+    return [];
+  }
+  const parsed = JSON.parse(fs.readFileSync(filePath, "utf8")) as unknown;
+  if (!Array.isArray(parsed)) {
+    return [];
+  }
+  return parsed.filter(
+    (item): item is string =>
+      typeof item === "string" &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(item),
+  );
 }
 
 async function main() {
@@ -32,13 +59,20 @@ async function main() {
   const { createIngestionSupabaseClient } = await import(
     "@/ingestion/store/worker-client"
   );
+  const phase = phaseFromEnv();
   const { dryRun, backfillDays } = countsFromEnv();
   const store = createSupabaseIngestionStore(createIngestionSupabaseClient());
+  const statePath = process.env.OPEN_INGEST_STATE;
   const result = await runOpenFindATenderIngest({
     store,
-    dryRun,
+    dryRun: phase === "previews" ? false : dryRun,
     backfillDays,
+    phase,
+    dealIds: phase === "previews" ? readChangedDealIds(statePath) : undefined,
   });
+  if (phase === "ingest" && statePath && !dryRun) {
+    fs.writeFileSync(statePath, JSON.stringify(result.changedDealIds));
+  }
   emit(openIngestLogLine(result.counts));
   if (result.status === "PARTIAL" || result.status === "FAILED") {
     process.exitCode = 1;

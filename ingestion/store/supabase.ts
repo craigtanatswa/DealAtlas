@@ -398,6 +398,42 @@ export function createSupabaseIngestionStore(
       const rows = throwIfQueryError("List deals", result) ?? [];
       return rows.map(mapDeal);
     },
+    async unpublishExpiredPreviews(nowIso) {
+      const pageSize = 200;
+      let from = 0;
+      let unpublished = 0;
+      for (let page = 0; page < 500; page += 1) {
+        const deals = await client
+          .from("deals")
+          .select("id")
+          .lt("submission_deadline", nowIso)
+          .order("id", { ascending: true })
+          .range(from, from + pageSize - 1);
+        const dealRows = throwIfQueryError("List expired deals", deals) ?? [];
+        if (dealRows.length === 0) {
+          break;
+        }
+        const updated = await client
+          .from("deal_previews")
+          .update({
+            is_published: false,
+            updated_at: nowIso,
+          })
+          .in(
+            "deal_id",
+            dealRows.map((row) => row.id),
+          )
+          .eq("is_published", true)
+          .select("deal_id");
+        const previewRows = throwIfQueryError("Unpublish expired previews", updated) ?? [];
+        unpublished += previewRows.length;
+        if (dealRows.length < pageSize) {
+          break;
+        }
+        from += pageSize;
+      }
+      return unpublished;
+    },
     async listPreviewRebuildDealIds(options) {
       const limit = options?.limit ?? 100;
       let query = client

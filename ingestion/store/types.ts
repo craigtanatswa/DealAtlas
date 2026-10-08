@@ -301,6 +301,8 @@ export type IngestionStore = {
   getOrganizationById(id: string): Promise<OrganizationRecord | null>;
   listOrganizationAliases(organizationId: string): Promise<string[]>;
   listDeals(limit?: number): Promise<DealRecord[]>;
+  /** Sets is_published false on previews whose deal deadline has passed. */
+  unpublishExpiredPreviews(nowIso: string): Promise<number>;
   listPreviewRebuildDealIds(options?: {
     afterId?: string | null;
     limit?: number;

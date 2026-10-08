@@ -24,6 +24,7 @@ export type OpenIngestResult = {
   status: "SUCCEEDED" | "PARTIAL" | "FAILED" | "SKIPPED";
   dryRun: boolean;
   counts: OpenIngestCounts;
+  changedDealIds: string[];
 };
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -76,6 +77,9 @@ export async function runOpenFindATenderIngest(options: {
   http?: JsonHttpClient;
   sleep?: (ms: number) => Promise<void>;
   limit?: number;
+  /** ingest writes canonical rows. previews rebuilds changed deals. all does both. */
+  phase?: "ingest" | "previews" | "all";
+  dealIds?: string[];
 }): Promise<OpenIngestResult> {
   const now = options.now ?? new Date();
   const sleep = options.sleep ?? defaultSleep;
@@ -95,63 +99,66 @@ export async function runOpenFindATenderIngest(options: {
     });
 
   const counts = emptyCounts();
-  const changed = new Set<string>();
+  const changed = new Set<string>(options.dealIds ?? []);
+  const phase = options.phase ?? "all";
   let remaining = options.limit ?? MAX_RECORDS;
   let status: OpenIngestResult["status"] = "SUCCEEDED";
 
-  for (const window of openIngestWindows(now, options.backfillDays)) {
-    if (remaining <= 0) {
-      break;
-    }
-    const result = await runIngestion({
-      sourceKey: FIND_A_TENDER_SOURCE_KEY,
-      store: options.store,
-      adapter,
-      triggerType: options.dryRun ? "DRY_RUN" : "SCHEDULED",
-      limit: remaining,
-      updatedFrom: window.updatedFrom,
-      updatedTo: window.updatedTo,
-      stages: "tender",
-      now,
-      force: true,
-      pageSize: 100,
-      minFetchIntervalMs: 0,
-      sleep,
-      dryRun: options.dryRun,
-      skipPreview: true,
-      failureMode: "partial",
-      onPersisted: (info) => {
-        if (info.outcome === "new" || info.outcome === "updated" || info.outcome === "linked") {
-          changed.add(info.dealId);
-        }
-      },
-    });
+  if (phase !== "previews") {
+    for (const window of openIngestWindows(now, options.backfillDays)) {
+      if (remaining <= 0) {
+        break;
+      }
+      const result = await runIngestion({
+        sourceKey: FIND_A_TENDER_SOURCE_KEY,
+        store: options.store,
+        adapter,
+        triggerType: options.dryRun ? "DRY_RUN" : "SCHEDULED",
+        limit: remaining,
+        updatedFrom: window.updatedFrom,
+        updatedTo: window.updatedTo,
+        stages: "tender",
+        now,
+        force: true,
+        pageSize: 100,
+        minFetchIntervalMs: 0,
+        sleep,
+        dryRun: options.dryRun,
+        skipPreview: true,
+        failureMode: "partial",
+        onPersisted: (info) => {
+          if (info.outcome === "new" || info.outcome === "updated" || info.outcome === "linked") {
+            changed.add(info.dealId);
+          }
+        },
+      });
 
-    counts.fetched += result.counters.fetched;
-    counts.new += result.counters.new;
-    counts.updated += result.counters.updated;
-    counts.unchanged += result.counters.unchanged;
-    counts.failed += result.counters.errorCount;
-    remaining -= result.counters.fetched;
+      counts.fetched += result.counters.fetched;
+      counts.new += result.counters.new;
+      counts.updated += result.counters.updated;
+      counts.unchanged += result.counters.unchanged;
+      counts.failed += result.counters.errorCount;
+      remaining -= result.counters.fetched;
 
-    if (result.status === "SKIPPED") {
-      return { status: "SKIPPED", dryRun: options.dryRun, counts };
-    }
-    if (result.status === "PARTIAL" || result.status === "FAILED") {
-      status = "PARTIAL";
-      break;
+      if (result.status === "SKIPPED") {
+        return { status: "SKIPPED", dryRun: options.dryRun, counts, changedDealIds: [] };
+      }
+      if (result.status === "PARTIAL" || result.status === "FAILED") {
+        status = "PARTIAL";
+        break;
+      }
     }
   }
 
-  if (!options.dryRun && changed.size > 0) {
+  const previewIds = phase === "ingest" ? [] : [...changed];
+  if (!options.dryRun && previewIds.length > 0 && phase !== "ingest") {
     const previews = await rebuildChangedPreviews({
       store: options.store,
       now,
       mode: "live",
       changedSince: now.toISOString(),
-      dealIds: [...changed],
-      limit: changed.size,
-      publication: "preserve",
+      dealIds: previewIds,
+      limit: previewIds.length,
       countsOnly: true,
     });
     counts.failed += previews.failures;
@@ -164,5 +171,10 @@ export async function runOpenFindATenderIngest(options: {
     status = "SUCCEEDED";
   }
 
-  return { status, dryRun: options.dryRun, counts };
+  return {
+    status,
+    dryRun: options.dryRun,
+    counts,
+    changedDealIds: phase === "previews" ? [] : [...changed],
+  };
 }

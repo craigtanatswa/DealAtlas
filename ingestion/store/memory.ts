@@ -149,6 +149,23 @@ export function createMemoryIngestionStore(seed?: {
     async listDeals(limit = 100) {
       return state.deals.slice(0, limit);
     },
+    async unpublishExpiredPreviews(nowIso) {
+      const cutoff = Date.parse(nowIso);
+      let unpublished = 0;
+      for (const preview of state.previews) {
+        const deal = state.deals.find((item) => item.id === preview.dealId);
+        if (!deal?.submissionDeadline) {
+          continue;
+        }
+        const deadline = Date.parse(deal.submissionDeadline);
+        if (!Number.isFinite(deadline) || deadline >= cutoff || !preview.isPublished) {
+          continue;
+        }
+        preview.isPublished = false;
+        unpublished += 1;
+      }
+      return unpublished;
+    },
     async listPreviewRebuildDealIds(options) {
       const limit = options?.limit ?? 100;
       const afterId = options?.afterId ?? null;

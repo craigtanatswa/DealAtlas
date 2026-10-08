@@ -27,8 +27,6 @@ export async function rebuildChangedPreviews(options: {
   changedSince?: string;
   /** When set, rebuild these deals instead of querying material changes. */
   dealIds?: string[];
-  /** preserve never turns is_published on. */
-  publication?: "auto" | "preserve";
   /** Omit identifiers from logs. */
   countsOnly?: boolean;
   reporter?: ErrorReporter;

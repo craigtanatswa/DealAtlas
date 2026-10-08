@@ -5,6 +5,7 @@ import { createFindATenderAdapter } from "@/ingestion/sources/find-a-tender/adap
 import { findATenderSourceRecord } from "@/ingestion/sources/find-a-tender/seed";
 import { createMemoryIngestionStore } from "@/ingestion/store/memory";
 import { openIngestLogLine, openIngestWindows, runOpenFindATenderIngest } from "@/lib/jobs/ingest-open";
+import { unpublishExpiredDeals } from "@/lib/jobs/unpublish-expired";
 import { isTemplatePreviewSlug } from "@/lib/deals/public-slug";
 import { packageFromFixtures } from "@/tests/helpers/ingestion-fixtures";
 
@@ -178,6 +179,95 @@ describe("open Find a Tender ingest", () => {
     expect(result.counts.new).toBe(1);
     expect(memory.deals).toHaveLength(1);
     expect(memory.deals[0]?.status).toBe("OPEN");
+  });
+
+  it("leaves is_published unchanged on existing rows", async () => {
+    const memory = store();
+    const original = packageFromFixtures(["normal.json", "multi-lot.json"]);
+    const updated = structuredClone(original) as {
+      releases: Array<{ tender: { description: string } }>;
+    };
+    updated.releases[0]!.tender.description += " revised scope";
+    let calls = 0;
+    const http = {
+      async getJson(url: string) {
+        calls += 1;
+        return jsonResult(url, calls === 1 ? original : updated);
+      },
+    };
+    await runOpenFindATenderIngest({
+      store: memory,
+      now: NOW,
+      dryRun: false,
+      backfillDays: 7,
+      sleep: async () => {},
+      http,
+    });
+    expect(memory.previews).toHaveLength(2);
+    const [published, held] = memory.previews;
+    published!.isPublished = true;
+    held!.isPublished = false;
+    const flags = new Map(memory.previews.map((preview) => [preview.dealId, preview.isPublished]));
+    const dealCount = memory.deals.length;
+
+    const again = await runOpenFindATenderIngest({
+      store: memory,
+      now: NOW,
+      dryRun: false,
+      backfillDays: 7,
+      sleep: async () => {},
+      http,
+    });
+
+    expect(again.status).toBe("SUCCEEDED");
+    expect(again.counts.updated).toBeGreaterThan(0);
+    expect(memory.deals).toHaveLength(dealCount);
+    expect(memory.previews).toHaveLength(2);
+    for (const preview of memory.previews) {
+      expect(preview.isPublished).toBe(flags.get(preview.dealId));
+    }
+    expect(memory.previews.some((preview) => preview.isPublished)).toBe(true);
+    expect(memory.previews.some((preview) => !preview.isPublished)).toBe(true);
+  });
+
+  it("unpublishes only previews whose deadline has passed", async () => {
+    const memory = store();
+    await runOpenFindATenderIngest({
+      store: memory,
+      now: NOW,
+      dryRun: false,
+      backfillDays: 7,
+      sleep: async () => {},
+      http: {
+        async getJson(url) {
+          return jsonResult(url, packageFromFixtures(["normal.json", "multi-lot.json"]));
+        },
+      },
+    });
+    expect(memory.deals.length).toBe(2);
+    for (const preview of memory.previews) {
+      preview.isPublished = true;
+    }
+    memory.deals[0]!.submissionDeadline = "2026-09-01T00:00:00.000Z";
+    memory.deals[1]!.submissionDeadline = null;
+    const deals = memory.deals.length;
+    const previews = memory.previews.length;
+
+    const expired = await unpublishExpiredDeals({ store: memory, now: NOW });
+    expect(expired.unpublished).toBe(1);
+    expect(memory.previews.find((preview) => preview.dealId === memory.deals[0]!.id)?.isPublished).toBe(
+      false,
+    );
+    expect(memory.previews.find((preview) => preview.dealId === memory.deals[1]!.id)?.isPublished).toBe(
+      true,
+    );
+    expect(memory.deals).toHaveLength(deals);
+    expect(memory.previews).toHaveLength(previews);
+
+    const again = await unpublishExpiredDeals({ store: memory, now: NOW });
+    expect(again.unpublished).toBe(0);
+    expect(memory.deals).toHaveLength(deals);
+    expect(memory.previews).toHaveLength(previews);
   });
 
   it("does not fetch a source the compliance gate rejects", async () => {
