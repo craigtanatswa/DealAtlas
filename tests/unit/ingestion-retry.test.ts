@@ -32,7 +32,38 @@ describe("ingestion retry/backoff", () => {
 
     expect(result).toBe("ok");
     expect(attempts).toBe(3);
-    expect(delays).toEqual([10, 20]);
+    expect(delays[0]).toBeGreaterThanOrEqual(5);
+    expect(delays[0]).toBeLessThanOrEqual(10);
+    expect(delays[1]).toBeGreaterThanOrEqual(10);
+    expect(delays[1]).toBeLessThanOrEqual(20);
+  });
+
+  it("retries a network failure five times and jitters the backoff", async () => {
+    const delays: number[] = [];
+    let attempts = 0;
+    await expect(
+      withRetry(
+        async () => {
+          attempts += 1;
+          throw new IngestionError({
+            message: "ETIMEDOUT fetching www.find-tender.service.gov.uk",
+            stage: "fetch",
+            code: "HTTP_NETWORK",
+            retryable: true,
+          });
+        },
+        {
+          baseDelayMs: 100,
+          maxDelayMs: 1_000,
+          random: () => 0,
+          sleep: async (ms) => {
+            delays.push(ms);
+          },
+        },
+      ),
+    ).rejects.toMatchObject({ code: "HTTP_NETWORK" });
+    expect(attempts).toBe(5);
+    expect(delays).toEqual([50, 100, 200, 400]);
   });
 
   it("does not retry 4xx access restrictions", async () => {

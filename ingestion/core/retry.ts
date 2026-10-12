@@ -6,9 +6,11 @@ export type RetryOptions = {
   maxDelayMs?: number;
   sleep?: (ms: number) => Promise<void>;
   isRetryable?: (error: unknown) => boolean;
+  /** 0..1. Used only for exponential backoff, never for Retry-After. */
+  random?: () => number;
 };
 
-const DEFAULT_MAX_ATTEMPTS = 4;
+const DEFAULT_MAX_ATTEMPTS = 5;
 const DEFAULT_BASE_DELAY_MS = 250;
 const DEFAULT_MAX_DELAY_MS = 8_000;
 
@@ -34,6 +36,7 @@ export async function withRetry<T>(
   const maxDelayMs = options.maxDelayMs ?? DEFAULT_MAX_DELAY_MS;
   const sleep = options.sleep ?? defaultSleep;
   const isRetryable = options.isRetryable ?? isRetryableIngestionError;
+  const random = options.random ?? Math.random;
 
   let lastError: unknown;
 
@@ -55,7 +58,11 @@ export async function withRetry<T>(
         maxDelayMs,
         baseDelayMs * 2 ** (attempt - 1),
       );
-      await sleep(retryAfter ?? exponential);
+      const jittered = Math.max(
+        0,
+        Math.round(exponential * (0.5 + random() * 0.5)),
+      );
+      await sleep(retryAfter ?? jittered);
     }
   }
 

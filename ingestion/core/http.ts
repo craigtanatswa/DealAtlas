@@ -32,7 +32,7 @@ export type JsonHttpClient = {
 
 const DEFAULT_TIMEOUT_MS = 30_000;
 const MAX_REDIRECTS = 3;
-const DEFAULT_USER_AGENT = "DealAtlasIngest/1.0 (official open-data client)";
+const DEFAULT_USER_AGENT = "DealAtlas-ingest/1.0 (+https://www.dealatlas.uk)";
 
 export function assertAllowedUrl(
   value: string,

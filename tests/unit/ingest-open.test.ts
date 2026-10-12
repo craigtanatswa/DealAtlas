@@ -90,9 +90,9 @@ describe("open Find a Tender ingest", () => {
     ]);
     const line = publicIngestErrorLine(result.errors[0]!);
     expect(line).toBe(
-      "fetch HTTP_NETWORK ETIMEDOUT fetching www.find-tender.service.gov.uk",
+      "fetch HTTP_NETWORK ETIMEDOUT www.find-tender.service.gov.uk",
     );
-    expect(line).not.toMatch(/updatedFrom|secret|\?/);
+    expect(line).not.toMatch(/updatedFrom|secret|\?|api\/1\.0/);
   });
 
   it("reads the release package once and does not fetch each notice", async () => {

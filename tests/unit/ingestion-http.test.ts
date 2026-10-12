@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import { IngestionError } from "@/ingestion/core/errors";
-import { assertAllowedUrl, createAllowlistedTextClient } from "@/ingestion/core/http";
+import {
+  assertAllowedUrl,
+  createAllowlistedJsonClient,
+  createAllowlistedTextClient,
+} from "@/ingestion/core/http";
 import { FIND_A_TENDER_FETCH_POLICY } from "@/ingestion/sources/find-a-tender/constants";
 import { NISTA_FETCH_POLICY } from "@/ingestion/sources/uk-infrastructure-pipeline/constants";
 
@@ -103,6 +107,25 @@ describe("allowlisted fetch SSRF controls", () => {
     await expect(client.getText(url)).rejects.toMatchObject({
       code: "HTTP_NETWORK",
       message: "UND_ERR_CONNECT_TIMEOUT fetching www.find-tender.service.gov.uk",
+    });
+  });
+
+  it("sends a descriptive user agent and json accept on the open API", async () => {
+    let headers: HeadersInit | undefined;
+    const fetchImpl = (async (_input: RequestInfo | URL, init?: RequestInit) => {
+      headers = init?.headers;
+      return new Response('{"releases":[]}', {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    }) as typeof fetch;
+    const client = createAllowlistedJsonClient(FIND_A_TENDER_FETCH_POLICY, { fetchImpl });
+    await client.getJson(
+      "https://www.find-tender.service.gov.uk/api/1.0/ocdsReleasePackages?limit=100",
+    );
+    expect(headers).toEqual({
+      Accept: "application/json",
+      "User-Agent": "DealAtlas-ingest/1.0 (+https://www.dealatlas.uk)",
     });
   });
 

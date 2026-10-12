@@ -82,9 +82,11 @@ async function main() {
 }
 
 main().catch(async (err: unknown) => {
-  const { redactIngestText } = await import("@/lib/jobs/ingest-open");
+  const { publicIngestErrorLine } = await import("@/lib/jobs/ingest-open");
   const message = err instanceof Error ? err.message : "ingest failed";
-  console.error(redactIngestText(message));
+  console.error(
+    publicIngestErrorLine({ stage: "fatal", code: "UNEXPECTED", message }),
+  );
   emit(
     JSON.stringify({
       fetched: 0,

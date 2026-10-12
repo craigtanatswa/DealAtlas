@@ -36,19 +36,35 @@ export type OpenIngestResult = {
   errors: OpenIngestError[];
 };
 
-/** Stage, code, and message. Full URLs are reduced to the host. */
+/** Stage, code, HTTP status or cause code, and host. No URL, query, or message body. */
 export function publicIngestErrorLine(error: OpenIngestError): string {
-  return `${error.stage} ${error.code} ${redactIngestText(error.message)}`;
+  return `${error.stage} ${error.code} ${publicStatus(error)} ${publicHost(error.message)}`;
 }
 
-export function redactIngestText(value: string): string {
-  return value.replace(/https?:\/\/\S+/gi, (url) => {
+function publicStatus(error: OpenIngestError): string {
+  const fromCode = /^HTTP_(\d{3})$/.exec(error.code);
+  if (fromCode) {
+    return fromCode[1];
+  }
+  const fromMessage = /\bHTTP (\d{3})\b/.exec(error.message);
+  if (fromMessage) {
+    return fromMessage[1];
+  }
+  const cause = /^([A-Z][A-Z0-9_]{2,64})\b/.exec(error.message);
+  return cause?.[1] ?? "-";
+}
+
+function publicHost(message: string): string {
+  const url = /https?:\/\/\S+/i.exec(message);
+  if (url) {
     try {
-      return new URL(url).hostname;
+      return new URL(url[0]).hostname;
     } catch {
-      return "redacted-url";
+      return "-";
     }
-  });
+  }
+  const host = message.match(/\b(?:[a-z0-9-]+\.)+[a-z]{2,}\b/i);
+  return host?.[0] ?? "-";
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;
