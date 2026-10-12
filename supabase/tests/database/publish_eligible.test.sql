@@ -712,39 +712,54 @@ select is(
   'a released clean row loses its hold'
 );
 select is(
-  (select count(*)::int from public.admin_audit_events where action = 'preview.release_hold'),
+  (select count(*)::int from public.admin_audit_events
+    where action = 'preview.release_hold'
+      and entity_id = 'c6000000-0000-4000-8000-000000000044'),
   1,
-  'release writes one audit row'
+  'each released preview gets its own audit row'
 );
 select is(
-  (select summary from public.admin_audit_events where action = 'preview.release_hold'),
-  'Released launch holds',
-  'release audit summary is fixed text'
-);
-select is(
-  (select actor_id is null and entity_id is null from public.admin_audit_events where action = 'preview.release_hold'),
+  (select bool_and(
+      actor_id is null
+      and entity_type = 'deal_preview'
+      and summary = 'Launch hold release (0021)'
+      and metadata = pg_catalog.jsonb_build_object(
+        'actor', 'system:launch-release-0021',
+        'batch', 'launch-release-0021'
+      )
+    )
+    from public.admin_audit_events where action = 'preview.release_hold'),
   true,
-  'release audit has no actor and no entity id'
-);
-select is(
-  (select metadata->>'actor' from public.admin_audit_events where action = 'preview.release_hold'),
-  'system:migration-0021',
-  'release audit actor is the migration'
-);
-select is(
-  (select metadata->>'batch' from public.admin_audit_events where action = 'preview.release_hold'),
-  'launch-release-0021',
-  'release audit names the launch batch'
+  'release audits use the fixed summary and metadata'
 );
 select ok(
-  (select (metadata->>'released')::int > 0 and (metadata->>'holds_deleted')::int > 0
+  (select bool_and(
+      summary !~* 'street|buyer|low|high|review'
+      and metadata::text !~* 'street|buyer|low|high|review'
+    )
     from public.admin_audit_events where action = 'preview.release_hold'),
-  'release audit counts are positive'
+  'release audits omit title, slug, buyer and risk text'
 );
-select ok(
-  (select summary !~ '[0-9a-f]{8}-[0-9a-f]{4}-' and metadata::text !~ '[0-9a-f]{8}-[0-9a-f]{4}-'
-    from public.admin_audit_events where action = 'preview.release_hold'),
-  'release audit contains no deal id'
+
+update public.deal_previews
+set preview_summary = 'Brynlow Vale County Borough Council wants a contractor to replace roadside lighting.',
+    is_published = true
+where deal_id = 'c6000000-0000-4000-8000-000000000044';
+select is(
+  (select leakage_risk::text = 'LOW' from public.deal_previews where deal_id = 'c6000000-0000-4000-8000-000000000044'),
+  false,
+  'the trigger raises a released row that rescores non-LOW'
+);
+select is(
+  (select is_published from public.deal_previews where deal_id = 'c6000000-0000-4000-8000-000000000044'),
+  false,
+  'the trigger blocks publication of the rescored row'
+);
+select public.publish_eligible_previews(500, 'run-rescore');
+select is(
+  (select is_published from public.deal_previews where deal_id = 'c6000000-0000-4000-8000-000000000044'),
+  false,
+  'publish_eligible_previews does not publish the rescored row'
 );
 
 insert into public.deals (
