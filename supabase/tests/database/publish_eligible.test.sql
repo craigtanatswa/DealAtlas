@@ -6,7 +6,7 @@ select no_plan();
 -- transaction so the counts are only the fixtures below.
 truncate table public.deals cascade;
 delete from public.admin_audit_events
-where action in ('preview.publish', 'preview.unpublish');
+where action in ('preview.publish', 'preview.unpublish', 'preview.release_hold');
 delete from private.publish_denylist;
 
 select throws_ok(
@@ -610,12 +610,152 @@ select is(
   'unpublish leaves the dated upcoming notice published'
 );
 
+insert into public.deals (
+  id, primary_source_id, source_title, buyer_organization_id,
+  deal_type, buyer_sector, stage, status, submission_deadline
+) values
+  ('c6000000-0000-4000-8000-000000000041', 'd6000000-0000-4000-8000-000000000001',
+   'Highway lighting column renewal programme', 'a6000000-0000-4000-8000-000000000001',
+   'PUBLIC_TENDER', 'PUBLIC', 'LIVE', 'OPEN', pg_catalog.now() + interval '40 days'),
+  ('c6000000-0000-4000-8000-000000000042', 'd6000000-0000-4000-8000-000000000001',
+   'Highway lighting column renewal programme', 'a6000000-0000-4000-8000-000000000001',
+   'PUBLIC_TENDER', 'PUBLIC', 'LIVE', 'OPEN', pg_catalog.now() + interval '40 days'),
+  ('c6000000-0000-4000-8000-000000000043', 'd6000000-0000-4000-8000-000000000001',
+   'Highway lighting column renewal programme', 'a6000000-0000-4000-8000-000000000001',
+   'PUBLIC_TENDER', 'PUBLIC', 'LIVE', 'OPEN', pg_catalog.now() + interval '40 days'),
+  ('c6000000-0000-4000-8000-000000000044', 'd6000000-0000-4000-8000-000000000001',
+   'Highway lighting column renewal programme', 'a6000000-0000-4000-8000-000000000001',
+   'PUBLIC_TENDER', 'PUBLIC', 'LIVE', 'OPEN', pg_catalog.now() + interval '40 days');
+
+insert into public.deal_previews (
+  deal_id, slug, preview_title, preview_summary, deal_type, buyer_sector, stage, status,
+  broad_region, requirements_preview, leakage_risk, is_published, unpublished_by_admin
+) values
+  ('c6000000-0000-4000-8000-000000000041',
+   'street-lighting-upgrade-for-a-local-authority-abcd1041',
+   'Street lighting upgrade for a local authority',
+   'A public body in Wales wants a contractor to replace roadside lighting with efficient units.',
+   'PUBLIC_TENDER', 'PUBLIC', 'LIVE', 'OPEN', 'Wales', '["relevant street lighting experience"]'::jsonb, 'LOW', false, true),
+  ('c6000000-0000-4000-8000-000000000042',
+   'street-lighting-upgrade-for-a-local-authority-abcd1042',
+   'Street lighting upgrade for a local authority',
+   'A public body in Wales wants a contractor to replace roadside lighting with efficient units.',
+   'PUBLIC_TENDER', 'PUBLIC', 'LIVE', 'OPEN', 'Wales', '["relevant street lighting experience"]'::jsonb, 'LOW', false, true),
+  ('c6000000-0000-4000-8000-000000000043',
+   'street-lighting-upgrade-for-a-local-authority-abcd1043',
+   'Street lighting upgrade for a local authority',
+   'A public body in Wales wants a contractor to replace roadside lighting with efficient units.',
+   'PUBLIC_TENDER', 'PUBLIC', 'LIVE', 'OPEN', 'Wales', '["relevant street lighting experience"]'::jsonb, 'HIGH', false, true),
+  ('c6000000-0000-4000-8000-000000000044',
+   'street-lighting-upgrade-for-a-local-authority-abcd1044',
+   'Street lighting upgrade for a local authority',
+   'A public body in Wales wants a contractor to replace roadside lighting with efficient units.',
+   'PUBLIC_TENDER', 'PUBLIC', 'LIVE', 'OPEN', 'Wales', '["relevant street lighting experience"]'::jsonb, 'LOW', false, true);
+
+insert into private.publish_denylist (deal_id, reason)
+values ('c6000000-0000-4000-8000-000000000041', 'test release denylist');
+
+alter table public.deal_previews disable trigger enforce_preview_safety;
+update public.deal_previews
+set preview_summary = 'Brynlow Vale County Borough Council wants a contractor to replace roadside lighting.',
+    leakage_risk = 'LOW',
+    unpublished_by_admin = true,
+    is_published = false
+where deal_id = 'c6000000-0000-4000-8000-000000000042';
+alter table public.deal_previews enable always trigger enforce_preview_safety;
+
+select private.launch_release_holds();
+
+select is(
+  (select unpublished_by_admin from public.deal_previews where deal_id = 'c6000000-0000-4000-8000-000000000041'),
+  true,
+  'a denylisted LOW held row stays held'
+);
+select is(
+  (select count(*)::int from private.preview_holds where deal_id = 'c6000000-0000-4000-8000-000000000041'),
+  1,
+  'a denylisted LOW held row keeps its hold'
+);
+select is(
+  (select leakage_risk::text from public.deal_previews where deal_id = 'c6000000-0000-4000-8000-000000000042'),
+  'LOW',
+  'stored risk stays LOW when the recompute is not'
+);
+select is(
+  (select unpublished_by_admin from public.deal_previews where deal_id = 'c6000000-0000-4000-8000-000000000042'),
+  true,
+  'a stored LOW row whose recompute is non-LOW stays held'
+);
+select is(
+  (select leakage_risk::text from public.deal_previews where deal_id = 'c6000000-0000-4000-8000-000000000043'),
+  'HIGH',
+  'a HIGH row keeps its stored risk'
+);
+select is(
+  (select unpublished_by_admin from public.deal_previews where deal_id = 'c6000000-0000-4000-8000-000000000043'),
+  true,
+  'a HIGH row stays held'
+);
+select is(
+  (select unpublished_by_admin from public.deal_previews where deal_id = 'c6000000-0000-4000-8000-000000000044'),
+  false,
+  'a clean LOW held row is released'
+);
+select is(
+  (select is_published from public.deal_previews where deal_id = 'c6000000-0000-4000-8000-000000000044'),
+  false,
+  'a released clean row stays unpublished'
+);
+select is(
+  (select count(*)::int from private.preview_holds where deal_id = 'c6000000-0000-4000-8000-000000000044'),
+  0,
+  'a released clean row loses its hold'
+);
+select is(
+  (select count(*)::int from public.admin_audit_events where action = 'preview.release_hold'),
+  1,
+  'release writes one audit row'
+);
+select is(
+  (select summary from public.admin_audit_events where action = 'preview.release_hold'),
+  'Released launch holds',
+  'release audit summary is fixed text'
+);
+select is(
+  (select actor_id is null and entity_id is null from public.admin_audit_events where action = 'preview.release_hold'),
+  true,
+  'release audit has no actor and no entity id'
+);
+select is(
+  (select metadata->>'actor' from public.admin_audit_events where action = 'preview.release_hold'),
+  'system:migration-0021',
+  'release audit actor is the migration'
+);
+select is(
+  (select metadata->>'batch' from public.admin_audit_events where action = 'preview.release_hold'),
+  'launch-release-0021',
+  'release audit names the launch batch'
+);
+select ok(
+  (select (metadata->>'released')::int > 0 and (metadata->>'holds_deleted')::int > 0
+    from public.admin_audit_events where action = 'preview.release_hold'),
+  'release audit counts are positive'
+);
+select ok(
+  (select summary !~ '[0-9a-f]{8}-[0-9a-f]{4}-' and metadata::text !~ '[0-9a-f]{8}-[0-9a-f]{4}-'
+    from public.admin_audit_events where action = 'preview.release_hold'),
+  'release audit contains no deal id'
+);
+
 select ok(
   not has_function_privilege('anon', 'public.publish_eligible_previews(integer, text)', 'execute')
   and not has_function_privilege('authenticated', 'public.publish_eligible_previews(integer, text)', 'execute')
   and not has_function_privilege('anon', 'public.unpublish_stale_previews(text)', 'execute')
-  and not has_function_privilege('authenticated', 'public.unpublish_stale_previews(text)', 'execute'),
-  'anon and authenticated have no execute'
+  and not has_function_privilege('authenticated', 'public.unpublish_stale_previews(text)', 'execute')
+  and not has_function_privilege('anon', 'private.launch_release_holds()', 'execute')
+  and not has_function_privilege('authenticated', 'private.launch_release_holds()', 'execute')
+  and not has_function_privilege('service_role', 'private.launch_release_holds()', 'execute'),
+  'anon, authenticated and service_role cannot release holds'
 );
 select ok(
   has_function_privilege('service_role', 'public.publish_eligible_previews(integer, text)', 'execute')

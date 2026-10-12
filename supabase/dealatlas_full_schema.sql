@@ -5786,6 +5786,106 @@ grant execute on function public.unpublish_stale_previews(text) to service_role;
 comment on function public.unpublish_stale_previews(text) is
   'Does not unpublish a row only because its deadline is under 24 hours away, or because its slug is non-template or retired. Those checks gate first publication. A published row still comes down once its deadline is null or past.';
 
+-- One-time launch release. Revoked from every API role. The migration calls it once.
+create or replace function private.launch_release_holds()
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_released integer;
+  v_holds integer;
+begin
+  drop table if exists pg_temp.launch_release_0021;
+  create temp table launch_release_0021 (
+    deal_id uuid primary key
+  ) on commit drop;
+
+  insert into launch_release_0021 (deal_id)
+  select dp.deal_id
+  from public.deal_previews dp
+  where dp.is_published = false
+    and dp.leakage_risk = 'LOW'::public.leakage_risk
+    and (
+      dp.unpublished_by_admin
+      or exists (
+        select 1 from private.preview_holds h where h.deal_id = dp.deal_id
+      )
+    )
+    and not exists (
+      select 1 from private.publish_denylist x where x.deal_id = dp.deal_id
+    )
+    and private.preview_slug_is_template(dp.slug, dp.preview_title, dp.deal_id)
+    and private.detect_preview_leakage(
+      dp.deal_id,
+      dp.slug,
+      dp.preview_title,
+      dp.preview_summary,
+      dp.requirements_preview,
+      dp.relevance_tags,
+      dp.broad_region
+    ) = 'LOW'::public.leakage_risk;
+
+  select count(*)::int into v_released from launch_release_0021;
+
+  delete from private.preview_holds h
+  where h.deal_id in (select r.deal_id from launch_release_0021 r);
+  get diagnostics v_holds = row_count;
+
+  update public.deal_previews dp
+  set unpublished_by_admin = false,
+      is_published = false,
+      updated_at = pg_catalog.now()
+  where dp.deal_id in (select r.deal_id from launch_release_0021 r);
+
+  if v_released > 0 then
+    insert into public.admin_audit_events (actor_id, action, entity_type, entity_id, summary, metadata)
+    values (
+      null,
+      'preview.release_hold'::text,
+      'deal_preview'::text,
+      null,
+      'Released launch holds'::text,
+      pg_catalog.jsonb_build_object(
+        'actor'::text, 'system:migration-0021'::text,
+        'batch'::text, 'launch-release-0021'::text,
+        'released'::text, v_released,
+        'holds_deleted'::text, v_holds
+      )
+    );
+  end if;
+end;
+$$;
+
+revoke all on function private.launch_release_holds() from public, anon, authenticated, service_role;
+
+-- Idempotent. Missing deals are skipped, so an empty CI database inserts nothing.
+insert into private.publish_denylist (deal_id, reason)
+select d.id, 'launch HIGH/REVIEW (run 37448172031)'::text
+from public.deals d
+where d.id in (
+  '4114445b-a7c8-4293-a104-b5751983f664'::uuid,
+  '54d7643d-4e3e-4677-98df-4c8eac6959bf'::uuid,
+  '63152b92-3f61-41b7-b0dc-68c47e40d266'::uuid,
+  '7f69c1c0-23bd-4bca-9cf1-a4984fe29854'::uuid,
+  'a0883a86-d5ae-4ebc-9b53-d748becb19b7'::uuid,
+  'c3452e4e-7d15-4256-a24d-b380e270977a'::uuid,
+  'd3e4b2ca-a04d-47de-9a95-5365361a9f94'::uuid,
+  'f40d336e-8bba-4dd8-b0d3-ff4230091ff2'::uuid,
+  '09e3c3da-6584-4f2b-b4af-b5a97475b9f1'::uuid,
+  '1e04744f-2290-4ca5-abb7-ae4b9d159ef8'::uuid,
+  '274d3b83-06f9-4737-ab7a-d26949308872'::uuid,
+  '56aa201f-ce47-466c-a712-db2fcf8e36c0'::uuid,
+  '59a8d51e-58eb-45c5-8db5-aa7ac3bde330'::uuid,
+  '8e85de94-d4b1-49be-abb1-3ebd9ae218e8'::uuid,
+  'ee22cd36-6c47-4333-b805-caf1063a8e2b'::uuid,
+  'f3b89abf-cf61-46d1-bb89-7beb4b6b544f'::uuid
+)
+on conflict (deal_id) do nothing;
+
+select private.launch_release_holds();
+
 -- ============================================================================
 -- END 0021_publish_eligible_and_unpublish_stale.sql
 -- ============================================================================
