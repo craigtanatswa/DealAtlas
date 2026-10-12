@@ -747,6 +747,71 @@ select ok(
   'release audit contains no deal id'
 );
 
+insert into public.deals (
+  id, primary_source_id, source_title, buyer_organization_id,
+  deal_type, buyer_sector, stage, status, submission_deadline
+) values
+  ('c6000000-0000-4000-8000-000000000051', 'd6000000-0000-4000-8000-000000000001',
+   'Highway lighting column renewal programme', 'a6000000-0000-4000-8000-000000000001',
+   'PUBLIC_TENDER', 'PUBLIC', 'LIVE', 'OPEN', pg_catalog.now() + interval '40 days'),
+  ('c6000000-0000-4000-8000-000000000052', 'd6000000-0000-4000-8000-000000000001',
+   'Highway lighting column renewal programme', 'a6000000-0000-4000-8000-000000000001',
+   'PUBLIC_TENDER', 'PUBLIC', 'LIVE', 'OPEN', pg_catalog.now() + interval '40 days'),
+  ('c6000000-0000-4000-8000-000000000053', 'd6000000-0000-4000-8000-000000000001',
+   'Highway lighting column renewal programme', 'a6000000-0000-4000-8000-000000000001',
+   'PUBLIC_TENDER', 'PUBLIC', 'LIVE', 'OPEN', pg_catalog.now() + interval '40 days'),
+  ('c6000000-0000-4000-8000-000000000054', 'd6000000-0000-4000-8000-000000000001',
+   'Highway lighting column renewal programme', 'a6000000-0000-4000-8000-000000000001',
+   'PUBLIC_TENDER', 'PUBLIC', 'LIVE', 'OPEN', pg_catalog.now() + interval '40 days');
+
+insert into public.deal_previews (
+  deal_id, slug, preview_title, preview_summary, deal_type, buyer_sector, stage, status,
+  broad_region, requirements_preview, leakage_risk, is_published, unpublished_by_admin
+) values
+  ('c6000000-0000-4000-8000-000000000051',
+   'street-lighting-upgrade-for-a-local-authority-abcd1051',
+   'Street lighting upgrade for a local authority',
+   'A public body in Wales wants a contractor to replace roadside lighting with efficient units.',
+   'PUBLIC_TENDER', 'PUBLIC', 'LIVE', 'OPEN', 'Wales', '["relevant street lighting experience"]'::jsonb, 'HIGH', false, false),
+  ('c6000000-0000-4000-8000-000000000052',
+   'street-lighting-upgrade-for-a-local-authority-abcd1052',
+   'Street lighting upgrade for a local authority',
+   'A public body in Wales wants a contractor to replace roadside lighting with efficient units.',
+   'PUBLIC_TENDER', 'PUBLIC', 'LIVE', 'OPEN', 'Wales', '["relevant street lighting experience"]'::jsonb, 'REVIEW', false, false),
+  ('c6000000-0000-4000-8000-000000000053',
+   'street-lighting-upgrade-for-a-local-authority-abcd1053',
+   'Street lighting upgrade for a local authority',
+   'A public body in Wales wants a contractor to replace roadside lighting with efficient units.',
+   'PUBLIC_TENDER', 'PUBLIC', 'LIVE', 'OPEN', 'Wales', '["relevant street lighting experience"]'::jsonb, 'LOW', false, false),
+  ('c6000000-0000-4000-8000-000000000054',
+   'street-lighting-upgrade-for-a-local-authority-abcd1054',
+   'Street lighting upgrade for a local authority',
+   'A public body in Wales wants a contractor to replace roadside lighting with efficient units.',
+   'PUBLIC_TENDER', 'PUBLIC', 'LIVE', 'OPEN', 'Wales', '["relevant street lighting experience"]'::jsonb, 'LOW', false, true);
+
+select private.seed_publish_denylist();
+
+select is(
+  (select reason from private.publish_denylist where deal_id = 'c6000000-0000-4000-8000-000000000051'),
+  'launch HIGH/REVIEW',
+  'a HIGH preview is denylisted by the seed'
+);
+select is(
+  (select reason from private.publish_denylist where deal_id = 'c6000000-0000-4000-8000-000000000052'),
+  'launch HIGH/REVIEW',
+  'a REVIEW preview is denylisted by the seed'
+);
+select is(
+  (select count(*)::int from private.publish_denylist where deal_id = 'c6000000-0000-4000-8000-000000000053'),
+  0,
+  'a LOW preview is not denylisted'
+);
+select is(
+  (select count(*)::int from private.publish_denylist where deal_id = 'c6000000-0000-4000-8000-000000000054'),
+  0,
+  'a held LOW preview is not denylisted'
+);
+
 select ok(
   not has_function_privilege('anon', 'public.publish_eligible_previews(integer, text)', 'execute')
   and not has_function_privilege('authenticated', 'public.publish_eligible_previews(integer, text)', 'execute')
@@ -754,8 +819,11 @@ select ok(
   and not has_function_privilege('authenticated', 'public.unpublish_stale_previews(text)', 'execute')
   and not has_function_privilege('anon', 'private.launch_release_holds()', 'execute')
   and not has_function_privilege('authenticated', 'private.launch_release_holds()', 'execute')
-  and not has_function_privilege('service_role', 'private.launch_release_holds()', 'execute'),
-  'anon, authenticated and service_role cannot release holds'
+  and not has_function_privilege('service_role', 'private.launch_release_holds()', 'execute')
+  and not has_function_privilege('anon', 'private.seed_publish_denylist()', 'execute')
+  and not has_function_privilege('authenticated', 'private.seed_publish_denylist()', 'execute')
+  and not has_function_privilege('service_role', 'private.seed_publish_denylist()', 'execute'),
+  'anon, authenticated and service_role cannot release holds or seed the denylist'
 );
 select ok(
   has_function_privilege('service_role', 'public.publish_eligible_previews(integer, text)', 'execute')

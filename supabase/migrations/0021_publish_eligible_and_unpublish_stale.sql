@@ -354,28 +354,59 @@ $$;
 
 revoke all on function private.launch_release_holds() from public, anon, authenticated, service_role;
 
--- Idempotent. Missing deals are skipped, so an empty CI database inserts nothing.
-insert into private.publish_denylist (deal_id, reason)
-select d.id, 'launch HIGH/REVIEW (run 37448172031)'::text
-from public.deals d
-where d.id in (
-  '4114445b-a7c8-4293-a104-b5751983f664'::uuid,
-  '54d7643d-4e3e-4677-98df-4c8eac6959bf'::uuid,
-  '63152b92-3f61-41b7-b0dc-68c47e40d266'::uuid,
-  '7f69c1c0-23bd-4bca-9cf1-a4984fe29854'::uuid,
-  'a0883a86-d5ae-4ebc-9b53-d748becb19b7'::uuid,
-  'c3452e4e-7d15-4256-a24d-b380e270977a'::uuid,
-  'd3e4b2ca-a04d-47de-9a95-5365361a9f94'::uuid,
-  'f40d336e-8bba-4dd8-b0d3-ff4230091ff2'::uuid,
-  '09e3c3da-6584-4f2b-b4af-b5a97475b9f1'::uuid,
-  '1e04744f-2290-4ca5-abb7-ae4b9d159ef8'::uuid,
-  '274d3b83-06f9-4737-ab7a-d26949308872'::uuid,
-  '56aa201f-ce47-466c-a712-db2fcf8e36c0'::uuid,
-  '59a8d51e-58eb-45c5-8db5-aa7ac3bde330'::uuid,
-  '8e85de94-d4b1-49be-abb1-3ebd9ae218e8'::uuid,
-  'ee22cd36-6c47-4333-b805-caf1063a8e2b'::uuid,
-  'f3b89abf-cf61-46d1-bb89-7beb4b6b544f'::uuid
-)
-on conflict (deal_id) do nothing;
+-- Idempotent. An empty preview table inserts nothing.
+create or replace function private.seed_publish_denylist()
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_count integer;
+begin
+  with scored as (
+    select
+      dp.deal_id,
+      dp.leakage_risk,
+      dp.unpublished_by_admin,
+      private.detect_preview_leakage(
+        dp.deal_id,
+        dp.slug,
+        dp.preview_title,
+        dp.preview_summary,
+        dp.requirements_preview,
+        dp.relevance_tags,
+        dp.broad_region
+      ) as live_risk,
+      exists (
+        select 1 from private.preview_holds h where h.deal_id = dp.deal_id
+      ) as held_row
+    from public.deal_previews dp
+  ),
+  inserted as (
+    insert into private.publish_denylist (deal_id, reason)
+    select s.deal_id, 'launch HIGH/REVIEW'::text
+    from scored s
+    where s.leakage_risk in ('HIGH'::public.leakage_risk, 'REVIEW'::public.leakage_risk)
+      or s.live_risk in ('HIGH'::public.leakage_risk, 'REVIEW'::public.leakage_risk)
+      or (
+        (s.unpublished_by_admin or s.held_row)
+        and (
+          s.leakage_risk is distinct from 'LOW'::public.leakage_risk
+          or s.live_risk is distinct from 'LOW'::public.leakage_risk
+        )
+      )
+    on conflict (deal_id) do nothing
+    returning 1
+  )
+  select count(*)::int into v_count from inserted;
+
+  raise notice 'publish_denylist seeded: %', v_count;
+end;
+$$;
+
+revoke all on function private.seed_publish_denylist() from public, anon, authenticated, service_role;
+
+select private.seed_publish_denylist();
 
 select private.launch_release_holds();
