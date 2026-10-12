@@ -103,24 +103,61 @@ export const ocdsItemSchema = z
   })
   .passthrough();
 
+const criterionNumberSchema = z
+  .object({
+    number: nullableNumber,
+    weight: nullableNumber,
+  })
+  .passthrough();
+
 export const ocdsCriterionSchema = z
   .object({
     type: nullableString,
     name: nullableString,
     description: nullableString,
-    appliesTo: nullableString,
+    appliesTo: z
+      .union([z.string(), z.array(z.string()), z.null()])
+      .optional()
+      .transform((value) => {
+        if (value == null) {
+          return undefined;
+        }
+        return Array.isArray(value) ? value.filter(Boolean).join(", ") : value;
+      }),
     numbers: z
-      .array(
-        z
-          .object({
-            number: nullableNumber,
-            weight: nullableNumber,
-          })
-          .passthrough(),
-      )
-      .optional(),
+      .union([z.array(criterionNumberSchema), criterionNumberSchema])
+      .optional()
+      .transform((value) => {
+        if (value == null) {
+          return undefined;
+        }
+        return Array.isArray(value) ? value : [value];
+      }),
   })
   .passthrough();
+
+function acceptedCriteria(value: unknown) {
+  const list = Array.isArray(value) ? value : value == null ? [] : [value];
+  return list.flatMap((item) => {
+    const parsed = ocdsCriterionSchema.safeParse(item);
+    return parsed.success ? [parsed.data] : [];
+  });
+}
+
+/** Non-display criteria. A bad criterion is dropped; it does not reject the release. */
+export const ocdsCriteriaBlockSchema = z
+  .unknown()
+  .optional()
+  .transform((value) => {
+    const record =
+      value != null && typeof value === "object" && !Array.isArray(value)
+        ? (value as { criteria?: unknown })
+        : null;
+    if (!record) {
+      return undefined;
+    }
+    return { criteria: acceptedCriteria(record.criteria) };
+  });
 
 export const ocdsLotSchema = z
   .object({
@@ -130,12 +167,7 @@ export const ocdsLotSchema = z
     status: nullableString,
     value: ocdsValueSchema.optional(),
     contractPeriod: ocdsPeriodSchema.optional(),
-    awardCriteria: z
-      .object({
-        criteria: z.array(ocdsCriterionSchema).optional(),
-      })
-      .passthrough()
-      .optional(),
+    awardCriteria: ocdsCriteriaBlockSchema,
     hasRenewal: nullableBoolean,
     renewal: z
       .object({
@@ -240,18 +272,8 @@ export const ocdsTenderSchema = z
     items: z.array(ocdsItemSchema).optional(),
     lots: z.array(ocdsLotSchema).optional(),
     documents: z.array(ocdsDocumentSchema).optional(),
-    selectionCriteria: z
-      .object({
-        criteria: z.array(ocdsCriterionSchema).optional(),
-      })
-      .passthrough()
-      .optional(),
-    awardCriteria: z
-      .object({
-        criteria: z.array(ocdsCriterionSchema).optional(),
-      })
-      .passthrough()
-      .optional(),
+    selectionCriteria: ocdsCriteriaBlockSchema,
+    awardCriteria: ocdsCriteriaBlockSchema,
     communication: z
       .object({
         futureNoticeDate: nullableString,

@@ -36,9 +36,37 @@ export type OpenIngestResult = {
   errors: OpenIngestError[];
 };
 
-/** Stage, code, HTTP status or cause code, and host. No URL, query, or message body. */
+/** Fetch lines are stage, code, status, host. Parse lines are stage, code, field path. */
 export function publicIngestErrorLine(error: OpenIngestError): string {
+  if (error.stage === "parse") {
+    const paths = error.message
+      .split(",")
+      .map((part) => part.trim())
+      .filter((part) => /^[A-Za-z0-9_.[\]]+$/.test(part));
+    return `${error.stage} ${error.code} ${paths.join(",") || "-"}`;
+  }
   return `${error.stage} ${error.code} ${publicStatus(error)} ${publicHost(error.message)}`;
+}
+
+export function openIngestShouldFail(result: OpenIngestResult): boolean {
+  if (result.status === "FAILED") {
+    return true;
+  }
+  const fetchFailed = result.errors.some(
+    (error) =>
+      error.stage === "discover" || error.stage === "fetch" || error.stage === "run",
+  );
+  if (fetchFailed) {
+    return true;
+  }
+  const parseOnly =
+    result.errors.length > 0 &&
+    result.errors.every((error) => error.stage === "parse" || error.stage === "record");
+  if (parseOnly) {
+    const succeeded = result.counts.new + result.counts.updated + result.counts.unchanged;
+    return succeeded === 0;
+  }
+  return result.status === "PARTIAL" && result.counts.capped === 0 && result.counts.failed > 0;
 }
 
 function publicStatus(error: OpenIngestError): string {
@@ -202,9 +230,20 @@ export async function runOpenFindATenderIngest(options: {
           errors,
         };
       }
-      if (result.status === "PARTIAL" || result.status === "FAILED") {
+      const fetchLevel =
+        result.status === "FAILED" ||
+        result.errors.some(
+          (error) =>
+            error.stage === "discover" ||
+            error.stage === "fetch" ||
+            error.stage === "run",
+        );
+      if (fetchLevel) {
         status = "PARTIAL";
         break;
+      }
+      if (result.status === "PARTIAL") {
+        status = "PARTIAL";
       }
       if (remaining <= 0) {
         capped = true;

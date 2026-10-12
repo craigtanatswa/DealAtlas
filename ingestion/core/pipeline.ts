@@ -257,7 +257,7 @@ export async function runIngestion(
               }
             } catch (error) {
               counters.parseFailures += 1;
-              throw asIngestionError(error, "parse", "PARSE_FAILED");
+              throw parseFailure(error);
             }
             continue;
           }
@@ -295,7 +295,7 @@ export async function runIngestion(
             candidates = await options.adapter.parse(raw);
           } catch (error) {
             counters.parseFailures += 1;
-            throw asIngestionError(error, "parse", "PARSE_FAILED");
+            throw parseFailure(error);
           }
 
           for (const candidate of candidates) {
@@ -516,4 +516,28 @@ export async function runIngestion(
     }
     throw ingestionError;
   }
+}
+
+function parseFailure(error: unknown): IngestionError {
+  const issues = (error as { issues?: Array<{ path?: unknown[] }> }).issues;
+  const paths = Array.isArray(issues)
+    ? [
+        ...new Set(
+          issues
+            .map((issue) =>
+              Array.isArray(issue.path) ? issue.path.map(String).join(".") : "",
+            )
+            .filter((path) => path.length > 0),
+        ),
+      ]
+    : [];
+  if (paths.length > 0) {
+    return new IngestionError({
+      message: paths.join(","),
+      stage: "parse",
+      code: "PARSE_FAILED",
+      retryable: false,
+    });
+  }
+  return asIngestionError(error, "parse", "PARSE_FAILED");
 }

@@ -7,6 +7,7 @@ import { createMemoryIngestionStore } from "@/ingestion/store/memory";
 import { IngestionError } from "@/ingestion/core/errors";
 import {
   openIngestLogLine,
+  openIngestShouldFail,
   openIngestWindows,
   publicIngestErrorLine,
   runOpenFindATenderIngest,
@@ -93,6 +94,43 @@ describe("open Find a Tender ingest", () => {
       "fetch HTTP_NETWORK ETIMEDOUT www.find-tender.service.gov.uk",
     );
     expect(line).not.toMatch(/updatedFrom|secret|\?|api\/1\.0/);
+    expect(openIngestShouldFail(result)).toBe(true);
+  });
+
+  it("keeps later windows after a row parse failure and does not fail the run", async () => {
+    const urls: string[] = [];
+    const good = packageFromFixtures(["normal.json"]);
+    const bad = {
+      releases: [
+        {
+          ocid: "ocds-h6vhtk-bad",
+          id: "000099-2026",
+          tag: ["tender"],
+          tender: { status: "active" },
+        },
+      ],
+    };
+    const result = await runOpenFindATenderIngest({
+      store: store(),
+      now: NOW,
+      dryRun: true,
+      backfillDays: 8,
+      sleep: async () => {},
+      http: {
+        async getJson(url) {
+          urls.push(url);
+          return jsonResult(url, urls.length === 1 ? bad : good);
+        },
+      },
+    });
+
+    expect(urls).toHaveLength(2);
+    expect(result.counts.new).toBeGreaterThan(0);
+    expect(result.errors.some((error) => error.stage === "parse")).toBe(true);
+    expect(openIngestShouldFail(result)).toBe(false);
+    const line = publicIngestErrorLine(result.errors[0]!);
+    expect(line.startsWith("parse PARSE_FAILED ")).toBe(true);
+    expect(line).not.toMatch(/Broken|title|http/i);
   });
 
   it("reads the release package once and does not fetch each notice", async () => {
