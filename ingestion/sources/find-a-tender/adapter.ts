@@ -60,7 +60,7 @@ export function createFindATenderAdapter(
       // old cursor, or a cursor with no window, both return HTTP 400.
       url.searchParams.set("updatedFrom", resumedWindow?.updatedFrom ?? updatedFrom);
       url.searchParams.set("updatedTo", resumedWindow?.updatedTo ?? updatedTo);
-      if (!resumedWindow && discoverOptions?.stages) {
+      if (discoverOptions?.stages) {
         url.searchParams.set("stages", discoverOptions.stages);
       }
       if (cursor) {

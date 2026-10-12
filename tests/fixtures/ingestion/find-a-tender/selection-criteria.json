@@ -1,0 +1,41 @@
+{
+  "uri": "https://www.find-tender.service.gov.uk/api/1.0/ocdsReleasePackages/096179-2026",
+  "version": "1.1",
+  "releases": [
+    {
+      "ocid": "ocds-h6vhtk-selection",
+      "id": "096179-2026",
+      "date": "2026-10-06T09:00:00Z",
+      "tag": ["tender"],
+      "tender": {
+        "id": "REF-SELECTION",
+        "title": "Sprinkler servicing framework",
+        "description": "Servicing of water mist sprinkler systems.",
+        "status": "active",
+        "value": { "amount": 100000, "currency": "GBP" },
+        "selectionCriteria": {
+          "criteria": [
+            {
+              "type": "suitability",
+              "description": "Tenderers must hold the stated accreditation.",
+              "appliesTo": ["supplier"]
+            },
+            {
+              "type": "economic",
+              "description": "Minimum turnover.",
+              "appliesTo": "supplier",
+              "numbers": { "number": 2 }
+            }
+          ]
+        },
+        "awardCriteria": {
+          "criteria": {
+            "type": "price",
+            "name": "Price",
+            "numbers": [{ "weight": 60 }]
+          }
+        }
+      }
+    }
+  ]
+}

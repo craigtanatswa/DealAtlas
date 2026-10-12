@@ -52,8 +52,12 @@ function readChangedDealIds(filePath: string | undefined): string[] {
 }
 
 async function main() {
-  const { openIngestLogLine, publicIngestErrorLine, runOpenFindATenderIngest } =
-    await import("@/lib/jobs/ingest-open");
+  const {
+    openIngestLogLine,
+    openIngestShouldFail,
+    publicIngestErrorLine,
+    runOpenFindATenderIngest,
+  } = await import("@/lib/jobs/ingest-open");
   const { createSupabaseIngestionStore } = await import("@/ingestion/store/supabase");
   const { createIngestionSupabaseClient } = await import(
     "@/ingestion/store/worker-client"
@@ -76,7 +80,7 @@ async function main() {
   for (const error of result.errors) {
     console.error(publicIngestErrorLine(error));
   }
-  if (result.status === "PARTIAL" || result.status === "FAILED") {
+  if (openIngestShouldFail(result)) {
     process.exitCode = 1;
   }
 }

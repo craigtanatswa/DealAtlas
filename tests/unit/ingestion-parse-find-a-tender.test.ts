@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { createFindATenderAdapter } from "@/ingestion/sources/find-a-tender/adapter";
 import { parseFindATenderRaw, parseOcdsRelease } from "@/ingestion/sources/find-a-tender/parse";
 import { readFindATenderFixture } from "@/tests/helpers/ingestion-fixtures";
 
@@ -49,6 +50,66 @@ describe("Find a Tender OCDS parse", () => {
     expect(candidate.status).toBe("UPCOMING");
     expect(candidate.valueMaxExVat).toBeNull();
     expect(candidate.lots).toEqual([]);
+  });
+
+  it("accepts selection criteria when appliesTo is a list and numbers is one object", () => {
+    const [candidate] = parseFindATenderRaw(
+      readFindATenderFixture("selection-criteria.json"),
+      NOW,
+    );
+    expect(candidate.sourceTitle).toContain("Sprinkler");
+    expect(candidate.requirements.map((item) => item.name)).toContain("suitability");
+    expect(candidate.awardCriteria.map((item) => item.name)).toContain("Price");
+  });
+
+  it("follows links.next inside the same window and keeps stages=tender", async () => {
+    const urls: string[] = [];
+    const adapter = createFindATenderAdapter({
+      now: () => NOW,
+      http: {
+        async getJson(url) {
+          urls.push(url);
+          if (!url.includes("cursor=")) {
+            return {
+              url,
+              status: 200,
+              contentType: "application/json",
+              body: {
+                releases: [{ id: "000001-2026", ocid: "ocds-h6vhtk-fixture1" }],
+                links: {
+                  next: "https://www.find-tender.service.gov.uk/api/1.0/ocdsReleasePackages?limit=100&updatedFrom=2026-09-03T12:00:00&updatedTo=2026-09-10T12:00:00&stages=tender&cursor=dXBkYXRlZEZyb209MjAyNi0wOS0wM1QxMjowMDowMHx1cGRhdGVkVG89MjAyNi0wOS0xMFQxMjowMDowMHxuZXh0Q3Vyc29yPTE=",
+                },
+              },
+              rawText: "{}",
+            };
+          }
+          return {
+            url,
+            status: 200,
+            contentType: "application/json",
+            body: { releases: [{ id: "000002-2026", ocid: "ocds-h6vhtk-fixture2" }] },
+            rawText: "{}",
+          };
+        },
+      },
+    });
+    const first = await adapter.discover(undefined, {
+      limit: 100,
+      updatedFrom: "2026-09-03T12:00:00",
+      updatedTo: "2026-09-10T12:00:00",
+      stages: "tender",
+    });
+    const second = await adapter.discover(first.nextCursor, {
+      limit: 100,
+      updatedFrom: "2026-09-03T12:00:00",
+      updatedTo: "2026-09-10T12:00:00",
+      stages: "tender",
+    });
+    expect(first.items).toHaveLength(1);
+    expect(second.items[0]?.externalRecordId).toBe("000002-2026");
+    expect(urls[1]).toContain("stages=tender");
+    expect(urls[1]).toContain("cursor=");
+    expect(urls[1]).toContain("updatedFrom=2026-09-03T12%3A00%3A00");
   });
 
   it("rejects malformed releases", () => {
