@@ -1,0 +1,47 @@
+{
+  "uri": "https://www.contractsfinder.service.gov.uk/Published/Notices/OCDS/Search",
+  "version": "1.1",
+  "license": "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
+  "publisher": { "name": "Cabinet Office" },
+  "releases": [
+    {
+      "ocid": "ocds-b5fd17-fixture-open",
+      "id": "cf-000001-2026",
+      "date": "2026-09-01T09:00:00Z",
+      "tag": ["tender"],
+      "initiationType": "tender",
+      "tender": {
+        "id": "CF-REF-1",
+        "title": "Synthetic civic cleaning service",
+        "description": "Synthetic fixture for a below-threshold cleaning service.",
+        "status": "active",
+        "procurementMethod": "open",
+        "mainProcurementCategory": "services",
+        "value": { "amount": 40000, "currency": "GBP" },
+        "tenderPeriod": {
+          "startDate": "2026-09-01T09:00:00Z",
+          "endDate": "2026-10-20T12:00:00Z"
+        },
+        "classification": { "scheme": "CPV", "id": "90910000", "description": "Cleaning services" },
+        "lots": [
+          {
+            "id": "1",
+            "title": "Cleaning",
+            "status": "active",
+            "value": { "amount": 40000, "currency": "GBP" }
+          }
+        ]
+      },
+      "parties": [
+        {
+          "id": "GB-PPON-CCCC-2222-DDDD",
+          "name": "Example Borough Council",
+          "identifier": { "scheme": "GB-PPON", "id": "CCCC-2222-DDDD" },
+          "address": { "locality": "Leeds", "country": "GB" },
+          "roles": ["buyer"]
+        }
+      ],
+      "buyer": { "id": "GB-PPON-CCCC-2222-DDDD", "name": "Example Borough Council" }
+    }
+  ]
+}

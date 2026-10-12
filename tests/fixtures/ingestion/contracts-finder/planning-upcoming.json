@@ -1,0 +1,31 @@
+{
+  "uri": "https://www.contractsfinder.service.gov.uk/Published/Notices/OCDS/Search",
+  "version": "1.1",
+  "license": "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
+  "releases": [
+    {
+      "ocid": "ocds-b5fd17-fixture-plan",
+      "id": "cf-000002-2026",
+      "date": "2026-09-02T09:00:00Z",
+      "tag": ["planning"],
+      "initiationType": "tender",
+      "tender": {
+        "id": "CF-REF-2",
+        "title": "Synthetic planned stationery contract",
+        "status": "planned",
+        "mainProcurementCategory": "goods",
+        "communication": { "futureNoticeDate": "2026-11-01T09:00:00Z" },
+        "tenderPeriod": { "startDate": "2026-11-01T09:00:00Z" }
+      },
+      "parties": [
+        {
+          "id": "GB-PPON-EEEE-3333-FFFF",
+          "name": "Example Schools Trust",
+          "identifier": { "scheme": "GB-PPON", "id": "EEEE-3333-FFFF" },
+          "roles": ["buyer"]
+        }
+      ],
+      "buyer": { "id": "GB-PPON-EEEE-3333-FFFF", "name": "Example Schools Trust" }
+    }
+  ]
+}

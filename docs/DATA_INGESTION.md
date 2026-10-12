@@ -52,7 +52,7 @@ UNKNOWN or PROHIBITED => block automatic production ingestion
 ## 5. Initial public-sector adapters
 Build adapters in this order, subject to current official access terms:
 1. Find a Tender official OCDS API (`GET https://www.find-tender.service.gov.uk/api/1.0/ocdsReleasePackages`, plus `ocdsRecordPackages/{ocid}` and notice/OCID lookups). Notice data is published under the Open Government Licence. Do not scrape Find a Tender HTML when this API is available.
-2. Contracts Finder historical/legacy data if useful and permitted.
+2. Contracts Finder official OCDS Search feed (`GET https://www.contractsfinder.service.gov.uk/Published/Notices/OCDS/Search`) under the Open Government Licence v3.0. Do not scrape Contracts Finder HTML. Ingestion is preserve-only. Above-threshold notices that share an OCID with Find a Tender, or cite a Find a Tender OCID (`ocds-h6vhtk-`) in `relatedProcesses`, are linked onto the existing deal and do not create a second public deal.
 3. Public Contracts Scotland official data/API/feed if available.
 4. Sell2Wales official OCDS/API/bulk data if available.
 5. eTendersNI official/public mechanisms where permitted.
