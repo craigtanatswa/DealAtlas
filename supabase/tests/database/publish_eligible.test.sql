@@ -7,6 +7,17 @@ select no_plan();
 truncate table public.deals cascade;
 delete from public.admin_audit_events
 where action in ('preview.publish', 'preview.unpublish');
+delete from private.publish_denylist;
+
+select throws_ok(
+  'select public.publish_eligible_previews(1)',
+  'P0001',
+  'publish denylist is empty',
+  'an empty denylist refuses to publish'
+);
+
+insert into private.publish_denylist (deal_id, reason)
+values ('00000000-0000-4000-8000-0000000000d1', 'test seed so publish can run');
 
 insert into public.organizations (id, canonical_name, normalized_name, domain, postcode)
 values (

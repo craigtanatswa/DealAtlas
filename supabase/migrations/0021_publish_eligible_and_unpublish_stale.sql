@@ -76,6 +76,10 @@ declare
   v_cap integer := least(500, greatest(1, coalesce(p_cap, 300)));
   v_result jsonb;
 begin
+  if not exists (select 1 from private.publish_denylist) then
+    raise exception 'publish denylist is empty';
+  end if;
+
   with classified as (
     select
       dp.deal_id,
@@ -189,6 +193,9 @@ grant execute on function public.publish_eligible_previews(integer, text) to ser
 drop function if exists public.unpublish_stale_previews();
 drop function if exists public.unpublish_stale_previews(text);
 
+-- A deadline under 24 hours away, and a non-template or retired slug, only
+-- gate first publication. This function does not unpublish for those.
+-- A published row still comes down once its deadline is null or past.
 create or replace function public.unpublish_stale_previews(p_run_id text default null)
 returns jsonb
 language plpgsql
@@ -269,3 +276,6 @@ $$;
 
 revoke all on function public.unpublish_stale_previews(text) from public, anon, authenticated;
 grant execute on function public.unpublish_stale_previews(text) to service_role;
+
+comment on function public.unpublish_stale_previews(text) is
+  'Does not unpublish a row only because its deadline is under 24 hours away, or because its slug is non-template or retired. Those checks gate first publication. A published row still comes down once its deadline is null or past.';
