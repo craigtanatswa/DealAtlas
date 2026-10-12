@@ -48,7 +48,7 @@ insert into public.deal_previews (
 );
 
 create temp table cf_before as
-select status, stage, submission_deadline, primary_source_id, is_published
+select d.status, d.stage, d.submission_deadline, d.primary_source_id, dp.is_published
 from public.deals d
 join public.deal_previews dp on dp.deal_id = d.id
 where d.id = 'c7000000-0000-4000-8000-000000000001';
@@ -89,7 +89,7 @@ from public.data_sources s
 where s.source_key = 'contracts-finder';
 
 select results_eq(
-  $$select status, stage, submission_deadline, primary_source_id, is_published
+  $$select d.status, d.stage, d.submission_deadline, d.primary_source_id, dp.is_published
     from public.deals d
     join public.deal_previews dp on dp.deal_id = d.id
     where d.id = 'c7000000-0000-4000-8000-000000000001'$$,
