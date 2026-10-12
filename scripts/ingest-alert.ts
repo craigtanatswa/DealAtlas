@@ -4,7 +4,7 @@ loadEnvFiles();
 
 async function main() {
   const { ingestAlertShouldSkip, sendIngestAlert } = await import("@/lib/jobs/ingest-alert");
-  const to = process.env.INGEST_ALERT_EMAIL_TO;
+  const to = process.env.LEAK_ALERT_EMAIL_TO;
   if (ingestAlertShouldSkip(to)) {
     console.log(JSON.stringify({ alert: "skipped" }));
     return;
@@ -13,7 +13,12 @@ async function main() {
     to: to ?? "",
     from: process.env.DEALATLAS_EMAIL_FROM,
     apiKey: process.env.RESEND_API_KEY,
-    countsJson: process.env.INGEST_COUNTS,
+    ingestCountsJson: process.env.INGEST_COUNTS,
+    buildCountsJson: process.env.BUILD_COUNTS,
+    ingestOk: process.env.INGEST_OK,
+    buildOk: process.env.BUILD_OK,
+    unpublishOk: process.env.UNPUBLISH_OK,
+    publishOk: process.env.PUBLISH_OK,
   });
   console.log(JSON.stringify({ alert: outcome }));
 }

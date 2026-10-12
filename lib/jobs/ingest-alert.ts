@@ -1,5 +1,7 @@
 const PLACEHOLDER = /example\.(com|org|net)\b|placeholder|localhost|changeme|your-email/i;
 
+const COUNT_KEYS = ["fetched", "new", "updated", "unchanged", "failed", "capped"] as const;
+
 export function ingestAlertShouldSkip(recipient: string | undefined | null): boolean {
   const value = recipient?.trim() ?? "";
   if (!value || !value.includes("@")) {
@@ -8,7 +10,11 @@ export function ingestAlertShouldSkip(recipient: string | undefined | null): boo
   return PLACEHOLDER.test(value);
 }
 
-export function ingestAlertBody(countsJson: string | undefined): string {
+function numericFlag(value: string | undefined): 0 | 1 {
+  return value === "1" ? 1 : 0;
+}
+
+function pickCounts(countsJson: string | undefined, prefix: string): Record<string, number> {
   let parsed: unknown = null;
   if (countsJson?.trim()) {
     try {
@@ -18,16 +24,29 @@ export function ingestAlertBody(countsJson: string | undefined): string {
     }
   }
   const record = parsed && typeof parsed === "object" ? (parsed as Record<string, unknown>) : {};
-  const count = (key: string) => {
+  const counts: Record<string, number> = {};
+  for (const key of COUNT_KEYS) {
     const value = record[key];
-    return typeof value === "number" && Number.isFinite(value) ? value : 0;
-  };
+    counts[`${prefix}${key}`] = typeof value === "number" && Number.isFinite(value) ? value : 0;
+  }
+  return counts;
+}
+
+export function ingestAlertBody(input: {
+  ingestCountsJson?: string;
+  buildCountsJson?: string;
+  ingestOk?: string;
+  buildOk?: string;
+  unpublishOk?: string;
+  publishOk?: string;
+}): string {
   return JSON.stringify({
-    fetched: count("fetched"),
-    new: count("new"),
-    updated: count("updated"),
-    unchanged: count("unchanged"),
-    failed: count("failed"),
+    ...pickCounts(input.ingestCountsJson, ""),
+    ...pickCounts(input.buildCountsJson, "build_"),
+    ingest_ok: numericFlag(input.ingestOk),
+    build_ok: numericFlag(input.buildOk),
+    unpublish_ok: numericFlag(input.unpublishOk),
+    publish_ok: numericFlag(input.publishOk),
   });
 }
 
@@ -35,7 +54,12 @@ export async function sendIngestAlert(options: {
   to: string;
   from: string | undefined;
   apiKey: string | undefined;
-  countsJson: string | undefined;
+  ingestCountsJson?: string;
+  buildCountsJson?: string;
+  ingestOk?: string;
+  buildOk?: string;
+  unpublishOk?: string;
+  publishOk?: string;
   fetchImpl?: typeof fetch;
 }): Promise<"sent" | "skipped"> {
   const from = options.from?.trim() ?? "";
@@ -53,7 +77,7 @@ export async function sendIngestAlert(options: {
       from,
       to: options.to.trim(),
       subject: "DealAtlas open ingest",
-      text: ingestAlertBody(options.countsJson),
+      text: ingestAlertBody(options),
     }),
   });
   if (!response.ok) {

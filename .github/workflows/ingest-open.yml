@@ -75,6 +75,7 @@ jobs:
           npm run ingest-open
 
       - name: Build previews
+        id: build
         if: always() && steps.ingest.outcome != 'cancelled' && (github.event_name != 'workflow_dispatch' || inputs.dry_run == false)
         env:
           DRY_RUN: "false"
@@ -82,17 +83,44 @@ jobs:
           OPEN_INGEST_STATE: ${{ runner.temp }}/open-ingest-changed.json
         run: npm run ingest-open
 
-      - name: Unpublish expired deals
+      - name: Unpublish stale previews
+        id: unpublish
         if: always() && steps.ingest.outcome != 'cancelled' && (github.event_name != 'workflow_dispatch' || inputs.dry_run == false)
-        run: npm run unpublish-expired
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          DEALATLAS_EMAIL_FROM: ${{ secrets.DEALATLAS_EMAIL_FROM }}
+          LEAK_ALERT_EMAIL_TO: ${{ secrets.LEAK_ALERT_EMAIL_TO }}
+        run: npm run job -- --job unpublish-stale --mode live
+
+      - name: Publish eligible previews
+        id: publish
+        if: always() && steps.ingest.outcome == 'success' && steps.build.outcome == 'success' && (github.event_name != 'workflow_dispatch' || inputs.dry_run == false)
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          DEALATLAS_EMAIL_FROM: ${{ secrets.DEALATLAS_EMAIL_FROM }}
+          LEAK_ALERT_EMAIL_TO: ${{ secrets.LEAK_ALERT_EMAIL_TO }}
+        run: npm run job -- --job publish-eligible --mode live
+
+      - name: Publish alert
+        if: always() && (github.event_name != 'workflow_dispatch' || inputs.dry_run == false) && (steps.unpublish.outcome == 'failure' || steps.publish.outcome == 'failure' || steps.publish.outcome == 'skipped')
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          DEALATLAS_EMAIL_FROM: ${{ secrets.DEALATLAS_EMAIL_FROM }}
+          LEAK_ALERT_EMAIL_TO: ${{ secrets.LEAK_ALERT_EMAIL_TO }}
+        run: npm run job -- --job publish-alert --mode live
 
       - name: Alert
         if: always()
         env:
           INGEST_COUNTS: ${{ steps.ingest.outputs.counts }}
+          BUILD_COUNTS: ${{ steps.build.outputs.counts }}
+          INGEST_OK: ${{ steps.ingest.outcome == 'success' && '1' || '0' }}
+          BUILD_OK: ${{ steps.build.outcome == 'success' && '1' || '0' }}
+          UNPUBLISH_OK: ${{ steps.unpublish.outcome == 'success' && '1' || '0' }}
+          PUBLISH_OK: ${{ steps.publish.outcome == 'success' && '1' || '0' }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           DEALATLAS_EMAIL_FROM: ${{ secrets.DEALATLAS_EMAIL_FROM }}
-          INGEST_ALERT_EMAIL_TO: ${{ secrets.INGEST_ALERT_EMAIL_TO }}
+          LEAK_ALERT_EMAIL_TO: ${{ secrets.LEAK_ALERT_EMAIL_TO }}
         run: npm run ingest-alert
 
   unpublish:
@@ -120,5 +148,18 @@ jobs:
 
       - run: npm ci
 
-      - name: Unpublish expired deals
-        run: npm run unpublish-expired
+      - name: Unpublish stale previews
+        id: unpublish
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          DEALATLAS_EMAIL_FROM: ${{ secrets.DEALATLAS_EMAIL_FROM }}
+          LEAK_ALERT_EMAIL_TO: ${{ secrets.LEAK_ALERT_EMAIL_TO }}
+        run: npm run job -- --job unpublish-stale --mode live
+
+      - name: Publish alert
+        if: failure()
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          DEALATLAS_EMAIL_FROM: ${{ secrets.DEALATLAS_EMAIL_FROM }}
+          LEAK_ALERT_EMAIL_TO: ${{ secrets.LEAK_ALERT_EMAIL_TO }}
+        run: npm run job -- --job publish-alert --mode live

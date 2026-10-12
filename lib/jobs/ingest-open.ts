@@ -18,6 +18,8 @@ export type OpenIngestCounts = {
   updated: number;
   unchanged: number;
   failed: number;
+  /** 1 when the record cap stopped the run before the window was finished. */
+  capped: number;
 };
 
 export type OpenIngestResult = {
@@ -55,7 +57,7 @@ export function openIngestWindows(
 }
 
 function emptyCounts(): OpenIngestCounts {
-  return { fetched: 0, new: 0, updated: 0, unchanged: 0, failed: 0 };
+  return { fetched: 0, new: 0, updated: 0, unchanged: 0, failed: 0, capped: 0 };
 }
 
 export function openIngestLogLine(counts: OpenIngestCounts): string {
@@ -65,6 +67,7 @@ export function openIngestLogLine(counts: OpenIngestCounts): string {
     updated: counts.updated,
     unchanged: counts.unchanged,
     failed: counts.failed,
+    capped: counts.capped,
   });
 }
 
@@ -101,12 +104,16 @@ export async function runOpenFindATenderIngest(options: {
   const counts = emptyCounts();
   const changed = new Set<string>(options.dealIds ?? []);
   const phase = options.phase ?? "all";
-  let remaining = options.limit ?? MAX_RECORDS;
+  const recordCap = options.limit ?? MAX_RECORDS;
+  let remaining = recordCap;
   let status: OpenIngestResult["status"] = "SUCCEEDED";
+  let capped = false;
 
   if (phase !== "previews") {
     for (const window of openIngestWindows(now, options.backfillDays)) {
       if (remaining <= 0) {
+        capped = true;
+        status = "PARTIAL";
         break;
       }
       const result = await runIngestion({
@@ -147,7 +154,17 @@ export async function runOpenFindATenderIngest(options: {
         status = "PARTIAL";
         break;
       }
+      if (remaining <= 0) {
+        capped = true;
+        status = "PARTIAL";
+        break;
+      }
     }
+  }
+
+  if (capped) {
+    counts.capped = 1;
+    status = "PARTIAL";
   }
 
   const previewIds = phase === "ingest" ? [] : [...changed];
@@ -167,7 +184,7 @@ export async function runOpenFindATenderIngest(options: {
     }
   }
 
-  if (counts.failed === 0) {
+  if (counts.failed === 0 && status !== "PARTIAL") {
     status = "SUCCEEDED";
   }
 

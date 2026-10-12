@@ -18,15 +18,21 @@ describe("open ingest alerts", () => {
       to: "ops@dealatlas.co.uk",
       from: "alerts@dealatlas.co.uk",
       apiKey: "re_test",
-      countsJson: JSON.stringify({
+      ingestCountsJson: JSON.stringify({
         fetched: 3,
         new: 1,
         updated: 0,
         unchanged: 2,
         failed: 0,
+        capped: 0,
         title: "Managed IT support",
         url: "https://www.find-tender.service.gov.uk/Notice/1",
       }),
+      buildCountsJson: JSON.stringify({ fetched: 1, failed: 0 }),
+      ingestOk: "1",
+      buildOk: "0",
+      unpublishOk: "1",
+      publishOk: "0",
       fetchImpl: (async (url: string | URL | Request, init?: RequestInit) => {
         calls.push({ url: String(url), body: String(init?.body ?? "") });
         return new Response("{}", { status: 200 });
@@ -42,6 +48,17 @@ describe("open ingest alerts", () => {
       updated: 0,
       unchanged: 2,
       failed: 0,
+      capped: 0,
+      build_fetched: 1,
+      build_new: 0,
+      build_updated: 0,
+      build_unchanged: 0,
+      build_failed: 0,
+      build_capped: 0,
+      ingest_ok: 1,
+      build_ok: 0,
+      unpublish_ok: 1,
+      publish_ok: 0,
     });
     expect(payload.text).not.toMatch(/managed it|find-tender|http/i);
   });
@@ -52,7 +69,7 @@ describe("open ingest alerts", () => {
       to: "ops@example.com",
       from: "alerts@dealatlas.co.uk",
       apiKey: "re_test",
-      countsJson: ingestAlertBody(undefined),
+      ingestCountsJson: ingestAlertBody({}),
       fetchImpl: (async () => {
         calls += 1;
         return new Response("{}", { status: 200 });

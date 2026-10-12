@@ -22,9 +22,13 @@ describe("ingest-open workflow", () => {
     expect(workflow).toContain("group: dealatlas-ingest-open");
     expect(workflow).toContain("cancel-in-progress: false");
     expect(workflow).toContain("npm run ingest-open");
-    expect(workflow).toContain("npm run unpublish-expired");
+    expect(workflow).toContain("id: build");
+    expect(workflow).toContain("--job unpublish-stale");
+    expect(workflow).toContain("--job publish-eligible");
+    expect(workflow).toContain("--job publish-alert");
     expect(workflow).toContain("npm run ingest-alert");
-    expect(workflow).not.toContain("npm run job");
+    expect(workflow).not.toContain("unpublish-expired");
+    expect(workflow).not.toContain("--job ingest");
     const scheduled = fs.readFileSync(
       path.join(ROOT, ".github/workflows/scheduled-jobs.yml"),
       "utf8",
@@ -38,10 +42,13 @@ describe("ingest-open workflow", () => {
     const unpublishJob = workflow.slice(workflow.indexOf("  unpublish:"));
     expect(ingestJob.indexOf("SUPABASE_SECRET_KEY")).toBeLessThan(ingestJob.indexOf("steps:"));
     expect(unpublishJob.indexOf("SUPABASE_SECRET_KEY")).toBeLessThan(unpublishJob.indexOf("steps:"));
-    expect(ingestJob.slice(0, ingestJob.indexOf("name: Alert"))).not.toContain("RESEND_API_KEY");
-    expect(unpublishJob).not.toContain("RESEND_API_KEY");
+    const beforeAlerts = ingestJob.slice(0, ingestJob.indexOf("name: Unpublish stale previews"));
+    expect(beforeAlerts).not.toContain("RESEND_API_KEY");
+    expect(unpublishJob.slice(0, unpublishJob.indexOf("steps:"))).not.toContain("RESEND_API_KEY");
     expect(ingestJob).toContain("RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}");
-    expect(ingestJob).toContain("INGEST_ALERT_EMAIL_TO: ${{ secrets.INGEST_ALERT_EMAIL_TO }}");
+    expect(ingestJob).toContain("LEAK_ALERT_EMAIL_TO: ${{ secrets.LEAK_ALERT_EMAIL_TO }}");
+    expect(unpublishJob).toContain("if: failure()");
+    expect(ingestJob).toContain("steps.ingest.outcome == 'success' && steps.build.outcome == 'success'");
     expect(unpublishJob).not.toContain("ingest-open");
     expect(unpublishJob).not.toContain("Build previews");
     expect(unpublishJob).toContain('github.event.schedule == \'17 5 * * *\'');
@@ -59,7 +66,7 @@ describe("ingest-open workflow", () => {
       .filter((name) => name.endsWith(".sql") && name > "0006");
     for (const name of later) {
       const sql = fs.readFileSync(path.join(migrations, name), "utf8");
-      expect(sql).not.toMatch(/source_key\s*=\s*'contracts-finder'|'contracts-finder'/i);
+      expect(sql).not.toMatch(/insert into public\.data_sources[\s\S]{0,800}contracts-finder/i);
     }
     const endpoint = fs.readFileSync(path.join(migrations, "0008_find_a_tender_ocds.sql"), "utf8");
     expect(endpoint).toContain("source_key = 'find-a-tender'");

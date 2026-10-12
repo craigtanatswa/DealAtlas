@@ -5,7 +5,6 @@ import { createFindATenderAdapter } from "@/ingestion/sources/find-a-tender/adap
 import { findATenderSourceRecord } from "@/ingestion/sources/find-a-tender/seed";
 import { createMemoryIngestionStore } from "@/ingestion/store/memory";
 import { openIngestLogLine, openIngestWindows, runOpenFindATenderIngest } from "@/lib/jobs/ingest-open";
-import { unpublishExpiredDeals } from "@/lib/jobs/unpublish-expired";
 import { isTemplatePreviewSlug } from "@/lib/deals/public-slug";
 import { packageFromFixtures } from "@/tests/helpers/ingestion-fixtures";
 
@@ -40,6 +39,7 @@ describe("open Find a Tender ingest", () => {
       updated: 0,
       unchanged: 1,
       failed: 0,
+      capped: 0,
     });
     expect(JSON.parse(line)).toEqual({
       fetched: 2,
@@ -47,6 +47,7 @@ describe("open Find a Tender ingest", () => {
       updated: 0,
       unchanged: 1,
       failed: 0,
+      capped: 0,
     });
     expect(line).not.toMatch(/http|title|buyer|ocds|notice/i);
   });
@@ -230,13 +231,14 @@ describe("open Find a Tender ingest", () => {
     expect(memory.previews.some((preview) => !preview.isPublished)).toBe(true);
   });
 
-  it("unpublishes only previews whose deadline has passed", async () => {
+  it("marks a record-cap stop as partial even when nothing failed", async () => {
     const memory = store();
-    await runOpenFindATenderIngest({
+    const result = await runOpenFindATenderIngest({
       store: memory,
       now: NOW,
       dryRun: false,
       backfillDays: 7,
+      limit: 1,
       sleep: async () => {},
       http: {
         async getJson(url) {
@@ -244,30 +246,12 @@ describe("open Find a Tender ingest", () => {
         },
       },
     });
-    expect(memory.deals.length).toBe(2);
-    for (const preview of memory.previews) {
-      preview.isPublished = true;
-    }
-    memory.deals[0]!.submissionDeadline = "2026-09-01T00:00:00.000Z";
-    memory.deals[1]!.submissionDeadline = null;
-    const deals = memory.deals.length;
-    const previews = memory.previews.length;
 
-    const expired = await unpublishExpiredDeals({ store: memory, now: NOW });
-    expect(expired.unpublished).toBe(1);
-    expect(memory.previews.find((preview) => preview.dealId === memory.deals[0]!.id)?.isPublished).toBe(
-      false,
-    );
-    expect(memory.previews.find((preview) => preview.dealId === memory.deals[1]!.id)?.isPublished).toBe(
-      true,
-    );
-    expect(memory.deals).toHaveLength(deals);
-    expect(memory.previews).toHaveLength(previews);
-
-    const again = await unpublishExpiredDeals({ store: memory, now: NOW });
-    expect(again.unpublished).toBe(0);
-    expect(memory.deals).toHaveLength(deals);
-    expect(memory.previews).toHaveLength(previews);
+    expect(result.status).toBe("PARTIAL");
+    expect(result.counts.failed).toBe(0);
+    expect(result.counts.capped).toBe(1);
+    expect(result.counts.fetched).toBe(1);
+    expect(memory.deals.length).toBeGreaterThan(0);
   });
 
   it("does not fetch a source the compliance gate rejects", async () => {
