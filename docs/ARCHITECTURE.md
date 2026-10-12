@@ -232,6 +232,8 @@ Rebuild stale deadline bands with `npm run rebuild-previews`.
 
 An hourly read-only leak scan lives in `leak-scan.yml`. It checks the public site and re-runs the preview gate. It does not publish, unpublish, hold rows or write to the database. `scheduled-jobs.yml` is left unchanged.
 
+`public.publish_eligible_previews` publishes a LOW-risk preview only when the source is an enabled OCDS notice feed (`OPEN_LICENSE` or `PERMISSION_GRANTED`) and the stage pair is OPEN or CLOSING_SOON at LIVE, or a dated UPCOMING PLANNING notice from Find a Tender or Contracts Finder. `public.unpublish_stale_previews` unpublishes a published row that no longer meets that rule, including a null or past deadline, a source that dropped out, or a denylist hit. Both are service-role only, return counts, and do not enqueue match jobs. Ingest and the changed-preview rebuild pass `publication: "preserve"`, so a default ingest does not publish. Live entrypoints are `npm run job -- --job publish-eligible --mode live` and `--job unpublish-stale`. Dry-run is the default and does not call them. A live published count under 100 alerts with counts only. Migration 0021 seeds `private.publish_denylist` from previews whose stored or recomputed risk is HIGH or REVIEW, and from held previews whose risk is not LOW. It releases clean LOW holds without publishing them. `publish_eligible_previews` still refuses to run while that table is empty.
+
 ## 11. Source compliance gate
 Automated ingestion calls `canIngestSource(source)` before fetching.
 

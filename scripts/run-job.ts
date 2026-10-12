@@ -8,7 +8,7 @@ async function main() {
   const job = args.job;
   if (!job) {
     console.error(
-      "Usage: npm run job -- --job <ingest|previews|alerts|renewals|data-quality> [--mode live|test|dry-run]",
+      "Usage: npm run job -- --job <ingest|previews|alerts|renewals|data-quality|publish-eligible|unpublish-stale|publish-alert> [--mode live|test|dry-run]",
     );
     process.exitCode = 1;
     return;
@@ -89,7 +89,15 @@ async function main() {
 }
 
 async function dispatchJob(
-  job: "ingest" | "previews" | "alerts" | "renewals" | "data-quality",
+  job:
+    | "ingest"
+    | "previews"
+    | "alerts"
+    | "renewals"
+    | "data-quality"
+    | "publish-eligible"
+    | "unpublish-stale"
+    | "publish-alert",
   args: Awaited<ReturnType<typeof import("@/lib/jobs/cli").parseJobArgs>>,
   reporter: ReturnType<typeof import("@/lib/monitoring").createErrorReporter>,
 ) {
@@ -217,6 +225,23 @@ async function dispatchJob(
       alerts,
       status: recalc.failures > 0 ? "PARTIAL" : "SUCCEEDED",
     };
+  }
+
+  if (job === "publish-eligible" || job === "unpublish-stale" || job === "publish-alert") {
+    const { createIngestionSupabaseClient } = await import(
+      "@/ingestion/store/worker-client"
+    );
+    const { runPublishAlert, runPublishEligible, runUnpublishStale } = await import(
+      "@/lib/jobs/publish-open"
+    );
+    const client = createIngestionSupabaseClient() as never;
+    if (job === "publish-eligible") {
+      return runPublishEligible({ mode: args.mode, client, env: process.env });
+    }
+    if (job === "unpublish-stale") {
+      return runUnpublishStale({ mode: args.mode, client, env: process.env });
+    }
+    return runPublishAlert({ mode: args.mode, client, env: process.env });
   }
 
   const { createSupabaseIngestionStore } = await import(

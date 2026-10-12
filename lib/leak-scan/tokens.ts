@@ -36,17 +36,20 @@ const GENERIC_NAME_WORDS = new Set([
 ]);
 
 const STOP_WORDS = new Set(["a", "an", "of", "to", "in", "on", "at", "by", "or", "as"]);
+const PLACEHOLDER_NAMES = new Set(["n/a", "tbc", "unknown", "none"]);
 
 /** Exact DealAtlas hosts. Subdomains and lookalike suffixes are not ours. */
 export const OWN_HOSTS = new Set(["dealatlas.uk", "www.dealatlas.uk"]);
 
 export function isGenericName(value: string): boolean {
+  if (PLACEHOLDER_NAMES.has(value.trim().toLowerCase())) return true;
   const words = value.split(/[^A-Za-z0-9]+/).filter(Boolean);
   if (words.length === 0) return true;
   return words.every((word) => {
-    if (/^[A-Z]{3,}$/.test(word)) return false;
     const lower = word.toLowerCase();
-    return GENERIC_NAME_WORDS.has(lower) || STOP_WORDS.has(lower);
+    if (GENERIC_NAME_WORDS.has(lower) || STOP_WORDS.has(lower)) return true;
+    if (/^[A-Z]{3,}$/.test(word)) return false;
+    return false;
   });
 }
 

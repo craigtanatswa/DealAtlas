@@ -16,6 +16,8 @@ const PHASE_B_ADDED_FUNCTIONS = new Set([
   "preview_slug_is_retired",
   "retire_preview_slug",
   "maintain_deals_leak_index",
+  "publish_eligible_previews",
+  "unpublish_stale_previews",
 ]);
 
 export type Acl = {

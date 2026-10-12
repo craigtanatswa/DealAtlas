@@ -22,6 +22,8 @@ describe("phase B ACL diff", () => {
       "preview_slug_is_retired(text)": fn("preview_slug_is_retired", false, false),
       "retire_preview_slug(text)": fn("retire_preview_slug", false, false),
       "maintain_deals_leak_index()": fn("maintain_deals_leak_index", false, false),
+      "publish_eligible_previews(integer, text)": fn("publish_eligible_previews", false, false),
+      "unpublish_stale_previews(text)": fn("unpublish_stale_previews", false, false),
       "search_deal_previews()": fn("search_deal_previews", false, false),
     });
     const diff = aclDiff(before, after);
@@ -32,6 +34,8 @@ describe("phase B ACL diff", () => {
       "preview_slug_is_retired(text): added",
       "retire_preview_slug(text): added",
       "maintain_deals_leak_index(): added",
+      "publish_eligible_previews(integer, text): added",
+      "unpublish_stale_previews(text): added",
     ]);
   });
 

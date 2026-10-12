@@ -195,7 +195,7 @@ export type AdminBillingEventRow = {
 
 export type AdminAuditRow = {
   id: string;
-  actorId: string;
+  actorId: string | null;
   action: string;
   entityType: string;
   entityId: string | null;
