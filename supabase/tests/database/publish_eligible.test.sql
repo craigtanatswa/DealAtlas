@@ -28,6 +28,8 @@ values (
   'XW7 2PL'
 );
 
+delete from public.data_sources where source_key = 'contracts-finder';
+
 insert into public.data_sources (id, source_key, name, source_type, access_method, reuse_status, enabled)
 values
   ('d6000000-0000-4000-8000-000000000001', 'contracts-finder', 'Contracts Finder', 'GOVERNMENT_OPEN_DATA', 'OCDS_API', 'OPEN_LICENSE', true),

@@ -59,7 +59,10 @@ describe("ingest-open workflow", () => {
     expect(ingestJob).toContain("RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}");
     expect(ingestJob).toContain("LEAK_ALERT_EMAIL_TO: ${{ secrets.LEAK_ALERT_EMAIL_TO }}");
     expect(unpublishJob).toContain("if: failure()");
-    expect(ingestJob).toContain("steps.ingest.outcome == 'success' && steps.build.outcome == 'success'");
+    expect(ingestJob).toContain("steps.ingest.outcome == 'success' && steps.contracts_finder.outcome == 'success' && steps.build.outcome == 'success'");
+    expect(ingestJob.indexOf("id: ingest")).toBeLessThan(ingestJob.indexOf("id: contracts_finder"));
+    expect(ingestJob.indexOf("id: contracts_finder")).toBeLessThan(ingestJob.indexOf("id: build"));
+    expect(ingestJob).toContain("OPEN_INGEST_SOURCE: contracts-finder");
     expect(unpublishJob).not.toContain("ingest-open");
     expect(unpublishJob).not.toContain("Build previews");
     expect(unpublishJob).toContain('github.event.schedule == \'17 5 * * *\'');
@@ -96,6 +99,10 @@ describe("ingest-open workflow", () => {
       .filter((name) => name.endsWith(".sql") && name > "0006");
     for (const name of later) {
       const sql = fs.readFileSync(path.join(migrations, name), "utf8");
+      if (name.startsWith("0023_")) {
+        expect(sql).toContain("'contracts-finder'");
+        continue;
+      }
       expect(sql).not.toMatch(/insert into public\.data_sources[\s\S]{0,800}contracts-finder/i);
     }
     const endpoint = fs.readFileSync(path.join(migrations, "0008_find_a_tender_ocds.sql"), "utf8");

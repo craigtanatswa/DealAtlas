@@ -1,6 +1,6 @@
 name: Ingest open notices
 
-# Find a Tender only, via the official OCDS release-package API.
+# Find a Tender, then Contracts Finder, via official OCDS feeds.
 # Manual dispatch defaults to dry_run so a click fetches and counts without writing.
 # The every-third-day cron ingests. A separate daily cron only unpublishes expired deals.
 # scheduled-jobs.yml is not part of this workflow.
@@ -86,6 +86,30 @@ jobs:
           fi
           npm run ingest-open
 
+      - name: Ingest open Contracts Finder notices
+        id: contracts_finder
+        if: always() && steps.ingest.outcome != 'cancelled'
+        env:
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'false' }}
+          BACKFILL_DAYS: ${{ github.event_name == 'workflow_dispatch' && inputs.backfill_days || '7' }}
+          OPEN_INGEST_PHASE: ingest
+          OPEN_INGEST_SOURCE: contracts-finder
+          OPEN_INGEST_STATE: ${{ runner.temp }}/open-ingest-changed.json
+        run: |
+          set -euo pipefail
+          case "$DRY_RUN" in
+            true|false) ;;
+            *) echo "dry_run must be true or false" >&2; exit 1 ;;
+          esac
+          case "$BACKFILL_DAYS" in
+            ''|*[!0-9]*) echo "backfill_days must be a positive integer" >&2; exit 1 ;;
+          esac
+          if [ "$BACKFILL_DAYS" -lt 1 ] || [ "$BACKFILL_DAYS" -gt 366 ]; then
+            echo "backfill_days must be from 1 to 366" >&2
+            exit 1
+          fi
+          npm run ingest-open
+
       - name: Build previews
         id: build
         if: always() && steps.ingest.outcome != 'cancelled' && (github.event_name != 'workflow_dispatch' || inputs.dry_run == false)
@@ -108,7 +132,7 @@ jobs:
         id: publish
         # Row parse errors exit 0 so build, unpublish and publish still run.
         # A fetch-level ingest failure or a failed preview build skips publish.
-        if: always() && steps.ingest.outcome == 'success' && steps.build.outcome == 'success' && (github.event_name != 'workflow_dispatch' || inputs.dry_run == false)
+        if: always() && steps.ingest.outcome == 'success' && steps.contracts_finder.outcome == 'success' && steps.build.outcome == 'success' && (github.event_name != 'workflow_dispatch' || inputs.dry_run == false)
         env:
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           DEALATLAS_EMAIL_FROM: ${{ secrets.DEALATLAS_EMAIL_FROM }}

@@ -54,7 +54,6 @@ function ingest(fixtureNames: string[], store = createMemoryIngestionStore({
       },
     },
     now: () => NOW,
-    sleep: async () => {},
   });
   return {
     store,
@@ -216,18 +215,18 @@ describe("Contracts Finder fixture ingestion", () => {
     expect(store.deals).toHaveLength(1);
     expect(store.deals[0]?.sourceTitle).toBe("Find a Tender original title");
     expect(store.deals[0]?.ocid).toBe("ocds-h6vhtk-fixture-shared");
+    expect(store.deals[0]?.status).toBe("OPEN");
+    expect(store.deals[0]?.stage).toBe("LIVE");
+    expect(store.deals[0]?.submissionDeadline).toBeNull();
+    expect(store.deals[0]?.primarySourceId).toBe("source-fat");
     expect(store.notices.some((notice) => notice.sourceId === "source-cf")).toBe(true);
     expect(store.previews[0]?.isPublished).toBe(true);
   });
 
-  it("backs off when the search feed returns 429", async () => {
-    const sleeps: number[] = [];
+  it("retries a 429 through the shared fetch retry", async () => {
     let attempts = 0;
     const adapter = createContractsFinderAdapter({
       now: () => NOW,
-      sleep: async (ms) => {
-        sleeps.push(ms);
-      },
       http: {
         async getJson() {
           attempts += 1;
@@ -254,7 +253,6 @@ describe("Contracts Finder fixture ingestion", () => {
 
     const page = await adapter.discover(undefined, { limit: 1 });
     expect(attempts).toBe(2);
-    expect(sleeps).toEqual([25]);
     expect(page.items).toHaveLength(1);
   });
 

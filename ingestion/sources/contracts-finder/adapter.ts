@@ -31,7 +31,6 @@ export type ContractsFinderAdapterOptions = {
   http?: JsonHttpClient;
   now?: () => Date;
   defaultLookbackHours?: number;
-  sleep?: (ms: number) => Promise<void>;
 };
 
 export function createContractsFinderAdapter(
@@ -41,8 +40,6 @@ export function createContractsFinderAdapter(
     options.http ?? createAllowlistedJsonClient(CONTRACTS_FINDER_FETCH_POLICY);
   const now = options.now ?? (() => new Date());
   const lookbackHours = options.defaultLookbackHours ?? 24;
-  const retry = <T>(operation: () => Promise<T>) =>
-    withRetry(() => operation(), { sleep: options.sleep });
 
   return {
     sourceKey: CONTRACTS_FINDER_SOURCE_KEY,
@@ -67,7 +64,7 @@ export function createContractsFinderAdapter(
         url.searchParams.set("cursor", resumedWindow?.cursor ?? cursor);
       }
 
-      const response = await retry(() => http.getJson(url.toString()));
+      const response = await withRetry(() => http.getJson(url.toString()));
       const pkg = parseContractsFinderPackage(response.body);
       const items: DiscoveredItem[] = [];
       for (const release of pkg.releases ?? []) {
