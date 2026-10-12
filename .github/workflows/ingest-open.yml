@@ -13,8 +13,8 @@ on:
         default: true
       backfill_days:
         description: Days of Find a Tender tender releases to read
-        type: number
-        default: 7
+        type: string
+        default: "7"
   schedule:
     - cron: "41 4 */3 * *"
     - cron: "17 5 * * *"
@@ -55,8 +55,8 @@ jobs:
       - name: Ingest open Find a Tender notices
         id: ingest
         env:
-          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'false' }}
-          BACKFILL_DAYS: ${{ github.event_name == 'workflow_dispatch' && inputs.backfill_days || '7' }}
+          DRY_RUN: ${{ inputs.dry_run || 'false' }}
+          BACKFILL_DAYS: ${{ inputs.backfill_days || '7' }}
           OPEN_INGEST_PHASE: ingest
           OPEN_INGEST_STATE: ${{ runner.temp }}/open-ingest-changed.json
         run: |
@@ -65,6 +65,8 @@ jobs:
             true|false) ;;
             *) echo "dry_run must be true or false" >&2; exit 1 ;;
           esac
+          BACKFILL_DAYS="$(printf '%s' "$BACKFILL_DAYS" | tr -d '[:space:]')"
+          BACKFILL_DAYS="${BACKFILL_DAYS%.0}"
           case "$BACKFILL_DAYS" in
             ''|*[!0-9]*) echo "backfill_days must be a positive integer" >&2; exit 1 ;;
           esac

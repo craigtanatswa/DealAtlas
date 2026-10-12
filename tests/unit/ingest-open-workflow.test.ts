@@ -13,8 +13,11 @@ describe("ingest-open workflow", () => {
     expect(workflow).toContain("type: boolean");
     expect(workflow).toContain("default: true");
     expect(workflow).toContain("backfill_days:");
-    expect(workflow).toContain("type: number");
-    expect(workflow).toContain("default: 7");
+    expect(workflow).toContain("type: string");
+    expect(workflow).toContain('default: "7"');
+    expect(workflow).toContain('BACKFILL_DAYS="${BACKFILL_DAYS%.0}"');
+    expect(workflow).toContain("inputs.backfill_days || '7'");
+    expect(workflow).toContain("inputs.dry_run || 'false'");
     expect(workflow).toContain('cron: "41 4 */3 * *"');
     expect(workflow).toContain('cron: "17 5 * * *"');
     expect(workflow).toContain("environment: ingest");
