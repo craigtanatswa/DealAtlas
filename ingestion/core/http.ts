@@ -32,7 +32,7 @@ export type JsonHttpClient = {
 
 const DEFAULT_TIMEOUT_MS = 30_000;
 const MAX_REDIRECTS = 3;
-const DEFAULT_USER_AGENT = "DealAtlasIngest/1.0 (official open-data client)";
+const DEFAULT_USER_AGENT = "DealAtlas-ingest/1.0 (+https://www.dealatlas.uk)";
 
 export function assertAllowedUrl(
   value: string,
@@ -134,7 +134,7 @@ export function createAllowlistedJsonClient(
           body = JSON.parse(response.body) as unknown;
         } catch {
           throw new IngestionError({
-            message: `Non-JSON response from ${response.url}`,
+            message: `Non-JSON response from ${hostOf(response.url)}`,
             stage: "fetch",
             code: "HTTP_NOT_JSON",
             retryable: false,
@@ -181,7 +181,7 @@ async function getTextFollowingRedirects(
       const location = response.headers.get("location");
       if (!location || redirectCount >= MAX_REDIRECTS) {
         throw new IngestionError({
-          message: `Redirect from ${parsed.toString()} was not followable.`,
+          message: `Redirect from ${parsed.hostname} was not followable.`,
           stage: "fetch",
           code: "HTTP_REDIRECT",
           retryable: false,
@@ -205,7 +205,7 @@ async function getTextFollowingRedirects(
 
     if (response.status === 429 || response.status === 503) {
       throw new IngestionError({
-        message: `Transient HTTP ${response.status} from ${parsed.toString()}`,
+        message: `Transient HTTP ${response.status} from ${parsed.hostname}`,
         stage: "fetch",
         code: `HTTP_${response.status}`,
         retryable: true,
@@ -215,7 +215,7 @@ async function getTextFollowingRedirects(
 
     if (response.status >= 500) {
       throw new IngestionError({
-        message: `HTTP ${response.status} from ${parsed.toString()}`,
+        message: `HTTP ${response.status} from ${parsed.hostname}`,
         stage: "fetch",
         code: `HTTP_${response.status}`,
         retryable: true,
@@ -225,7 +225,7 @@ async function getTextFollowingRedirects(
 
     if (response.status === 401 || response.status === 403) {
       throw new IngestionError({
-        message: `Access restricted HTTP ${response.status} from ${parsed.toString()}`,
+        message: `Access restricted HTTP ${response.status} from ${parsed.hostname}`,
         stage: "fetch",
         code: `HTTP_${response.status}`,
         retryable: false,
@@ -235,7 +235,7 @@ async function getTextFollowingRedirects(
 
     if (response.status >= 400) {
       throw new IngestionError({
-        message: `HTTP ${response.status} from ${parsed.toString()}`,
+        message: `HTTP ${response.status} from ${parsed.hostname}`,
         stage: "fetch",
         code: `HTTP_${response.status}`,
         retryable: false,
@@ -255,17 +255,17 @@ async function getTextFollowingRedirects(
     }
     if (error instanceof Error && error.name === "AbortError") {
       throw new IngestionError({
-        message: `Timed out fetching ${parsed.toString()}`,
+        message: `Timed out fetching ${parsed.hostname}`,
         stage: "fetch",
         code: "HTTP_TIMEOUT",
         retryable: true,
       });
     }
+    const cause = networkCauseCode(error);
     throw new IngestionError({
-      message:
-        error instanceof Error
-          ? error.message
-          : `Network error fetching ${parsed.toString()}`,
+      message: cause
+        ? `${cause} fetching ${parsed.hostname}`
+        : `Network error fetching ${parsed.hostname}`,
       stage: "fetch",
       code: "HTTP_NETWORK",
       retryable: true,
@@ -273,4 +273,33 @@ async function getTextFollowingRedirects(
   } finally {
     clearTimeout(timeout);
   }
+}
+
+function hostOf(url: string): string {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return "unknown-host";
+  }
+}
+
+function networkCauseCode(error: unknown): string | null {
+  const seen = new Set<unknown>();
+  let current: unknown = error;
+  for (let depth = 0; depth < 4 && current && typeof current === "object"; depth += 1) {
+    if (seen.has(current)) {
+      break;
+    }
+    seen.add(current);
+    const code = (current as { code?: unknown }).code;
+    if (typeof code === "string" && /^[A-Z0-9_]{2,64}$/.test(code)) {
+      return code;
+    }
+    const errno = (current as { errno?: unknown }).errno;
+    if (typeof errno === "string" && /^[A-Z0-9_]{2,64}$/.test(errno)) {
+      return errno;
+    }
+    current = (current as { cause?: unknown }).cause;
+  }
+  return null;
 }
