@@ -85,4 +85,37 @@ describe("allowlisted fetch SSRF controls", () => {
       ),
     ).rejects.toThrow(/host/);
   });
+
+  it("names the cause code and host when fetch fails", async () => {
+    const fetchImpl = (async () => {
+      const error = new TypeError("fetch failed");
+      Object.assign(error, {
+        cause: Object.assign(new Error("connect timeout"), {
+          code: "UND_ERR_CONNECT_TIMEOUT",
+        }),
+      });
+      throw error;
+    }) as typeof fetch;
+
+    const client = createAllowlistedTextClient(FIND_A_TENDER_FETCH_POLICY, { fetchImpl });
+    const url =
+      "https://www.find-tender.service.gov.uk/api/1.0/ocdsReleasePackages?updatedFrom=secret-token";
+    await expect(client.getText(url)).rejects.toMatchObject({
+      code: "HTTP_NETWORK",
+      message: "UND_ERR_CONNECT_TIMEOUT fetching www.find-tender.service.gov.uk",
+    });
+  });
+
+  it("names the HTTP status and host without the query string", async () => {
+    const fetchImpl = (async () =>
+      new Response("nope", { status: 502 })) as typeof fetch;
+    const client = createAllowlistedTextClient(FIND_A_TENDER_FETCH_POLICY, { fetchImpl });
+    await expect(
+      client.getText(
+        "https://www.find-tender.service.gov.uk/api/1.0/ocdsReleasePackages?updatedFrom=secret-token",
+      ),
+    ).rejects.toMatchObject({
+      message: "HTTP 502 from www.find-tender.service.gov.uk",
+    });
+  });
 });

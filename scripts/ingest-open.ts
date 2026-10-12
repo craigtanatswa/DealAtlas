@@ -52,9 +52,8 @@ function readChangedDealIds(filePath: string | undefined): string[] {
 }
 
 async function main() {
-  const { openIngestLogLine, runOpenFindATenderIngest } = await import(
-    "@/lib/jobs/ingest-open"
-  );
+  const { openIngestLogLine, publicIngestErrorLine, runOpenFindATenderIngest } =
+    await import("@/lib/jobs/ingest-open");
   const { createSupabaseIngestionStore } = await import("@/ingestion/store/supabase");
   const { createIngestionSupabaseClient } = await import(
     "@/ingestion/store/worker-client"
@@ -74,12 +73,18 @@ async function main() {
     fs.writeFileSync(statePath, JSON.stringify(result.changedDealIds));
   }
   emit(openIngestLogLine(result.counts));
+  for (const error of result.errors) {
+    console.error(publicIngestErrorLine(error));
+  }
   if (result.status === "PARTIAL" || result.status === "FAILED") {
     process.exitCode = 1;
   }
 }
 
-main().catch(() => {
+main().catch(async (err: unknown) => {
+  const { redactIngestText } = await import("@/lib/jobs/ingest-open");
+  const message = err instanceof Error ? err.message : "ingest failed";
+  console.error(redactIngestText(message));
   emit(
     JSON.stringify({
       fetched: 0,

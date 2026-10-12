@@ -4,7 +4,13 @@ import { FIND_A_TENDER_RELEASE_API } from "@/ingestion/sources/find-a-tender/con
 import { createFindATenderAdapter } from "@/ingestion/sources/find-a-tender/adapter";
 import { findATenderSourceRecord } from "@/ingestion/sources/find-a-tender/seed";
 import { createMemoryIngestionStore } from "@/ingestion/store/memory";
-import { openIngestLogLine, openIngestWindows, runOpenFindATenderIngest } from "@/lib/jobs/ingest-open";
+import { IngestionError } from "@/ingestion/core/errors";
+import {
+  openIngestLogLine,
+  openIngestWindows,
+  publicIngestErrorLine,
+  runOpenFindATenderIngest,
+} from "@/lib/jobs/ingest-open";
 import { isTemplatePreviewSlug } from "@/lib/deals/public-slug";
 import { packageFromFixtures } from "@/tests/helpers/ingestion-fixtures";
 
@@ -50,6 +56,43 @@ describe("open Find a Tender ingest", () => {
       capped: 0,
     });
     expect(line).not.toMatch(/http|title|buyer|ocds|notice/i);
+  });
+
+  it("keeps discover failures on the result and prints host only", async () => {
+    const result = await runOpenFindATenderIngest({
+      store: store(),
+      now: NOW,
+      dryRun: true,
+      backfillDays: 7,
+      sleep: async () => {},
+      http: {
+        async getJson() {
+          throw new IngestionError({
+            message:
+              "ETIMEDOUT fetching https://www.find-tender.service.gov.uk/api/1.0/ocdsReleasePackages?updatedFrom=secret",
+            stage: "fetch",
+            code: "HTTP_NETWORK",
+            retryable: false,
+          });
+        },
+      },
+    });
+
+    expect(result.status).toBe("PARTIAL");
+    expect(result.counts.failed).toBe(1);
+    expect(result.errors).toEqual([
+      {
+        stage: "fetch",
+        code: "HTTP_NETWORK",
+        message:
+          "ETIMEDOUT fetching https://www.find-tender.service.gov.uk/api/1.0/ocdsReleasePackages?updatedFrom=secret",
+      },
+    ]);
+    const line = publicIngestErrorLine(result.errors[0]!);
+    expect(line).toBe(
+      "fetch HTTP_NETWORK ETIMEDOUT fetching www.find-tender.service.gov.uk",
+    );
+    expect(line).not.toMatch(/updatedFrom|secret|\?/);
   });
 
   it("reads the release package once and does not fetch each notice", async () => {

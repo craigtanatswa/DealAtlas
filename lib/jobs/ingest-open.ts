@@ -22,12 +22,34 @@ export type OpenIngestCounts = {
   capped: number;
 };
 
+export type OpenIngestError = {
+  stage: string;
+  code: string;
+  message: string;
+};
+
 export type OpenIngestResult = {
   status: "SUCCEEDED" | "PARTIAL" | "FAILED" | "SKIPPED";
   dryRun: boolean;
   counts: OpenIngestCounts;
   changedDealIds: string[];
+  errors: OpenIngestError[];
 };
+
+/** Stage, code, and message. Full URLs are reduced to the host. */
+export function publicIngestErrorLine(error: OpenIngestError): string {
+  return `${error.stage} ${error.code} ${redactIngestText(error.message)}`;
+}
+
+export function redactIngestText(value: string): string {
+  return value.replace(/https?:\/\/\S+/gi, (url) => {
+    try {
+      return new URL(url).hostname;
+    } catch {
+      return "redacted-url";
+    }
+  });
+}
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const WINDOW_MS = 7 * DAY_MS;
@@ -102,6 +124,7 @@ export async function runOpenFindATenderIngest(options: {
     });
 
   const counts = emptyCounts();
+  const errors: OpenIngestError[] = [];
   const changed = new Set<string>(options.dealIds ?? []);
   const phase = options.phase ?? "all";
   const recordCap = options.limit ?? MAX_RECORDS;
@@ -146,9 +169,22 @@ export async function runOpenFindATenderIngest(options: {
       counts.unchanged += result.counters.unchanged;
       counts.failed += result.counters.errorCount;
       remaining -= result.counters.fetched;
+      for (const error of result.errors) {
+        errors.push({
+          stage: error.stage,
+          code: error.code ?? "INGESTION_ERROR",
+          message: error.message,
+        });
+      }
 
       if (result.status === "SKIPPED") {
-        return { status: "SKIPPED", dryRun: options.dryRun, counts, changedDealIds: [] };
+        return {
+          status: "SKIPPED",
+          dryRun: options.dryRun,
+          counts,
+          changedDealIds: [],
+          errors,
+        };
       }
       if (result.status === "PARTIAL" || result.status === "FAILED") {
         status = "PARTIAL";
@@ -193,5 +229,6 @@ export async function runOpenFindATenderIngest(options: {
     dryRun: options.dryRun,
     counts,
     changedDealIds: phase === "previews" ? [] : [...changed],
+    errors,
   };
 }
