@@ -131,8 +131,9 @@ jobs:
       - name: Publish eligible previews
         id: publish
         # Row parse errors exit 0 so build, unpublish and publish still run.
-        # A fetch-level ingest failure or a failed preview build skips publish.
-        if: always() && steps.ingest.outcome == 'success' && steps.contracts_finder.outcome == 'success' && steps.build.outcome == 'success' && (github.event_name != 'workflow_dispatch' || inputs.dry_run == false)
+        # A Find a Tender fetch failure or a failed preview build skips publish.
+        # A Contracts Finder failure does not skip publish; that step still fails the job.
+        if: always() && steps.ingest.outcome == 'success' && steps.build.outcome == 'success' && (github.event_name != 'workflow_dispatch' || inputs.dry_run == false)
         env:
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           DEALATLAS_EMAIL_FROM: ${{ secrets.DEALATLAS_EMAIL_FROM }}
