@@ -15,7 +15,7 @@ describe("ingest-open workflow", () => {
     expect(workflow).toContain("backfill_days:");
     expect(workflow).toContain("type: string");
     expect(workflow).toContain('default: "7"');
-    expect(workflow).toContain('BACKFILL_DAYS="${BACKFILL_DAYS%.0}"');
+    expect(workflow.match(/BACKFILL_DAYS="\$\{BACKFILL_DAYS%\.0\}"/g)).toHaveLength(2);
     expect(workflow).toContain("inputs.backfill_days || '7'");
     expect(workflow).toContain("inputs.dry_run || 'false'");
     expect(workflow).toContain('cron: "41 4 */3 * *"');
@@ -59,12 +59,14 @@ describe("ingest-open workflow", () => {
     expect(ingestJob).toContain("RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}");
     expect(ingestJob).toContain("LEAK_ALERT_EMAIL_TO: ${{ secrets.LEAK_ALERT_EMAIL_TO }}");
     expect(unpublishJob).toContain("if: failure()");
-    expect(ingestJob).toContain("steps.ingest.outcome == 'success' && steps.build.outcome == 'success'");
-    expect(ingestJob).not.toContain("steps.contracts_finder.outcome == 'success'");
+    const publishStep = ingestJob.slice(ingestJob.indexOf("id: publish"), ingestJob.indexOf("name: Publish alert"));
+    expect(publishStep).toContain("steps.ingest.outcome == 'success' && steps.build.outcome == 'success'");
+    expect(publishStep).not.toContain("steps.contracts_finder.outcome");
     expect(ingestJob).not.toContain("continue-on-error");
     expect(ingestJob.indexOf("id: ingest")).toBeLessThan(ingestJob.indexOf("id: contracts_finder"));
     expect(ingestJob.indexOf("id: contracts_finder")).toBeLessThan(ingestJob.indexOf("id: build"));
     expect(ingestJob).toContain("OPEN_INGEST_SOURCE: contracts-finder");
+    expect(ingestJob).toContain("CONTRACTS_FINDER_OK: ${{ steps.contracts_finder.outcome == 'success' && '1' || '0' }}");
     expect(unpublishJob).not.toContain("ingest-open");
     expect(unpublishJob).not.toContain("Build previews");
     expect(unpublishJob).toContain('github.event.schedule == \'17 5 * * *\'');

@@ -101,6 +101,8 @@ jobs:
             true|false) ;;
             *) echo "dry_run must be true or false" >&2; exit 1 ;;
           esac
+          BACKFILL_DAYS="$(printf '%s' "$BACKFILL_DAYS" | tr -d '[:space:]')"
+          BACKFILL_DAYS="${BACKFILL_DAYS%.0}"
           case "$BACKFILL_DAYS" in
             ''|*[!0-9]*) echo "backfill_days must be a positive integer" >&2; exit 1 ;;
           esac
@@ -154,6 +156,7 @@ jobs:
           INGEST_COUNTS: ${{ steps.ingest.outputs.counts }}
           BUILD_COUNTS: ${{ steps.build.outputs.counts }}
           INGEST_OK: ${{ steps.ingest.outcome == 'success' && '1' || '0' }}
+          CONTRACTS_FINDER_OK: ${{ steps.contracts_finder.outcome == 'success' && '1' || '0' }}
           BUILD_OK: ${{ steps.build.outcome == 'success' && '1' || '0' }}
           UNPUBLISH_OK: ${{ steps.unpublish.outcome == 'success' && '1' || '0' }}
           PUBLISH_OK: ${{ steps.publish.outcome == 'success' && '1' || '0' }}
