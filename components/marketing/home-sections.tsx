@@ -1,8 +1,11 @@
 import Link from "next/link";
+import { Fragment } from "react";
 
 import { CategoryShortcuts } from "@/components/deals/category-shortcuts";
+import { DealCard } from "@/components/deals/deal-card";
 import { DealList } from "@/components/deals/deal-list";
 import { HeroSearchForm } from "@/components/deals/hero-search-form";
+import { HomeTeaserBand, HomeTeaserSticky } from "@/components/marketing/home-teaser-cta";
 import { HeroCategoryCloud } from "@/components/marketing/hero-category-cloud";
 import { TestimonialCarousel } from "@/components/marketing/testimonial-carousel";
 import { EmptyState } from "@/components/feedback/empty-state";
@@ -11,9 +14,10 @@ import { Heading, Text } from "@/components/layout/heading";
 import { BrandLogo } from "@/components/navigation/brand-mark";
 import { SectionHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
+import { signupPathWithNext } from "@/lib/auth/redirect";
 import { APP_NAME } from "@/lib/constants";
 import { HOW_IT_WORKS_STEPS } from "@/lib/seo/pages";
-import type { PublicDealPreview, RankedDealSearchResult } from "@/lib/search/dto";
+import { toDealCardData, type PublicDealPreview, type RankedDealSearchResult } from "@/lib/search/dto";
 
 const VALUE_PROPS = [
   {
@@ -34,7 +38,7 @@ const VALUE_PROPS = [
   },
 ] as const;
 
-export function HomeHero() {
+export function HomeHero({ signedIn = false }: { signedIn?: boolean }) {
   return (
     <section className="surface-hero relative overflow-hidden border-b border-border">
       <HeroCategoryCloud />
@@ -46,6 +50,11 @@ export function HomeHero() {
             The #1 destination for finding the right business opportunities,
             contracts, supply requests and deals.
           </Text>
+          {signedIn ? null : (
+            <Button asChild className="min-h-11">
+              <Link href="/signup">Create free account</Link>
+            </Button>
+          )}
         </div>
         <div className="w-full max-w-3xl text-left">
           <HeroSearchForm />
@@ -116,6 +125,8 @@ export function HomeOpportunitySections({
   );
 }
 
+const TEASER_SENTINEL = "home-teaser-after-8";
+
 export function HomeLiveOpportunities({
   items,
   total,
@@ -137,18 +148,38 @@ export function HomeLiveOpportunities({
             Live opportunities
           </Heading>
           <p className="mt-2 text-[0.9375rem] leading-7 text-gray-600">
-            Open and closing-soon contracts you can bid on now.
+            Open and closing soon first, then upcoming.
           </p>
         </div>
-        <DealList
-          className="grid-cols-1 md:grid-cols-2 lg:grid-cols-3"
-          items={items.map((preview) => ({ preview, match: null }))}
-          signedIn={signedIn}
-        />
-        <Button asChild variant="link" className="h-auto w-full px-0 md:w-fit">
-          <Link href="/deals">See all {total} opportunities →</Link>
+        <ul className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {items.map((preview, index) => {
+            const dealPath = `/deals/${preview.slug}`;
+            return (
+              <Fragment key={preview.slug}>
+                <li id={index === 7 ? TEASER_SENTINEL : undefined} className="min-w-0">
+                  <DealCard
+                    deal={toDealCardData(preview)}
+                    href={signedIn ? dealPath : signupPathWithNext(dealPath)}
+                    signedIn={signedIn}
+                    proLock
+                  />
+                </li>
+                {(index + 1) % 8 === 0 && !signedIn ? (
+                  <li className="col-span-full">
+                    <HomeTeaserBand />
+                  </li>
+                ) : null}
+              </Fragment>
+            );
+          })}
+        </ul>
+        <Button asChild variant="link" className="h-auto min-h-11 w-full px-0 md:w-fit">
+          <Link href="/deals">See all {total} live deals</Link>
         </Button>
       </Container>
+      {signedIn || items.length < 8 ? null : (
+        <HomeTeaserSticky sentinelId={TEASER_SENTINEL} />
+      )}
     </section>
   );
 }

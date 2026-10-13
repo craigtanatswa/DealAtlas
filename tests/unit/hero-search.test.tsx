@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { cleanup, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it } from "vitest";
+
+afterEach(cleanup);
 
 import { CategoryShortcuts } from "@/components/deals/category-shortcuts";
 import { HeroSearchForm, HOME_SEARCH_EXAMPLES } from "@/components/deals/hero-search-form";
