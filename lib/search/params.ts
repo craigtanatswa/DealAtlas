@@ -11,6 +11,8 @@ import { parseInputSafe } from "@/lib/validation";
 
 export const PUBLIC_SEARCH_PAGE_SIZE = 20;
 export const PUBLIC_SEARCH_MAX_PAGE_SIZE = 50;
+export const SEARCH_SORTS = ["biddable", "deadline", "updated", "relevance"] as const;
+export type SearchSort = (typeof SEARCH_SORTS)[number];
 
 const optionalTrimmed = z
   .string()
@@ -33,6 +35,7 @@ export const publicSearchInputSchema = z.object({
   deadlineBand: z.string().trim().min(1).max(80).optional(),
   dealType: z.enum(DEAL_TYPES).optional(),
   status: z.enum(DEAL_STATUSES).optional(),
+  sort: z.enum(SEARCH_SORTS).optional(),
   page: z.coerce.number().int().min(1).max(500).default(1),
   limit: z.coerce
     .number()
@@ -43,9 +46,6 @@ export const publicSearchInputSchema = z.object({
 });
 
 export type PublicSearchInput = z.infer<typeof publicSearchInputSchema>;
-
-export const SEARCH_SORTS = ["updated", "relevance"] as const;
-export type SearchSort = (typeof SEARCH_SORTS)[number];
 
 export type PublicSearchFilters = {
   query?: string;
@@ -106,6 +106,7 @@ export function parsePublicSearchParams(
     deadlineBand: firstParam(searchParams.deadlineBand),
     dealType: optionalEnum(firstParam(searchParams.dealType), DEAL_TYPES),
     status: optionalEnum(firstParam(searchParams.status), DEAL_STATUSES),
+    sort: optionalEnum(firstParam(searchParams.sort), SEARCH_SORTS),
     page: firstParam(searchParams.page),
     limit: firstParam(searchParams.limit),
   };
@@ -168,7 +169,7 @@ export function toPublicSearchQuery(filters: PublicSearchFilters): string {
   if (filters.status) {
     params.set("status", filters.status);
   }
-  if (filters.sort && filters.sort !== "updated") {
+  if (filters.sort && filters.sort !== "biddable") {
     params.set("sort", filters.sort);
   }
   if (filters.minScore != null) {
@@ -208,7 +209,7 @@ export function parseSignedInSearchParams(
   const sort =
     optionalEnum(firstParam(searchParams.sort), SEARCH_SORTS) ??
     options?.defaultSort ??
-    "updated";
+    "biddable";
   const minScoreRaw = firstParam(searchParams.minScore);
   const minScoreParsed = minScoreRaw ? Number(minScoreRaw) : Number.NaN;
   const minScore =

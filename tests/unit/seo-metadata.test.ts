@@ -92,6 +92,14 @@ describe("public indexability policy", () => {
         preview: { ...DEAL_PREVIEW_DETAIL_FIXTURE, status: "WITHDRAWN" },
       }).reason,
     ).toBe("duplicate");
+    expect(
+      evaluatePublicIndexability({
+        kind: "deal-preview",
+        published: true,
+        leakageRisk: "LOW",
+        preview: { ...DEAL_PREVIEW_DETAIL_FIXTURE, status: "CLOSED" },
+      }).reason,
+    ).toBe("closed");
   });
 
   it("does not index internal or filtered search URLs", () => {

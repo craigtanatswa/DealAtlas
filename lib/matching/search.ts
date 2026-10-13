@@ -14,6 +14,7 @@ import {
   type RankedDealSearchItem,
   type RankedDealSearchResult,
 } from "@/lib/search/dto";
+import { BIDDABLE_STATUSES } from "@/lib/search/filters";
 import {
   HOME_FALLBACK_STATUS,
   HOME_LATEST_LIMIT,
@@ -82,6 +83,8 @@ export async function searchDealPreviewsForUser(input: {
   searchParams: SearchParamRecord;
   userId?: string | null;
   defaultSort?: SignedInSearchFilters["sort"];
+  /** When no status is selected, search open, closing soon and upcoming only. */
+  biddableDefault?: boolean;
 }): Promise<{
   filters: SignedInSearchFilters;
   result: RankedDealSearchResult;
@@ -94,9 +97,13 @@ export async function searchDealPreviewsForUser(input: {
     ? await loadCompanyProfileIdForUser(input.client, input.userId)
     : null;
 
+  const sort =
+    !companyProfileId && requested.sort === "relevance"
+      ? (input.defaultSort ?? "biddable")
+      : requested.sort;
   const filters: SignedInSearchFilters = {
     ...requested,
-    sort: companyProfileId ? requested.sort : "updated",
+    sort,
     minScore: companyProfileId ? requested.minScore : undefined,
   };
 
@@ -110,6 +117,8 @@ export async function searchDealPreviewsForUser(input: {
     deadlineBand: filters.deadlineBand,
     dealType: filters.dealType,
     status: filters.status,
+    statuses:
+      input.biddableDefault && !filters.status ? [...BIDDABLE_STATUSES] : undefined,
     minScore: filters.minScore,
     sort: filters.sort,
   };

@@ -97,7 +97,7 @@ const previewListSchema = paginationSchema.extend({
 const previewSearchSchema = previewListSchema.extend({
   query: z.string().trim().max(200).optional(),
   minScore: z.coerce.number().min(0).max(100).optional(),
-  sort: z.enum(["updated", "relevance"]).default("updated"),
+  sort: z.enum(["biddable", "deadline", "updated", "relevance"]).default("biddable"),
   offset: z.coerce.number().int().min(0).max(10_000).default(0),
   limit: z.coerce.number().int().min(1).max(50).default(20),
 });
@@ -134,7 +134,7 @@ export async function listPublishedDealPreviews(
   input: unknown = {},
 ): Promise<DealPreviewSearchRow[]> {
   const filters = parseInput(previewListSchema, input, "Published preview list");
-  return searchPublishedDealPreviews(client, { ...filters, sort: "updated", offset: 0 });
+  return searchPublishedDealPreviews(client, { ...filters, sort: "biddable", offset: 0 });
 }
 
 export async function getPublishedDealPreviewBySlug(

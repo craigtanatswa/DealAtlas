@@ -73,7 +73,17 @@ describe("supabase migrations", () => {
       "0021_publish_eligible_and_unpublish_stale.sql",
       "0022_unclassified_deal_status.sql",
       "0024_service_role_statement_timeout.sql",
+      "0025_publish_upcoming_and_biddable_sort.sql",
     ]);
+  });
+
+  it("publishes undated upcoming notices and sorts biddable deals first", () => {
+    const sql = readMigration("0025_publish_upcoming_and_biddable_sort.sql");
+    expect(sql).toContain("UPCOMING with a null deadline stays published");
+    expect(sql).toContain("when lower(coalesce(p_sort, 'biddable')) = 'biddable' and r.status = 'CLOSING_SOON'::public.deal_status then 0");
+    expect(sql).toContain("p_sort text default 'biddable'");
+    expect(sql).not.toMatch(/enforce_preview_safety/);
+    expect(sql).not.toMatch(/disable row level security/i);
   });
 
   it("keeps search_deal_previews on deal_previews only after filter extension", () => {

@@ -33,6 +33,7 @@ Do not index every thin/duplicated record automatically.
 
 Set noindex when:
 - preview is unpublished
+- deal status is closed
 - leak risk not LOW
 - content is too thin
 - deal is duplicate

@@ -105,6 +105,7 @@ export default async function DealPreviewPage({ params }: PageProps) {
             loginHref={loginPathWithNext(`/deals/${page.preview.slug}`)}
           />
         }
+        signedIn={Boolean(user)}
         unlock={{
           mode,
           loginHref: loginPathWithNext(`/deals/${page.preview.slug}`),

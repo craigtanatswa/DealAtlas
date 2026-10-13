@@ -46,7 +46,7 @@ export function DealKeywordForm({
       {filters.status ? (
         <input type="hidden" name="status" value={filters.status} />
       ) : null}
-      {filters.sort && filters.sort !== "updated" ? (
+      {filters.sort && filters.sort !== "biddable" ? (
         <input type="hidden" name="sort" value={filters.sort} />
       ) : null}
       {filters.minScore != null ? (

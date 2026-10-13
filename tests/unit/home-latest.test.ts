@@ -13,8 +13,8 @@ import {
 const ROOT = path.resolve(__dirname, "../..");
 
 describe("homepage latest opportunity selection", () => {
-  it("keeps open and upcoming statuses as the live set", () => {
-    expect(HOME_PRIMARY_STATUSES).toEqual(["OPEN", "UPCOMING"]);
+  it("keeps biddable and upcoming statuses as the live set", () => {
+    expect(HOME_PRIMARY_STATUSES).toEqual(["OPEN", "CLOSING_SOON", "UPCOMING"]);
     expect(HOME_FALLBACK_STATUS).toBe("AWARDED");
     expect(HOME_LATEST_LIMIT).toBe(8);
   });

@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
 
 import { MatchReasons } from "@/components/deals/match-reasons";
-import { DealStatusBadge } from "@/components/deals/deal-status";
+import { deadlineKeyFact, DealStatusBadge } from "@/components/deals/deal-status";
+import { OpeningAlertButton } from "@/components/deals/opening-alert";
 import { UnlockPanel, type UnlockCtaMode } from "@/components/deals/unlock-panel";
 import {
   buyerVisibilityLabel,
@@ -22,6 +23,7 @@ export function DealPreviewDetail({
   match,
   save,
   unlock,
+  signedIn = false,
 }: {
   deal: PublicDealPreview;
   match?: SafeMatchView | null;
@@ -32,12 +34,17 @@ export function DealPreviewDetail({
     revealHref?: string;
     returnTo?: string;
   };
+  signedIn?: boolean;
 }) {
+  const keyFact = deadlineKeyFact({
+    status: deal.status,
+    deadlineBand: deal.deadlineBand,
+  });
   return (
     <article className="flex flex-col gap-10">
       <header className="flex flex-col gap-4 border-b border-border pb-8">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
-          <DealStatusBadge status={deal.status} />
+          <DealStatusBadge status={deal.status} deadlineBand={deal.deadlineBand} />
           <span>{buyerVisibilityLabel(deal.buyerSector)} buyer</span>
           <span>{DEAL_TYPE_LABELS[deal.dealType]}</span>
           {deal.buyerSector !== "PUBLIC" && deal.buyerSector !== "PRIVATE" ? (
@@ -51,6 +58,13 @@ export function DealPreviewDetail({
           this opportunity.
         </Text>
         {save}
+        {deal.status === "UPCOMING" ? (
+          <OpeningAlertButton
+            href={`/deals/${deal.slug}`}
+            signedIn={Boolean(signedIn)}
+            variant="page"
+          />
+        ) : null}
       </header>
 
       <section aria-labelledby="summary-heading" className="flex flex-col gap-3">
@@ -87,7 +101,7 @@ export function DealPreviewDetail({
           <MetaItem label="Category" value={deal.mainCategory} />
           <MetaItem label="Location" value={deal.broadRegion} />
           <MetaItem label="Value" value={deal.valueBand} />
-          <MetaItem label="Deadline" value={deal.deadlineBand} />
+          <MetaItem label={keyFact?.label ?? "Deadline"} value={keyFact?.value ?? deal.deadlineBand} />
           <MetaItem label="Contract term" value={deal.durationBand} />
           <MetaItem label="Stage" value={DEAL_STAGE_LABELS[deal.stage]} />
         </dl>

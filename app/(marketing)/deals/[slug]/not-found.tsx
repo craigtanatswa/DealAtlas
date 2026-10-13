@@ -1,8 +1,13 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 
 import { ErrorState } from "@/components/feedback/empty-state";
 import { Main } from "@/components/layout/container";
 import { Button } from "@/components/ui/button";
+
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+};
 
 export default function DealPreviewNotFound() {
   return (

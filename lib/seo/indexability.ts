@@ -11,6 +11,7 @@ export type PublicIndexReason =
   | "leak-risk"
   | "thin"
   | "duplicate"
+  | "closed"
   | "search-url"
   | "internal";
 
@@ -34,6 +35,7 @@ const GENERIC_TITLE = /^(opportunity|open opportunity|sanitised opportunity|deal
 const GENERIC_SUMMARY =
   /^(a sanitised summary\.?|sanitised preview\.?|opportunity summary\.?)$/i;
 const VOID_STATUSES = new Set<DealStatus>(["CANCELLED", "WITHDRAWN"]);
+const CLOSED_STATUSES = new Set<DealStatus>(["CLOSED"]);
 const MIN_TITLE_LENGTH = 28;
 const MIN_SUMMARY_LENGTH = 80;
 
@@ -96,6 +98,9 @@ export function evaluatePublicIndexability(input: {
   }
   if (VOID_STATUSES.has(input.preview.status)) {
     return { index: false, follow: true, reason: "duplicate" };
+  }
+  if (CLOSED_STATUSES.has(input.preview.status)) {
+    return { index: false, follow: true, reason: "closed" };
   }
   if (isThinPreviewContent(input.preview)) {
     return { index: false, follow: true, reason: "thin" };

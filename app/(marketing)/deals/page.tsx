@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { DealKeywordForm } from "@/components/deals/deal-keyword-form";
+import { DealSortForm } from "@/components/deals/deal-sort-form";
 import {
   DealActiveFilters,
   DealSearchFilterDrawer,
@@ -43,7 +44,8 @@ export default async function DealsIndexPage({ searchParams }: PageProps) {
     client,
     searchParams: params,
     userId: user?.id,
-    defaultSort: "updated",
+    defaultSort: "biddable",
+    biddableDefault: true,
   });
 
   return (
@@ -52,13 +54,17 @@ export default async function DealsIndexPage({ searchParams }: PageProps) {
         title="Discover opportunities"
         description="Browse contracts, supply requests and deals. Join DealAtlas Pro to unlock buyer identity, original notices, and how to apply."
       />
-      <div className="sticky top-16 z-20 flex flex-col gap-3 border-b border-border bg-background py-3 lg:flex-row lg:items-end">
-        <div className="min-w-0 flex-1">
-          <DealKeywordForm filters={filters} />
+      <div className="sticky top-16 z-20 flex flex-col gap-3 border-b border-border bg-background py-3">
+        <div className="flex items-end gap-3">
+          <div className="min-w-0 flex-1">
+            <DealKeywordForm filters={filters} />
+          </div>
+          <DealSortForm filters={filters} />
         </div>
         <DealSearchFilterDrawer
           filters={filters}
           showRelevance={Boolean(companyProfileId)}
+          publicStatus
         />
       </div>
       <DealActiveFilters filters={filters} />
@@ -66,8 +72,14 @@ export default async function DealsIndexPage({ searchParams }: PageProps) {
         <DealSearchFilterRail
           filters={filters}
           showRelevance={Boolean(companyProfileId)}
+          publicStatus
         />
-        <DealSearchResults result={result} filters={filters} />
+        <DealSearchResults
+          result={result}
+          filters={filters}
+          publicSearch
+          signedIn={Boolean(user)}
+        />
       </div>
     </Main>
   );
