@@ -5933,12 +5933,12 @@ alter type public.deal_status add value if not exists 'UNCLASSIFIED';
 -- ============================================================================
 
 -- ============================================================================
--- BEGIN 0023_service_role_statement_timeout.sql
+-- BEGIN 0024_service_role_statement_timeout.sql
 -- ============================================================================
 
 -- service_role has no role-level timeout, so PostgREST calls inherit authenticator's 8s.
 alter role service_role set statement_timeout = '120s';
 
 -- ============================================================================
--- END 0023_service_role_statement_timeout.sql
+-- END 0024_service_role_statement_timeout.sql
 -- ============================================================================
