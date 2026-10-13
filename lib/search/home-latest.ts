@@ -1,9 +1,10 @@
 export const HOME_LATEST_LIMIT = 8;
-export const HOME_PRIMARY_STATUSES = ["OPEN", "UPCOMING"] as const;
+export const HOME_PRIMARY_STATUSES = ["OPEN", "CLOSING_SOON", "UPCOMING"] as const;
 export const HOME_FALLBACK_STATUS = "AWARDED";
 
 /**
- * Keep open/upcoming listings first. Awarded rows only fill remaining slots.
+ * Keep biddable and upcoming listings first. Awarded rows only fill remaining slots.
+ * Default search order already places OPEN and CLOSING_SOON ahead of UPCOMING.
  */
 export function takeHomeLatestItems<T>(
   primary: T[],

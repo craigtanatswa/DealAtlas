@@ -7,6 +7,7 @@ import {
   DEAL_STATUS_OPTIONS,
   DEAL_TYPE_OPTIONS,
   DEADLINE_BAND_OPTIONS,
+  PUBLIC_STATUS_FILTERS,
   UK_REGION_OPTIONS,
   VALUE_BAND_OPTIONS,
 } from "@/lib/search/filters";
@@ -31,7 +32,9 @@ export function DealRelevanceFields({
           name="sort"
           defaultValue={filters.sort ?? "updated"}
         >
-          <option value="updated">Newest updates</option>
+          <option value="biddable">Biddable first</option>
+          <option value="deadline">Closing date</option>
+          <option value="updated">Newest</option>
           <option value="relevance">Relevance</option>
         </NativeSelect>
       </Field>
@@ -94,12 +97,37 @@ export function DealKeywordFields({
   );
 }
 
-export function DealFilterSelects({
+export function DealSortSelect({
   filters,
   idPrefix,
 }: {
   filters: PublicSearchFilters;
   idPrefix: string;
+}) {
+  return (
+    <Field id={`${idPrefix}-sort`} label="Sort" className="w-full sm:w-44">
+      <NativeSelect
+        id={`${idPrefix}-sort`}
+        name="sort"
+        defaultValue={filters.sort ?? "biddable"}
+        className="h-11 min-h-11"
+      >
+        <option value="biddable">Biddable first</option>
+        <option value="deadline">Closing date</option>
+        <option value="updated">Newest</option>
+      </NativeSelect>
+    </Field>
+  );
+}
+
+export function DealFilterSelects({
+  filters,
+  idPrefix,
+  publicStatus = false,
+}: {
+  filters: PublicSearchFilters;
+  idPrefix: string;
+  publicStatus?: boolean;
 }) {
   return (
     <div className="grid gap-4">
@@ -194,7 +222,7 @@ export function DealFilterSelects({
           defaultValue={filters.status ?? ""}
         >
           <option value="">Any status</option>
-          {DEAL_STATUS_OPTIONS.map((option) => (
+          {(publicStatus ? PUBLIC_STATUS_FILTERS : DEAL_STATUS_OPTIONS).map((option) => (
             <option key={option.value} value={option.value}>
               {option.label}
             </option>

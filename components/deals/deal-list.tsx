@@ -4,9 +4,11 @@ import { toDealCardData, type RankedDealSearchItem } from "@/lib/search/dto";
 export function DealList({
   items,
   hrefForSlug,
+  signedIn = false,
 }: {
   items: RankedDealSearchItem[];
   hrefForSlug?: (slug: string) => string;
+  signedIn?: boolean;
 }) {
   return (
     <ul className="grid gap-3">
@@ -19,6 +21,7 @@ export function DealList({
               item.match?.reasons.map((reason) => reason.label),
             )}
             href={hrefForSlug?.(item.preview.slug)}
+            signedIn={signedIn}
           />
         </li>
       ))}

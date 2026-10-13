@@ -94,9 +94,13 @@ export async function searchDealPreviewsForUser(input: {
     ? await loadCompanyProfileIdForUser(input.client, input.userId)
     : null;
 
+  const sort =
+    !companyProfileId && requested.sort === "relevance"
+      ? (input.defaultSort ?? "biddable")
+      : requested.sort;
   const filters: SignedInSearchFilters = {
     ...requested,
-    sort: companyProfileId ? requested.sort : "updated",
+    sort,
     minScore: companyProfileId ? requested.minScore : undefined,
   };
 

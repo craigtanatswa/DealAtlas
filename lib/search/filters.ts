@@ -161,3 +161,12 @@ export const DEAL_STATUS_OPTIONS = DEAL_STATUSES.map((value) => ({
   value,
   label: DEAL_STATUS_LABELS[value],
 }));
+
+export const BIDDABLE_STATUSES = ["OPEN", "CLOSING_SOON", "UPCOMING"] as const;
+
+export const PUBLIC_STATUS_FILTERS = [
+  { value: "CLOSING_SOON", label: "Closing soon" },
+  { value: "OPEN", label: "Open" },
+  { value: "UPCOMING", label: "Opening soon" },
+  { value: "AWARDED", label: "Awarded" },
+] as const;

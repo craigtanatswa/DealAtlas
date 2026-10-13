@@ -19,7 +19,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { BUYER_SECTOR_LABELS } from "@/lib/constants";
-import { DEAL_STATUS_LABELS, DEAL_TYPE_LABELS } from "@/lib/search/filters";
+import { DEAL_TYPE_LABELS, PUBLIC_STATUS_FILTERS } from "@/lib/search/filters";
 import { hasActivePublicFilters, searchHref, type PublicSearchFilters } from "@/lib/search/params";
 
 function submitWithoutEmptyFields(event: FormEvent<HTMLFormElement>, path: string) {
@@ -42,6 +42,7 @@ function FilterForm({
   className,
   path = "/deals",
   showRelevance = false,
+  publicStatus = false,
 }: {
   filters: PublicSearchFilters;
   idPrefix: string;
@@ -49,6 +50,7 @@ function FilterForm({
   className?: string;
   path?: string;
   showRelevance?: boolean;
+  publicStatus?: boolean;
 }) {
   return (
     <form
@@ -69,7 +71,11 @@ function FilterForm({
           <DealRelevanceFields filters={filters} idPrefix={idPrefix} />
         </div>
       ) : null}
-      <DealFilterSelects filters={filters} idPrefix={idPrefix} />
+      <DealFilterSelects
+        filters={filters}
+        idPrefix={idPrefix}
+        publicStatus={publicStatus}
+      />
       <div className="mt-6 flex flex-wrap gap-3">
         <Button type="submit">Apply filters</Button>
         <Button asChild variant="outline">
@@ -84,10 +90,12 @@ export function DealSearchFilterRail({
   filters,
   path = "/deals",
   showRelevance = false,
+  publicStatus = false,
 }: {
   filters: PublicSearchFilters;
   path?: string;
   showRelevance?: boolean;
+  publicStatus?: boolean;
 }) {
   return (
     <aside className="hidden lg:block">
@@ -104,6 +112,7 @@ export function DealSearchFilterRail({
           className="mt-4"
           path={path}
           showRelevance={showRelevance}
+          publicStatus={publicStatus}
         />
       </div>
     </aside>
@@ -114,16 +123,18 @@ export function DealSearchFilterDrawer({
   filters,
   path = "/deals",
   showRelevance = false,
+  publicStatus = false,
 }: {
   filters: PublicSearchFilters;
   path?: string;
   showRelevance?: boolean;
+  publicStatus?: boolean;
 }) {
   return (
     <div className="lg:hidden">
       <Sheet>
         <SheetTrigger asChild>
-          <Button type="button" variant="outline">
+          <Button type="button" variant="outline" className="min-h-11">
             <SlidersHorizontalIcon aria-hidden="true" />
             Filters
           </Button>
@@ -142,6 +153,7 @@ export function DealSearchFilterDrawer({
             className="px-4 pb-6"
             path={path}
             showRelevance={showRelevance}
+            publicStatus={publicStatus}
           />
         </SheetContent>
       </Sheet>
@@ -179,7 +191,10 @@ const FILTER_CHIPS: Array<{
     key: "status",
     label: "Status",
     value: (filters) =>
-      filters.status ? DEAL_STATUS_LABELS[filters.status] : undefined,
+      filters.status
+        ? PUBLIC_STATUS_FILTERS.find((option) => option.value === filters.status)?.label ??
+          filters.status
+        : undefined,
   },
 ];
 
@@ -211,6 +226,7 @@ export function DealActiveFilters({
           >
             <span className="text-muted-foreground">{chip.label}:</span>
             <span className="ml-1 font-medium">{value}</span>
+            <span className="ml-1" aria-hidden="true">×</span>
             <span className="sr-only"> Remove {chip.label} filter</span>
           </Link>
         );

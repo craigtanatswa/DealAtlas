@@ -371,7 +371,7 @@ Indexes:
 - btree updated_at
 - btree is_published
 
-`search_preview_dtos` is the public/free and signed-in search RPC. It only reads published LOW-risk, non-held `deal_previews` and the caller's own `deal_matches`, and accepts keyword, category, buyer sector, deal type, broad region, status or statuses, value band, closing window, minimum score, sort (`updated`/`relevance`), limit (max 50) and offset (max 10000).
+`search_preview_dtos` is the public/free and signed-in search RPC. It only reads published LOW-risk, non-held `deal_previews` and the caller's own `deal_matches`, and accepts keyword, category, buyer sector, deal type, broad region, status or statuses, value band, closing window, minimum score, sort (`biddable`/`deadline`/`updated`/`relevance`), limit (max 50) and offset (max 10000). An omitted sort stays `updated` (newest first), matching the previous function default. `biddable` is closing soon, then open, then upcoming, each by nearest deadline. The deals index requests that sort when the visitor has not chosen one. That deadline is used only for ordering and is not returned. `deadline` orders by the same timestamp. `updated` is newest first. Relevance sort is unchanged.
 
 The legacy `search_deal_previews` / `search_deal_previews_for_profile` RPCs return `deal_id`. Until `0019` they are client-callable (`search_deal_previews_for_profile` is security definer, joins only the caller's own matches, and returns empty `preview_reasons` to client roles). After `0019` they are service-role only; Pro CSV export uses the profile search with the admin client after the entitlement check. Protected Pro filters that need canonical tables still run through trusted server code after entitlement check.
 

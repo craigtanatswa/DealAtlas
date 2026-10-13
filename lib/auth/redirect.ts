@@ -126,6 +126,16 @@ export function loginPathWithNext(nextPath: string): string {
   return `${LOGIN_PATH}?next=${encodeURIComponent(next)}`;
 }
 
+export function signupPathWithNext(nextPath: string): string {
+  const next = sanitizeRedirectPath(nextPath);
+  return `${SIGNUP_PATH}?next=${encodeURIComponent(next)}`;
+}
+
+export function signupPathWithAlert(nextPath: string): string {
+  const next = sanitizeRedirectPath(nextPath);
+  return `${SIGNUP_PATH}?intent=alert&next=${encodeURIComponent(next)}`;
+}
+
 export function defaultPathForAuthType(type: string | null | undefined): string {
   if (type === "recovery") {
     return RESET_PASSWORD_PATH;

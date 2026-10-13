@@ -328,6 +328,57 @@ describe("preview generation from canonical records", () => {
     expect(store.previews[0]?.isPublished).toBe(false);
   });
 
+  it("keeps the same slug when the deal status changes", async () => {
+    const { store } = await ingestNormal();
+    const deal = store.deals[0]!;
+    const slug = store.previews[0]!.slug;
+    deal.status = "CLOSING_SOON";
+    await persistIntelligenceAndPreview({
+      store,
+      context: contextFromCandidate({
+        deal,
+        source: store.sources[0]!,
+        buyer: store.organizations[0]!,
+        buyerAliases: [],
+        lots: store.lots,
+        candidate: {
+          sourceKey: "find-a-tender",
+          ocid: deal.ocid ?? "",
+          externalPrimaryId: deal.externalPrimaryId ?? "",
+          noticeIdentifier: "000001-2026",
+          releaseId: "000001-2026",
+          reference: deal.reference,
+          sourceTitle: deal.sourceTitle,
+          sourceDescription: deal.sourceDescription,
+          sourceUrl: deal.sourceUrl ?? "",
+          dealType: deal.dealType,
+          buyerSector: deal.buyerSector,
+          stage: deal.stage,
+          status: "CLOSING_SOON",
+          mainCategory: deal.mainCategory,
+          currency: deal.currency ?? "GBP",
+          valueMinExVat: deal.valueMinExVat,
+          valueMaxExVat: deal.valueMaxExVat,
+          exactValueText: deal.exactValueText,
+          exactLocationText: deal.exactLocationText,
+          submissionDeadline: deal.submissionDeadline,
+          organizations: [],
+          lots: [],
+          requirements: [],
+          awardCriteria: [],
+          awards: [],
+          contracts: [],
+          documents: [],
+          classifications: [],
+          relatedOcids: [],
+        },
+        now: NOW,
+      }),
+    });
+    expect(store.previews[0]?.slug).toBe(slug);
+    expect(store.previews[0]?.status).toBe("CLOSING_SOON");
+  });
+
   it("keeps a template slug and retires a legacy slug", async () => {
     const { store } = await ingestNormal();
     const first = store.previews[0]!.slug;

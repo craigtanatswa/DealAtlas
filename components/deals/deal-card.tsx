@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { DeadlineBand } from "@/components/deals/deadline-band";
 import { DealStatusBadge } from "@/components/deals/deal-status";
+import { OpeningAlertButton } from "@/components/deals/opening-alert";
 import { MatchScore } from "@/components/deals/match-score";
 import {
   buyerVisibilityLabel,
@@ -16,9 +17,11 @@ import { cn } from "@/lib/utils";
 export function DealCard({
   deal,
   href,
+  signedIn = false,
 }: {
   deal: DealCardData;
   href?: string;
+  signedIn?: boolean;
 }) {
   const destination = href ?? `/deals/${deal.slug}`;
   const tags = (deal.relevanceTags ?? []).slice(0, 4);
@@ -33,7 +36,7 @@ export function DealCard({
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[0.8125rem] leading-5">
-            <DealStatusBadge status={deal.status} />
+            <DealStatusBadge status={deal.status} deadlineBand={deal.deadlineBand} />
             <span className="text-muted-foreground">
               {buyerVisibilityLabel(deal.buyerSector)} buyer
             </span>
@@ -113,12 +116,17 @@ export function DealCard({
             </div>
           ) : null}
         </div>
-        <Link
-          href={destination}
-          className="inline-flex h-10 min-h-10 shrink-0 items-center justify-center rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground transition-[color,background-color,transform] duration-150 ease-out hover:bg-primary/80 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none active:scale-[0.96] motion-reduce:active:scale-100"
-        >
-          View opportunity
-        </Link>
+        <div className="flex w-full flex-col gap-2 md:w-auto">
+          {deal.status === "UPCOMING" ? (
+            <OpeningAlertButton href={destination} signedIn={signedIn} variant="card" />
+          ) : null}
+          <Link
+            href={destination}
+            className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground transition-[color,background-color,transform] duration-150 ease-out hover:bg-primary/80 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none active:scale-[0.96] motion-reduce:active:scale-100"
+          >
+            View opportunity
+          </Link>
+        </div>
       </div>
     </article>
   );

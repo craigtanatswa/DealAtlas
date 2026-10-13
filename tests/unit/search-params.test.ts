@@ -85,7 +85,7 @@ describe("public search params", () => {
       sort: "secret",
       minScore: "nope",
     });
-    expect(filters.sort).toBe("updated");
+    expect(filters.sort).toBe("biddable");
     expect(filters.minScore).toBeUndefined();
   });
 });

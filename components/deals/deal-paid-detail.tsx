@@ -58,7 +58,7 @@ export function DealPaidDetail({
     <article className="flex flex-col gap-10">
       <header className="flex flex-col gap-4 border-b border-border pb-8">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
-          <DealStatusBadge status={deal.status} />
+          <DealStatusBadge status={deal.status} deadline={deal.submissionDeadline} />
           <span>{DEAL_TYPE_LABELS[deal.dealType]}</span>
           <span>{BUYER_SECTOR_LABELS[deal.buyerSector]}</span>
           <span>{DEAL_STAGE_LABELS[deal.stage]}</span>

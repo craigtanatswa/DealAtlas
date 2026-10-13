@@ -103,7 +103,10 @@ insert into public.deals (
    'PUBLIC_TENDER', 'PUBLIC', 'LIVE', 'OPEN', pg_catalog.now() + interval '40 days'),
   ('c6000000-0000-4000-8000-000000000030', 'd6000000-0000-4000-8000-000000000030',
    'Highway lighting column renewal programme', 'a6000000-0000-4000-8000-000000000001',
-   'PUBLIC_TENDER', 'PUBLIC', 'LIVE', 'OPEN', pg_catalog.now() + interval '40 days');
+   'PUBLIC_TENDER', 'PUBLIC', 'LIVE', 'OPEN', pg_catalog.now() + interval '40 days'),
+  ('c6000000-0000-4000-8000-000000000034', 'd6000000-0000-4000-8000-000000000001',
+   'Highway lighting column renewal programme', 'a6000000-0000-4000-8000-000000000001',
+   'PUBLIC_TENDER', 'PUBLIC', 'PLANNING', 'UPCOMING', pg_catalog.now() - interval '2 days');
 
 insert into public.deal_previews (
   deal_id, slug, preview_title, preview_summary, deal_type, buyer_sector, stage, status,
@@ -213,7 +216,12 @@ insert into public.deal_previews (
    'street-lighting-upgrade-for-a-local-authority-abcd1030',
    'Street lighting upgrade for a local authority',
    'A public body in Wales wants a contractor to replace roadside lighting with efficient units.',
-   'PUBLIC_TENDER', 'PUBLIC', 'LIVE', 'OPEN', 'Wales', '["relevant street lighting experience"]'::jsonb, 'LOW', false, false);
+   'PUBLIC_TENDER', 'PUBLIC', 'LIVE', 'OPEN', 'Wales', '["relevant street lighting experience"]'::jsonb, 'LOW', false, false),
+  ('c6000000-0000-4000-8000-000000000034',
+   'street-lighting-upgrade-for-a-local-authority-abcd1034',
+   'Street lighting upgrade for a local authority',
+   'A public body in Wales wants a contractor to replace roadside lighting with efficient units.',
+   'PUBLIC_TENDER', 'PUBLIC', 'PLANNING', 'UPCOMING', 'Wales', '["relevant street lighting experience"]'::jsonb, 'LOW', false, false);
 
 alter table public.deal_previews disable trigger enforce_preview_safety;
 update public.deal_previews
@@ -272,13 +280,13 @@ select is(
 create temp table pr6_pub (result jsonb);
 insert into pr6_pub select public.publish_eligible_previews(1, 'run-41');
 
-select is((select (result->>'selected')::int from pr6_pub), 3, 'three rows are eligible before the cap');
+select is((select (result->>'selected')::int from pr6_pub), 4, 'four rows are eligible before the cap');
 select is((select (result->>'published')::int from pr6_pub), 1, 'cap 1 publishes one row');
-select is((select (result->>'skipped_cap')::int from pr6_pub), 2, 'cap leaves two eligible rows');
+select is((select (result->>'skipped_cap')::int from pr6_pub), 3, 'cap leaves three eligible rows');
 select is((select (result->>'skipped_risk')::int from pr6_pub), 2, 'stored HIGH and a live non-LOW rescore are skipped');
 select is((select (result->>'skipped_source')::int from pr6_pub), 5, 'pipeline, licensed, terms-reviewed and disabled sources are skipped');
-select is((select (result->>'skipped_status')::int from pr6_pub), 6, 'closed, mismatched, planning-open and undated upcoming rows are skipped');
-select is((select (result->>'skipped_deadline')::int from pr6_pub), 1, 'a deadline inside 24 hours is skipped');
+select is((select (result->>'skipped_status')::int from pr6_pub), 5, 'closed, mismatched and planning-open rows are skipped');
+select is((select (result->>'skipped_deadline')::int from pr6_pub), 2, 'a deadline inside 24 hours and a past upcoming deadline are skipped');
 select is((select (result->>'skipped_held')::int from pr6_pub), 2, 'admin-held and preview-hold rows are skipped');
 select is((select (result->>'skipped_slug')::int from pr6_pub), 2, 'legacy hex suffix and non-template slug are skipped');
 select is((select (result->>'skipped_denylist')::int from pr6_pub), 1, 'denylist row is skipped');
@@ -327,7 +335,12 @@ select is(
 select is(
   (select is_published from public.deal_previews where deal_id = 'c6000000-0000-4000-8000-000000000022'),
   false,
-  'an upcoming notice with no deadline is not published'
+  'an undated upcoming notice waits behind dated rows when the cap is 1'
+);
+select is(
+  (select is_published from public.deal_previews where deal_id = 'c6000000-0000-4000-8000-000000000034'),
+  false,
+  'an upcoming notice with a past deadline is not published'
 );
 select is(
   (select is_published from public.deal_previews where deal_id = 'c6000000-0000-4000-8000-000000000023'),
@@ -377,11 +390,16 @@ select is(
 
 create temp table pr6_rest (result jsonb);
 insert into pr6_rest select public.publish_eligible_previews(500, 'run-41b');
-select is((select (result->>'published')::int from pr6_rest), 1, 'the remaining eligible row is published');
+select is((select (result->>'published')::int from pr6_rest), 2, 'the remaining eligible rows are published');
 select is(
   (select is_published from public.deal_previews where deal_id = 'c6000000-0000-4000-8000-000000000003'),
   true,
   'a closing-soon live notice is published'
+);
+select is(
+  (select is_published from public.deal_previews where deal_id = 'c6000000-0000-4000-8000-000000000022'),
+  true,
+  'an upcoming notice with no deadline is published'
 );
 
 -- Stale rows that are already published. The gate allows LOW rows to stay published.
@@ -562,6 +580,11 @@ select is(
   (select is_published from public.deal_previews where deal_id = 'c6000000-0000-4000-8000-000000000003'),
   true,
   'a closing-soon preview stays published'
+);
+select is(
+  (select is_published from public.deal_previews where deal_id = 'c6000000-0000-4000-8000-000000000022'),
+  true,
+  'an upcoming notice with no deadline stays published'
 );
 select is(
   (select is_published from public.deal_previews where deal_id = 'c6000000-0000-4000-8000-000000000004'),

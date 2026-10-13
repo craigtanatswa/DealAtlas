@@ -47,6 +47,7 @@ export async function searchPublicDealPreviews(
     deadlineBand: input.deadlineBand,
     dealType: input.dealType,
     status: input.status,
+    sort: input.sort,
     limit: input.limit,
     offset,
   });
@@ -62,6 +63,7 @@ export async function searchPublicDealPreviews(
       deadlineBand: input.deadlineBand,
       dealType: input.dealType,
       status: input.status,
+      sort: input.sort,
       limit: 1,
       offset: 0,
     });
