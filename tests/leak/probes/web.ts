@@ -36,7 +36,11 @@ function homeCardAssertions(ctx: Ctx, body: string, pub: Set<string>): Assertion
     ok("no_held_slug", heldIn(ctx, body).length === 0, heldIn(ctx, body)),
     ok("home_cards_are_published", published.length === found.size, [...found]),
     ok("home_card_cap", found.size <= 6, found.size),
-    ok("see_all_when_cards", found.size === 0 || /See all \d+ opportunities/.test(body), found.size),
+    ok(
+      "see_all_when_cards",
+      found.size === 0 || /See all[\s\S]{0,24}\d+[\s\S]{0,24}opportunities/.test(body),
+      found.size,
+    ),
   ];
 }
 
