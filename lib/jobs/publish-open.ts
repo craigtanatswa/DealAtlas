@@ -9,10 +9,12 @@ export type PublishJobResult = {
   dryRun: boolean;
   publishedLive: number;
   counts: Record<string, number>;
+  errorMessage?: string | null;
 };
 
 type QueryResult = { count: number | null; error: { message: string } | null };
-type RpcResult = { data: unknown; error: { message: string } | null };
+type RpcError = { message?: string; code?: string };
+type RpcResult = { data: unknown; error: RpcError | null };
 
 export type PublishJobClient = {
   rpc: (fn: string, args?: Record<string, unknown>) => PromiseLike<RpcResult>;
@@ -25,6 +27,18 @@ export type PublishJobClient = {
     };
   };
 };
+
+export function formatRpcError(error: { message?: string; code?: string } | null): string | null {
+  if (!error) {
+    return null;
+  }
+  const message = typeof error.message === "string" ? error.message.trim() : "";
+  const code = typeof error.code === "string" ? error.code.trim() : "";
+  if (!message && !code) {
+    return "rpc failed";
+  }
+  return code && message ? `${code}: ${message}` : code || message;
+}
 
 function numericCounts(data: unknown): Record<string, number> | null {
   if (!data || typeof data !== "object" || Array.isArray(data)) {
@@ -112,6 +126,7 @@ export async function runPublishEligible(input: {
   const counts = error ? null : numericCounts(data);
   const after = await countPublished(input.client);
   if (!counts) {
+    const errorMessage = formatRpcError(error);
     await notify({
       job: "publish-eligible",
       status: "FAILED",
@@ -122,7 +137,7 @@ export async function runPublishEligible(input: {
       fetchImpl: input.fetchImpl,
       alert: input.alert,
     });
-    return { status: "FAILED", dryRun: false, publishedLive: after, counts: {} };
+    return { status: "FAILED", dryRun: false, publishedLive: after, counts: {}, errorMessage };
   }
   const status: PublishJobStatus = after < LIVE_PUBLISHED_MINIMUM ? "PARTIAL" : "SUCCEEDED";
   if (status === "PARTIAL") {
@@ -157,6 +172,7 @@ export async function runUnpublishStale(input: {
   const counts = error ? null : numericCounts(data);
   const after = await countPublished(input.client);
   if (!counts) {
+    const errorMessage = formatRpcError(error);
     await notify({
       job: "unpublish-stale",
       status: "FAILED",
@@ -167,7 +183,7 @@ export async function runUnpublishStale(input: {
       fetchImpl: input.fetchImpl,
       alert: input.alert,
     });
-    return { status: "FAILED", dryRun: false, publishedLive: after, counts: {} };
+    return { status: "FAILED", dryRun: false, publishedLive: after, counts: {}, errorMessage };
   }
   return { status: "SUCCEEDED", dryRun: false, publishedLive: after, counts };
 }

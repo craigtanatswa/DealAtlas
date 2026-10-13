@@ -15,9 +15,19 @@ on:
         description: Days of Find a Tender tender releases to read
         type: string
         default: "7"
+      publish_only:
+        description: Skip ingest and preview rebuild
+        type: boolean
+        default: false
   schedule:
     - cron: "41 4 */3 * *"
     - cron: "17 5 * * *"
+    - cron: "23 */6 * * *"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/ingest-open.yml"
+      - "lib/jobs/**"
 
 permissions:
   contents: read
@@ -29,7 +39,7 @@ concurrency:
 jobs:
   ingest:
     name: Ingest Find a Tender
-    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '41 4 */3 * *'
+    if: (github.event_name == 'workflow_dispatch' && inputs.publish_only != true) || github.event.schedule == '41 4 */3 * *'
     runs-on: ubuntu-latest
     environment: ingest
     timeout-minutes: 300
@@ -162,6 +172,56 @@ jobs:
 
       - name: Publish alert
         if: failure()
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          DEALATLAS_EMAIL_FROM: ${{ secrets.DEALATLAS_EMAIL_FROM }}
+          LEAK_ALERT_EMAIL_TO: ${{ secrets.LEAK_ALERT_EMAIL_TO }}
+        run: npm run job -- --job publish-alert --mode live
+
+  publish:
+    name: Publish eligible previews
+    if: github.event.schedule == '23 */6 * * *' || github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publish_only == true)
+    runs-on: ubuntu-latest
+    environment: ingest
+    timeout-minutes: 30
+    env:
+      NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+      SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+    steps:
+      - name: Check out
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      - name: Unpublish stale previews
+        id: unpublish
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          DEALATLAS_EMAIL_FROM: ${{ secrets.DEALATLAS_EMAIL_FROM }}
+          LEAK_ALERT_EMAIL_TO: ${{ secrets.LEAK_ALERT_EMAIL_TO }}
+        run: npm run job -- --job unpublish-stale --mode live
+
+      - name: Publish eligible previews
+        id: publish
+        if: always() && steps.unpublish.outcome != 'cancelled'
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          DEALATLAS_EMAIL_FROM: ${{ secrets.DEALATLAS_EMAIL_FROM }}
+          LEAK_ALERT_EMAIL_TO: ${{ secrets.LEAK_ALERT_EMAIL_TO }}
+        run: npm run job -- --job publish-eligible --mode live
+
+      - name: Publish alert
+        if: always() && steps.unpublish.outcome != 'cancelled'
         env:
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           DEALATLAS_EMAIL_FROM: ${{ secrets.DEALATLAS_EMAIL_FROM }}
