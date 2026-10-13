@@ -29,6 +29,21 @@ function cardSlugs(ctx: Ctx, text: string): Set<string> {
   return new Set([...slugsIn(text)].filter((s) => known.has(s)));
 }
 
+function homeCardAssertions(ctx: Ctx, body: string, pub: Set<string>): Assertion[] {
+  const found = cardSlugs(ctx, body);
+  const published = [...found].filter((slug) => pub.has(slug));
+  return [
+    ok("no_held_slug", heldIn(ctx, body).length === 0, heldIn(ctx, body)),
+    ok("home_cards_are_published", published.length === found.size, [...found]),
+    ok("home_card_cap", found.size <= 6, found.size),
+    ok(
+      "see_all_when_cards",
+      found.size === 0 || /See all[\s\S]{0,24}\d+[\s\S]{0,24}opportunities/.test(body),
+      found.size,
+    ),
+  ];
+}
+
 /**
  * An HTML probe plus its RSC-01/RSC-02 twins (every A-HTML URL) and, when
  * asked, META-01/02: derived from the Chromium response, and fetched again
@@ -108,11 +123,24 @@ export async function htmlProbes(ctx: Ctx, roles: Role[] = NON_PRO_ROLES): Promi
             role,
             req: { path: "/" },
             status: [200],
-            check: (o) => [ok("no_held_slug", heldIn(ctx, o.final.body).length === 0, heldIn(ctx, o.final.body))],
+            check: (o) => homeCardAssertions(ctx, o.final.body, pub),
           },
           { meta: { jsonLdAllowed: true }, uaMatrix: true },
         ),
       );
+      for (const variant of ["rsc", "prefetch"] as const) {
+        jobs.push(
+          ctx.run({
+            id: variant === "rsc" ? "RSC-01" : "RSC-02",
+            instance: "home-cards",
+            role,
+            req: { path: "/", rsc: variant },
+            status: [200],
+            requireRsc: true,
+            check: (o) => homeCardAssertions(ctx, o.final.body, pub),
+          }),
+        );
+      }
       // HTML-02: /deals and ?page=2.. until a page has no cards.
       jobs.push(
         (async () => {

@@ -13,7 +13,7 @@ import { SectionHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { APP_NAME } from "@/lib/constants";
 import { HOW_IT_WORKS_STEPS } from "@/lib/seo/pages";
-import type { RankedDealSearchResult } from "@/lib/search/dto";
+import type { PublicDealPreview, RankedDealSearchResult } from "@/lib/search/dto";
 
 const VALUE_PROPS = [
   {
@@ -113,6 +113,43 @@ export function HomeOpportunitySections({
         </section>
       ) : null}
     </div>
+  );
+}
+
+export function HomeLiveOpportunities({
+  items,
+  total,
+  signedIn = false,
+}: {
+  items: PublicDealPreview[];
+  total: number;
+  signedIn?: boolean;
+}) {
+  if (items.length === 0) {
+    return null;
+  }
+
+  return (
+    <section className="border-b border-border" aria-labelledby="live-opportunities-heading">
+      <Container className="flex flex-col gap-6 py-12 md:py-16">
+        <div className="max-w-3xl">
+          <Heading id="live-opportunities-heading" level={2}>
+            Live opportunities
+          </Heading>
+          <p className="mt-2 text-[0.9375rem] leading-7 text-gray-600">
+            Open and closing-soon contracts you can bid on now.
+          </p>
+        </div>
+        <DealList
+          className="grid-cols-1 md:grid-cols-2 lg:grid-cols-3"
+          items={items.map((preview) => ({ preview, match: null }))}
+          signedIn={signedIn}
+        />
+        <Button asChild variant="link" className="h-auto w-full px-0 md:w-fit">
+          <Link href="/deals">See all {total} opportunities →</Link>
+        </Button>
+      </Container>
+    </section>
   );
 }
 
