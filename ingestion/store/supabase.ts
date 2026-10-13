@@ -30,6 +30,26 @@ type LotRow = Database["public"]["Tables"]["lots"]["Row"];
 type AwardRow = Database["public"]["Tables"]["awards"]["Row"];
 type ContractRow = Database["public"]["Tables"]["contracts"]["Row"];
 
+/** PostgREST puts `.in()` values on the GET URL. 500 UUIDs is ~20KB and Node fetch then fails with HeadersOverflowError. */
+const PREVIEW_ID_IN_CHUNK = 100;
+
+async function previewDealIds(
+  client: IngestionSupabaseClient,
+  ids: string[],
+): Promise<Set<string>> {
+  const covered = new Set<string>();
+  for (let index = 0; index < ids.length; index += PREVIEW_ID_IN_CHUNK) {
+    const chunk = ids.slice(index, index + PREVIEW_ID_IN_CHUNK);
+    const previews =
+      throwIfQueryError(
+        "List preview ids",
+        await client.from("deal_previews").select("deal_id").in("deal_id", chunk),
+      ) ?? [];
+    for (const preview of previews) covered.add(preview.deal_id);
+  }
+  return covered;
+}
+
 function requireRow<T>(
   label: string,
   result: {
@@ -410,12 +430,7 @@ export function createSupabaseIngestionStore(
         if (deals.length === 0) break;
         after = deals[deals.length - 1]?.id ?? null;
         const ids = deals.map((deal) => deal.id);
-        const previews =
-          throwIfQueryError(
-            "List preview ids",
-            await client.from("deal_previews").select("deal_id").in("deal_id", ids),
-          ) ?? [];
-        const covered = new Set(previews.map((preview) => preview.deal_id));
+        const covered = await previewDealIds(client, ids);
         for (const id of ids) {
           if (covered.has(id)) continue;
           missing.push(id);

@@ -11,6 +11,7 @@ import {
   openIngestLogLine,
   openIngestShouldFail,
   openIngestWindows,
+  publicFatalErrorLine,
   publicIngestErrorLine,
   runOpenFindATenderIngest,
 } from "@/lib/jobs/ingest-open";
@@ -426,5 +427,30 @@ describe("open Find a Tender ingest", () => {
     expect(result.status).toBe("SKIPPED");
     expect(calls).toBe(0);
     expect(memory.deals).toHaveLength(0);
+  });
+
+  it("prints the fatal message, code and stack without secrets", () => {
+    const error = new DatabaseQueryError(
+      "List preview ids: TypeError: fetch failed https://example.supabase.co/rest/v1/deal_previews?apikey=sb_secret_abcdefghij",
+      {
+        code: "",
+        message: "TypeError: fetch failed",
+        details: "sb_secret_abcdefghij",
+      },
+    );
+    Object.assign(error, {
+      cause: {
+        message: "TypeError: fetch failed",
+        code: "",
+        hint: "Your request URL is 19592 characters. Contact admin@example.com",
+      },
+    });
+    const line = publicFatalErrorLine(error);
+    expect(line.startsWith("fatal UNEXPECTED List preview ids: TypeError: fetch failed [url]")).toBe(
+      true,
+    );
+    expect(line).toContain("hint Your request URL is 19592 characters. Contact [email]");
+    expect(line).toContain("at ");
+    expect(line).not.toMatch(/sb_secret|supabase\.co|admin@example\.com|https?:/);
   });
 });
