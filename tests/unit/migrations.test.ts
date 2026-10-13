@@ -73,6 +73,7 @@ describe("supabase migrations", () => {
       "0021_publish_eligible_and_unpublish_stale.sql",
       "0022_unclassified_deal_status.sql",
       "0024_service_role_statement_timeout.sql",
+      "0026_recent_award_bands.sql",
     ]);
   });
 

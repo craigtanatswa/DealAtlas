@@ -134,7 +134,7 @@ select ok(
     join pg_namespace n on n.oid = p.pronamespace
     where n.nspname = 'public'
       and has_function_privilege('anon', p.oid, 'execute')
-      and p.proname not in ('search_preview_dtos', 'get_preview_dto_by_slug', 'list_preview_sitemap_entries', 'count_preview_sitemap_entries')
+      and p.proname not in ('search_preview_dtos', 'get_preview_dto_by_slug', 'list_preview_sitemap_entries', 'count_preview_sitemap_entries', 'list_recent_award_bands')
       and not exists (select 1 from pg_depend dep where dep.objid = p.oid and dep.deptype = 'e')
   ),
   'anon can only execute the public DTO RPCs in schema public'

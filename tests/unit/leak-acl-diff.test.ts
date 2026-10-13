@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { aclDiff, type Acl } from "../leak/probes/db";
+import { aclDiff, expectedDtoRpcs, type Acl } from "../leak/probes/db";
 
 function fn(name: string, anon: boolean, authenticated: boolean): Acl["functions"][string] {
   return { name, anon, authenticated };
@@ -9,6 +9,14 @@ function fn(name: string, anon: boolean, authenticated: boolean): Acl["functions
 function acl(functions: Acl["functions"]): Acl {
   return { functions, tables: {}, columns: {}, schemas: {} };
 }
+
+describe("expected DTO RPCs", () => {
+  it("omits the award-band function until phase B", () => {
+    expect(expectedDtoRpcs("A")).not.toContain("list_recent_award_bands");
+    expect(expectedDtoRpcs("B")).toContain("list_recent_award_bands");
+    expect(expectedDtoRpcs("B").filter((name) => name !== "list_recent_award_bands")).toEqual(expectedDtoRpcs("A"));
+  });
+});
 
 describe("phase B ACL diff", () => {
   const before = acl({
@@ -45,6 +53,24 @@ describe("phase B ACL diff", () => {
       "preview_slug_is_retired(text)": fn("preview_slug_is_retired", true, false),
     });
     expect(aclDiff(before, after).unintended).toEqual(["preview_slug_is_retired(text): added"]);
+  });
+
+  it("treats the anonymous award-band RPC as an intended addition", () => {
+    const after = acl({
+      ...before.functions,
+      "list_recent_award_bands()": fn("list_recent_award_bands", true, true),
+    });
+    const diff = aclDiff(before, after);
+    expect(diff.unintended).toEqual([]);
+    expect(diff.intended).toEqual(["list_recent_award_bands(): added"]);
+  });
+
+  it("rejects an award-band RPC that is not granted to both client roles", () => {
+    const after = acl({
+      ...before.functions,
+      "list_recent_award_bands()": fn("list_recent_award_bands", true, false),
+    });
+    expect(aclDiff(before, after).unintended).toEqual(["list_recent_award_bands(): added"]);
   });
 
   it("rejects an unlisted function and a DTO revoke", () => {

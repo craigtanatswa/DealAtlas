@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { RecentAwardStripView } from "@/components/marketing/recent-award-strip";
 import { DealKeywordForm } from "@/components/deals/deal-keyword-form";
 import {
   DealActiveFilters,
@@ -10,6 +11,7 @@ import { DealSearchResults } from "@/components/deals/deal-search-results";
 import { PageHeader } from "@/components/layout/page-header";
 import { Main } from "@/components/layout/container";
 import { getAuthUser } from "@/lib/auth/session";
+import { loadRecentAwardStrip } from "@/lib/awards/load";
 import { searchDealPreviewsForUser } from "@/lib/matching/search";
 import { getAppOrigin } from "@/lib/auth/urls";
 import { hasActivePublicFilters, parsePublicSearchParams } from "@/lib/search/params";
@@ -39,12 +41,14 @@ export default async function DealsIndexPage({ searchParams }: PageProps) {
   const params = await searchParams;
   const client = await createSupabaseServerClient();
   const user = await getAuthUser();
+  const awardsPromise = loadRecentAwardStrip(client);
   const { filters, result, companyProfileId } = await searchDealPreviewsForUser({
     client,
     searchParams: params,
     userId: user?.id,
     defaultSort: "updated",
   });
+  const awards = await awardsPromise;
 
   return (
     <Main className="gap-8">
@@ -69,6 +73,7 @@ export default async function DealsIndexPage({ searchParams }: PageProps) {
         />
         <DealSearchResults result={result} filters={filters} />
       </div>
+      <RecentAwardStripView strip={awards} nextPath="/deals" bleed />
     </Main>
   );
 }

@@ -3025,6 +3025,18 @@ export type Database = {
           value_band: string
         }[]
       }
+      list_recent_award_bands: {
+        Args: never
+        Returns: {
+          aggregate_contract_count: number | null
+          aggregate_value_label: string | null
+          aggregate_window_weeks: number | null
+          recency_weeks: number
+          region: string
+          sector: string
+          value_band: string
+        }[]
+      }
       list_saved_deal_previews: {
         Args: never
         Returns: {
