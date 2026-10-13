@@ -20,6 +20,11 @@ describe("ingest-open workflow", () => {
     expect(workflow).toContain("inputs.dry_run || 'false'");
     expect(workflow).toContain('cron: "41 4 */3 * *"');
     expect(workflow).toContain('cron: "17 5 * * *"');
+    expect(workflow).toContain('cron: "23 */6 * * *"');
+    expect(workflow).toContain("publish_only:");
+    expect(workflow).toContain("branches: [main]");
+    expect(workflow).toContain('".github/workflows/ingest-open.yml"');
+    expect(workflow).toContain('"lib/jobs/**"');
     expect(workflow).toContain("environment: ingest");
     expect(workflow).toContain("timeout-minutes: 30");
     expect(workflow).toContain("group: dealatlas-ingest-open");
@@ -55,6 +60,21 @@ describe("ingest-open workflow", () => {
     expect(unpublishJob).not.toContain("ingest-open");
     expect(unpublishJob).not.toContain("Build previews");
     expect(unpublishJob).toContain('github.event.schedule == \'17 5 * * *\'');
+    const publishJob = workflow.slice(workflow.indexOf("  publish:"));
+    expect(ingestJob).toContain("inputs.publish_only != true");
+    expect(ingestJob).not.toContain("github.event_name == 'push'");
+    expect(publishJob).toContain("github.event_name == 'push'");
+    expect(publishJob).toContain("inputs.publish_only == true");
+    expect(publishJob).toContain("github.event.schedule == '23 */6 * * *'");
+    expect(publishJob).toContain("environment: ingest");
+    expect(publishJob).not.toContain("ingest-open");
+    expect(publishJob).not.toContain("Build previews");
+    expect(publishJob.indexOf("--job unpublish-stale")).toBeLessThan(
+      publishJob.indexOf("--job publish-eligible"),
+    );
+    expect(publishJob.indexOf("--job publish-eligible")).toBeLessThan(
+      publishJob.lastIndexOf("--job publish-alert"),
+    );
   });
 
   it("keeps the Find a Tender source on the publish rule", () => {

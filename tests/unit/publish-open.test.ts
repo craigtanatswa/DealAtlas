@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import { jobProcessShouldFail, parseJobArgs } from "@/lib/jobs/cli";
+import { errorMessage } from "@/lib/observability/log";
 import {
+  formatRpcError,
   publishAlertText,
   runPublishAlert,
   runPublishEligible,
@@ -178,5 +180,43 @@ describe("publish jobs", () => {
     expect(payload.text).toContain("published_live=12");
     expect(payload.text).toContain("skipped_cap=2");
     expect(payload.text).not.toMatch(/[0-9a-f]{8}-[0-9a-f]{4}-/);
+  });
+
+  it("puts the RPC error code and message on a failed publish or unpublish", async () => {
+    const failing = {
+      async rpc() {
+        return {
+          data: null,
+          error: { message: "canceling statement due to statement timeout", code: "57014" },
+        };
+      },
+      from: () => ({
+        select: () => ({
+          eq: async () => ({ count: 4, error: null }),
+        }),
+      }),
+    };
+    const published = await runPublishEligible({
+      mode: "live",
+      client: failing,
+      alert: async () => undefined,
+    });
+    const unpublished = await runUnpublishStale({
+      mode: "live",
+      client: failing,
+      alert: async () => undefined,
+    });
+    const expected = "57014: canceling statement due to statement timeout";
+    expect(formatRpcError({ message: "canceling statement due to statement timeout", code: "57014" })).toBe(
+      expected,
+    );
+    expect(published.status).toBe("FAILED");
+    expect(published.errorMessage).toBe(expected);
+    expect(published.counts).toEqual({});
+    expect(unpublished.errorMessage).toBe(expected);
+    expect(errorMessage({ code: "57014", message: "canceling statement due to statement timeout" })).toBe(
+      JSON.stringify({ code: "57014", message: "canceling statement due to statement timeout" }),
+    );
+    expect(errorMessage("plain")).toBe("plain");
   });
 });

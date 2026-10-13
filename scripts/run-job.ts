@@ -54,6 +54,13 @@ async function main() {
           ? summary.failures
           : 0;
       const failed = summary.status === "FAILED" || failureCount > 0;
+      const rpcError =
+        "errorMessage" in summary && typeof summary.errorMessage === "string"
+          ? summary.errorMessage
+          : null;
+      if (rpcError) {
+        console.error(rpcError);
+      }
       await finishJobRun(client, runId, {
         status:
           summary.status === "SKIPPED"
@@ -64,6 +71,7 @@ async function main() {
                 ? "FAILED"
                 : "SUCCEEDED",
         summary,
+        errorMessage: failed ? rpcError : null,
       });
     }
     if (jobProcessShouldFail(job, summary.status)) {
@@ -293,7 +301,8 @@ async function dispatchJob(
   };
 }
 
-main().catch((error: unknown) => {
-  console.error(error instanceof Error ? error.message : error);
+main().catch(async (error: unknown) => {
+  const { errorMessage } = await import("@/lib/observability/log");
+  console.error(errorMessage(error));
   process.exitCode = 1;
 });
