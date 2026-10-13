@@ -4,7 +4,7 @@ import path from "node:path";
 
 import { writeJson } from "../lib/artifacts";
 import { ROOT } from "../lib/env";
-import type { Assertion, Ctx } from "../lib/probe";
+import type { Assertion, Ctx, Phase } from "../lib/probe";
 import { eq, ok, sorted } from "../lib/probe";
 
 export const ANON_DTO_RPCS = ["search_preview_dtos", "get_preview_dto_by_slug", "list_preview_sitemap_entries", "count_preview_sitemap_entries", "list_recent_award_bands"];
@@ -24,8 +24,8 @@ const PHASE_B_ADDED_FUNCTIONS = new Set([
 const CLIENT_BAND_RPCS = new Set(["list_recent_award_bands"]);
 
 /** Phase A applies migrations through 0018, so later DTO functions are absent there. */
-export function expectedDtoRpcs(phase: "A" | "B"): string[] {
-  const names = phase === "A" ? DTO_RPCS.filter((name) => !CLIENT_BAND_RPCS.has(name)) : DTO_RPCS;
+export function expectedDtoRpcs(phase: Phase): string[] {
+  const names = phase === "B" ? DTO_RPCS : DTO_RPCS.filter((name) => !CLIENT_BAND_RPCS.has(name));
   return sorted(names);
 }
 
