@@ -45,10 +45,10 @@ export function HomeHero({ signedIn = false }: { signedIn?: boolean }) {
       <Container className="relative z-10 flex flex-col items-center gap-8 py-14 text-center md:py-24">
         <div className="flex max-w-3xl flex-col items-center gap-4">
           <BrandLogo alt={APP_NAME} className="h-10 w-auto md:h-12" priority />
-          <Heading>Find opportunities worth pursuing.</Heading>
+          <Heading>Find business opportunities worth pursuing.</Heading>
           <Text variant="muted" className="max-w-2xl">
             The #1 destination for finding the right business opportunities,
-            contracts, supply requests and deals.
+            contracts, tenders, supply requests and deals.
           </Text>
           {signedIn ? null : (
             <Button asChild className="min-h-11">
