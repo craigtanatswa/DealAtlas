@@ -136,7 +136,7 @@ Secondary link:
 View pricing
 
 ## 10. Homepage and workspace
-The public homepage is marketing and search. It does not list free deal cards. Visitors search from the hero, which submits to `/deals`, where published previews are browsed. Do not hide product value behind sign-up. The public hero may show decorative, non-interactive category chips around the search column; they use the existing category catalogue only, fetch nothing, and must not cover the headline, copy, or search. A testimonial carousel may sit below the hero; its quotes are development placeholders and must be replaced with verified customer testimonials before production use. Do not invent live counts, ratings, or win figures.
+The public homepage leads with search, then live sanitised previews, then a coarse recently-awarded strip. Visitors search from the hero, which submits to `/deals`, where published previews are browsed. The strip shows sector, region, value band and a 2, 4 or 8 week bucket only, with an aggregate computed from the award window and omitted below 10 awards. Do not hide product value behind sign-up. The public hero may show decorative, non-interactive category chips around the search column; they use the existing category catalogue only, fetch nothing, and must not cover the headline, copy, or search. A testimonial carousel may sit below the hero; its quotes are development placeholders and must be replaced with verified customer testimonials before production use. Do not invent live counts, ratings, or win figures.
 
 Authenticated `/app` leads with search and live opportunities, then quotas and alerts.
 

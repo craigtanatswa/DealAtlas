@@ -47,6 +47,24 @@ describe("phase B ACL diff", () => {
     expect(aclDiff(before, after).unintended).toEqual(["preview_slug_is_retired(text): added"]);
   });
 
+  it("treats the anonymous award-band RPC as an intended addition", () => {
+    const after = acl({
+      ...before.functions,
+      "list_recent_award_bands()": fn("list_recent_award_bands", true, true),
+    });
+    const diff = aclDiff(before, after);
+    expect(diff.unintended).toEqual([]);
+    expect(diff.intended).toEqual(["list_recent_award_bands(): added"]);
+  });
+
+  it("rejects an award-band RPC that is not granted to both client roles", () => {
+    const after = acl({
+      ...before.functions,
+      "list_recent_award_bands()": fn("list_recent_award_bands", true, false),
+    });
+    expect(aclDiff(before, after).unintended).toEqual(["list_recent_award_bands(): added"]);
+  });
+
   it("rejects an unlisted function and a DTO revoke", () => {
     const after = acl({
       "search_preview_dtos()": fn("search_preview_dtos", false, true),

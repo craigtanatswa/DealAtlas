@@ -177,9 +177,14 @@ describe("design-system anti-bypass guards", () => {
       "utf8",
     );
 
-    expect(page).not.toContain("HomeOpportunitySections");
-    expect(page).not.toContain("searchHomeLatestDealPreviews");
-    expect(page).toContain("HomeTestimonialsSection");
+    const body = page.slice(page.indexOf("return ("));
+    const live = body.indexOf("HomeOpportunitySections");
+    const awards = body.indexOf("RecentAwardStripView");
+    const testimonials = body.indexOf("HomeTestimonialsSection");
+    expect(live).toBeGreaterThan(-1);
+    expect(awards).toBeGreaterThan(live);
+    expect(testimonials).toBeGreaterThan(awards);
+    expect(page).toContain("searchHomeLatestDealPreviews");
     expect(data).toContain(
       "Placeholder testimonial content — replace with verified customer",
     );

@@ -445,6 +445,7 @@ This writes `lib/db/database.types.ts`. Do not edit that file by hand.
 
 ### Query modules
 - Public/free: `lib/db/previews.ts` and `lib/search/public.ts` — preview DTO RPCs only, never a table read on `deal_previews`. Public search JSON is `/api/search`. Public HTML is `/deals` and `/deals/[slug]`. Anonymous payloads never carry `deal_id`; signed-in slug pages resolve it with `resolve_preview_deal_id` for save/reveal controls.
+- Recently awarded strip: `list_recent_award_bands` (`0026_recent_award_bands.sql`) is security definer and executable by `anon` and `authenticated`. It reads awards on the server and returns only sector, region, value band, a 2/4/8-week bucket, and a rounded 8-week aggregate. A sector/region/value-band bucket with fewer than three awards is omitted, and fewer than three qualifying cards returns no rows. The result has no ids, names, titles, dates or exact values.
 - Signed-in relevance: `lib/matching/search.ts` reads the caller's match from `search_preview_dtos` (resolved from `auth.uid()` inside the RPC). `lib/matching/persist.ts` writes matches with the admin client. `detail_reasons` is never selected on the user client.
 - Browser and cookie-based SSR clients are typed with the granted public surface only (`lib/db/public-schema.ts`).
 - Protected canonical tables: `lib/db/canonical.ts` is `server-only` and uses the privileged admin client after an explicit Pro/admin access argument.

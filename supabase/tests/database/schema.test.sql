@@ -65,6 +65,7 @@ select has_function('public', 'resolve_preview_deal_id', 'signed-in slug to deal
 select has_function('public', 'list_saved_deal_previews', 'saved deal preview DTO RPC exists');
 select has_function('public', 'list_preview_sitemap_entries', 'sitemap preview RPC exists');
 select has_function('public', 'count_preview_sitemap_entries', 'sitemap preview count RPC exists');
+select has_function('public', 'list_recent_award_bands', 'recent award band RPC exists');
 select has_function('public', 'admin_release_preview_hold', 'admin preview hold release RPC exists');
 select has_function('private', 'preview_leak_findings', 'publish gate findings function exists');
 select has_function('private', 'detect_preview_leakage', 'publish gate risk function exists');
