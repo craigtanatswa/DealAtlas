@@ -5787,15 +5787,13 @@ comment on function public.unpublish_stale_previews(text) is
   'Does not unpublish a row only because its deadline is under 24 hours away, or because its slug is non-template or retired. Those checks gate first publication. A published row still comes down once its deadline is null or past.';
 
 -- One-time launch release. Revoked from every API role. The migration calls it once.
+-- One admin_audit_events row per released preview. Summary and metadata carry no title, slug, buyer, or risk text.
 create or replace function private.launch_release_holds()
 returns void
 language plpgsql
 security definer
 set search_path = ''
 as $$
-declare
-  v_released integer;
-  v_holds integer;
 begin
   drop table if exists pg_temp.launch_release_0021;
   create temp table launch_release_0021 (
@@ -5827,11 +5825,8 @@ begin
       dp.broad_region
     ) = 'LOW'::public.leakage_risk;
 
-  select count(*)::int into v_released from launch_release_0021;
-
   delete from private.preview_holds h
   where h.deal_id in (select r.deal_id from launch_release_0021 r);
-  get diagnostics v_holds = row_count;
 
   update public.deal_previews dp
   set unpublished_by_admin = false,
@@ -5839,22 +5834,18 @@ begin
       updated_at = pg_catalog.now()
   where dp.deal_id in (select r.deal_id from launch_release_0021 r);
 
-  if v_released > 0 then
-    insert into public.admin_audit_events (actor_id, action, entity_type, entity_id, summary, metadata)
-    values (
-      null,
-      'preview.release_hold'::text,
-      'deal_preview'::text,
-      null,
-      'Released launch holds'::text,
-      pg_catalog.jsonb_build_object(
-        'actor'::text, 'system:migration-0021'::text,
-        'batch'::text, 'launch-release-0021'::text,
-        'released'::text, v_released,
-        'holds_deleted'::text, v_holds
-      )
-    );
-  end if;
+  insert into public.admin_audit_events (actor_id, action, entity_type, entity_id, summary, metadata)
+  select
+    null,
+    'preview.release_hold'::text,
+    'deal_preview'::text,
+    r.deal_id::text,
+    'Launch hold release (0021)'::text,
+    pg_catalog.jsonb_build_object(
+      'actor'::text, 'system:launch-release-0021'::text,
+      'batch'::text, 'launch-release-0021'::text
+    )
+  from launch_release_0021 r;
 end;
 $$;
 
