@@ -81,6 +81,27 @@ export async function searchPublicDealPreviews(
   };
 }
 
+const HOME_LIVE_LIMIT = 6;
+
+/** Closing soon, then open. Same preview RPC as /deals. No source columns. */
+export async function searchLiveHomePreviews(
+  client: PublicSupabaseClient,
+): Promise<PublicDealSearchResult> {
+  const rows = await searchPublishedDealPreviews(client, {
+    statuses: ["CLOSING_SOON", "OPEN"],
+    sort: "biddable",
+    limit: HOME_LIVE_LIMIT,
+    offset: 0,
+  });
+  const total = Number(rows[0]?.total_count ?? 0);
+  return {
+    items: rows.map(toPublicDealPreview),
+    total,
+    page: 1,
+    pageSize: HOME_LIVE_LIMIT,
+  };
+}
+
 export async function searchPublicDealPreviewsFromParams(
   client: PublicSupabaseClient,
   searchParams: SearchParamRecord,

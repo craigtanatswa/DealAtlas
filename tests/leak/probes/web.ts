@@ -108,7 +108,20 @@ export async function htmlProbes(ctx: Ctx, roles: Role[] = NON_PRO_ROLES): Promi
             role,
             req: { path: "/" },
             status: [200],
-            check: (o) => [ok("no_held_slug", heldIn(ctx, o.final.body).length === 0, heldIn(ctx, o.final.body))],
+            check: (o) => {
+              const found = cardSlugs(ctx, o.final.body);
+              const published = [...found].filter((slug) => pub.has(slug));
+              return [
+                ok("no_held_slug", heldIn(ctx, o.final.body).length === 0, heldIn(ctx, o.final.body)),
+                ok("home_cards_are_published", published.length === found.size, [...found]),
+                ok("home_card_cap", found.size <= 6, found.size),
+                ok(
+                  "see_all_when_cards",
+                  found.size === 0 || /See all \d+ opportunit/.test(o.final.body),
+                  found.size,
+                ),
+              ];
+            },
           },
           { meta: { jsonLdAllowed: true }, uaMatrix: true },
         ),

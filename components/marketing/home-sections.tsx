@@ -13,7 +13,7 @@ import { SectionHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { APP_NAME } from "@/lib/constants";
 import { HOW_IT_WORKS_STEPS } from "@/lib/seo/pages";
-import type { RankedDealSearchResult } from "@/lib/search/dto";
+import type { PublicDealPreview, RankedDealSearchResult } from "@/lib/search/dto";
 
 const VALUE_PROPS = [
   {
@@ -113,6 +113,43 @@ export function HomeOpportunitySections({
         </section>
       ) : null}
     </div>
+  );
+}
+
+export function HomeLiveOpportunities({
+  items,
+  total,
+  signedIn = false,
+}: {
+  items: PublicDealPreview[];
+  total: number;
+  signedIn?: boolean;
+}) {
+  if (items.length === 0) {
+    return null;
+  }
+
+  return (
+    <section className="border-b border-border" aria-labelledby="live-opportunities-heading">
+      <Container className="flex flex-col gap-6 py-12 md:py-16">
+        <SectionHeader
+          id="live-opportunities-heading"
+          title="Live opportunities"
+          description="Closing soon, then open. Join DealAtlas Pro to unlock buyer and source details."
+          action={
+            <Button asChild variant="outline" className="min-h-11">
+              <Link href="/deals">
+                See all {total} {total === 1 ? "opportunity" : "opportunities"}
+              </Link>
+            </Button>
+          }
+        />
+        <DealList
+          items={items.map((preview) => ({ preview, match: null }))}
+          signedIn={signedIn}
+        />
+      </Container>
+    </section>
   );
 }
 
