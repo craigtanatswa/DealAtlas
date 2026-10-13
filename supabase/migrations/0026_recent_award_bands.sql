@@ -1,6 +1,7 @@
 -- Coarse recently-awarded bands for anonymous and signed-in clients.
 -- The function reads awards on the server and returns only sector, region,
 -- value band, a 2/4/8-week bucket, and a rounded window aggregate.
+-- The window is the eight ISO weeks before the current week.
 -- No ids, names, titles, dates, exact values, slugs or references.
 
 create or replace function private.format_award_total(p_amount numeric)
@@ -53,7 +54,7 @@ set search_path = ''
 as $$
   select case
     when p_count is null then null
-    when p_count >= 50 then p_count
+    when p_count >= 50 then (round(p_count / 10.0) * 10)::integer
     else (round(p_count / 5.0) * 5)::integer
   end;
 $$;
@@ -95,6 +96,9 @@ as $$
       ('Remote')
     -- END BROAD_REGIONS
   ),
+  bounds as (
+    select date_trunc('week', current_date)::date as week_start
+  ),
   windowed as (
     select
       case d.buyer_sector
@@ -111,6 +115,12 @@ as $$
           select dp.broad_region
           from public.deal_previews dp
           where dp.deal_id = d.id
+            and dp.is_published
+            and dp.unpublished_by_admin = false
+            and dp.leakage_risk = 'LOW'::public.leakage_risk
+            and not exists (
+              select 1 from private.preview_holds h where h.deal_id = dp.deal_id
+            )
             and dp.broad_region in (select regions.name from regions)
           order by dp.broad_region
           limit 1
@@ -151,8 +161,22 @@ as $$
       a.award_date
     from public.awards a
     join public.deals d on d.id = a.deal_id
-    where a.award_date >= (current_date - 56)
-      and a.award_date <= current_date
+    where a.award_date >= (select week_start - 56 from bounds)
+      and a.award_date < (select week_start from bounds)
+      and exists (
+        select 1
+        from public.data_sources s
+        where s.id = d.primary_source_id
+          and s.enabled
+          and s.access_method = 'OCDS_API'::public.access_method
+          and s.reuse_status in (
+            'OPEN_LICENSE'::public.reuse_status,
+            'PERMISSION_GRANTED'::public.reuse_status
+          )
+      )
+      and not exists (
+        select 1 from private.publish_denylist x where x.deal_id = d.id
+      )
   ),
   stats as (
     select
@@ -183,14 +207,18 @@ as $$
       value_band,
       count(*)::integer as award_count,
       case
-        when count(*) filter (where award_date >= (current_date - 14)) >= 3 then 2
-        when count(*) filter (where award_date >= (current_date - 28)) >= 3 then 4
+        when count(*) filter (
+          where award_date >= (select week_start - 14 from bounds)
+        ) >= 5 then 2
+        when count(*) filter (
+          where award_date >= (select week_start - 28 from bounds)
+        ) >= 5 then 4
         else 8
       end as recency_weeks
     from windowed
     where region is not null
     group by sector, region, value_band
-    having count(*) >= 3
+    having count(*) >= 5
   ),
   distinct_pairs as (
     select distinct on (sector, region)
@@ -229,7 +257,7 @@ revoke all on function public.list_recent_award_bands() from public, anon, authe
 grant execute on function public.list_recent_award_bands() to anon, authenticated, service_role;
 
 comment on function public.list_recent_award_bands() is
-  'Anonymous recently-awarded strip. Sector, region, value band and a 2/4/8-week bucket only, plus a rounded 8-week aggregate. Buckets under 3 awards are omitted. No ids, names, titles, dates or exact values.';
+  'Anonymous recently-awarded strip. Sector, region, value band and a 2/4/8-week bucket only, plus a rounded aggregate over the previous eight ISO weeks. A band needs five awards, and a shorter recency label needs five inside that bucket. Approved OCDS sources only, excluding the publish denylist. Region comes from a published LOW preview or a location. No ids, names, titles, dates or exact values.';
 
 create index if not exists awards_award_date_idx
   on public.awards (award_date);

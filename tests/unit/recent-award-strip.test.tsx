@@ -6,12 +6,11 @@ import { cleanup, render } from "@testing-library/react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { HomeOpportunitySections } from "@/components/marketing/home-sections";
 import { RecentAwardStripView } from "@/components/marketing/recent-award-strip";
-import { DEAL_PREVIEW_DETAIL_FIXTURE } from "@/components/deals/fixtures";
 import {
   RECENT_AWARD_AGGREGATE_KEYS,
   RECENT_AWARD_CARD_KEYS,
+  coarseContractCount,
   parseRecentAwardStrip,
   recentAwardAggregateLine,
   recentAwardUpgradeHref,
@@ -104,6 +103,9 @@ describe("recent award card shape", () => {
     expect(recentAwardAggregateLine(strip!.aggregate!)).toBe(
       "£4.2m awarded across 35 contracts in the last 8 weeks",
     );
+    expect(coarseContractCount(53)).toBe(50);
+    expect(coarseContractCount(55)).toBe(60);
+    expect(coarseContractCount(50)).toBe(50);
   });
 
   it("hides the strip below three cards and the aggregate below ten awards", () => {
@@ -132,20 +134,7 @@ describe("recent award card shape", () => {
 describe("recent award homepage HTML and RSC", () => {
   it("contains no buyer, winner or title strings for seeded awards", () => {
     const strip = parseRecentAwardStrip(POISONED_ROWS);
-    const html = renderToStaticMarkup(
-      <>
-        <HomeOpportunitySections
-          latest={{
-            items: [{ preview: DEAL_PREVIEW_DETAIL_FIXTURE, match: null }],
-            total: 1,
-            page: 1,
-            pageSize: 8,
-          }}
-          closingSoon={{ items: [], total: 0, page: 1, pageSize: 4 }}
-        />
-        <RecentAwardStripView strip={strip} nextPath="/" />
-      </>,
-    );
+    const html = renderToStaticMarkup(<RecentAwardStripView strip={strip} nextPath="/" />);
     const rsc = JSON.stringify(strip);
 
     for (const secret of Object.values(SEEDED)) {
@@ -212,6 +201,11 @@ describe("recent award publication boundary", () => {
       "grant execute on function public.list_recent_award_bands() to anon, authenticated, service_role",
     );
     expect(migration).not.toMatch(/canonical_name|source_title|award_identifier|award_suppliers/);
+
+    const home = fs.readFileSync(path.join(ROOT, "app/(marketing)/page.tsx"), "utf8");
+    expect(home).toContain("RecentAwardStripView");
+    expect(home).not.toContain("HomeOpportunitySections");
+    expect(home).not.toContain("searchHomeLatestDealPreviews");
 
     const deals = fs.readFileSync(path.join(ROOT, "app/(marketing)/deals/page.tsx"), "utf8");
     const dealsBody = deals.slice(deals.indexOf("return ("));

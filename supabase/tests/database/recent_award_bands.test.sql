@@ -17,8 +17,9 @@ select is(private.round_award_count(12), 10, '12 awards round down to the neares
 select is(private.round_award_count(13), 15, '13 awards round up to the nearest 5');
 select is(private.round_award_count(37), 35, '37 awards round to 35');
 select is(private.round_award_count(49), 50, '49 awards round to 50');
-select is(private.round_award_count(50), 50, '50 awards stay exact');
-select is(private.round_award_count(53), 53, 'a count of 50 or more stays exact');
+select is(private.round_award_count(50), 50, '50 awards round to the nearest 10');
+select is(private.round_award_count(53), 50, '53 awards round down to the nearest 10');
+select is(private.round_award_count(55), 60, '55 awards round up to the nearest 10');
 
 select is(
   array(
@@ -61,32 +62,68 @@ values
   ('a2600000-0000-4000-8000-000000000001', 'CANARY BUYER NEVER FREE', 'canary buyer never free'),
   ('a2600000-0000-4000-8000-000000000002', 'CANARY WINNER NEVER FREE', 'canary winner never free');
 
+insert into public.data_sources (id, source_key, name, source_type, access_method, reuse_status, enabled)
+values
+  ('a2640000-0000-4000-8000-000000000001', 'award-band-open', 'Award band open', 'GOVERNMENT_OPEN_DATA', 'OCDS_API', 'OPEN_LICENSE', true),
+  ('a2640000-0000-4000-8000-000000000002', 'award-band-json', 'Award band json', 'GOVERNMENT_OPEN_DATA', 'JSON_API', 'OPEN_LICENSE', true),
+  ('a2640000-0000-4000-8000-000000000003', 'award-band-licensed', 'Award band licensed', 'GOVERNMENT_OPEN_DATA', 'OCDS_API', 'LICENSED', true);
+
 create temporary table recent_award_seed (
   n integer primary key,
   sector public.buyer_sector not null,
   region text not null,
   amount numeric not null,
-  days_ago integer not null
+  days_ago integer not null,
+  source_id uuid not null,
+  denylisted boolean not null
 ) on commit drop;
 
-insert into recent_award_seed (n, sector, region, amount, days_ago)
+insert into recent_award_seed (n, sector, region, amount, days_ago, source_id, denylisted)
 values
-  (1, 'HEALTHCARE', 'London', 150000, 3),
-  (2, 'HEALTHCARE', 'London', 150000, 3),
-  (3, 'HEALTHCARE', 'London', 150000, 3),
-  (4, 'HEALTHCARE', 'London', 150000, 3),
-  (5, 'HEALTHCARE', 'London', 2000000, 3),
-  (6, 'HEALTHCARE', 'London', 2000000, 3),
-  (7, 'HEALTHCARE', 'London', 2000000, 3),
-  (8, 'EDUCATION', 'Scotland', 100000, 3),
-  (9, 'EDUCATION', 'Scotland', 100000, 3),
-  (10, 'UTILITY', 'Wales', 2000000, 40),
-  (11, 'UTILITY', 'Wales', 2000000, 40),
-  (12, 'UTILITY', 'Wales', 2000000, 40),
-  (13, 'PUBLIC', 'North West England', 80000, 20),
-  (14, 'PUBLIC', 'North West England', 80000, 20),
-  (15, 'PUBLIC', 'North West England', 80000, 20),
-  (16, 'PUBLIC', 'London', 123456.78, 90);
+  (1, 'HEALTHCARE', 'London', 150000, 3, 'a2640000-0000-4000-8000-000000000001', false),
+  (2, 'HEALTHCARE', 'London', 150000, 3, 'a2640000-0000-4000-8000-000000000001', false),
+  (3, 'HEALTHCARE', 'London', 150000, 3, 'a2640000-0000-4000-8000-000000000001', false),
+  (4, 'HEALTHCARE', 'London', 150000, 3, 'a2640000-0000-4000-8000-000000000001', false),
+  (5, 'HEALTHCARE', 'London', 150000, 3, 'a2640000-0000-4000-8000-000000000001', false),
+  (6, 'HEALTHCARE', 'London', 2000000, 3, 'a2640000-0000-4000-8000-000000000001', false),
+  (7, 'HEALTHCARE', 'London', 2000000, 3, 'a2640000-0000-4000-8000-000000000001', false),
+  (8, 'HEALTHCARE', 'London', 2000000, 3, 'a2640000-0000-4000-8000-000000000001', false),
+  (9, 'EDUCATION', 'Scotland', 100000, 3, 'a2640000-0000-4000-8000-000000000001', false),
+  (10, 'EDUCATION', 'Scotland', 100000, 3, 'a2640000-0000-4000-8000-000000000001', false),
+  (11, 'EDUCATION', 'Scotland', 100000, 3, 'a2640000-0000-4000-8000-000000000001', false),
+  (12, 'EDUCATION', 'Scotland', 100000, 3, 'a2640000-0000-4000-8000-000000000001', false),
+  (13, 'UTILITY', 'Wales', 2000000, 40, 'a2640000-0000-4000-8000-000000000001', false),
+  (14, 'UTILITY', 'Wales', 2000000, 40, 'a2640000-0000-4000-8000-000000000001', false),
+  (15, 'UTILITY', 'Wales', 2000000, 40, 'a2640000-0000-4000-8000-000000000001', false),
+  (16, 'UTILITY', 'Wales', 2000000, 40, 'a2640000-0000-4000-8000-000000000001', false),
+  (17, 'UTILITY', 'Wales', 2000000, 40, 'a2640000-0000-4000-8000-000000000001', false),
+  (18, 'PUBLIC', 'North West England', 80000, 20, 'a2640000-0000-4000-8000-000000000001', false),
+  (19, 'PUBLIC', 'North West England', 80000, 20, 'a2640000-0000-4000-8000-000000000001', false),
+  (20, 'PUBLIC', 'North West England', 80000, 20, 'a2640000-0000-4000-8000-000000000001', false),
+  (21, 'PUBLIC', 'North West England', 80000, 20, 'a2640000-0000-4000-8000-000000000001', false),
+  (22, 'PUBLIC', 'North West England', 80000, 20, 'a2640000-0000-4000-8000-000000000001', false),
+  (23, 'PRIVATE', 'East Midlands', 150000, 3, 'a2640000-0000-4000-8000-000000000001', false),
+  (24, 'PRIVATE', 'East Midlands', 150000, 3, 'a2640000-0000-4000-8000-000000000001', false),
+  (25, 'PRIVATE', 'East Midlands', 150000, 3, 'a2640000-0000-4000-8000-000000000001', false),
+  (26, 'PRIVATE', 'East Midlands', 150000, 3, 'a2640000-0000-4000-8000-000000000001', false),
+  (27, 'PRIVATE', 'East Midlands', 150000, 20, 'a2640000-0000-4000-8000-000000000001', false),
+  (28, 'PUBLIC', 'London', 123456.78, 90, 'a2640000-0000-4000-8000-000000000001', false),
+  (29, 'HEALTHCARE', 'London', 5000000, 0, 'a2640000-0000-4000-8000-000000000001', false),
+  (30, 'NONPROFIT', 'Northern Ireland', 5000000, 3, 'a2640000-0000-4000-8000-000000000002', false),
+  (31, 'NONPROFIT', 'Northern Ireland', 5000000, 3, 'a2640000-0000-4000-8000-000000000002', false),
+  (32, 'NONPROFIT', 'Northern Ireland', 5000000, 3, 'a2640000-0000-4000-8000-000000000002', false),
+  (33, 'NONPROFIT', 'Northern Ireland', 5000000, 3, 'a2640000-0000-4000-8000-000000000002', false),
+  (34, 'NONPROFIT', 'Northern Ireland', 5000000, 3, 'a2640000-0000-4000-8000-000000000002', false),
+  (35, 'EDUCATION', 'Wales', 5000000, 3, 'a2640000-0000-4000-8000-000000000003', false),
+  (36, 'EDUCATION', 'Wales', 5000000, 3, 'a2640000-0000-4000-8000-000000000003', false),
+  (37, 'EDUCATION', 'Wales', 5000000, 3, 'a2640000-0000-4000-8000-000000000003', false),
+  (38, 'EDUCATION', 'Wales', 5000000, 3, 'a2640000-0000-4000-8000-000000000003', false),
+  (39, 'EDUCATION', 'Wales', 5000000, 3, 'a2640000-0000-4000-8000-000000000003', false),
+  (40, 'UTILITY', 'Scotland', 5000000, 3, 'a2640000-0000-4000-8000-000000000001', true),
+  (41, 'UTILITY', 'Scotland', 5000000, 3, 'a2640000-0000-4000-8000-000000000001', true),
+  (42, 'UTILITY', 'Scotland', 5000000, 3, 'a2640000-0000-4000-8000-000000000001', true),
+  (43, 'UTILITY', 'Scotland', 5000000, 3, 'a2640000-0000-4000-8000-000000000001', true),
+  (44, 'UTILITY', 'Scotland', 5000000, 3, 'a2640000-0000-4000-8000-000000000001', true);
 
 insert into public.locations (id, region)
 select
@@ -96,6 +133,7 @@ from (select distinct region from recent_award_seed) seeded;
 
 insert into public.deals (
   id,
+  primary_source_id,
   buyer_organization_id,
   reference,
   source_title,
@@ -106,6 +144,7 @@ insert into public.deals (
 )
 select
   ('a2610000-0000-4000-8000-' || lpad(n::text, 12, '0'))::uuid,
+  source_id,
   'a2600000-0000-4000-8000-000000000001',
   'ZQ-AWD-2026-0417',
   'CANARY SOURCE TITLE NEVER FREE',
@@ -114,6 +153,13 @@ select
   'AWARD',
   'AWARDED'
 from recent_award_seed;
+
+insert into private.publish_denylist (deal_id, reason)
+select
+  ('a2610000-0000-4000-8000-' || lpad(n::text, 12, '0'))::uuid,
+  'award band test'
+from recent_award_seed
+where denylisted;
 
 insert into public.deal_locations (deal_id, location_id)
 select
@@ -128,7 +174,7 @@ select
   ('a2630000-0000-4000-8000-' || lpad(n::text, 12, '0'))::uuid,
   ('a2610000-0000-4000-8000-' || lpad(n::text, 12, '0'))::uuid,
   'ZQ-AWD-2026-0417',
-  current_date - days_ago,
+  date_trunc('week', current_date)::date - days_ago,
   amount,
   'GBP'
 from recent_award_seed;
@@ -145,7 +191,7 @@ savepoint full_fixture;
 delete from public.awards
 where deal_id in (
   select id from public.deals
-  where buyer_sector = 'PUBLIC'
+  where buyer_sector in ('PUBLIC', 'PRIVATE')
     and source_title = 'CANARY SOURCE TITLE NEVER FREE'
 );
 
@@ -160,18 +206,12 @@ delete from public.awards
 where id in (
   select ('a2630000-0000-4000-8000-' || lpad(n::text, 12, '0'))::uuid
   from recent_award_seed
-  where n in (4, 5, 6, 7, 8, 9)
+  where n > 9
 );
 
-select is(
-  (select count(*) from public.list_recent_award_bands()),
-  3::bigint,
-  'three qualifying cards still return when the window has fewer than 10 awards'
-);
-select is(
-  (select aggregate_contract_count from public.list_recent_award_bands() limit 1),
-  NULL::integer,
-  'the aggregate line is hidden below 10 awards'
+select is_empty(
+  $$select * from public.list_recent_award_bands()$$,
+  'fewer than 10 awards returns no strip rows'
 );
 
 rollback to savepoint full_fixture;
@@ -182,24 +222,48 @@ select results_eq(
     order by sector, region$$,
   $$values
     ('Healthcare'::text, 'London'::text, '£100k–£250k'::text, 2::integer),
+    ('Private'::text, 'East Midlands'::text, '£100k–£250k'::text, 4::integer),
     ('Public'::text, 'North West England'::text, '£50k–£100k'::text, 4::integer),
     ('Utility'::text, 'Wales'::text, '£1m–£5m'::text, 8::integer)$$,
   'cards are distinct sector and region pairs with coarse recency'
 );
 
 select is(
-  (select count(*) from public.list_recent_award_bands() where sector = 'Education'),
+  (select count(*) from public.list_recent_award_bands() where sector = 'Education' and region = 'Scotland'),
   0::bigint,
-  'a sector, region and value band with fewer than 3 awards is omitted'
+  'a 4-award bucket returns no row'
+);
+select is(
+  (select recency_weeks from public.list_recent_award_bands() where sector = 'Private' and region = 'East Midlands'),
+  4,
+  'a 2-week bucket with 4 awards widens to 4 weeks'
+);
+select is(
+  (select count(*) from public.list_recent_award_bands()
+   where (sector = 'Non-profit' and region = 'Northern Ireland')
+      or (sector = 'Education' and region = 'Wales')
+      or (sector = 'Utility' and region = 'Scotland')),
+  0::bigint,
+  'JSON_API, LICENSED and denylisted awards do not form cards'
 );
 select is(
   (select aggregate_value_label from public.list_recent_award_bands() limit 1),
-  '£13m',
-  'the aggregate value covers the whole window at two significant figures'
+  '£18m',
+  'the aggregate value covers the approved window at two significant figures'
 );
 select is(
   (select aggregate_contract_count from public.list_recent_award_bands() limit 1),
-  15,
+  private.round_award_count(27),
+  'the RPC count is already rounded'
+);
+select isnt(
+  (select aggregate_contract_count from public.list_recent_award_bands() limit 1),
+  27::integer,
+  'the RPC does not return the raw award count'
+);
+select is(
+  (select aggregate_contract_count from public.list_recent_award_bands() limit 1),
+  25,
   'the aggregate count is rounded to the nearest 5 when under 50'
 );
 select is(
@@ -207,6 +271,186 @@ select is(
   8,
   'the aggregate uses the 8-week window'
 );
+
+savepoint over_fifty;
+
+insert into public.deals (
+  id, primary_source_id, buyer_organization_id, reference, source_title,
+  deal_type, buyer_sector, stage, status
+)
+select
+  ('a2610000-0000-4000-8000-' || lpad(n::text, 12, '0'))::uuid,
+  'a2640000-0000-4000-8000-000000000001',
+  'a2600000-0000-4000-8000-000000000001',
+  'ZQ-AWD-2026-0417',
+  'CANARY SOURCE TITLE NEVER FREE',
+  'AWARD', 'HEALTHCARE', 'AWARD', 'AWARDED'
+from generate_series(100, 125) as n;
+
+insert into public.deal_locations (deal_id, location_id)
+select
+  ('a2610000-0000-4000-8000-' || lpad(n::text, 12, '0'))::uuid,
+  location.id
+from generate_series(100, 125) as n
+join public.locations location on location.region = 'London'
+where location.id::text like 'a2620000-%';
+
+insert into public.awards (id, deal_id, award_identifier, award_date, award_value, currency)
+select
+  ('a2630000-0000-4000-8000-' || lpad(n::text, 12, '0'))::uuid,
+  ('a2610000-0000-4000-8000-' || lpad(n::text, 12, '0'))::uuid,
+  'ZQ-AWD-2026-0417',
+  date_trunc('week', current_date)::date - 3,
+  150000,
+  'GBP'
+from generate_series(100, 125) as n;
+
+select is(
+  (select aggregate_contract_count from public.list_recent_award_bands() limit 1),
+  50,
+  'a count of 50 or more is already rounded to the nearest 10'
+);
+select is(
+  (select aggregate_contract_count from public.list_recent_award_bands() limit 1),
+  private.round_award_count(53),
+  'the RPC count of 53 matches the database rounding helper'
+);
+
+rollback to savepoint over_fifty;
+
+savepoint unpublished_region;
+
+insert into public.deals (
+  id, primary_source_id, buyer_organization_id, reference, source_title,
+  deal_type, buyer_sector, stage, status
+)
+select
+  ('a2610000-0000-4000-8000-' || lpad(n::text, 12, '0'))::uuid,
+  'a2640000-0000-4000-8000-000000000001',
+  'a2600000-0000-4000-8000-000000000001',
+  'ZQ-AWD-2026-0417',
+  'CANARY SOURCE TITLE NEVER FREE',
+  'AWARD', 'OTHER', 'AWARD', 'AWARDED'
+from generate_series(200, 204) as n;
+
+insert into public.deal_previews (
+  deal_id, slug, preview_title, preview_summary, deal_type, buyer_sector, stage, status,
+  broad_region, requirements_preview, leakage_risk, is_published
+)
+select
+  ('a2610000-0000-4000-8000-' || lpad(n::text, 12, '0'))::uuid,
+  'band-held-preview-' || n::text,
+  'Street lighting upgrade for a local authority',
+  'A public body in Wales wants a contractor to replace roadside lighting with efficient units.',
+  'AWARD', 'OTHER', 'AWARD', 'AWARDED',
+  'Remote', '[]'::jsonb, 'HIGH', false
+from generate_series(200, 204) as n;
+
+insert into public.awards (id, deal_id, award_identifier, award_date, award_value, currency)
+select
+  ('a2630000-0000-4000-8000-' || lpad(n::text, 12, '0'))::uuid,
+  ('a2610000-0000-4000-8000-' || lpad(n::text, 12, '0'))::uuid,
+  'ZQ-AWD-2026-0417',
+  date_trunc('week', current_date)::date - 3,
+  100000,
+  'GBP'
+from generate_series(200, 204) as n;
+
+insert into public.deals (
+  id, primary_source_id, buyer_organization_id, reference, source_title,
+  deal_type, buyer_sector, stage, status
+)
+select
+  ('a2610000-0000-4000-8000-' || lpad(n::text, 12, '0'))::uuid,
+  'a2640000-0000-4000-8000-000000000001',
+  'a2600000-0000-4000-8000-000000000001',
+  'ZQ-AWD-2026-0417',
+  'CANARY SOURCE TITLE NEVER FREE',
+  'AWARD', 'OTHER', 'AWARD', 'AWARDED'
+from generate_series(210, 214) as n;
+
+insert into public.deal_previews (
+  deal_id, slug, preview_title, preview_summary, deal_type, buyer_sector, stage, status,
+  broad_region, requirements_preview, leakage_risk, is_published, unpublished_by_admin
+)
+select
+  ('a2610000-0000-4000-8000-' || lpad(n::text, 12, '0'))::uuid,
+  'band-admin-hold-' || n::text,
+  'Street lighting upgrade for a local authority',
+  'A public body in Wales wants a contractor to replace roadside lighting with efficient units.',
+  'AWARD', 'OTHER', 'AWARD', 'AWARDED',
+  'Yorkshire and the Humber', '[]'::jsonb, 'LOW', true, true
+from generate_series(210, 214) as n;
+
+insert into public.awards (id, deal_id, award_identifier, award_date, award_value, currency)
+select
+  ('a2630000-0000-4000-8000-' || lpad(n::text, 12, '0'))::uuid,
+  ('a2610000-0000-4000-8000-' || lpad(n::text, 12, '0'))::uuid,
+  'ZQ-AWD-2026-0417',
+  date_trunc('week', current_date)::date - 3,
+  100000,
+  'GBP'
+from generate_series(210, 214) as n;
+
+select is(
+  (select count(*) from public.list_recent_award_bands() where region = 'Remote'),
+  0::bigint,
+  'an unpublished HIGH preview does not supply the region'
+);
+select is(
+  (select count(*) from public.list_recent_award_bands() where region = 'Yorkshire and the Humber'),
+  0::bigint,
+  'a held preview does not supply the region'
+);
+
+rollback to savepoint unpublished_region;
+
+savepoint published_region;
+
+insert into public.deals (
+  id, primary_source_id, buyer_organization_id, reference, source_title,
+  deal_type, buyer_sector, stage, status
+)
+select
+  ('a2610000-0000-4000-8000-' || lpad(n::text, 12, '0'))::uuid,
+  'a2640000-0000-4000-8000-000000000001',
+  'a2600000-0000-4000-8000-000000000001',
+  'ZQ-AWD-2026-0417',
+  'CANARY SOURCE TITLE NEVER FREE',
+  'AWARD', 'OTHER', 'AWARD', 'AWARDED'
+from generate_series(220, 224) as n;
+
+insert into public.deal_previews (
+  deal_id, slug, preview_title, preview_summary, deal_type, buyer_sector, stage, status,
+  broad_region, requirements_preview, leakage_risk, is_published
+)
+select
+  ('a2610000-0000-4000-8000-' || lpad(n::text, 12, '0'))::uuid,
+  'band-live-preview-' || n::text,
+  'Street lighting upgrade for a local authority',
+  'A public body in Wales wants a contractor to replace roadside lighting with efficient units.',
+  'AWARD', 'OTHER', 'AWARD', 'AWARDED',
+  'Yorkshire and the Humber', '[]'::jsonb, 'LOW', true
+from generate_series(220, 224) as n;
+
+insert into public.awards (id, deal_id, award_identifier, award_date, award_value, currency)
+select
+  ('a2630000-0000-4000-8000-' || lpad(n::text, 12, '0'))::uuid,
+  ('a2610000-0000-4000-8000-' || lpad(n::text, 12, '0'))::uuid,
+  'ZQ-AWD-2026-0417',
+  date_trunc('week', current_date)::date - 3,
+  100000,
+  'GBP'
+from generate_series(220, 224) as n;
+
+select is(
+  (select count(*) from public.list_recent_award_bands()
+   where sector = 'Other' and region = 'Yorkshire and the Humber'),
+  1::bigint,
+  'a published LOW preview can supply the region'
+);
+
+rollback to savepoint published_region;
 
 grant usage on schema extensions to anon, authenticated;
 set local role anon;
@@ -236,6 +480,7 @@ select results_eq(
     order by sector, region$$,
   $$values
     ('Healthcare'::text, 'London'::text, '£100k–£250k'::text, 2::integer),
+    ('Private'::text, 'East Midlands'::text, '£100k–£250k'::text, 4::integer),
     ('Public'::text, 'North West England'::text, '£50k–£100k'::text, 4::integer),
     ('Utility'::text, 'Wales'::text, '£1m–£5m'::text, 8::integer)$$,
   'anon receives the same coarse cards'

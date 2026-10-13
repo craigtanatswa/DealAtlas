@@ -50,13 +50,13 @@ export function recentAwardUpgradeHref(nextPath: string): string {
   return `/pricing?plan=annual&next=${encodeURIComponent(next)}`;
 }
 
-/** Nearest 5 when the count is under 50. Counts under 10 are not shown. */
+/** Nearest 5 under 50, nearest 10 from 50. Counts under 10 are not shown. */
 export function coarseContractCount(count: number): number | null {
   if (!Number.isInteger(count) || count < 10) {
     return null;
   }
   if (count >= 50) {
-    return count;
+    return Math.round(count / 10) * 10;
   }
   return Math.round(count / 5) * 5;
 }
