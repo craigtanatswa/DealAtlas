@@ -1,4 +1,5 @@
 import { DatabaseQueryError, throwIfQueryError } from "@/lib/db/errors";
+import { writeInBatches } from "@/ingestion/store/write-batch";
 import type { Database, Json } from "@/lib/db/database.types";
 
 import { normalizeTitle } from "@/ingestion/normalizers/text";
@@ -397,6 +398,32 @@ export function createSupabaseIngestionStore(
         .limit(limit);
       const rows = throwIfQueryError("List deals", result) ?? [];
       return rows.map(mapDeal);
+    },
+    async listDealIdsMissingPreview(limit = 500) {
+      const cap = Math.min(500, Math.max(1, Math.floor(limit)));
+      const missing: string[] = [];
+      let after: string | null = null;
+      for (let page = 0; page < 20 && missing.length < cap; page += 1) {
+        let dealsQuery = client.from("deals").select("id").order("id", { ascending: true }).limit(500);
+        if (after) dealsQuery = dealsQuery.gt("id", after);
+        const deals = throwIfQueryError("List deals missing previews", await dealsQuery) ?? [];
+        if (deals.length === 0) break;
+        after = deals[deals.length - 1]?.id ?? null;
+        const ids = deals.map((deal) => deal.id);
+        const previews =
+          throwIfQueryError(
+            "List preview ids",
+            await client.from("deal_previews").select("deal_id").in("deal_id", ids),
+          ) ?? [];
+        const covered = new Set(previews.map((preview) => preview.deal_id));
+        for (const id of ids) {
+          if (covered.has(id)) continue;
+          missing.push(id);
+          if (missing.length >= cap) break;
+        }
+        if (deals.length < 500 || !after) break;
+      }
+      return missing;
     },
     async listPreviewRebuildDealIds(options) {
       const limit = options?.limit ?? 100;
@@ -803,11 +830,14 @@ export function createSupabaseIngestionStore(
         .from("organization_aliases")
         .select("organization_id")
         .eq("normalized_alias", normalizedAlias)
-        .maybeSingle();
-      const row = throwIfQueryError("Find organisation alias", result);
-      if (!row) {
+        .limit(2);
+      const rows = throwIfQueryError("Find organisation alias", result) ?? [];
+      // The same alias can belong to more than one organisation. maybeSingle
+      // throws PGRST116 in that case and fails the whole notice.
+      if (rows.length !== 1) {
         return null;
       }
+      const row = rows[0];
       const org = await client
         .from("organizations")
         .select("*")
@@ -1214,6 +1244,27 @@ export function createSupabaseIngestionStore(
         error: result.error,
       });
     },
+    async insertRequirements(inputs) {
+      await writeInBatches(
+        inputs,
+        async (chunk) => {
+          const result = await client.from("requirements").insert(
+            chunk.map((input) => ({
+              deal_id: input.dealId,
+              lot_id: input.lotId ?? null,
+              requirement_type: input.requirementType,
+              name: input.name,
+              description: input.description ?? null,
+              mandatory: input.mandatory ?? null,
+              source_notice_id: input.sourceNoticeId ?? null,
+              is_inferred: false,
+            })),
+          );
+          throwIfQueryError("Insert requirements", { data: result.data, error: result.error });
+        },
+        (input) => this.insertRequirement(input),
+      );
+    },
     async insertRequirement(input) {
       const result = await client.from("requirements").insert({
         deal_id: input.dealId,
@@ -1239,6 +1290,27 @@ export function createSupabaseIngestionStore(
         data: result.data,
         error: result.error,
       });
+    },
+    async insertAwardCriteria(inputs) {
+      await writeInBatches(
+        inputs,
+        async (chunk) => {
+          const result = await client.from("award_criteria").insert(
+            chunk.map((input) => ({
+              deal_id: input.dealId,
+              lot_id: input.lotId ?? null,
+              criterion_name: input.criterionName,
+              criterion_description: input.criterionDescription ?? null,
+              criterion_type: input.criterionType ?? null,
+              weight_percent: input.weightPercent ?? null,
+              order_of_importance: input.orderOfImportance ?? null,
+              source_notice_id: input.sourceNoticeId ?? null,
+            })),
+          );
+          throwIfQueryError("Insert award criteria", { data: result.data, error: result.error });
+        },
+        (input) => this.insertAwardCriterion(input),
+      );
     },
     async insertAwardCriterion(input) {
       const result = await client.from("award_criteria").insert({
@@ -1438,6 +1510,19 @@ export function createSupabaseIngestionStore(
         data: result.data,
         error: result.error,
       });
+    },
+    async upsertCpvCodes(rows) {
+      await writeInBatches(
+        rows,
+        async (chunk) => {
+          const result = await client.from("cpv_codes").upsert(
+            chunk.map((row) => ({ code: row.code, description: row.description })),
+            { onConflict: "code" },
+          );
+          throwIfQueryError("Upsert CPV codes", { data: result.data, error: result.error });
+        },
+        (row) => this.upsertCpvCode(row.code, row.description),
+      );
     },
     async upsertCpvCode(code, description) {
       const result = await client.from("cpv_codes").upsert(

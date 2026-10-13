@@ -39,10 +39,23 @@ export type HttpRequest = {
   followRedirects?: boolean;
 };
 
-const PACE: Record<string, { limit: number; windowMs: number }> = {
-  preview: { limit: 220, windowMs: 61_000 },
-  search: { limit: 55, windowMs: 61_000 },
-};
+function paceLimit(name: string, fallback: number): number {
+  const parsed = Number(process.env[name]);
+  if (!Number.isInteger(parsed) || parsed < 1 || parsed > 100_000) return fallback;
+  return parsed;
+}
+
+/**
+ * Defaults stay under the app's 240/min preview and 60/min search caps.
+ * Leak CI raises both the app caps and these paces together. Leaving the
+ * client at 220/min makes each phase spend about half an hour in this queue.
+ */
+function paceFor(bucket: string): { limit: number; windowMs: number } {
+  if (bucket === "preview") {
+    return { limit: paceLimit("LEAK_PACE_PREVIEW", 220), windowMs: 61_000 };
+  }
+  return { limit: paceLimit("LEAK_PACE_SEARCH", 55), windowMs: 61_000 };
+}
 
 class SlidingWindow {
   private stamps: number[] = [];
@@ -92,7 +105,7 @@ function windowFor(bucket: string | null): SlidingWindow | null {
   if (!bucket) return null;
   let w = windows.get(bucket);
   if (!w) {
-    const pace = PACE[bucket];
+    const pace = paceFor(bucket);
     w = new SlidingWindow(pace.limit, pace.windowMs);
     windows.set(bucket, w);
   }

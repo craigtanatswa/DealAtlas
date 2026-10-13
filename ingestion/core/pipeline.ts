@@ -394,6 +394,7 @@ export async function runIngestion(
             stage: ingestionError.stage,
             code: ingestionError.code,
             message: ingestionError.message,
+            details: ingestionError.details,
           });
           if (!options.dryRun && runId) {
             await options.store.insertError({

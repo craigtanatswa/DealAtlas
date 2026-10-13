@@ -198,11 +198,17 @@ jobs:
   leak-regression:
     name: Leak regression (local)
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 30
     env:
       LEAK_APP_URL: http://127.0.0.1:3100
       NEXT_PUBLIC_APP_URL: http://127.0.0.1:3100
       NEXT_PUBLIC_GA_MEASUREMENT_ID: G-ZQLEAKTEST0
+      # The probe client otherwise queues at 220 preview GETs per minute and
+      # each phase sits for about 30 minutes. The app caps move with the pace.
+      DEALATLAS_PUBLIC_PREVIEW_RATE_LIMIT: "4000"
+      DEALATLAS_PUBLIC_SEARCH_RATE_LIMIT: "4000"
+      LEAK_PACE_PREVIEW: "3600"
+      LEAK_PACE_SEARCH: "3600"
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:

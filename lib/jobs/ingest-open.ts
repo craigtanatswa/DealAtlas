@@ -26,6 +26,7 @@ export type OpenIngestError = {
   stage: string;
   code: string;
   message: string;
+  details?: Record<string, unknown>;
 };
 
 export type OpenIngestResult = {
@@ -36,8 +37,30 @@ export type OpenIngestResult = {
   errors: OpenIngestError[];
 };
 
-/** Fetch lines are stage, code, status, host. Parse lines are stage, code, field path. */
+const MISSING_PREVIEW_CAP = 500;
+
+function safeErrorText(value: string): string {
+  return value
+    .replace(/https?:\/\/\S+/gi, "")
+    .replace(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g, "")
+    .replace(/\b(?:eyJ|sb_secret|sb_publishable|sk_|rk_|whsec_)[A-Za-z0-9._-]{8,}\b/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 240);
+}
+
+/** Fetch lines are stage, code, status, host. Parse lines are stage, code, field path. Record lines keep the database code, message and details. */
 export function publicIngestErrorLine(error: OpenIngestError): string {
+  if (error.stage === "record") {
+    const dbCode =
+      typeof error.details?.dbCode === "string" && error.details.dbCode.trim()
+        ? safeErrorText(error.details.dbCode)
+        : "-";
+    const message = safeErrorText(error.message) || "-";
+    const dbDetails =
+      typeof error.details?.dbDetails === "string" ? safeErrorText(error.details.dbDetails) : "";
+    return `record ${error.code} ${dbCode} ${message}${dbDetails ? ` ${dbDetails}` : ""}`;
+  }
   if (error.stage === "parse") {
     const paths = error.message
       .split(",")
@@ -218,6 +241,7 @@ export async function runOpenFindATenderIngest(options: {
           stage: error.stage,
           code: error.code ?? "INGESTION_ERROR",
           message: error.message,
+          details: error.details,
         });
       }
 
@@ -259,6 +283,15 @@ export async function runOpenFindATenderIngest(options: {
   }
 
   const previewIds = phase === "ingest" ? [] : [...changed];
+  if (!options.dryRun && phase !== "ingest") {
+    const missing = await options.store.listDealIdsMissingPreview(MISSING_PREVIEW_CAP);
+    const seen = new Set(previewIds);
+    for (const dealId of missing) {
+      if (seen.has(dealId)) continue;
+      seen.add(dealId);
+      previewIds.push(dealId);
+    }
+  }
   if (!options.dryRun && previewIds.length > 0 && phase !== "ingest") {
     const previews = await rebuildChangedPreviews({
       store: options.store,
@@ -269,6 +302,12 @@ export async function runOpenFindATenderIngest(options: {
       limit: previewIds.length,
       countsOnly: true,
     });
+    if (phase === "previews") {
+      counts.fetched = previews.selected;
+      counts.new = previews.published;
+      counts.updated = previews.processed;
+      counts.unchanged = previews.blocked;
+    }
     counts.failed += previews.failures;
     if (previews.failures > 0) {
       status = "PARTIAL";

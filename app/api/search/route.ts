@@ -3,8 +3,8 @@ import { NextRequest } from "next/server";
 import { DatabaseQueryError } from "@/lib/db/errors";
 import { searchPublicDealPreviewsFromParams } from "@/lib/search/public";
 import {
-  PUBLIC_SEARCH_RATE_LIMIT,
   clientKeyFromRequest,
+  publicSearchRateLimit,
   retryAfterSeconds,
   sharedRateLimit,
 } from "@/lib/security/rate-limit";
@@ -30,10 +30,11 @@ function searchParamsRecord(
 }
 
 export async function GET(request: NextRequest) {
+  const searchLimit = publicSearchRateLimit();
   const limited = await sharedRateLimit(
-    clientKeyFromRequest(request, PUBLIC_SEARCH_RATE_LIMIT.bucket),
-    PUBLIC_SEARCH_RATE_LIMIT.limit,
-    PUBLIC_SEARCH_RATE_LIMIT.windowMs,
+    clientKeyFromRequest(request, searchLimit.bucket),
+    searchLimit.limit,
+    searchLimit.windowMs,
   );
   if (!limited.ok) {
     return Response.json(

@@ -442,8 +442,8 @@ export async function persistCandidate(options: {
   }
 
   await store.deleteRequirementsForNotice(notice.id);
-  for (const requirement of candidate.requirements) {
-    await store.insertRequirement({
+  await store.insertRequirements(
+    candidate.requirements.map((requirement) => ({
       dealId: deal.id,
       lotId: requirement.relatedLotId
         ? (lotIdBySource.get(requirement.relatedLotId) ?? null)
@@ -453,12 +453,12 @@ export async function persistCandidate(options: {
       description: requirement.description,
       mandatory: requirement.mandatory,
       sourceNoticeId: notice.id,
-    });
-  }
+    })),
+  );
 
   await store.deleteAwardCriteriaForNotice(notice.id);
-  for (const criterion of candidate.awardCriteria) {
-    await store.insertAwardCriterion({
+  await store.insertAwardCriteria(
+    candidate.awardCriteria.map((criterion) => ({
       dealId: deal.id,
       lotId: criterion.relatedLotId
         ? (lotIdBySource.get(criterion.relatedLotId) ?? null)
@@ -469,8 +469,8 @@ export async function persistCandidate(options: {
       weightPercent: criterion.weightPercent,
       orderOfImportance: criterion.orderOfImportance,
       sourceNoticeId: notice.id,
-    });
-  }
+    })),
+  );
 
   for (const award of candidate.awards) {
     const lotId = award.relatedLotIds?.[0]
@@ -617,12 +617,17 @@ export async function persistCandidate(options: {
     }
   }
 
+  await store.upsertCpvCodes(
+    candidate.classifications
+      .filter((classification) => classification.scheme === "CPV" && classification.code)
+      .map((classification) => ({
+        code: classification.code!,
+        description: classification.description ?? classification.code!,
+      })),
+  );
+
   for (const classification of candidate.classifications) {
     if (classification.scheme === "CPV" && classification.code) {
-      await store.upsertCpvCode(
-        classification.code,
-        classification.description ?? classification.code,
-      );
       const lotId = classification.relatedLotId
         ? (lotIdBySource.get(classification.relatedLotId) ?? null)
         : null;

@@ -149,6 +149,15 @@ export function createMemoryIngestionStore(seed?: {
     async listDeals(limit = 100) {
       return state.deals.slice(0, limit);
     },
+    async listDealIdsMissingPreview(limit = 500) {
+      const cap = Math.min(500, Math.max(1, Math.floor(limit)));
+      const covered = new Set(state.previews.map((item) => item.dealId));
+      return state.deals
+        .map((deal) => deal.id)
+        .filter((id) => !covered.has(id))
+        .sort((left, right) => (left < right ? -1 : left > right ? 1 : 0))
+        .slice(0, cap);
+    },
     async listPreviewRebuildDealIds(options) {
       const limit = options?.limit ?? 100;
       const afterId = options?.afterId ?? null;
@@ -488,6 +497,11 @@ export function createMemoryIngestionStore(seed?: {
       );
       state.requirements.splice(0, state.requirements.length, ...kept);
     },
+    async insertRequirements(inputs) {
+      for (const input of inputs) {
+        await this.insertRequirement(input);
+      }
+    },
     async insertRequirement(input) {
       state.requirements.push({
         dealId: input.dealId,
@@ -503,6 +517,11 @@ export function createMemoryIngestionStore(seed?: {
         (item) => item.sourceNoticeId !== noticeId,
       );
       state.awardCriteria.splice(0, state.awardCriteria.length, ...kept);
+    },
+    async insertAwardCriteria(inputs) {
+      for (const input of inputs) {
+        await this.insertAwardCriterion(input);
+      }
     },
     async insertAwardCriterion(input) {
       state.awardCriteria.push({
@@ -611,6 +630,11 @@ export function createMemoryIngestionStore(seed?: {
           role: input.role,
           lotId: input.lotId ?? null,
         });
+      }
+    },
+    async upsertCpvCodes(rows) {
+      for (const row of rows) {
+        await this.upsertCpvCode(row.code, row.description);
       }
     },
     async upsertCpvCode(code, description) {

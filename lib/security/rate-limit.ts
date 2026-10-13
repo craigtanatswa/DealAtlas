@@ -159,6 +159,21 @@ export const PUBLIC_SEARCH_RATE_LIMIT: PublicRateLimitRule = {
   windowMs: 60_000,
 };
 
+function rateLimitFromEnv(name: string, fallback: number): number {
+  const parsed = Number(process.env[name]);
+  if (!Number.isInteger(parsed) || parsed < 1 || parsed > 100_000) return fallback;
+  return parsed;
+}
+
+/** Search cap. `DEALATLAS_PUBLIC_SEARCH_RATE_LIMIT` overrides the default for local suites. */
+export function publicSearchRateLimit(): PublicRateLimitRule {
+  return {
+    bucket: PUBLIC_SEARCH_RATE_LIMIT.bucket,
+    limit: rateLimitFromEnv("DEALATLAS_PUBLIC_SEARCH_RATE_LIMIT", PUBLIC_SEARCH_RATE_LIMIT.limit),
+    windowMs: PUBLIC_SEARCH_RATE_LIMIT.windowMs,
+  };
+}
+
 /**
  * Anonymous-reachable preview pages throttled in proxy.ts against bulk
  * scraping, per client IP. /api/search is limited in its route handler.
@@ -170,7 +185,11 @@ export function publicPageRateLimitRule(pathname: string): PublicRateLimitRule |
     pathname.startsWith("/deals/") ||
     pathname.startsWith("/categories/")
   ) {
-    return { bucket: "public-preview-pages", limit: 240, windowMs: 60_000 };
+    return {
+      bucket: "public-preview-pages",
+      limit: rateLimitFromEnv("DEALATLAS_PUBLIC_PREVIEW_RATE_LIMIT", 240),
+      windowMs: 60_000,
+    };
   }
   return null;
 }
