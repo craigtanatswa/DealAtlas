@@ -47,7 +47,10 @@ describe("ingest-open workflow", () => {
 
   it("puts database env on the job and Resend only on the alert step", () => {
     const ingestJob = workflow.slice(workflow.indexOf("  ingest:"), workflow.indexOf("  unpublish:"));
-    const unpublishJob = workflow.slice(workflow.indexOf("  unpublish:"));
+    const unpublishJob = workflow.slice(
+      workflow.indexOf("  unpublish:"),
+      workflow.indexOf("  publish:"),
+    );
     expect(ingestJob.indexOf("SUPABASE_SECRET_KEY")).toBeLessThan(ingestJob.indexOf("steps:"));
     expect(unpublishJob.indexOf("SUPABASE_SECRET_KEY")).toBeLessThan(unpublishJob.indexOf("steps:"));
     const beforeAlerts = ingestJob.slice(0, ingestJob.indexOf("name: Unpublish stale previews"));
@@ -67,8 +70,12 @@ describe("ingest-open workflow", () => {
     expect(publishJob).toContain("inputs.publish_only == true");
     expect(publishJob).toContain("github.event.schedule == '23 */6 * * *'");
     expect(publishJob).toContain("environment: ingest");
-    expect(publishJob).not.toContain("ingest-open");
+    expect(publishJob).toContain("OPEN_INGEST_PHASE: previews");
+    expect(publishJob).not.toContain("OPEN_INGEST_PHASE: ingest");
     expect(publishJob).not.toContain("Build previews");
+    expect(publishJob.indexOf("npm run ingest-open")).toBeLessThan(
+      publishJob.indexOf("--job unpublish-stale"),
+    );
     expect(publishJob.indexOf("--job unpublish-stale")).toBeLessThan(
       publishJob.indexOf("--job publish-eligible"),
     );

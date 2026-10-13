@@ -1,3 +1,5 @@
+import { DatabaseQueryError } from "@/lib/db/errors";
+
 export class IngestionError extends Error {
   readonly stage: string;
   readonly code: string;
@@ -40,6 +42,21 @@ export function asIngestionError(
 ): IngestionError {
   if (error instanceof IngestionError) {
     return error;
+  }
+
+  if (error instanceof DatabaseQueryError) {
+    const dbCode = error.cause?.code?.trim() || fallbackCode;
+    return new IngestionError({
+      message: error.message,
+      stage,
+      code: dbCode,
+      retryable: false,
+      details: {
+        dbCode,
+        dbMessage: error.cause?.message ?? null,
+        dbDetails: error.cause?.details ?? null,
+      },
+    });
   }
 
   if (error instanceof Error) {

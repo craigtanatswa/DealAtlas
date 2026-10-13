@@ -305,6 +305,8 @@ export type IngestionStore = {
     afterId?: string | null;
     limit?: number;
   }): Promise<string[]>;
+  /** Deals with no preview row, oldest id first, at most `limit` (capped at 500). */
+  listDealIdsMissingPreview(limit?: number): Promise<string[]>;
   getDealById(id: string): Promise<DealRecord | null>;
   getDealPreview(dealId: string): Promise<DealPreviewRecord | null>;
   previewSlugInUse(slug: string, dealId: string): Promise<boolean>;
@@ -438,6 +440,17 @@ export type IngestionStore = {
   updateLot(id: string, patch: Partial<LotRecord>): Promise<LotRecord>;
 
   deleteRequirementsForNotice(noticeId: string): Promise<void>;
+  insertRequirements(
+    inputs: Array<{
+      dealId: string;
+      lotId?: string | null;
+      requirementType: CanonicalCandidate["requirements"][number]["requirementType"];
+      name: string;
+      description?: string | null;
+      mandatory?: boolean | null;
+      sourceNoticeId?: string | null;
+    }>,
+  ): Promise<void>;
   insertRequirement(input: {
     dealId: string;
     lotId?: string | null;
@@ -448,6 +461,18 @@ export type IngestionStore = {
     sourceNoticeId?: string | null;
   }): Promise<void>;
   deleteAwardCriteriaForNotice(noticeId: string): Promise<void>;
+  insertAwardCriteria(
+    inputs: Array<{
+      dealId: string;
+      lotId?: string | null;
+      criterionName: string;
+      criterionDescription?: string | null;
+      criterionType?: string | null;
+      weightPercent?: number | null;
+      orderOfImportance?: number | null;
+      sourceNoticeId?: string | null;
+    }>,
+  ): Promise<void>;
   insertAwardCriterion(input: {
     dealId: string;
     lotId?: string | null;
@@ -506,6 +531,7 @@ export type IngestionStore = {
   }): Promise<void>;
 
   upsertCpvCode(code: string, description: string): Promise<void>;
+  upsertCpvCodes(rows: Array<{ code: string; description: string }>): Promise<void>;
   findCategoryBySlug(slug: string): Promise<{ id: string; slug: string; name: string } | null>;
   hasClassification(dealId: string, cpvCode: string, lotId?: string | null): Promise<boolean>;
   insertClassification(input: {

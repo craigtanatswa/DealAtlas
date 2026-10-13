@@ -310,6 +310,8 @@ describe("CI workflow", () => {
       return leak.indexOf(needle);
     });
     expect([...order].sort((a, b) => a - b)).toEqual(order);
+    expect(leak).toContain("timeout-minutes: 30");
+    expect(leak).toContain("LEAK_PACE_PREVIEW");
     expect(leak).toContain("if: always()");
     expect(leak).toContain("leak-probes-${LEAK_HEAD_SHA::7}-");
     expect(leak).not.toContain("leak-probes-${GITHUB_SHA::7}-");

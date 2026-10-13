@@ -203,8 +203,16 @@ jobs:
 
       - run: npm ci
 
+      - name: Backfill missing previews
+        if: always()
+        env:
+          DRY_RUN: "false"
+          OPEN_INGEST_PHASE: previews
+        run: npm run ingest-open
+
       - name: Unpublish stale previews
         id: unpublish
+        if: always()
         env:
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           DEALATLAS_EMAIL_FROM: ${{ secrets.DEALATLAS_EMAIL_FROM }}

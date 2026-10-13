@@ -4,7 +4,9 @@ import { FIND_A_TENDER_RELEASE_API } from "@/ingestion/sources/find-a-tender/con
 import { createFindATenderAdapter } from "@/ingestion/sources/find-a-tender/adapter";
 import { findATenderSourceRecord } from "@/ingestion/sources/find-a-tender/seed";
 import { createMemoryIngestionStore } from "@/ingestion/store/memory";
+import { asIngestionError } from "@/ingestion/core/errors";
 import { IngestionError } from "@/ingestion/core/errors";
+import { DatabaseQueryError } from "@/lib/db/errors";
 import {
   openIngestLogLine,
   openIngestShouldFail,
@@ -95,6 +97,64 @@ describe("open Find a Tender ingest", () => {
     );
     expect(line).not.toMatch(/updatedFrom|secret|\?|api\/1\.0/);
     expect(openIngestShouldFail(result)).toBe(true);
+  });
+
+  it("prints the database code, message and details for a record failure", () => {
+    const wrapped = asIngestionError(
+      new DatabaseQueryError("Find organisation alias: JSON object requested, multiple (or no) rows returned", {
+        code: "PGRST116",
+        message: "JSON object requested, multiple (or no) rows returned",
+        details: "The result contains 2 rows",
+      }),
+      "record",
+    );
+    const line = publicIngestErrorLine({
+      stage: wrapped.stage,
+      code: wrapped.code,
+      message: wrapped.message,
+      details: wrapped.details,
+    });
+    expect(line).toContain("record PGRST116");
+    expect(line).toContain("Find organisation alias");
+    expect(line).toContain("The result contains 2 rows");
+    expect(line).not.toMatch(/https?:\/\//);
+  });
+
+  it("reports preview rebuild counts and backfills deals that have no preview", async () => {
+    const memory = store();
+    const ingested = await runOpenFindATenderIngest({
+      store: memory,
+      now: NOW,
+      dryRun: false,
+      backfillDays: 7,
+      phase: "ingest",
+      sleep: async () => {},
+      http: {
+        async getJson(url) {
+          return jsonResult(url, packageFromFixtures(["normal.json"]));
+        },
+      },
+    });
+    expect(ingested.counts.new).toBe(1);
+    expect(memory.previews).toHaveLength(0);
+    const dealId = memory.deals[0]?.id;
+    expect(dealId).toBeTruthy();
+
+    const built = await runOpenFindATenderIngest({
+      store: memory,
+      now: NOW,
+      dryRun: false,
+      backfillDays: 7,
+      phase: "previews",
+      dealIds: [],
+      sleep: async () => {},
+    });
+
+    expect(memory.previews).toHaveLength(1);
+    expect(built.counts.fetched).toBe(1);
+    expect(built.counts.updated).toBe(1);
+    expect(built.counts.failed).toBe(0);
+    expect(openIngestLogLine(built.counts)).toContain('"fetched":1');
   });
 
   it("keeps later windows after a row parse failure and does not fail the run", async () => {
