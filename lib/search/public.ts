@@ -25,6 +25,7 @@ import {
   type PublicDealPreview,
   type PublicDealSearchResult,
 } from "@/lib/search/dto";
+import { takeHomeTeaser } from "@/lib/search/home-teaser";
 import {
   parsePublicSearchParams,
   publicSearchOffset,
@@ -78,20 +79,25 @@ export async function searchPublicDealPreviews(
   };
 }
 
-export const HOME_LIVE_LIMIT = 6;
+export const HOME_LIVE_LIMIT = 24;
+const HOME_LIVE_FETCH = 50;
 
-/** Published open and closing-soon previews, same RPC and sort as default /deals. */
+/** Published open, closing-soon, then upcoming previews. Same RPC as /deals. */
 export async function searchLiveHomePreviews(
   client: PublicSupabaseClient,
 ): Promise<PublicDealSearchResult> {
   const rows = await searchPublishedDealPreviews(client, {
-    statuses: ["CLOSING_SOON", "OPEN"],
+    statuses: ["CLOSING_SOON", "OPEN", "UPCOMING"],
     sort: "biddable",
-    limit: HOME_LIVE_LIMIT,
+    limit: HOME_LIVE_FETCH,
     offset: 0,
   });
+  const items = takeHomeTeaser(
+    rows.map(toPublicDealPreview),
+    (preview) => preview.buyerSector,
+  );
   return {
-    items: rows.map(toPublicDealPreview),
+    items,
     total: Number(rows[0]?.total_count ?? 0),
     page: 1,
     pageSize: HOME_LIVE_LIMIT,

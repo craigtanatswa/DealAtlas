@@ -30,8 +30,7 @@ export const metadata: Metadata = marketingPageMetadata({
 
 export default async function HomePage() {
   const user = await getAuthUser();
-  const client = await createSupabaseServerClient();
-  const live = await searchLiveHomePreviews(client);
+  const live = await searchLiveHomePreviews(await createSupabaseServerClient());
 
   return (
     <main id="main-content" className="flex flex-1 flex-col">
@@ -46,7 +45,7 @@ export default async function HomePage() {
           }),
         ]}
       />
-      <HomeHero />
+      <HomeHero signedIn={Boolean(user)} />
       <HomeLiveOpportunities
         items={live.items}
         total={live.total}

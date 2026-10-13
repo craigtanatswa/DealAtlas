@@ -18,12 +18,16 @@ export function DealCard({
   deal,
   href,
   signedIn = false,
+  proLock = false,
 }: {
   deal: DealCardData;
   href?: string;
   signedIn?: boolean;
+  /** Static lock line. Never substitutes for hidden buyer or source text. */
+  proLock?: boolean;
 }) {
-  const destination = href ?? `/deals/${deal.slug}`;
+  const dealPath = `/deals/${deal.slug}`;
+  const destination = href ?? dealPath;
   const tags = (deal.relevanceTags ?? []).slice(0, 4);
 
   return (
@@ -55,6 +59,11 @@ export function DealCard({
           <p className="mt-2 max-w-3xl text-pretty text-[0.9375rem] leading-6 text-muted-foreground">
             {deal.previewSummary}
           </p>
+          {proLock ? (
+            <p className="mt-3 text-[0.8125rem] leading-5 text-muted-foreground">
+              Buyer, documents, contacts: Pro
+            </p>
+          ) : null}
           <dl className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
             {deal.mainCategory ? (
               <div className="text-[0.8125rem] leading-5 text-foreground">
@@ -118,7 +127,7 @@ export function DealCard({
         </div>
         <div className="flex w-full flex-col gap-2 md:w-auto">
           {deal.status === "UPCOMING" ? (
-            <OpeningAlertButton href={destination} signedIn={signedIn} variant="card" />
+            <OpeningAlertButton href={dealPath} signedIn={signedIn} variant="card" />
           ) : null}
           <Link
             href={destination}
