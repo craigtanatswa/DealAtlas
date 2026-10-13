@@ -31,7 +31,7 @@ export function AppHeader({ isAdmin }: { isAdmin: boolean }) {
   return (
     <header className={HEADER_BAR_CLASS}>
       <div className={HEADER_BAR_INNER_CLASS}>
-        <BrandMark href="/app" priority className={HEADER_BRAND_CLASS} />
+        <BrandMark href="/app" priority compact className={HEADER_BRAND_CLASS} />
         <HeaderSearch
           path="/app/search"
           idPrefix="app-header"

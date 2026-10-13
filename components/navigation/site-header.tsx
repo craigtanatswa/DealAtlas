@@ -23,7 +23,7 @@ export function SiteHeader({ isAuthenticated }: { isAuthenticated: boolean }) {
   return (
     <header className={HEADER_BAR_CLASS}>
       <div className={HEADER_BAR_INNER_CLASS}>
-        <BrandMark href="/" priority className={HEADER_BRAND_CLASS} />
+        <BrandMark href="/" priority compact className={HEADER_BRAND_CLASS} />
         <HeaderSearch
           path="/deals"
           idPrefix="site-header"
