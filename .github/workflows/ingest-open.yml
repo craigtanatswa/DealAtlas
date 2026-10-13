@@ -32,7 +32,7 @@ jobs:
     if: github.event_name == 'workflow_dispatch' || github.event.schedule == '41 4 */3 * *'
     runs-on: ubuntu-latest
     environment: ingest
-    timeout-minutes: 30
+    timeout-minutes: 300
     env:
       NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
       NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
