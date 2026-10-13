@@ -49,6 +49,70 @@ function safeErrorText(value: string): string {
     .slice(0, 240);
 }
 
+function redactSecrets(value: string): string {
+  return value
+    .replace(/https?:\/\/\S+/gi, "[url]")
+    .replace(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g, "[email]")
+    .replace(/\b(?:eyJ|sb_secret|sb_publishable|sk_|rk_|whsec_)[A-Za-z0-9._-]{8,}\b/g, "[secret]");
+}
+
+function errorCode(value: unknown): string | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const code = (value as { code?: unknown }).code;
+  if (typeof code !== "string") return undefined;
+  const trimmed = code.trim();
+  if (!/^[A-Za-z0-9_.-]{1,64}$/.test(trimmed)) return undefined;
+  return trimmed;
+}
+
+function errorHint(value: unknown): string | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const hint = (value as { hint?: unknown }).hint;
+  if (typeof hint !== "string" || !hint.trim()) return undefined;
+  return redactSecrets(hint).replace(/\s+/g, " ").trim().slice(0, 300);
+}
+
+/** Fatal lines keep the message, code and stack. URLs, emails and tokens are removed. */
+export function publicFatalErrorLine(err: unknown): string {
+  const lines: string[] = [];
+  const seen = new Set<unknown>();
+  let current: unknown = err;
+  for (let depth = 0; current != null && depth < 4 && !seen.has(current); depth += 1) {
+    seen.add(current);
+    const plainMessage =
+      current && typeof current === "object" && "message" in current &&
+      typeof (current as { message?: unknown }).message === "string"
+        ? (current as { message: string }).message
+        : undefined;
+    const asError =
+      current instanceof Error
+        ? current
+        : new Error(typeof current === "string" ? current : plainMessage || "ingest failed");
+    const code = errorCode(current) ?? (depth === 0 ? "UNEXPECTED" : "-");
+    const message = redactSecrets(asError.message || "ingest failed")
+      .replace(/[ \t]+/g, " ")
+      .trim()
+      .slice(0, 500);
+    lines.push(depth === 0 ? `fatal ${code} ${message || "-"}` : `cause ${code} ${message || "-"}`);
+    const hint = errorHint(current);
+    if (hint) lines.push(`hint ${hint}`);
+    if (asError.stack) {
+      for (const frame of redactSecrets(asError.stack).split("\n").slice(1, 8)) {
+        const trimmed = frame.trim();
+        if (trimmed) lines.push(trimmed);
+      }
+    }
+    const cause =
+      current instanceof Error
+        ? current.cause
+        : current && typeof current === "object"
+          ? (current as { cause?: unknown }).cause
+          : undefined;
+    current = cause;
+  }
+  return lines.join("\n").slice(0, 4000);
+}
+
 /** Fetch lines are stage, code, status, host. Parse lines are stage, code, field path. Record lines keep the database code, message and details. */
 export function publicIngestErrorLine(error: OpenIngestError): string {
   if (error.stage === "record") {
