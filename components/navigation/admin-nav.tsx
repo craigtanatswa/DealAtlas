@@ -44,7 +44,7 @@ export function AdminMobileHeader() {
   return (
     <header className="border-b border-border bg-background lg:hidden">
       <div className="flex h-16 items-center justify-between gap-4 px-4">
-        <BrandMark href="/admin" suffix="Admin" />
+        <BrandMark href="/admin" suffix="Admin" compact />
         <MobileNav title="Admin" description="Administration navigation">
           {ADMIN_NAV.map((item) => (
             <NavLink

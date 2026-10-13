@@ -195,6 +195,6 @@ Semantic tokens, Inter typography, shells, listing cards, and Deal display compo
 
 Interactive controls use interruptible color and transform transitions, `scale(0.96)` on press, and 40px-tall default fields. Icon buttons expand their hit area with a pseudo-element rather than enlarging visible chrome. Listing cards keep a 1px border without heavy shadows.
 
-The DealAtlas wordmark is `/brand/dealatlas-logo.png`, rendered through `BrandMark` / `BrandLogo` in public, workspace, admin, and auth chrome. Do not replace header logos with text-only wordmarks.
+The DealAtlas lockup is `/brand/dealatlas-logo.png` (compass plus wordmark). The circular compass mark is `/brand/dealatlas-mark.png`, used for the favicon, app icon, and headers narrower than 360px. Render logos through `BrandMark` / `BrandLogo` in public, workspace, admin, and auth chrome. Do not replace header logos with text-only wordmarks.
 
 Anonymous visitors on public pages see a dismissible signup dialog after one minute of visible time in the current browser session. It does not appear for signed-in users, auth routes, or automated browsers. Dismissal is stored in `sessionStorage` only.
