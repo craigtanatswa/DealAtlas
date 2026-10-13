@@ -139,7 +139,7 @@ export function HomeLiveOpportunities({
           action={
             <Button asChild variant="outline" className="min-h-11">
               <Link href="/deals">
-                See all {total} {total === 1 ? "opportunity" : "opportunities"}
+                {`See all ${total} ${total === 1 ? "opportunity" : "opportunities"}`}
               </Link>
             </Button>
           }

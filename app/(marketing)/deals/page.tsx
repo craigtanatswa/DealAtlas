@@ -45,7 +45,6 @@ export default async function DealsIndexPage({ searchParams }: PageProps) {
     searchParams: params,
     userId: user?.id,
     defaultSort: "biddable",
-    biddableDefault: true,
   });
 
   return (

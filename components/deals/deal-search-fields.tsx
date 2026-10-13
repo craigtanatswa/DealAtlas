@@ -221,7 +221,7 @@ export function DealFilterSelects({
           name="status"
           defaultValue={filters.status ?? ""}
         >
-          <option value="">{publicStatus ? "Any biddable" : "Any status"}</option>
+          <option value="">Any status</option>
           {(publicStatus ? PUBLIC_STATUS_FILTERS : DEAL_STATUS_OPTIONS).map((option) => (
             <option key={option.value} value={option.value}>
               {option.label}

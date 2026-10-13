@@ -25,7 +25,6 @@ import {
   type PublicDealPreview,
   type PublicDealSearchResult,
 } from "@/lib/search/dto";
-import { BIDDABLE_STATUSES } from "@/lib/search/filters";
 import {
   parsePublicSearchParams,
   publicSearchOffset,
@@ -48,7 +47,6 @@ export async function searchPublicDealPreviews(
     deadlineBand: input.deadlineBand,
     dealType: input.dealType,
     status: input.status,
-    statuses: input.status ? undefined : [...BIDDABLE_STATUSES],
     sort: input.sort ?? "biddable",
     limit: input.limit,
     offset,
@@ -65,7 +63,6 @@ export async function searchPublicDealPreviews(
       deadlineBand: input.deadlineBand,
       dealType: input.dealType,
       status: input.status,
-      statuses: input.status ? undefined : [...BIDDABLE_STATUSES],
       sort: input.sort ?? "biddable",
       limit: 1,
       offset: 0,

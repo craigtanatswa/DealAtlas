@@ -59,11 +59,8 @@ export function DealSearchResults({
     );
   }
 
-  const count = publicSearch && !filters.status
-    ? result.total === 1
-      ? "1 biddable opportunity"
-      : `${result.total} biddable opportunities`
-    : result.total === 1
+  const count =
+    result.total === 1
       ? "1 opportunity matches these filters."
       : `${result.total} opportunities match these filters.`;
 
