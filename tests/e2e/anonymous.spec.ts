@@ -14,7 +14,7 @@ test.describe("Anonymous journey", () => {
     await page.goto("/");
     await expect(
       page.getByRole("heading", {
-        name: /Find opportunities worth pursuing/i,
+        name: /Find business opportunities worth pursuing/i,
       }),
     ).toBeVisible();
     await expectNoProtectedLeaks(page);
