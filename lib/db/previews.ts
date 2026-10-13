@@ -97,7 +97,7 @@ const previewListSchema = paginationSchema.extend({
 const previewSearchSchema = previewListSchema.extend({
   query: z.string().trim().max(200).optional(),
   minScore: z.coerce.number().min(0).max(100).optional(),
-  sort: z.enum(["biddable", "deadline", "updated", "relevance"]).default("biddable"),
+  sort: z.enum(["biddable", "deadline", "updated", "relevance"]).default("updated"),
   offset: z.coerce.number().int().min(0).max(10_000).default(0),
   limit: z.coerce.number().int().min(1).max(50).default(20),
 });

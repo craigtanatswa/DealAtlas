@@ -80,8 +80,8 @@ describe("supabase migrations", () => {
   it("publishes undated upcoming notices and sorts biddable deals first", () => {
     const sql = readMigration("0025_publish_upcoming_and_biddable_sort.sql");
     expect(sql).toContain("UPCOMING with a null deadline stays published");
-    expect(sql).toContain("when lower(coalesce(p_sort, 'biddable')) = 'biddable' and r.status = 'CLOSING_SOON'::public.deal_status then 0");
-    expect(sql).toContain("p_sort text default 'biddable'");
+    expect(sql).toContain("when lower(coalesce(p_sort, 'updated')) = 'biddable' and r.status = 'CLOSING_SOON'::public.deal_status then 0");
+    expect(sql).toContain("p_sort text default 'updated'");
     expect(sql).not.toMatch(/enforce_preview_safety/);
     expect(sql).not.toMatch(/disable row level security/i);
   });

@@ -4,10 +4,10 @@
 -- OPEN and CLOSING_SOON keep the previous null / 24-hour / past deadline rules.
 -- Risk, holds, denylist, source compliance, stage pairing and the Find a Tender /
 -- Contracts Finder limit on UPCOMING are unchanged.
--- Default search order (p_sort biddable) is closing soon, then open, then upcoming,
--- each by nearest submission deadline. That timestamp is used only for ordering
--- and is not selected. p_sort deadline orders by that same deadline. p_sort updated
--- is newest first. Relevance sort is unchanged.
+-- Omitted p_sort stays 'updated' (newest first), the same default as migration 0018.
+-- p_sort biddable is closing soon, then open, then upcoming, each by nearest
+-- submission deadline. That timestamp is used only for ordering and is not selected.
+-- p_sort deadline orders by that same deadline. Relevance sort is unchanged.
 
 create or replace function public.publish_eligible_previews(
   p_cap integer default 300,
@@ -261,7 +261,7 @@ create or replace function public.search_preview_dtos(
   p_value_band text default null,
   p_deadline_band text default null,
   p_min_score numeric default null,
-  p_sort text default 'biddable',
+  p_sort text default 'updated',
   p_limit integer default 20,
   p_offset integer default 0
 )
@@ -362,22 +362,22 @@ as $$
     count(*) over ()
   from ranked r
   order by
-    case when lower(coalesce(p_sort, 'biddable')) = 'relevance' then coalesce(r.match_score, -1) else 0 end desc,
+    case when lower(coalesce(p_sort, 'updated')) = 'relevance' then coalesce(r.match_score, -1) else 0 end desc,
     case
-      when lower(coalesce(p_sort, 'biddable')) = 'biddable' and r.status = 'CLOSING_SOON'::public.deal_status then 0
-      when lower(coalesce(p_sort, 'biddable')) = 'biddable' and r.status = 'OPEN'::public.deal_status then 1
-      when lower(coalesce(p_sort, 'biddable')) = 'biddable' and r.status = 'UPCOMING'::public.deal_status then 2
-      when lower(coalesce(p_sort, 'biddable')) = 'biddable' then 3
+      when lower(coalesce(p_sort, 'updated')) = 'biddable' and r.status = 'CLOSING_SOON'::public.deal_status then 0
+      when lower(coalesce(p_sort, 'updated')) = 'biddable' and r.status = 'OPEN'::public.deal_status then 1
+      when lower(coalesce(p_sort, 'updated')) = 'biddable' and r.status = 'UPCOMING'::public.deal_status then 2
+      when lower(coalesce(p_sort, 'updated')) = 'biddable' then 3
       else 0
     end asc,
     case
-      when lower(coalesce(p_sort, 'biddable')) in ('biddable', 'deadline') then (
+      when lower(coalesce(p_sort, 'updated')) in ('biddable', 'deadline') then (
         select d.submission_deadline
         from public.deals d
         where d.id = r.deal_id
       )
     end asc nulls last,
-    case when lower(coalesce(p_sort, 'biddable')) = 'relevance' then r.query_rank else 0 end desc,
+    case when lower(coalesce(p_sort, 'updated')) = 'relevance' then r.query_rank else 0 end desc,
     r.updated_at desc,
     r.slug
   limit greatest(1, least(coalesce(p_limit, 20), 50))
