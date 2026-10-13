@@ -23,6 +23,12 @@ const PHASE_B_ADDED_FUNCTIONS = new Set([
 /** 0026. Anonymous clients may execute it; the return columns are banded only. */
 const CLIENT_BAND_RPCS = new Set(["list_recent_award_bands"]);
 
+/** Phase A applies migrations through 0018, so later DTO functions are absent there. */
+export function expectedDtoRpcs(phase: "A" | "B"): string[] {
+  const names = phase === "A" ? DTO_RPCS.filter((name) => !CLIENT_BAND_RPCS.has(name)) : DTO_RPCS;
+  return sorted(names);
+}
+
 export type Acl = {
   functions: Record<string, { name: string; anon: boolean; authenticated: boolean }>;
   tables: Record<string, Record<"anon" | "authenticated", Record<"select" | "insert" | "update" | "delete", boolean>>>;
@@ -179,7 +185,7 @@ export function dbProbes(ctx: Ctx, phaseA?: { holds?: string[] }): { gateMisses:
   ).map((r) => r.proname);
   const heldNow = holds(ctx);
 
-  const db01: Assertion[] = [eq("migrations", expectedVersions, versions), eq("dto_rpcs_exist", sorted(DTO_RPCS), sorted(rpcsPresent))];
+  const db01: Assertion[] = [eq("migrations", expectedVersions, versions), eq("dto_rpcs_exist", expectedDtoRpcs(ctx.phase), sorted(rpcsPresent))];
   if (ctx.phase === "A") {
     db01.push(ok("anon_select_deal_previews_pre_0019", anonReadsPreviews, anonReadsPreviews));
   } else {

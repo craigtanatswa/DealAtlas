@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { aclDiff, type Acl } from "../leak/probes/db";
+import { aclDiff, expectedDtoRpcs, type Acl } from "../leak/probes/db";
 
 function fn(name: string, anon: boolean, authenticated: boolean): Acl["functions"][string] {
   return { name, anon, authenticated };
@@ -9,6 +9,14 @@ function fn(name: string, anon: boolean, authenticated: boolean): Acl["functions
 function acl(functions: Acl["functions"]): Acl {
   return { functions, tables: {}, columns: {}, schemas: {} };
 }
+
+describe("expected DTO RPCs", () => {
+  it("omits the award-band function until phase B", () => {
+    expect(expectedDtoRpcs("A")).not.toContain("list_recent_award_bands");
+    expect(expectedDtoRpcs("B")).toContain("list_recent_award_bands");
+    expect(expectedDtoRpcs("B").filter((name) => name !== "list_recent_award_bands")).toEqual(expectedDtoRpcs("A"));
+  });
+});
 
 describe("phase B ACL diff", () => {
   const before = acl({
