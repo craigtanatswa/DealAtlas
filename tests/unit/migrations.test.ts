@@ -291,6 +291,18 @@ describe("supabase migrations", () => {
     expect(sql).not.toMatch(grantPattern);
   });
 
+  it("seeds blocked grant portals as prohibited and disabled", () => {
+    const sql = readMigration("0033_grant_sources.sql");
+    for (const key of ["etendersni", "ukri-funding-finder"]) {
+      const row = sql.slice(sql.indexOf(`'${key}'`));
+      expect(row).toContain("'PROHIBITED'");
+      expect(row.slice(0, 700)).toContain("false");
+    }
+    expect(sql).toContain("Cloudflare/WAF");
+    expect(sql).toContain("electronic reproduction");
+    expect(sql).not.toMatch(/disable row level security/i);
+  });
+
   it("keep the combined schema file in sync with migrations", () => {
     const bundled = fs.readFileSync(
       path.join(ROOT, "supabase", "dealatlas_full_schema.sql"),

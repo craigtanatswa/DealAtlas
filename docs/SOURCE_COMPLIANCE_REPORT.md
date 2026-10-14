@@ -304,8 +304,8 @@ A source is buildable when there is a public machine route, or plain public page
 
 | Source key | Reuse status | Scraping permitted | Enabled | Decision |
 | --- | --- | --- | --- | --- |
-| `etendersni` | not stored | false | no | **BLOCKED.** Cloudflare/WAF challenge and no API. Do not attempt to pass it. |
-| `ukri-funding-finder` | not stored | false | no | Excluded. Terms forbid commercial electronic reproduction without prior written permission. |
+| `etendersni` | PROHIBITED | false | no | **BLOCKED.** Seeded disabled. Cloudflare/WAF challenge and no API. No fetcher. |
+| `ukri-funding-finder` | PROHIBITED | false | no | Seeded disabled. Terms forbid commercial electronic reproduction without permission. No fetcher. |
 | `find-a-grant` | OPEN_LICENSE | false | no | Build the public page adapter. Keep it disabled. |
 | `innovate-uk` | OPEN_LICENSE | false | no | Build the public competition-search adapter. Keep it disabled. |
 
@@ -318,7 +318,7 @@ A source is buildable when there is a public machine route, or plain public page
 | Public pages | Not fetched past the challenge. A separate check of the [opportunity list](https://etendersni.gov.uk/epps/prepareCurrentOpportunities.do?currentType=cft) found a search form that says “Please type the code shown below” and loads `/epps/genCaptcha/captcha….jpg`. `https://etendersni.gov.uk/robots.txt` returns **302** to `https://etendersni.gov.uk/epps/home.do`, the HTML homepage, not a robots file. |
 | Terms | Footer: “Copyright © European Dynamics”. About page: “e-Sourcing Platform © 2022 European Dynamics - The Information Society Integrator”. No Open Government Licence on the portal. |
 | Other data | Open Data NI has historical Construction & Procurement Delivery award CSVs under the UK Open Government Licence, for example the [2016/2017 supplies and services file](https://admin.opendatani.gov.uk/en_GB/dataset/contracts-awarded-by-central-procurement-directorate-in-the-2016-2017-year/resource/d5b993f2-4f6f-4e94-9f45-c77b98201438) (metadata last updated 19 July 2017). That is a past award snapshot, not a live notice feed, so it is not used as an eTendersNI adapter. |
-| Decision | **BLOCKED.** Do not build an adapter. Do not attempt to get past the Cloudflare/WAF challenge, the CAPTCHA, or a login. |
+| Decision | **BLOCKED.** Seed `reuse_status = PROHIBITED`, `enabled = false`. Do not build a fetcher. Do not attempt to get past the Cloudflare/WAF challenge, the CAPTCHA, or a login. |
 
 ## UKRI Funding Finder — excluded
 
@@ -327,7 +327,7 @@ A source is buildable when there is a public machine route, or plain public page
 | Official source URL | [Funding finder](https://www.ukri.org/opportunity/) |
 | Machine route | Not used. The catalogue is not ingested. |
 | Terms | [UKRI terms of use](https://www.ukri.org/who-we-are/terms-of-use/): “Except as permitted for academic, personal or other non-commercial purposes, users must not reprint or electronically reproduce from the UKRI website any document, graphic or image in whole or in part without the prior written permission of UKRI, or in accordance with the Copyright, Designs and Patents Act 1988.” That forbids commercial electronic reproduction without permission. |
-| Decision | **Excluded.** Do not build an adapter and do not store a source row. |
+| Decision | **Excluded.** Seed `reuse_status = PROHIBITED`, `enabled = false`. Do not build a fetcher. |
 
 ## Find a Grant — build, disabled
 

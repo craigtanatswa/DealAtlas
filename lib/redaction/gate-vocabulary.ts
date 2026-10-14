@@ -167,6 +167,8 @@ export const SOURCE_PLATFORM_MARKERS = [
   "tideway supply chain",
   "tideway supply chain (competefor)",
   "uk infrastructure pipeline",
+  "ukri funding finder",
+  "ukri.org",
 ] as const;
 
 export type LeakGateTermKind =

@@ -13,6 +13,7 @@ import { contextFromCandidate } from "@/ingestion/intelligence/types";
 import { generatePreviewDraft } from "@/ingestion/preview/generate";
 import { createMemoryIngestionStore } from "@/ingestion/store/memory";
 import type { TextGetResult } from "@/ingestion/core/http";
+import { listRegisteredSourceKeys } from "@/ingestion/sources/registry";
 import { dropLeakingReasons } from "@/lib/matching/sanitize";
 import { runOpenFindAGrantIngest } from "@/lib/jobs/ingest-open";
 
@@ -242,10 +243,17 @@ describe("Find a Grant and Innovate UK ingestion", () => {
 });
 
 describe("free preview sanitiser", () => {
+  it("does not register fetchers for prohibited portals", () => {
+    const keys = listRegisteredSourceKeys();
+    expect(keys).not.toContain("etendersni");
+    expect(keys).not.toContain("ukri-funding-finder");
+  });
+
   it.each([
     ["find a grant", "Find a Grant notice FG-100 at find-government-grants.service.gov.uk"],
     ["innovate uk", "Innovate UK competition on the Innovation Funding Service"],
     ["etendersni", "eTendersNI CFT 88421 at https://etendersni.gov.uk/epps/view.do"],
+    ["ukri funding finder", "UKRI Funding Finder opportunity at https://www.ukri.org/opportunity/"],
   ])("drops a %s reason", (_name, label) => {
     expect(
       dropLeakingReasons([{ code: "KEYWORD_OVERLAP", kind: "match", label }]),
@@ -377,6 +385,69 @@ describe("free preview sanitiser", () => {
       "canary harbour",
       "harbour fenders",
     ]) {
+      expect(free).not.toContain(marker);
+    }
+  });
+
+  it("does not pass UKRI Funding Finder identity to a free preview", async () => {
+    const candidate = buildGrantCandidate({
+      sourceKey: "ukri-funding-finder",
+      id: "UKRI-OPP-441",
+      title: "Canary coastal sensor fellowship",
+      description: "Funding finder text that must stay off the free preview.",
+      sourceUrl: "https://www.ukri.org/opportunity/canary-coastal-sensor-fellowship/",
+      funder: "Canary Research Council",
+      mainCategory: "Funding",
+      now: NOW,
+      closesAt: "2026-12-01T00:00:00.000Z",
+      opensAt: "2026-01-01T00:00:00.000Z",
+    });
+    const source = findAGrantSourceRecord({
+      id: "src-ukri",
+      sourceKey: "ukri-funding-finder",
+      name: "UKRI Funding Finder",
+      enabled: true,
+      scrapingPermitted: true,
+    });
+    const store = createMemoryIngestionStore({ sources: [source] });
+    await runIngestion({
+      sourceKey: "ukri-funding-finder",
+      store,
+      now: NOW,
+      adapter: {
+        sourceKey: "ukri-funding-finder",
+        async discover() {
+          return {
+            items: [
+              {
+                externalRecordId: candidate.externalPrimaryId,
+                sourceUrl: candidate.sourceUrl,
+                payload: candidate,
+              },
+            ],
+          };
+        },
+        async fetch(item) {
+          return {
+            externalRecordId: item.externalRecordId,
+            sourceUrl: item.sourceUrl,
+            fetchedAt: NOW.toISOString(),
+            contentType: "text/html",
+            parserVersion: "test",
+            payload: candidate,
+            http: { status: 200, url: candidate.sourceUrl, contentType: "text/html" },
+          };
+        },
+        async parse() {
+          return [candidate];
+        },
+      },
+    });
+    const deal = await store.findDealByOcid(candidate.ocid);
+    const draft = await draftFor(store, deal!.id, source, candidate);
+    const free = freePreview(draft);
+    expect(draft.leakageRisk).toBe("LOW");
+    for (const marker of ["ukri", "ukri.org", "funding finder", "ukri-opp-441"]) {
       expect(free).not.toContain(marker);
     }
   });

@@ -7056,6 +7056,44 @@ values
     timestamptz '2026-10-14T00:00:00Z',
     timestamptz '2026-10-14T00:00:00Z',
     'Public Innovation Funding Service competition search under the Open Government Licence v3.0. robots.txt redirects to login, so no Disallow is published. Terms do not explicitly allow scraping, so this source stays disabled. Preserve-only. Do not send source identity to free users.'
+  ),
+  (
+    'etendersni',
+    'eTendersNI',
+    'GOVERNMENT_WEB',
+    'HTML',
+    'https://etendersni.gov.uk/',
+    null,
+    null,
+    null,
+    'https://etendersni.gov.uk/epps/home.do',
+    'PROHIBITED',
+    false,
+    false,
+    null,
+    null,
+    timestamptz '2026-10-14T00:00:00Z',
+    timestamptz '2026-10-14T00:00:00Z',
+    'BLOCKED. Prior research found a Cloudflare/WAF challenge and no API. Do not attempt to get past the challenge. No fetcher. The opportunity search also presents an image CAPTCHA. Copyright is European Dynamics, not an open licence.'
+  ),
+  (
+    'ukri-funding-finder',
+    'UKRI Funding Finder',
+    'GOVERNMENT_WEB',
+    'HTML',
+    'https://www.ukri.org/opportunity/',
+    null,
+    null,
+    null,
+    'https://www.ukri.org/who-we-are/terms-of-use/',
+    'PROHIBITED',
+    false,
+    false,
+    null,
+    null,
+    timestamptz '2026-10-14T00:00:00Z',
+    timestamptz '2026-10-14T00:00:00Z',
+    'Excluded. UKRI terms of use forbid electronic reproduction for commercial purposes without prior written permission. No fetcher.'
   )
 on conflict (source_key) do update set
   name = excluded.name,
@@ -7082,7 +7120,9 @@ insert into private.leak_gate_terms (kind, term) values
   ('source_platform', 'find-a-grant'),
   ('source_platform', 'find-government-grants'),
   ('source_platform', 'innovation funding service'),
-  ('source_platform', 'innovate uk')
+  ('source_platform', 'innovate uk'),
+  ('source_platform', 'ukri funding finder'),
+  ('source_platform', 'ukri.org')
 on conflict (kind, term) do nothing;
 
 -- ============================================================================

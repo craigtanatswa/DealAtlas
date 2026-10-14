@@ -14,6 +14,8 @@ const FORBIDDEN_REASON_PATTERNS = [
   /\binnovation funding service\b/i,
   /\bapply-for-innovation-funding\b/i,
   /\betendersni\b/i,
+  /\bukri funding finder\b/i,
+  /\bukri\.org\b/i,
 ];
 
 export function dropLeakingReasons(
