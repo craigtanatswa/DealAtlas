@@ -29,7 +29,7 @@ describe("homepage latest opportunities", () => {
     expect(fn).toContain("if (items.length === 0)");
     expect(fn).toContain("return null");
     expect(fn).toContain("Latest opportunities");
-    expect(fn).toContain(
+    expect(fn.replace(/\s+/g, " ")).toContain(
       "Open and upcoming opportunities first. Join DealAtlas Pro to unlock buyer and source details.",
     );
     expect(fn).toContain("View all opportunities");
