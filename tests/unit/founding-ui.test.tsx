@@ -25,7 +25,7 @@ describe("founding pricing cards", () => {
 
     expect(screen.getByRole("heading", { name: "Pricing" })).toBeTruthy();
     expect(screen.getByText("17 of 25 founding places left")).toBeTruthy();
-    expect(screen.getByText("Price locked while you stay subscribed")).toBeTruthy();
+    expect(screen.getByText("Locked for life")).toBeTruthy();
     expect(screen.getByText("£100 less than standard annual")).toBeTruthy();
     expect(container.textContent).not.toMatch(/Example value/i);
     expect(container.textContent).not.toMatch(/only today|testimonial|#1/i);
@@ -81,7 +81,7 @@ describe("founding deal paywall", () => {
     );
     expect(screen.getByRole("button", { name: "Become a founding member – £290/yr" })).toBeTruthy();
     expect(screen.getByText(/17 of 25 places left/)).toBeTruthy();
-    expect(screen.getByText(/Price locked while you stay subscribed/)).toBeTruthy();
+    expect(screen.getByText(/Locked for life/)).toBeTruthy();
     const founding = planForms(container).find((form) => form.querySelector("input[name='offer']"));
     expect(founding?.querySelector("input[name='planKey']")?.getAttribute("value")).toBe(
       "PRO_ANNUAL",

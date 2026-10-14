@@ -57,7 +57,7 @@ export const FOUNDING_COPY = {
   badge: "Founding member",
   title: "Founding member Pro",
   lessThanAnnual: "£100 less than standard annual",
-  priceLocked: "Price locked while you stay subscribed",
+  priceLocked: "Locked for life",
   rechecked: "Availability is re-checked at checkout.",
   cta: "Become a founding member",
   cancelTerms: "If you cancel, £290/year is still yours when you come back.",
