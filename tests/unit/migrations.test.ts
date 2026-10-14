@@ -48,7 +48,7 @@ describe("supabase migrations", () => {
   const files = listMigrations();
   const sql = files.map(readMigration).join("\n");
 
-  it("are numbered 0001-0025 in order with no gaps", () => {
+  it("are numbered 0001-0026 in order with no gaps", () => {
     expect(files).toEqual([
       "0001_extensions_and_types.sql",
       "0002_core_schema.sql",
@@ -75,7 +75,15 @@ describe("supabase migrations", () => {
       "0023_contracts_finder_ocds.sql",
       "0024_service_role_statement_timeout.sql",
       "0025_publish_upcoming_and_biddable_sort.sql",
+      "0026_legacy_public_slugs.sql",
     ]);
+  });
+
+  it("refuses legacy public slugs from the preview DTO", () => {
+    const sql = readMigration("0026_legacy_public_slugs.sql");
+    expect(sql).toContain("private.preview_slug_is_legacy");
+    expect(sql).toContain("and not private.preview_slug_is_legacy(dp.slug, dp.deal_id)");
+    expect(sql).toContain("revoke all on function private.preview_slug_is_legacy(text, uuid)");
   });
 
   it("publishes undated upcoming notices and sorts biddable deals first", () => {
