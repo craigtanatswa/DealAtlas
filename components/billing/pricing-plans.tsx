@@ -12,7 +12,7 @@ import {
   foundingSoldOutNote,
   type FoundingPublicCount,
   type FoundingUiState,
-} from "@/lib/billing/founding";
+} from "@/lib/billing/founding-ui";
 import { DISPLAY_PRICING, FEATURE_LIMITS } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
@@ -112,14 +112,12 @@ function PlanCta({
   signedIn,
   planKey,
   label,
-  offer,
   variant = "outline",
   buttonClassName,
 }: {
   signedIn: boolean;
   planKey: "PRO_MONTHLY" | "PRO_ANNUAL";
   label: string;
-  offer?: "founding";
   variant?: "default" | "outline";
   buttonClassName?: string;
 }) {
@@ -134,7 +132,6 @@ function PlanCta({
     <CheckoutPlanForm
       planKey={planKey}
       label={label}
-      offer={offer}
       showPrice={false}
       variant={variant}
       returnTo="/pricing"
@@ -203,7 +200,6 @@ export function PricingPlans({
               <PlanCta
                 signedIn={signedIn}
                 planKey="PRO_ANNUAL"
-                offer="founding"
                 label={FOUNDING_COPY.cta}
                 variant="default"
                 buttonClassName={FOUNDING_BUTTON}

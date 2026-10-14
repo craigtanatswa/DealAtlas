@@ -11,7 +11,7 @@ import { DatabaseQueryError } from "@/lib/db/errors";
 import { appDealPath, parseDealIdParam } from "@/lib/deals/paths";
 import { loadPaidDealDto } from "@/lib/deals/protected";
 import { loadDealHistory } from "@/lib/intelligence/protected";
-import { readFoundingPublicCount } from "@/lib/billing/founding-db";
+import { readFoundingPublicCount } from "@/lib/billing/founding-public";
 import { isProEntitlement } from "@/lib/entitlements/policy";
 import { getCurrentEntitlement } from "@/lib/entitlements/service";
 import { loadExportUsageForMonth } from "@/lib/exports/usage";

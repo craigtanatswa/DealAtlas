@@ -164,9 +164,13 @@ export function liveDodoConfigErrors(env: LiveDodoEnv): string[] {
     );
   }
 
-  if (env.DODO_FOUNDING_PRODUCT_ID) {
+  if (!env.DODO_FOUNDING_PRODUCT_ID || !/^pdt_[A-Za-z0-9]{21}$/.test(env.DODO_FOUNDING_PRODUCT_ID)) {
     errors.push(
-      "DODO_FOUNDING_PRODUCT_ID is preview/test only and must not be set when DODO_PAYMENTS_ENVIRONMENT=live_mode.",
+      "DODO_FOUNDING_PRODUCT_ID is required when DODO_PAYMENTS_ENVIRONMENT=live_mode and must be a live product id (pdt_ followed by 21 letters or digits).",
+    );
+  } else if (LIVE_FORBIDDEN_PRODUCT_IDS.has(env.DODO_FOUNDING_PRODUCT_ID)) {
+    errors.push(
+      "Live Dodo product IDs must come from the live catalogue, not local billing fixtures.",
     );
   }
 

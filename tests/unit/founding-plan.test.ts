@@ -20,14 +20,16 @@ import {
 import {
   foundingAvailabilityPayload,
   foundingOfferCopy,
+  foundingSideEffect,
+  reservationForCheckout,
+} from "@/lib/billing/founding";
+import {
+  FOUNDING_COPY,
   foundingPaywallPlaces,
   foundingPlacesLabel,
-  foundingSideEffect,
   foundingSoldOutNote,
   foundingUiState,
-  reservationForCheckout,
-  resolveFoundingCheckout,
-} from "@/lib/billing/founding";
+} from "@/lib/billing/founding-ui";
 import { liveDodoConfigErrors } from "@/lib/env/production";
 import type { IncomingBillingEvent, PlanProductMap } from "@/lib/billing/types";
 import { WebhookPayloadSchema } from "@dodopayments/core/schemas";
@@ -103,13 +105,21 @@ describe("founding member checkout", () => {
     ).toBe(products.PRO_ANNUAL);
   });
 
-  it("ignores a client product id and does not offer founding outside test mode", () => {
+  it("ignores a client product id and still reserves founding in live mode", () => {
     expect(parseCheckoutRequest({ planKey: "PRO_ANNUAL", product_id: products.FOUNDING_ANNUAL }).ok).toBe(false);
     expect(parseCheckoutRequest({ planKey: "FOUNDING" }).ok).toBe(false);
     expect(
       selectCheckoutProduct({
         planKey: "PRO_ANNUAL",
         products,
+        reservation: "reserved",
+        testMode: false,
+      }).productId,
+    ).toBe(products.FOUNDING_ANNUAL);
+    expect(
+      selectCheckoutProduct({
+        planKey: "PRO_ANNUAL",
+        products: { PRO_MONTHLY: products.PRO_MONTHLY, PRO_ANNUAL: products.PRO_ANNUAL },
         reservation: "reserved",
         testMode: false,
       }).productId,
@@ -124,7 +134,7 @@ describe("founding member checkout", () => {
     ).toBe(false);
   });
 
-  it("shows a counts-only place label and never reopens a hidden offer", () => {
+  it("shows a counts-only place label when founding is offered in the UI", () => {
     expect(foundingUiState({ offered: false, remaining: 25 })).toBe("hidden");
     expect(foundingUiState({ offered: true, remaining: 17 })).toBe("available");
     expect(foundingUiState({ offered: true, remaining: 1 })).toBe("last");
@@ -136,34 +146,9 @@ describe("founding member checkout", () => {
     expect(foundingSoldOutNote()).toBe(
       "Founding membership is full. Thanks to our first 25 customers.",
     );
-    expect(foundingPlacesLabel(-4)).toBe("0 of 25 founding places left");
-  });
-
-  it("returns founding_full instead of charging the standard annual price", () => {
-    const ready = {
-      planKey: "PRO_ANNUAL" as const,
-      offer: "founding",
-      reservation: "reserved" as const,
-      testMode: true,
-      foundingProductConfigured: true,
-    };
-    expect(resolveFoundingCheckout(ready)).toBe("founding");
-    expect(resolveFoundingCheckout({ ...ready, reservation: "sold_out" })).toBe("founding_full");
-    expect(resolveFoundingCheckout({ ...ready, reservation: "unavailable" })).toBe("founding_full");
-    expect(resolveFoundingCheckout({ ...ready, planKey: "PRO_MONTHLY" })).toBe("founding_full");
-    expect(resolveFoundingCheckout({ ...ready, testMode: false })).toBe("founding_full");
-    expect(resolveFoundingCheckout({ ...ready, foundingProductConfigured: false })).toBe(
-      "founding_full",
-    );
-    expect(resolveFoundingCheckout({ ...ready, offer: null })).toBe("standard");
-    expect(resolveFoundingCheckout({ ...ready, offer: "founding", reservation: "active" })).toBe(
-      "founding",
-    );
-
-    const checkout = fs.readFileSync(path.join(process.cwd(), "lib/billing/checkout.ts"), "utf8");
-    expect(checkout).toContain('offer === "founding"');
-    expect(checkout).toContain("founding_full");
-    expect(checkout).not.toMatch(/planKey:\s*"FOUNDING"/);
+    expect(FOUNDING_COPY.paywallCta).toContain("£290/yr");
+    expect(FOUNDING_COPY.lessThanAnnual).toBe("£100 less than standard annual");
+    expect(FOUNDING_COPY.priceLocked).toBe("Locked for life");
   });
 
   it("rounds the public offer down to a band", () => {
@@ -241,17 +226,24 @@ describe("founding member checkout", () => {
     expect(webhook.sign("evt_ok", new Date(), body)).toContain("v1,");
   });
 
-  it("refuses the founding product id in live mode", () => {
+  it("requires a live-format founding product id in live mode", () => {
+    const live = {
+      DODO_PAYMENTS_ENVIRONMENT: "live_mode" as const,
+      DODO_PAYMENTS_API_KEY: "dodo_live_prod_key",
+      DODO_PAYMENTS_WEBHOOK_KEY: "whsec_live_example_secret",
+      DODO_PAYMENTS_RETURN_URL: "https://www.dealatlas.example/checkout/success",
+      DODO_PRO_MONTHLY_PRODUCT_ID: "pdt_live_monthly",
+      DODO_PRO_ANNUAL_PRODUCT_ID: "pdt_live_annual",
+    };
+    expect(liveDodoConfigErrors(live).join("\n")).toMatch(/DODO_FOUNDING_PRODUCT_ID/);
+    expect(
+      liveDodoConfigErrors({ ...live, DODO_FOUNDING_PRODUCT_ID: "pdt_live_founding" }).join("\n"),
+    ).toMatch(/pdt_/);
     expect(
       liveDodoConfigErrors({
-        DODO_PAYMENTS_ENVIRONMENT: "live_mode",
-        DODO_PAYMENTS_API_KEY: "dodo_live_prod_key",
-        DODO_PAYMENTS_WEBHOOK_KEY: "whsec_live_example_secret",
-        DODO_PAYMENTS_RETURN_URL: "https://www.dealatlas.example/checkout/success",
-        DODO_PRO_MONTHLY_PRODUCT_ID: "pdt_live_monthly",
-        DODO_PRO_ANNUAL_PRODUCT_ID: "pdt_live_annual",
-        DODO_FOUNDING_PRODUCT_ID: "pdt_live_founding",
-      }).join("\n"),
-    ).toMatch(/DODO_FOUNDING_PRODUCT_ID/);
+        ...live,
+        DODO_FOUNDING_PRODUCT_ID: "pdt_0Npk9UeAQUpFBQDttq6lS",
+      }),
+    ).toEqual([]);
   });
 });

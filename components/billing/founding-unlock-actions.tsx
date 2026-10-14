@@ -6,7 +6,7 @@ import {
   FOUNDING_COPY,
   foundingPaywallPlaces,
   type FoundingUiState,
-} from "@/lib/billing/founding";
+} from "@/lib/billing/founding-ui";
 
 const FOUNDING_BUTTON =
   "w-full bg-[#00806A] text-white hover:bg-[#006b56]";
@@ -67,7 +67,6 @@ export function FoundingUnlockActions({
       {mode === "free" ? (
         <CheckoutPlanForm
           planKey="PRO_ANNUAL"
-          offer="founding"
           label={FOUNDING_COPY.paywallCta}
           showPrice={false}
           returnTo={returnTo}

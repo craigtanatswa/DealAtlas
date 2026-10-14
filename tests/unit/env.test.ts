@@ -172,6 +172,7 @@ describe("production environment fail-safes", () => {
         DODO_PAYMENTS_RETURN_URL: "https://www.dealatlas.example/checkout/success",
         DODO_PRO_MONTHLY_PRODUCT_ID: "pdt_live_monthly",
         DODO_PRO_ANNUAL_PRODUCT_ID: "pdt_live_annual",
+        DODO_FOUNDING_PRODUCT_ID: "pdt_0Npk9UeAQUpFBQDttq6lS",
       }),
     ).toEqual([]);
   });

@@ -10,8 +10,9 @@ import { Button } from "@/components/ui/button";
 import { getAuthUser } from "@/lib/auth/session";
 import { getAppOrigin } from "@/lib/auth/urls";
 import { loginPathWithNext } from "@/lib/auth/redirect";
-import { foundingUiState } from "@/lib/billing/founding";
-import { readFoundingPublicCount } from "@/lib/billing/founding-db";
+import { readFoundingPublicCount } from "@/lib/billing/founding-public";
+import { foundingUiState } from "@/lib/billing/founding-ui";
+import { readFoundingOffer } from "@/lib/billing/founding-db";
 import { DISPLAY_PRICING } from "@/lib/constants";
 import { webPageJsonLd } from "@/lib/seo/json-ld";
 import { marketingPageMetadata } from "@/lib/seo/metadata";
@@ -42,7 +43,11 @@ const PRO_FEATURES = [
 ];
 
 export default async function PricingPage() {
-  const [user, count] = await Promise.all([getAuthUser(), readFoundingPublicCount()]);
+  const [user, count, founding] = await Promise.all([
+    getAuthUser(),
+    readFoundingPublicCount(),
+    readFoundingOffer(),
+  ]);
   const state = foundingUiState(count);
 
   return (
@@ -56,7 +61,7 @@ export default async function PricingPage() {
         })}
       />
       {state === "hidden" ? (
-        <LegacyPricing signedIn={Boolean(user)} />
+        <LegacyPricing signedIn={Boolean(user)} founding={founding} />
       ) : (
         <PricingPlans signedIn={Boolean(user)} count={count} state={state} />
       )}
@@ -64,7 +69,13 @@ export default async function PricingPage() {
   );
 }
 
-function LegacyPricing({ signedIn }: { signedIn: boolean }) {
+function LegacyPricing({
+  signedIn,
+  founding,
+}: {
+  signedIn: boolean;
+  founding: { foundingAvailable: boolean; note: string | null };
+}) {
   return (
     <>
       <div className="mx-auto flex max-w-3xl flex-col gap-3 text-center">
@@ -108,6 +119,12 @@ function LegacyPricing({ signedIn }: { signedIn: boolean }) {
           <p className="text-sm text-muted-foreground">
             or {DISPLAY_PRICING.proAnnual}
           </p>
+          {founding.foundingAvailable ? (
+            <p className="mt-3 text-sm text-muted-foreground">
+              Founding Member annual checkout is {DISPLAY_PRICING.foundingAnnual}. Locked for life.
+              {founding.note ? ` ${founding.note}.` : ""}
+            </p>
+          ) : null}
           <ul className="mt-6 flex flex-col gap-3 text-[0.9375rem] leading-6 text-muted-foreground">
             {PRO_FEATURES.map((item) => (
               <li key={item} className="flex gap-2">

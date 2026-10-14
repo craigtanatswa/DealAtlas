@@ -111,7 +111,7 @@ export function selectCheckoutProduct(input: {
   reservation: FoundingReservation;
   testMode: boolean;
 }): { productId: string; founding: boolean } {
-  if (input.planKey === "PRO_MONTHLY" || !input.testMode || !input.products.FOUNDING_ANNUAL) {
+  if (input.planKey === "PRO_MONTHLY" || !input.products.FOUNDING_ANNUAL) {
     return { productId: input.products[input.planKey], founding: false };
   }
   if (input.reservation === "reserved" || input.reservation === "active") {

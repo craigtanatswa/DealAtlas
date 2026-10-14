@@ -9,7 +9,7 @@ import {
   CardFooter,
   CardHeader,
 } from "@/components/ui/card";
-import { foundingUiState, type FoundingPublicCount } from "@/lib/billing/founding";
+import { foundingUiState, type FoundingPublicCount } from "@/lib/billing/founding-ui";
 import Link from "next/link";
 
 export const LOCKED_INTELLIGENCE_FIELDS = [

@@ -8,7 +8,6 @@ export function CheckoutPlanForm({
   label,
   recommended = false,
   returnTo,
-  offer,
   showPrice = true,
   variant = "default",
   className,
@@ -18,8 +17,6 @@ export function CheckoutPlanForm({
   label: string;
   recommended?: boolean;
   returnTo?: string;
-  /** Asks the server to reserve a founding place. Never a price or product id. */
-  offer?: "founding";
   showPrice?: boolean;
   variant?: "default" | "outline" | "link";
   className?: string;
@@ -32,7 +29,6 @@ export function CheckoutPlanForm({
       className={cn(showPrice ? "flex flex-col gap-3" : "flex", className)}
     >
       <input type="hidden" name="planKey" value={planKey} />
-      {offer ? <input type="hidden" name="offer" value={offer} /> : null}
       {returnTo ? <input type="hidden" name="returnTo" value={returnTo} /> : null}
       <Button
         type="submit"

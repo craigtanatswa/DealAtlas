@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { FoundingFullNotice } from "@/components/billing/founding-full-notice";
 import { PricingPlans } from "@/components/billing/pricing-plans";
 import { UnlockPanel } from "@/components/deals/unlock-panel";
-import { FOUNDING_CAP } from "@/lib/billing/founding";
+import { FOUNDING_CAP } from "@/lib/billing/founding-ui";
 
 afterEach(cleanup);
 
@@ -31,19 +31,11 @@ describe("founding pricing cards", () => {
     expect(container.textContent).not.toMatch(/only today|testimonial|#1/i);
 
     const forms = planForms(container);
-    const founding = forms.find((form) => form.querySelector("input[name='offer']"));
-    expect(founding?.querySelector("input[name='offer']")?.getAttribute("value")).toBe("founding");
-    expect(founding?.querySelector("input[name='planKey']")?.getAttribute("value")).toBe(
-      "PRO_ANNUAL",
+    const annualForms = forms.filter(
+      (form) => form.querySelector("input[name='planKey']")?.getAttribute("value") === "PRO_ANNUAL",
     );
-    expect(founding?.querySelector("input[name='product_id']")).toBeNull();
-
-    const standardAnnual = forms.filter(
-      (form) =>
-        form.querySelector("input[name='planKey']")?.getAttribute("value") === "PRO_ANNUAL" &&
-        !form.querySelector("input[name='offer']"),
-    );
-    expect(standardAnnual).toHaveLength(1);
+    expect(annualForms).toHaveLength(2);
+    expect(annualForms.every((form) => !form.querySelector("input[name='product_id']"))).toBe(true);
   });
 
   it("uses the last-place sentence and no extra urgency", () => {
@@ -71,7 +63,7 @@ describe("founding pricing cards", () => {
 });
 
 describe("founding deal paywall", () => {
-  it("posts the founding offer for a signed-in free user", () => {
+  it("posts annual checkout for a signed-in free user", () => {
     const { container } = render(
       <UnlockPanel
         mode="free"
@@ -82,17 +74,14 @@ describe("founding deal paywall", () => {
     expect(screen.getByRole("button", { name: "Become a founding member – £290/yr" })).toBeTruthy();
     expect(screen.getByText(/17 of 25 places left/)).toBeTruthy();
     expect(screen.getByText(/Locked for life/)).toBeTruthy();
-    const founding = planForms(container).find((form) => form.querySelector("input[name='offer']"));
-    expect(founding?.querySelector("input[name='planKey']")?.getAttribute("value")).toBe(
-      "PRO_ANNUAL",
+    const founding = planForms(container).find(
+      (form) =>
+        form.querySelector("input[name='planKey']")?.getAttribute("value") === "PRO_ANNUAL" &&
+        form.querySelector("button")?.textContent?.includes("founding member"),
     );
     expect(founding?.querySelector("input[name='returnTo']")?.getAttribute("value")).toBe(
       "/app/deals/22222222-2222-4222-8222-222222222222",
     );
-    const monthly = planForms(container).find(
-      (form) => form.querySelector("input[name='planKey']")?.getAttribute("value") === "PRO_MONTHLY",
-    );
-    expect(monthly?.querySelector("input[name='offer']")).toBeNull();
     expect(container.textContent).not.toMatch(/Example value|@|buyer@/i);
   });
 

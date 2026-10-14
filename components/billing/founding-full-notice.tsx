@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { CheckoutPlanForm } from "@/components/billing/checkout-plan-form";
 import { Button } from "@/components/ui/button";
-import { FOUNDING_COPY } from "@/lib/billing/founding";
+import { FOUNDING_COPY } from "@/lib/billing/founding-ui";
 
 export function FoundingFullNotice({
   signedIn,
