@@ -290,14 +290,14 @@ HTML helpers exist for future `TERMS_REVIEWED` + `scraping_permitted = true` sou
 
 ## Central purchasing bodies — 14 October 2026
 
-Checked: **14 October 2026**. Crown Commercial Service became the Government Commercial Agency on 1 April 2026. `crowncommercial.gov.uk` redirects to `www.gca.gov.uk`.
+Checked: **14 October 2026**. Crown Commercial Service became the Government Commercial Agency on 1 April 2026. `crowncommercial.gov.uk` redirects to `www.gca.gov.uk`. A source whose terms or robots.txt explicitly ban scraping or commercial reuse is `PROHIBITED` and disabled, with no fetcher. Silence on reuse is `UNKNOWN`. New rows stay disabled.
 
 | Source key | Reuse status | Scraping permitted | Enabled | Decision |
 | --- | --- | --- | --- | --- |
 | `gca-agreements` | OPEN_LICENSE | false | no | Official JSON feed, no query string. First page only. |
 | `gca-procurement-pipeline` | OPEN_LICENSE | false | no | One official ODS download. |
-| `nhs-supply-chain` | UNKNOWN | false | no | Terms forbid reuse without a written licence. No adapter. |
-| `nhs-sbs` | UNKNOWN | false | no | Terms forbid commercial reuse. Catalogue requires registration. No adapter. |
+| `nhs-supply-chain` | PROHIBITED | false | no | Terms ban reuse without a written licence. No fetcher. |
+| `nhs-sbs` | PROHIBITED | false | no | Terms ban commercial reuse. Catalogue requires registration. No fetcher. |
 
 ### Government Commercial Agency agreements
 
@@ -336,10 +336,10 @@ Checked: **14 October 2026**. Crown Commercial Service became the Government Com
 | Access method | HTML pages. No official open feed. `MANUAL`. |
 | Terms / licence evidence | [Terms of use](https://www.supplychain.nhs.uk/legal-information/terms-of-use/): “No licence to use any of Our intellectual property rights is given or implied”. “you must not use any part of the materials on Our Site without first obtaining a written licence to do so from us or our licensors.” Acceptable use: “make, transmit or store electronic copies of materials protected by copyright without the permission of the owner or holder of such rights”. |
 | Robots / access notes | [robots.txt](https://www.supplychain.nhs.uk/robots.txt): `Disallow: /wp-json/` and `Disallow: /?rest_route=`. Supplier portal is login. |
-| Reuse status | **UNKNOWN** |
+| Reuse status | **PROHIBITED** |
 | Automated scraping permitted? | **No** |
 | Date checked | 14 October 2026 |
-| Implementation decision | **Do not automate.** Seed row only. No adapter and no workflow step. |
+| Implementation decision | **Do not automate.** Seed row only, `enabled = false`. No fetcher and no workflow step. |
 
 ### NHS Shared Business Services
 
@@ -350,10 +350,10 @@ Checked: **14 October 2026**. Crown Commercial Service became the Government Com
 | Access method | The customer framework portal requires registration (`https://one.sbs.nhs.uk/FrameworkAgreements/s/registration`). Opportunities are also on Find a Tender and SAP Ariba. `MANUAL`. |
 | Terms / licence evidence | [Website terms](https://www.sbs.nhs.uk/website-terms-and-conditions/) (copyright 23 March 2021): “you may under no circumstances copy, represent, modify, transmit, publish, adapt, on whatever medium or by whatever means, or exploit in any way all or part of the Site without prior written consent from the Site Publisher.” “You must not use any part of the content on our site for commercial purposes without obtaining a licence to do so from us or our licensors.” Downloads are “for informational purposes only and for personal use.” |
 | Robots / access notes | [robots.txt](https://www.sbs.nhs.uk/robots.txt) disallows `/wp/wp-admin/admin-ajax.php`. The framework catalogue itself is behind registration. |
-| Reuse status | **UNKNOWN** |
+| Reuse status | **PROHIBITED** |
 | Automated scraping permitted? | **No** |
 | Date checked | 14 October 2026 |
-| Implementation decision | **Do not automate.** Seed row only. Above-threshold notices remain on Find a Tender. No adapter and no workflow step. NHSBSA open data is a different body and is not used here. |
+| Implementation decision | **Do not automate.** Seed row only, `enabled = false`. No fetcher and no workflow step. Above-threshold notices remain on Find a Tender. NHSBSA open data is a different body and is not used here. |
 
 ## Attribution
 

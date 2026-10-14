@@ -520,9 +520,13 @@ describe("Government Commercial Agency adapters", () => {
     );
     expect(sql).toContain("'gca-agreements'");
     expect(sql).toContain("'OPEN_LICENSE'");
-    expect(sql).toContain("'nhs-supply-chain'");
-    expect(sql).toContain("'nhs-sbs'");
-    expect(sql).toContain("'UNKNOWN'");
+    const supply = sql.slice(sql.indexOf("'nhs-supply-chain'"), sql.indexOf("'nhs-sbs'"));
+    const sbs = sql.slice(sql.indexOf("'nhs-sbs'"), sql.indexOf("on conflict"));
+    expect(supply).toContain("'PROHIBITED'");
+    expect(supply).toContain("false");
+    expect(sbs).toContain("'PROHIBITED'");
+    expect(sbs).toContain("false");
+    expect(sql).not.toContain("'UNKNOWN'");
     expect(sql).not.toMatch(/disable row level security/i);
     expect(sql.match(/false,/g)?.length).toBeGreaterThanOrEqual(8);
     const upcoming = mapPipelineRow(

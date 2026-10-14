@@ -71,14 +71,14 @@ values
     null,
     null,
     'https://www.supplychain.nhs.uk/legal-information/terms-of-use/',
-    'UNKNOWN',
+    'PROHIBITED',
     false,
     false,
     null,
     null,
     timestamptz '2026-10-14T00:00:00Z',
     timestamptz '2026-10-14T00:00:00Z',
-    'No open licence. Terms require a written licence before using site materials, and acceptable use forbids electronic copies of copyright material without permission. robots.txt disallows /wp-json/. Not automated.'
+    'Terms ban reuse without a written licence and ban electronic copies of copyright material. robots.txt disallows /wp-json/. PROHIBITED, disabled, no fetcher.'
   ),
   (
     'nhs-sbs',
@@ -90,14 +90,14 @@ values
     null,
     null,
     'https://www.sbs.nhs.uk/website-terms-and-conditions/',
-    'UNKNOWN',
+    'PROHIBITED',
     false,
     false,
     null,
     null,
     timestamptz '2026-10-14T00:00:00Z',
     timestamptz '2026-10-14T00:00:00Z',
-    'No open licence. Terms forbid commercial use and copying without prior written consent. The framework portal requires registration. Above-threshold notices stay on Find a Tender. Not automated.'
+    'Terms ban copying and commercial use without prior written consent. The framework portal requires registration. PROHIBITED, disabled, no fetcher. Above-threshold notices stay on Find a Tender.'
   )
 on conflict (source_key) do update set
   name = excluded.name,
