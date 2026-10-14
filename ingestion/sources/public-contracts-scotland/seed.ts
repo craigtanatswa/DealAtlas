@@ -31,7 +31,7 @@ export function publicContractsScotlandSourceRecord(
     robotsCheckedAt: "2026-10-14T00:00:00.000Z",
     termsCheckedAt: "2026-10-14T00:00:00.000Z",
     complianceNotes:
-      "Official OCDS API only, under the Open Government Licence v3.0. Do not scrape HTML. Disabled until an operator enables the row. Preserve-only ingestion. At most 10 requests per minute.",
+      "Official OCDS API only, under the Open Government Licence v3.0, including Quick Quote awards (notice type 104). Quick Quote invitations are not public. Do not scrape HTML. Disabled until an operator enables the row. Preserve-only ingestion. At most 10 requests per minute.",
     lastSuccessAt: null,
     consecutiveFailures: 0,
     ...overrides,

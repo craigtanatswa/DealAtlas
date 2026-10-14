@@ -7032,7 +7032,7 @@ values (
   10,
   timestamptz '2026-10-14T00:00:00Z',
   timestamptz '2026-10-14T00:00:00Z',
-  'Official OCDS Notices API only. Open Government Licence v3.0. Do not scrape the website HTML. Disabled until an operator enables the row. Preserve-only ingestion. At most 10 requests per minute. Keep TLS verification on.'
+  'Official OCDS Notices API only, including Quick Quote awards (notice type 104). Open Government Licence v3.0. Quick Quote invitations are not public. Do not scrape the website HTML. Disabled until an operator enables the row. Preserve-only ingestion. At most 10 requests per minute. Keep TLS verification on.'
 )
 on conflict (source_key) do update set
   name = excluded.name,

@@ -6,6 +6,8 @@ import { monthsCovering, noticesUrl } from "@/ingestion/sources/ocds-monthly/ada
 import { createPublicContractsScotlandAdapter } from "@/ingestion/sources/public-contracts-scotland/adapter";
 import {
   PUBLIC_CONTRACTS_SCOTLAND_MONTHLY_SOURCE,
+  PUBLIC_CONTRACTS_SCOTLAND_NOTICE_TYPES,
+  PUBLIC_CONTRACTS_SCOTLAND_QUICK_QUOTE_AWARD_TYPE,
   PUBLIC_CONTRACTS_SCOTLAND_SOURCE_KEY,
 } from "@/ingestion/sources/public-contracts-scotland/constants";
 import { parsePublicContractsScotlandRaw } from "@/ingestion/sources/public-contracts-scotland/parse";
@@ -466,6 +468,174 @@ describe.each(portals)("$key OCDS adapter", (portal) => {
     expect(result.status).toBe("SKIPPED");
     expect(openIngestShouldFail(result)).toBe(false);
     expect(result.counts.fetched).toBe(0);
+  });
+});
+
+describe("Public Contracts Scotland Quick Quote awards", () => {
+  it("requests notice type 104 and keeps the award off the free preview", async () => {
+    expect(PUBLIC_CONTRACTS_SCOTLAND_NOTICE_TYPES).toEqual([
+      102,
+      2,
+      5,
+      PUBLIC_CONTRACTS_SCOTLAND_QUICK_QUOTE_AWARD_TYPE,
+    ]);
+    expect(PUBLIC_CONTRACTS_SCOTLAND_QUICK_QUOTE_AWARD_TYPE).toBe(104);
+
+    const award = {
+      ocid: "ocds-r6ebe6-qq88421",
+      id: "rls-qq-88421",
+      date: "2026-09-08T09:00:00Z",
+      tag: ["award"],
+      initiationType: "tender",
+      tender: {
+        id: "QQ-REF-CANARY-88421",
+        title: "Canary quick quote award",
+        description: "Synthetic fixture.",
+        documents: [
+          {
+            id: "doc-qq-88421",
+            title: "Canary quotation",
+            url: "https://canary-docs.example/qq-88421.pdf",
+          },
+        ],
+      },
+      awards: [
+        {
+          id: "award-qq-88421",
+          date: "2026-09-01T00:00:00Z",
+          value: { amount: 12000, currency: "GBP" },
+          suppliers: [{ id: "GB-COH-QQ-88421", name: "Quellmoor Canary Supplies Ltd" }],
+        },
+      ],
+      parties: [
+        {
+          id: "GB-PPON-CANARY-88421",
+          name: "Quellmoor Canary Council",
+          identifier: { scheme: "GB-PPON", id: "CANARY-88421" },
+          contactPoint: {
+            name: "Canary Buyer",
+            email: "procure.canary@pcs.example",
+            telephone: "014149608842",
+          },
+          roles: ["buyer"],
+        },
+        {
+          id: "GB-COH-QQ-88421",
+          name: "Quellmoor Canary Supplies Ltd",
+          identifier: { scheme: "GB-COH", id: "QQ88421" },
+          contactPoint: { email: "bids.canary@supplier.example" },
+          roles: ["supplier"],
+        },
+      ],
+      buyer: { id: "GB-PPON-CANARY-88421", name: "Quellmoor Canary Council" },
+    };
+
+    const urls: string[] = [];
+    const store = createMemoryIngestionStore({
+      sources: [
+        publicContractsScotlandSourceRecord({ id: "source-pcs-qq", enabled: true }),
+      ],
+    });
+    const adapter = createPublicContractsScotlandAdapter({
+      now: () => NOW,
+      http: {
+        async getJson(url: string) {
+          urls.push(url);
+          const noticeType = new URL(url).searchParams.get("noticeType");
+          const body =
+            noticeType === "104"
+              ? packageOf([award], url)
+              : packageOf([], url);
+          return {
+            url,
+            status: 200,
+            contentType: "application/json",
+            body,
+            rawText: "{}",
+          };
+        },
+      },
+    });
+
+    const outcome = await runIngestion({
+      sourceKey: PUBLIC_CONTRACTS_SCOTLAND_SOURCE_KEY,
+      store,
+      adapter,
+      now: NOW,
+      limit: 5,
+      triggerType: "TEST",
+    });
+
+    expect(urls.map((url) => new URL(url).searchParams.get("noticeType"))).toEqual([
+      "102",
+      "2",
+      "5",
+      "104",
+    ]);
+    expect(urls.every((url) => new URL(url).pathname === "/v1/Notices")).toBe(true);
+    expect(outcome.counters.new).toBe(1);
+    expect(store.deals[0]?.dealType).toBe("AWARD");
+    expect(store.deals[0]?.status).toBe("UNCLASSIFIED");
+    expect(store.previews[0]?.isPublished).toBe(false);
+    expect(
+      store.organizations.some((org) => org.canonicalName === "Quellmoor Canary Supplies Ltd"),
+    ).toBe(true);
+
+    const preview = store.previews[0];
+    expect(preview).toBeTruthy();
+    const poisoned = {
+      slug: preview!.slug,
+      preview_title: preview!.previewTitle,
+      preview_summary: preview!.previewSummary,
+      deal_type: preview!.dealType,
+      buyer_sector: preview!.buyerSector,
+      stage: preview!.stage,
+      status: preview!.status,
+      main_category: preview!.mainCategory,
+      broad_region: preview!.broadRegion,
+      value_band: preview!.valueBand,
+      deadline_band: preview!.deadlineBand,
+      duration_band: preview!.durationBand,
+      sme_suitability: preview!.smeSuitability,
+      bid_complexity: preview!.bidComplexity,
+      competition_level: preview!.competitionLevel,
+      requirements_preview: preview!.requirementsPreview,
+      relevance_tags: preview!.relevanceTags,
+      freshness_label: preview!.freshnessLabel,
+      buyer_name: "Quellmoor Canary Council",
+      supplier_name: "Quellmoor Canary Supplies Ltd",
+      source_url: "https://canary-docs.example/qq-88421.pdf",
+      ocid: "ocds-r6ebe6-qq88421",
+      reference: "QQ-REF-CANARY-88421",
+      notice_identifier: "rls-qq-88421",
+      award_id: "award-qq-88421",
+      contact_email: "procure.canary@pcs.example",
+      supplier_email: "bids.canary@supplier.example",
+      phone: "014149608842",
+      documents: [{ url: "https://canary-docs.example/qq-88421.pdf" }],
+    };
+    const dto = toPublicDealPreview(poisoned);
+    const json = JSON.stringify(dto);
+    for (const key of FORBIDDEN_PUBLIC_KEYS) {
+      expect(key in dto).toBe(false);
+    }
+    for (const canary of [
+      "Quellmoor Canary Council",
+      "Quellmoor Canary Supplies Ltd",
+      "procure.canary@pcs.example",
+      "bids.canary@supplier.example",
+      "014149608842",
+      "https://canary-docs.example/qq-88421.pdf",
+      "rls-qq-88421",
+      "qq88421",
+      "QQ-REF-CANARY-88421",
+      "award-qq-88421",
+      "Canary quick quote award",
+      "Canary quotation",
+      "publiccontractsscotland",
+    ]) {
+      expect(json).not.toContain(canary);
+    }
   });
 });
 

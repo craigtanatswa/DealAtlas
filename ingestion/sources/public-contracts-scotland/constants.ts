@@ -19,8 +19,18 @@ export const PUBLIC_CONTRACTS_SCOTLAND_TERMS_URL =
 
 export const PUBLIC_CONTRACTS_SCOTLAND_PARSER_VERSION = "public-contracts-scotland-ocds@1";
 
-/** Contract notices: site notices, F2, and utilities F5. Awards are not requested. */
-export const PUBLIC_CONTRACTS_SCOTLAND_TENDER_TYPES = [102, 2, 5] as const;
+/**
+ * Site contract notices, F2, utilities F5, and published Quick Quote awards.
+ * Quick Quote invitations are not on the public API. Type 104 is the award.
+ */
+export const PUBLIC_CONTRACTS_SCOTLAND_QUICK_QUOTE_AWARD_TYPE = 104;
+
+export const PUBLIC_CONTRACTS_SCOTLAND_NOTICE_TYPES = [
+  102,
+  2,
+  5,
+  PUBLIC_CONTRACTS_SCOTLAND_QUICK_QUOTE_AWARD_TYPE,
+] as const;
 
 export const PUBLIC_CONTRACTS_SCOTLAND_FETCH_POLICY = {
   protocol: "https:" as const,
@@ -38,7 +48,7 @@ export const PUBLIC_CONTRACTS_SCOTLAND_MONTHLY_SOURCE: MonthlyOcdsSource = {
   sourceKey: PUBLIC_CONTRACTS_SCOTLAND_SOURCE_KEY,
   origin: PUBLIC_CONTRACTS_SCOTLAND_ORIGIN,
   fetchPolicy: PUBLIC_CONTRACTS_SCOTLAND_FETCH_POLICY,
-  noticeTypes: PUBLIC_CONTRACTS_SCOTLAND_TENDER_TYPES,
+  noticeTypes: PUBLIC_CONTRACTS_SCOTLAND_NOTICE_TYPES,
   parserVersion: PUBLIC_CONTRACTS_SCOTLAND_PARSER_VERSION,
   noticeUrl: publicContractsScotlandNoticeUrl,
 };

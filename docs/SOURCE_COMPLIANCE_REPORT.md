@@ -285,7 +285,7 @@ These are official public-sector notice portals, separate from the private-sourc
 
 | Source key | Reuse status | Scraping permitted | Enabled | Decision |
 | --- | --- | --- | --- | --- |
-| `public-contracts-scotland` | OPEN_LICENSE | false | no | Official OCDS Notices API under the Open Government Licence v3.0. |
+| `public-contracts-scotland` | OPEN_LICENSE | false | no | Official OCDS Notices API under the Open Government Licence v3.0, including Quick Quote awards (`noticeType` 104). |
 | `sell2wales` | OPEN_LICENSE | false | no | Official OCDS Notices API. The publication policy licences the data under the Open Government Licence. The RSS feed is a different licence and is not used. |
 
 On this date the API hosts presented a leaf certificate without the Sectigo intermediate. Standard TLS verification failed until that intermediate was supplied for this check only. The adapters keep TLS verification on.
@@ -300,7 +300,8 @@ On this date the API hosts presented a leaf certificate without the Sectigo inte
 | Robots | [robots.txt](https://www.publiccontractsscotland.gov.uk/robots.txt) includes `User-agent: *` / `Disallow: /`. That rule is for the website. Ingestion uses the API host, not HTML crawling. |
 | Reuse status | **OPEN_LICENSE** |
 | Automated scraping permitted? | **No** |
-| Implementation decision | **Build the adapter. Leave it disabled.** Request contract-notice types only. Do not download buyer documents. A shared OCID or `relatedProcesses` OCID attaches to the existing deal. |
+| Quick Quotes | The same API lists `noticeType` 104 as “Site Notice - Quick Quote Award”. A September 2026 request returned HTTP 200 OCDS JSON, `license` set to the Open Government Licence URL, and releases tagged `award`. The [purchaser guide](https://www.publiccontractsscotland.gov.uk/userguides/Quick%20Quote%20-%20Purchaser%20Guide.pdf) says: “Quick Quotes are only distributed to the selected suppliers and are not made public on the portal.” The [OCDS publication policy](https://www.publiccontractsscotland.gov.uk/NoticeDownload/Publication%20Policies-%20PCS%20OCDS%20v1.3-%20February%202022.pdf) includes “award notices published for quotations (Quick Quotes)”. Live invitations are not an official public feed. Ingestion requests type 104 only. |
+| Implementation decision | **Build the adapter. Leave it disabled.** Request contract notices and Quick Quote awards. Do not scrape the buyer Quick Quote workspace. Do not download buyer documents. A shared OCID or `relatedProcesses` OCID attaches to the existing deal. |
 
 ### Sell2Wales
 
