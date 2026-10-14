@@ -282,11 +282,11 @@ select is(
 create temp table pr6_pub (result jsonb);
 insert into pr6_pub select public.publish_eligible_previews(1, 'run-41');
 
-select is((select (result->>'selected')::int from pr6_pub), 6, 'six rows are eligible before the cap');
+select is((select (result->>'selected')::int from pr6_pub), 5, 'five rows are eligible before the cap');
 select is((select (result->>'published')::int from pr6_pub), 1, 'cap 1 publishes one row');
-select is((select (result->>'skipped_cap')::int from pr6_pub), 5, 'cap leaves five eligible rows');
+select is((select (result->>'skipped_cap')::int from pr6_pub), 4, 'cap leaves four eligible rows');
 select is((select (result->>'skipped_risk')::int from pr6_pub), 2, 'stored HIGH and a live non-LOW rescore are skipped');
-select is((select (result->>'skipped_source')::int from pr6_pub), 4, 'unknown, licensed, terms-reviewed and disabled sources are skipped');
+select is((select (result->>'skipped_source')::int from pr6_pub), 5, 'unknown, licensed, terms-reviewed, disabled and scraping_permitted=false sources are skipped');
 select is((select (result->>'skipped_status')::int from pr6_pub), 4, 'closed, mismatched and planning-open rows are skipped');
 select is((select (result->>'skipped_deadline')::int from pr6_pub), 2, 'a deadline inside 24 hours and a past upcoming deadline are skipped');
 select is((select (result->>'skipped_held')::int from pr6_pub), 2, 'admin-held and preview-hold rows are skipped');
@@ -392,7 +392,7 @@ select is(
 
 create temp table pr6_rest (result jsonb);
 insert into pr6_rest select public.publish_eligible_previews(500, 'run-41b');
-select is((select (result->>'published')::int from pr6_rest), 4, 'the remaining eligible rows are published');
+select is((select (result->>'published')::int from pr6_rest), 3, 'the remaining eligible rows are published');
 select is(
   (select is_published from public.deal_previews where deal_id = 'c6000000-0000-4000-8000-000000000003'),
   true,
