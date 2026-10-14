@@ -82,9 +82,7 @@ export async function createAuthenticatedCheckoutResponse(input: {
   }
 
   const foundingCheckout =
-    parsed.planKey === "PRO_ANNUAL" &&
-    config.environment === "test_mode" &&
-    Boolean(config.products.FOUNDING_ANNUAL);
+    parsed.planKey === "PRO_ANNUAL" && Boolean(config.products.FOUNDING_ANNUAL);
   const founder = foundingCheckout ? await readFoundingMember(input.user.id) : false;
   const reservation = reservationForCheckout(
     founder,
@@ -94,7 +92,7 @@ export async function createAuthenticatedCheckoutResponse(input: {
     planKey: parsed.planKey,
     products: config.products,
     reservation,
-    testMode: config.environment === "test_mode",
+    testMode: config.environment === "test_mode" || Boolean(config.products.FOUNDING_ANNUAL),
   });
   const mapped = mapPlanKey(parsed.planKey, config.products);
   const returnTo = parseCheckoutReturnTo(

@@ -98,13 +98,21 @@ describe("founding member checkout", () => {
     ).toBe(products.PRO_ANNUAL);
   });
 
-  it("ignores a client product id and does not offer founding outside test mode", () => {
+  it("ignores a client product id and still reserves founding in live mode", () => {
     expect(parseCheckoutRequest({ planKey: "PRO_ANNUAL", product_id: products.FOUNDING_ANNUAL }).ok).toBe(false);
     expect(parseCheckoutRequest({ planKey: "FOUNDING" }).ok).toBe(false);
     expect(
       selectCheckoutProduct({
         planKey: "PRO_ANNUAL",
         products,
+        reservation: "reserved",
+        testMode: false,
+      }).productId,
+    ).toBe(products.FOUNDING_ANNUAL);
+    expect(
+      selectCheckoutProduct({
+        planKey: "PRO_ANNUAL",
+        products: { PRO_MONTHLY: products.PRO_MONTHLY, PRO_ANNUAL: products.PRO_ANNUAL },
         reservation: "reserved",
         testMode: false,
       }).productId,
@@ -194,17 +202,24 @@ describe("founding member checkout", () => {
     expect(webhook.sign("evt_ok", new Date(), body)).toContain("v1,");
   });
 
-  it("refuses the founding product id in live mode", () => {
+  it("requires a live-format founding product id in live mode", () => {
+    const live = {
+      DODO_PAYMENTS_ENVIRONMENT: "live_mode" as const,
+      DODO_PAYMENTS_API_KEY: "dodo_live_prod_key",
+      DODO_PAYMENTS_WEBHOOK_KEY: "whsec_live_example_secret",
+      DODO_PAYMENTS_RETURN_URL: "https://www.dealatlas.example/checkout/success",
+      DODO_PRO_MONTHLY_PRODUCT_ID: "pdt_live_monthly",
+      DODO_PRO_ANNUAL_PRODUCT_ID: "pdt_live_annual",
+    };
+    expect(liveDodoConfigErrors(live).join("\n")).toMatch(/DODO_FOUNDING_PRODUCT_ID/);
+    expect(
+      liveDodoConfigErrors({ ...live, DODO_FOUNDING_PRODUCT_ID: "pdt_live_founding" }).join("\n"),
+    ).toMatch(/pdt_/);
     expect(
       liveDodoConfigErrors({
-        DODO_PAYMENTS_ENVIRONMENT: "live_mode",
-        DODO_PAYMENTS_API_KEY: "dodo_live_prod_key",
-        DODO_PAYMENTS_WEBHOOK_KEY: "whsec_live_example_secret",
-        DODO_PAYMENTS_RETURN_URL: "https://www.dealatlas.example/checkout/success",
-        DODO_PRO_MONTHLY_PRODUCT_ID: "pdt_live_monthly",
-        DODO_PRO_ANNUAL_PRODUCT_ID: "pdt_live_annual",
-        DODO_FOUNDING_PRODUCT_ID: "pdt_live_founding",
-      }).join("\n"),
-    ).toMatch(/DODO_FOUNDING_PRODUCT_ID/);
+        ...live,
+        DODO_FOUNDING_PRODUCT_ID: "pdt_0Npk9UeAQUpFBQDttq6lS",
+      }),
+    ).toEqual([]);
   });
 });

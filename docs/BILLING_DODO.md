@@ -6,7 +6,8 @@ Dodo Payments is the Merchant of Record for DealAtlas digital subscriptions.
 Launch products:
 - DealAtlas Pro Monthly — recommended test price £39/month
 - DealAtlas Pro Annual — recommended test price £390/year
-- DealAtlas Founding Member annual — test price £290/year, only while `DODO_PAYMENTS_ENVIRONMENT=test_mode` and `DODO_FOUNDING_PRODUCT_ID` is set. The server reserves one of 25 lifetime slots. A founder keeps £290/year after cancel and resubscribe, and that slot is never reissued. Sold out, or live mode, uses the standard annual product. The browser cannot choose the product id. `GET /api/founding` returns `{ remaining, sold_out }` only. One processed event and one Dodo subscription mark one founder.
+- DealAtlas Founding Member annual — £290/year. Live product id `pdt_0Npk9UeAQUpFBQDttq6lS`. `DODO_FOUNDING_PRODUCT_ID` is optional in `test_mode` and required in `live_mode`, where it must match `pdt_` plus 21 letters or digits. The server reserves one of 25 lifetime slots and picks the product. A founder keeps £290/year after cancel and resubscribe, and that slot is never reissued. Sold out uses the standard annual product. The browser cannot choose the product id. `GET /api/founding` returns `{ remaining, sold_out }` only. One processed event and one Dodo subscription mark one founder.
+- Live DealAtlas Pro is £39/month and £390/year, both VAT-inclusive.
 
 Do not offer a free trial that reveals protected source identity. Free DealAtlas accounts exist independently of Dodo.
 

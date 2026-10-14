@@ -11,7 +11,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 function foundingConfigured(): boolean {
   const env = getServerEnv();
-  return env.DODO_PAYMENTS_ENVIRONMENT === "test_mode" && Boolean(env.DODO_FOUNDING_PRODUCT_ID);
+  return Boolean(env.DODO_FOUNDING_PRODUCT_ID);
 }
 
 export async function readFoundingMember(userId: string): Promise<boolean> {
