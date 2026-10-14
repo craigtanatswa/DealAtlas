@@ -3,6 +3,7 @@ import {
   durationBandFromDates,
   valueBandFromAmounts,
 } from "@/lib/preview/bands";
+import { composeFreePreview, encodePreviewDetails } from "@/lib/preview/compose";
 import { broadRegionFromLocation } from "@/lib/preview/region";
 import {
   scanPreviewLeaks,
@@ -15,7 +16,7 @@ import {
   inferSmeSuitability,
 } from "@/ingestion/intelligence/extract";
 import type { LanguageModelProvider } from "@/ingestion/intelligence/provider";
-import { RULES_MODEL, sectorOrganisationNoun } from "@/ingestion/intelligence/types";
+import { RULES_MODEL } from "@/ingestion/intelligence/types";
 import type {
   IntelligenceContext,
   PreviewDraft,
@@ -87,46 +88,11 @@ function relevanceTags(context: IntelligenceContext): string[] {
 }
 
 export function buildPreviewTitle(context: IntelligenceContext, aggressive = false): string {
-  const category = context.deal.mainCategory || "Commercial";
-  const typeNoun = DEAL_TYPE_LABELS[context.deal.dealType].toLowerCase();
-  const sector = sectorOrganisationNoun(context.deal.buyerSector);
-  if (aggressive) {
-    return `${category} opportunity for a ${sector}`;
-  }
-  const region = broadRegionFromLocation([
-    context.deal.exactLocationText,
-    ...context.lots.map((lot) => lot.exactLocationText),
-  ]);
-  const regionClause =
-    region && region !== "Nationwide" && region !== "Remote" ? ` in ${region}` : "";
-  return `${category} ${typeNoun} for a ${sector}${regionClause}`;
+  return composeFreePreview(context, aggressive).title;
 }
 
 export function buildPreviewSummary(context: IntelligenceContext, aggressive = false): string {
-  const sector = sectorOrganisationNoun(context.deal.buyerSector);
-  const category = context.deal.mainCategory?.toLowerCase() ?? "the advertised capability";
-  const value = valueBandFromAmounts(context.deal.valueMinExVat, context.deal.valueMaxExVat);
-  const deadline = deadlineBandFromDeadline(
-    context.deal.submissionDeadline,
-    context.now,
-    context.deal.status,
-  );
-  const region = broadRegionFromLocation([
-    context.deal.exactLocationText,
-    ...context.lots.map((lot) => lot.exactLocationText),
-  ]);
-  const sme = inferSmeSuitability(context).level;
-  if (aggressive) {
-    return `A ${sector} is seeking ${category}. Value ${value}. ${deadline}.`;
-  }
-  const regionClause = region ? ` Coverage is described at ${region} level.` : "";
-  const smeClause =
-    sme === "HIGH"
-      ? " The notice appears relatively accessible for SMEs."
-      : sme === "LOW"
-        ? " SME accessibility looks limited."
-        : "";
-  return `A ${sector} is seeking ${category} through a ${DEAL_TYPE_LABELS[context.deal.dealType].toLowerCase()}.${regionClause} Estimated value ${value}. Closing window: ${deadline}.${smeClause}`;
+  return composeFreePreview(context, aggressive).summary;
 }
 
 export function leakScanInputFromContext(
@@ -197,8 +163,6 @@ function leakInput(
 
 function assembleDraft(
   context: IntelligenceContext,
-  title: string,
-  summary: string,
   aggressive: boolean,
   generationMethod: PreviewDraft["generationMethod"],
   modelVersion: string,
@@ -206,11 +170,15 @@ function assembleDraft(
   const sme = inferSmeSuitability(context).level;
   const complexity = inferBidComplexity(context).level;
   const competition = inferCompetitionLevel(context).level;
-  const requirements = requirementsPreviewFromContext(context, aggressive ? 2 : 4);
+  const composed = composeFreePreview(context, aggressive);
+  const requirements = [
+    ...encodePreviewDetails(composed.details),
+    ...requirementsPreviewFromContext(context, aggressive ? 2 : 4),
+  ];
   const tags = relevanceTags(context);
   const draft = {
-    previewTitle: title,
-    previewSummary: summary,
+    previewTitle: composed.title,
+    previewSummary: composed.summary,
     requirementsPreview: requirements,
     relevanceTags: tags,
   };
@@ -259,8 +227,6 @@ export async function generatePreviewDraft(
   const aggressive = options?.aggressive ?? false;
   let draft = assembleDraft(
     context,
-    buildPreviewTitle(context, aggressive),
-    buildPreviewSummary(context, aggressive),
     aggressive,
     "RULES",
     `${RULES_MODEL.id}/${RULES_MODEL.version}`,

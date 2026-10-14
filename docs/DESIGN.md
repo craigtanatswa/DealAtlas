@@ -75,6 +75,7 @@ Listing-style cards, scannable like a professional B2B directory:
 
 - DealAtlas preview title
 - sanitised summary with enough commercial detail to judge fit
+- CPV description, day-count deadline and publication month when those fields exist
 - status
 - public/private buyer
 - category
