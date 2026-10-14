@@ -2,14 +2,9 @@
 
 export const PUBLISHABLE_REUSE = ["OPEN_LICENSE", "PERMISSION_GRANTED", "UNKNOWN"] as const;
 
-export function sourceMayPublish(source: {
-  enabled: boolean;
-  reuseStatus: string;
-  scrapingPermitted?: boolean | null;
-}): boolean {
+export function sourceMayPublish(source: { enabled: boolean; reuseStatus: string }): boolean {
   return (
     source.enabled &&
-    source.scrapingPermitted !== false &&
     (PUBLISHABLE_REUSE as readonly string[]).includes(source.reuseStatus) &&
     source.reuseStatus !== "PROHIBITED"
   );

@@ -23,7 +23,7 @@ insert into public.data_sources (
   ('d4000000-0000-4000-8000-000000000001', 'pr40-unknown', 'Silent terms feed', 'GOVERNMENT_OPEN_DATA', 'JSON_API', 'UNKNOWN', true, true),
   ('d4000000-0000-4000-8000-000000000002', 'pr40-prohibited', 'Prohibited feed', 'GOVERNMENT_OPEN_DATA', 'JSON_API', 'PROHIBITED', true, true),
   ('d4000000-0000-4000-8000-000000000003', 'pr40-disabled', 'Disabled silent feed', 'GOVERNMENT_OPEN_DATA', 'JSON_API', 'UNKNOWN', true, false),
-  ('d4000000-0000-4000-8000-000000000004', 'pr40-noscrape', 'Scraping refused feed', 'GOVERNMENT_OPEN_DATA', 'JSON_API', 'OPEN_LICENSE', false, true);
+  ('d4000000-0000-4000-8000-000000000004', 'pr40-api', 'Official API feed', 'GOVERNMENT_OPEN_DATA', 'OCDS_API', 'OPEN_LICENSE', false, true);
 
 insert into public.deals (
   id, primary_source_id, source_title, buyer_organization_id,
@@ -75,42 +75,49 @@ select is(
   'an enabled UNKNOWN source publishes'
 );
 select is(
+  (select is_published from public.deal_previews where deal_id = 'c4000000-0000-4000-8000-000000000004'),
+  true,
+  'an OPEN_LICENSE API source with scraping_permitted=false still publishes'
+);
+select is(
   (select count(*)::int from public.deal_previews
     where deal_id in (
       'c4000000-0000-4000-8000-000000000002',
-      'c4000000-0000-4000-8000-000000000003',
-      'c4000000-0000-4000-8000-000000000004'
+      'c4000000-0000-4000-8000-000000000003'
     )
     and is_published),
   0,
-  'PROHIBITED, disabled, or scraping_permitted=false never publishes'
+  'PROHIBITED and disabled sources never publish'
 );
 
 update public.deal_previews
 set is_published = true
 where deal_id in (
   'c4000000-0000-4000-8000-000000000002',
-  'c4000000-0000-4000-8000-000000000003',
-  'c4000000-0000-4000-8000-000000000004'
+  'c4000000-0000-4000-8000-000000000003'
 );
 
 select public.unpublish_stale_previews('run-40b');
 
 select is(
-  (select is_published from public.deal_previews where deal_id = 'c4000000-0000-4000-8000-000000000001'),
-  true,
-  'an enabled UNKNOWN preview stays published'
+  (select count(*)::int from public.deal_previews
+    where deal_id in (
+      'c4000000-0000-4000-8000-000000000001',
+      'c4000000-0000-4000-8000-000000000004'
+    )
+    and is_published),
+  2,
+  'UNKNOWN and scraping_permitted=false OPEN_LICENSE stay published'
 );
 select is(
   (select count(*)::int from public.deal_previews
     where deal_id in (
       'c4000000-0000-4000-8000-000000000002',
-      'c4000000-0000-4000-8000-000000000003',
-      'c4000000-0000-4000-8000-000000000004'
+      'c4000000-0000-4000-8000-000000000003'
     )
     and is_published),
   0,
-  'unpublish removes PROHIBITED, disabled, and scraping_permitted=false rows'
+  'unpublish removes PROHIBITED and disabled rows'
 );
 
 select * from finish();

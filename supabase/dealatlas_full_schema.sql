@@ -6993,8 +6993,8 @@ grant execute on function public.claim_founding_activation(text, text, uuid) to 
 -- ============================================================================
 
 -- Enabled sources with OPEN_LICENSE, PERMISSION_GRANTED or silent UNKNOWN
--- terms may publish. Access method is not a publish gate. PROHIBITED,
--- disabled, and scraping_permitted = false stay excluded.
+-- terms may publish. Access method is not a publish gate.
+-- PROHIBITED and disabled sources stay excluded.
 -- OPEN and CLOSING_SOON may have a null submission_deadline. A non-null
 -- deadline must be more than 24 hours away on first publish, and must not
 -- be in the past. A null deadline is not unpublished.
@@ -7038,7 +7038,6 @@ begin
               'UNKNOWN'::public.reuse_status
             )
             and s.reuse_status <> 'PROHIBITED'::public.reuse_status
-            and s.scraping_permitted is distinct from false
         ) then 'source'
         when not (
           dp.status = d.status
@@ -7176,7 +7175,6 @@ begin
               'UNKNOWN'::public.reuse_status
             )
             and s.reuse_status <> 'PROHIBITED'::public.reuse_status
-            and s.scraping_permitted is distinct from false
         )
         or exists (
           select 1 from private.publish_denylist x where x.deal_id = dp.deal_id
@@ -7226,7 +7224,7 @@ revoke all on function public.unpublish_stale_previews(text) from public, anon, 
 grant execute on function public.unpublish_stale_previews(text) to service_role;
 
 comment on function public.unpublish_stale_previews(text) is
-  'Does not unpublish a row only because its deadline is under 24 hours away, null, or because its slug is non-template or retired. Those checks gate first publication, except a null deadline which stays publishable. OPEN, CLOSING_SOON and UPCOMING come down once a non-null deadline is in the past. EARLY, AWARD and CONTRACT stages come down. A disabled source, a PROHIBITED source, or scraping_permitted = false comes down. UNKNOWN terms stay up when the source is enabled and scraping is not false.';
+  'Does not unpublish a row only because its deadline is under 24 hours away, null, or because its slug is non-template or retired. Those checks gate first publication, except a null deadline which stays publishable. OPEN, CLOSING_SOON and UPCOMING come down once a non-null deadline is in the past. EARLY, AWARD and CONTRACT stages come down. A disabled or PROHIBITED source comes down. UNKNOWN terms stay up when the source is enabled.';
 
 -- ============================================================================
 -- END 0040_publish_unknown_terms_sources.sql

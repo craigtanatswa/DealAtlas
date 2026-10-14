@@ -111,7 +111,7 @@ describe("supabase migrations", () => {
     const sql = readMigration("0040_publish_unknown_terms_sources.sql");
     expect(sql).toContain("'UNKNOWN'::public.reuse_status");
     expect(sql).toContain("s.reuse_status <> 'PROHIBITED'::public.reuse_status");
-    expect(sql).toContain("s.scraping_permitted is distinct from false");
+    expect(sql).not.toContain("scraping_permitted");
     expect(sql).not.toMatch(/disable row level security/i);
   });
 
