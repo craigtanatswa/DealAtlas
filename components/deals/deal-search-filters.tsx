@@ -264,7 +264,7 @@ export function DealSearchPanel({
           <div className="flex items-center gap-3">
             <DealKeywordFields
               filters={filters}
-              idPrefix="deals-search"
+              idPrefix="search"
               label="Search"
               labelClassName="sr-only"
               placeholder="Search opportunities"
