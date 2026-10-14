@@ -8,6 +8,12 @@ const FORBIDDEN_REASON_PATTERNS = [
   /\bocds-/i,
   /\bfind a tender\b/i,
   /\bcontracts finder\b/i,
+  /\bfind a grant\b/i,
+  /\bfind-government-grants\b/i,
+  /\binnovate uk\b/i,
+  /\binnovation funding service\b/i,
+  /\bapply-for-innovation-funding\b/i,
+  /\betendersni\b/i,
 ];
 
 export function dropLeakingReasons(

@@ -37,6 +37,8 @@ export function ingestAlertBody(input: {
   buildCountsJson?: string;
   ingestOk?: string;
   contractsFinderOk?: string;
+  findAGrantOk?: string;
+  innovateUkOk?: string;
   buildOk?: string;
   unpublishOk?: string;
   publishOk?: string;
@@ -46,6 +48,8 @@ export function ingestAlertBody(input: {
     ...pickCounts(input.buildCountsJson, "build_"),
     ingest_ok: numericFlag(input.ingestOk),
     contracts_finder_ok: numericFlag(input.contractsFinderOk),
+    find_a_grant_ok: numericFlag(input.findAGrantOk),
+    innovate_uk_ok: numericFlag(input.innovateUkOk),
     build_ok: numericFlag(input.buildOk),
     unpublish_ok: numericFlag(input.unpublishOk),
     publish_ok: numericFlag(input.publishOk),
@@ -60,6 +64,8 @@ export async function sendIngestAlert(options: {
   buildCountsJson?: string;
   ingestOk?: string;
   contractsFinderOk?: string;
+  findAGrantOk?: string;
+  innovateUkOk?: string;
   buildOk?: string;
   unpublishOk?: string;
   publishOk?: string;

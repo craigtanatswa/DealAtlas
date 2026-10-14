@@ -64,8 +64,14 @@ describe("ingest-open workflow", () => {
     expect(publishStep).not.toContain("steps.contracts_finder.outcome");
     expect(ingestJob).not.toContain("continue-on-error");
     expect(ingestJob.indexOf("id: ingest")).toBeLessThan(ingestJob.indexOf("id: contracts_finder"));
-    expect(ingestJob.indexOf("id: contracts_finder")).toBeLessThan(ingestJob.indexOf("id: build"));
+    expect(ingestJob.indexOf("id: contracts_finder")).toBeLessThan(ingestJob.indexOf("id: find_a_grant"));
+    expect(ingestJob.indexOf("id: find_a_grant")).toBeLessThan(ingestJob.indexOf("id: innovate_uk"));
+    expect(ingestJob.indexOf("id: innovate_uk")).toBeLessThan(ingestJob.indexOf("id: build"));
     expect(ingestJob).toContain("OPEN_INGEST_SOURCE: contracts-finder");
+    expect(ingestJob).toContain("OPEN_INGEST_SOURCE: find-a-grant");
+    expect(ingestJob).toContain("OPEN_INGEST_SOURCE: innovate-uk");
+    expect(publishStep).not.toContain("steps.find_a_grant.outcome");
+    expect(publishStep).not.toContain("steps.innovate_uk.outcome");
     expect(ingestJob).toContain("CONTRACTS_FINDER_OK: ${{ steps.contracts_finder.outcome == 'success' && '1' || '0' }}");
     expect(unpublishJob).not.toContain("ingest-open");
     expect(unpublishJob).not.toContain("Build previews");
