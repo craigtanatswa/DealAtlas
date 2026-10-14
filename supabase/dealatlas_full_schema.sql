@@ -7121,6 +7121,7 @@ insert into private.leak_gate_terms (kind, term) values
   ('source_platform', 'find-government-grants'),
   ('source_platform', 'innovation funding service'),
   ('source_platform', 'innovate uk'),
+  ('source_platform', 'innovate uk funding competitions'),
   ('source_platform', 'ukri funding finder'),
   ('source_platform', 'ukri.org')
 on conflict (kind, term) do nothing;

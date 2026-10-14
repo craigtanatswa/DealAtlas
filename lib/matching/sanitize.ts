@@ -11,6 +11,7 @@ const FORBIDDEN_REASON_PATTERNS = [
   /\bfind a grant\b/i,
   /\bfind-government-grants\b/i,
   /\binnovate uk\b/i,
+  /\binnovate uk funding competitions\b/i,
   /\binnovation funding service\b/i,
   /\bapply-for-innovation-funding\b/i,
   /\betendersni\b/i,

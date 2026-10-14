@@ -138,6 +138,7 @@ export const SOURCE_PLATFORM_MARKERS = [
   "find-tender",
   "innovation funding service",
   "innovate uk",
+  "innovate uk funding competitions",
   "hinkley point c supply chain",
   "hs2 direct contract opportunities",
   "hs2 indirect supply chain opportunities",
