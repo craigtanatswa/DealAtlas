@@ -2,6 +2,7 @@ export {
   createContractsFinderAdapter,
   CONTRACTS_FINDER_SOURCE_KEY,
 } from "@/ingestion/sources/contracts-finder";
+export { createTedAdapter, TED_SOURCE_KEY } from "@/ingestion/sources/ted";
 export { createFindATenderAdapter, FIND_A_TENDER_SOURCE_KEY } from "@/ingestion/sources/find-a-tender";
 export {
   createUkInfrastructurePipelineAdapter,

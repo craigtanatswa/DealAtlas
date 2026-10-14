@@ -58,6 +58,7 @@ async function main() {
     publicIngestErrorLine,
     runOpenContractsFinderIngest,
     runOpenFindATenderIngest,
+    runOpenTedIngest,
   } = await import("@/lib/jobs/ingest-open");
   const { createSupabaseIngestionStore } = await import("@/ingestion/store/supabase");
   const { createIngestionSupabaseClient } = await import(
@@ -68,13 +69,15 @@ async function main() {
   const store = createSupabaseIngestionStore(createIngestionSupabaseClient());
   const statePath = process.env.OPEN_INGEST_STATE;
   const source = (process.env.OPEN_INGEST_SOURCE ?? "find-a-tender").trim();
-  if (source !== "find-a-tender" && source !== "contracts-finder") {
-    throw new Error("OPEN_INGEST_SOURCE must be find-a-tender or contracts-finder");
+  if (source !== "find-a-tender" && source !== "contracts-finder" && source !== "ted") {
+    throw new Error("OPEN_INGEST_SOURCE must be find-a-tender, contracts-finder, or ted");
   }
   const run =
-    source === "contracts-finder"
-      ? runOpenContractsFinderIngest
-      : runOpenFindATenderIngest;
+    source === "ted"
+      ? runOpenTedIngest
+      : source === "contracts-finder"
+        ? runOpenContractsFinderIngest
+        : runOpenFindATenderIngest;
   const result = await run({
     store,
     dryRun: phase === "previews" ? false : dryRun,
@@ -84,7 +87,7 @@ async function main() {
   });
   if (phase === "ingest" && statePath && !dryRun) {
     const prior =
-      source === "contracts-finder" ? readChangedDealIds(statePath) : [];
+      source === "find-a-tender" ? [] : readChangedDealIds(statePath);
     const ids = [...new Set([...prior, ...result.changedDealIds])];
     fs.writeFileSync(statePath, JSON.stringify(ids));
   }

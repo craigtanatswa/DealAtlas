@@ -53,10 +53,11 @@ UNKNOWN or PROHIBITED => block automatic production ingestion
 Build adapters in this order, subject to current official access terms:
 1. Find a Tender official OCDS API (`GET https://www.find-tender.service.gov.uk/api/1.0/ocdsReleasePackages`, plus `ocdsRecordPackages/{ocid}` and notice/OCID lookups). Notice data is published under the Open Government Licence. Do not scrape Find a Tender HTML when this API is available.
 2. Contracts Finder official OCDS Search feed (`GET https://www.contractsfinder.service.gov.uk/Published/Notices/OCDS/Search`) under the Open Government Licence v3.0. Do not scrape Contracts Finder HTML. Ingestion is preserve-only. Above-threshold notices that share an OCID with Find a Tender, or cite a Find a Tender OCID (`ocds-h6vhtk-`) in `relatedProcesses`, are linked onto the existing deal and do not create a second public deal.
-3. Public Contracts Scotland official data/API/feed if available.
-4. Sell2Wales official OCDS/API/bulk data if available.
-5. eTendersNI official/public mechanisms where permitted.
-6. Buyer-specific public procurement pages where lawful and worthwhile.
+3. TED (Tenders Electronic Daily) Search API v3 (`POST https://api.ted.europa.eu/v3/notices/search`, no API key). Notices may be reused, including commercially, under Commission Decision 2011/833/EU. Credit the European Union. Do not use the TED logo. Do not scrape TED HTML and do not download notice XML or PDF. The expert query uses `notice-type` (competition notices only), `procedure-type` (public calls: open, restricted, competitive with negotiation, competitive dialogue, innovation partnership; design contests are included even when procedure type is absent), `submission-language` = ENG, `deadline-receipt-request` on or after today with a second check that the deadline instant is still in the future, and `place-of-performance` in the EU-27 or anywhere in the EEA. `publication-date` is only the ingest window. UK notices stay on Find a Tender. The adapter is preserve-only. The `data_sources` row is disabled until it is turned on. A TED fetch failure must not skip Find a Tender publish.
+4. Public Contracts Scotland official data/API/feed if available.
+5. Sell2Wales official OCDS/API/bulk data if available.
+6. eTendersNI official/public mechanisms where permitted.
+7. Buyer-specific public procurement pages where lawful and worthwhile.
 
 ## 6. Initial private-sector discovery strategy
 Create a reusable private-source adapter framework rather than hard-coding one private company.

@@ -12,7 +12,18 @@ import {
   FIND_A_TENDER_SOURCE_KEY,
   formatOcdsDateTime,
 } from "@/ingestion/sources/find-a-tender/constants";
-import { createRequestPacer } from "@/ingestion/sources/find-a-tender/pace";
+import {
+  FIND_A_TENDER_REQUEST_LIMIT,
+  FIND_A_TENDER_REQUEST_WINDOW_MS,
+  createRequestPacer,
+} from "@/ingestion/sources/find-a-tender/pace";
+import { createTedAdapter } from "@/ingestion/sources/ted/adapter";
+import {
+  TED_FETCH_POLICY,
+  TED_REQUEST_LIMIT,
+  TED_REQUEST_WINDOW_MS,
+  TED_SOURCE_KEY,
+} from "@/ingestion/sources/ted/constants";
 import type { SourceAdapter } from "@/ingestion/core/types";
 import type { IngestionStore } from "@/ingestion/store/types";
 import { rebuildChangedPreviews } from "@/lib/jobs/previews";
@@ -241,36 +252,58 @@ export async function runOpenFindATenderIngest(options: {
   /** ingest writes canonical rows. previews rebuilds changed deals. all does both. */
   phase?: "ingest" | "previews" | "all";
   dealIds?: string[];
-  sourceKey?: typeof FIND_A_TENDER_SOURCE_KEY | typeof CONTRACTS_FINDER_SOURCE_KEY;
+  sourceKey?:
+    | typeof FIND_A_TENDER_SOURCE_KEY
+    | typeof CONTRACTS_FINDER_SOURCE_KEY
+    | typeof TED_SOURCE_KEY;
 }): Promise<OpenIngestResult> {
   const now = options.now ?? new Date();
   const sleep = options.sleep ?? defaultSleep;
-  const pace = createRequestPacer({ sleep });
   const sourceKey = options.sourceKey ?? FIND_A_TENDER_SOURCE_KEY;
+  const pace = createRequestPacer({
+    sleep,
+    maxRequests: sourceKey === TED_SOURCE_KEY ? TED_REQUEST_LIMIT : FIND_A_TENDER_REQUEST_LIMIT,
+    windowMs:
+      sourceKey === TED_SOURCE_KEY ? TED_REQUEST_WINDOW_MS : FIND_A_TENDER_REQUEST_WINDOW_MS,
+  });
   const http =
     options.http ??
     createAllowlistedJsonClient(
-      sourceKey === CONTRACTS_FINDER_SOURCE_KEY
-        ? CONTRACTS_FINDER_FETCH_POLICY
-        : FIND_A_TENDER_FETCH_POLICY,
+      sourceKey === TED_SOURCE_KEY
+        ? TED_FETCH_POLICY
+        : sourceKey === CONTRACTS_FINDER_SOURCE_KEY
+          ? CONTRACTS_FINDER_FETCH_POLICY
+          : FIND_A_TENDER_FETCH_POLICY,
     );
   const paced: JsonHttpClient = {
     async getJson(url: string) {
       await pace();
       return http.getJson(url);
     },
+    async postJson(url: string, body: unknown) {
+      await pace();
+      if (!http.postJson) {
+        throw new Error("JSON client has no postJson");
+      }
+      return http.postJson(url, body);
+    },
   };
   const adapter =
     options.adapter ??
-    (sourceKey === CONTRACTS_FINDER_SOURCE_KEY
-      ? createContractsFinderAdapter({
+    (sourceKey === TED_SOURCE_KEY
+      ? createTedAdapter({
           http: paced,
           now: () => now,
         })
-      : createFindATenderAdapter({
-          http: paced,
-          now: () => now,
-        }));
+      : sourceKey === CONTRACTS_FINDER_SOURCE_KEY
+        ? createContractsFinderAdapter({
+            http: paced,
+            now: () => now,
+          })
+        : createFindATenderAdapter({
+            http: paced,
+            now: () => now,
+          }));
 
   const counts = emptyCounts();
   const errors: OpenIngestError[] = [];
@@ -415,5 +448,14 @@ export function runOpenContractsFinderIngest(
   return runOpenFindATenderIngest({
     ...options,
     sourceKey: CONTRACTS_FINDER_SOURCE_KEY,
+  });
+}
+
+export function runOpenTedIngest(
+  options: Omit<Parameters<typeof runOpenFindATenderIngest>[0], "sourceKey">,
+): Promise<OpenIngestResult> {
+  return runOpenFindATenderIngest({
+    ...options,
+    sourceKey: TED_SOURCE_KEY,
   });
 }
