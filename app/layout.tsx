@@ -53,6 +53,19 @@ function buildRootMetadata(): Metadata {
       description: APP_DESCRIPTION,
       images: [BRAND_OPENGRAPH_IMAGE.url],
     },
+    icons: {
+      icon: [
+        { url: "/brand/favicon-light-16.png", sizes: "16x16", type: "image/png", media: "(prefers-color-scheme: light)" },
+        { url: "/brand/favicon-light-32.png", sizes: "32x32", type: "image/png", media: "(prefers-color-scheme: light)" },
+        { url: "/brand/favicon-light-48.png", sizes: "48x48", type: "image/png", media: "(prefers-color-scheme: light)" },
+        { url: "/brand/favicon-light-180.png", sizes: "180x180", type: "image/png", media: "(prefers-color-scheme: light)" },
+        { url: "/brand/favicon-dark-16.png", sizes: "16x16", type: "image/png", media: "(prefers-color-scheme: dark)" },
+        { url: "/brand/favicon-dark-32.png", sizes: "32x32", type: "image/png", media: "(prefers-color-scheme: dark)" },
+        { url: "/brand/favicon-dark-48.png", sizes: "48x48", type: "image/png", media: "(prefers-color-scheme: dark)" },
+        { url: "/brand/favicon-dark-180.png", sizes: "180x180", type: "image/png", media: "(prefers-color-scheme: dark)" },
+        { url: "/favicon.ico" },
+      ],
+    },
   };
 }
 
