@@ -56,6 +56,7 @@ async function main() {
     openIngestLogLine,
     openIngestShouldFail,
     publicIngestErrorLine,
+    runOpenCatalogueIngest,
     runOpenContractsFinderIngest,
     runOpenFindATenderIngest,
   } = await import("@/lib/jobs/ingest-open");
@@ -68,29 +69,44 @@ async function main() {
   const store = createSupabaseIngestionStore(createIngestionSupabaseClient());
   const statePath = process.env.OPEN_INGEST_STATE;
   const source = (process.env.OPEN_INGEST_SOURCE ?? "find-a-tender").trim();
-  if (source !== "find-a-tender" && source !== "contracts-finder") {
-    throw new Error("OPEN_INGEST_SOURCE must be find-a-tender or contracts-finder");
+  if (
+    source !== "find-a-tender" &&
+    source !== "contracts-finder" &&
+    source !== "gca-agreements" &&
+    source !== "gca-procurement-pipeline"
+  ) {
+    throw new Error(
+      "OPEN_INGEST_SOURCE must be find-a-tender, contracts-finder, gca-agreements, or gca-procurement-pipeline",
+    );
   }
-  const run =
-    source === "contracts-finder"
-      ? runOpenContractsFinderIngest
-      : runOpenFindATenderIngest;
-  const result = await run({
-    store,
-    dryRun: phase === "previews" ? false : dryRun,
-    backfillDays,
-    phase,
-    dealIds: phase === "previews" ? readChangedDealIds(statePath) : undefined,
-  });
+  const result =
+    source === "gca-agreements" || source === "gca-procurement-pipeline"
+      ? await runOpenCatalogueIngest({
+          store,
+          dryRun: phase === "previews" ? false : dryRun,
+          phase,
+          sourceKey: source,
+          dealIds: phase === "previews" ? readChangedDealIds(statePath) : undefined,
+        })
+      : await (source === "contracts-finder"
+          ? runOpenContractsFinderIngest
+          : runOpenFindATenderIngest)({
+          store,
+          dryRun: phase === "previews" ? false : dryRun,
+          backfillDays,
+          phase,
+          dealIds: phase === "previews" ? readChangedDealIds(statePath) : undefined,
+        });
   if (phase === "ingest" && statePath && !dryRun) {
-    const prior =
-      source === "contracts-finder" ? readChangedDealIds(statePath) : [];
+    const prior = source === "find-a-tender" ? [] : readChangedDealIds(statePath);
     const ids = [...new Set([...prior, ...result.changedDealIds])];
     fs.writeFileSync(statePath, JSON.stringify(ids));
   }
   emit(openIngestLogLine(result.counts));
-  for (const error of result.errors) {
-    console.error(publicIngestErrorLine(error));
+  if (result.status !== "SKIPPED") {
+    for (const error of result.errors) {
+      console.error(publicIngestErrorLine(error));
+    }
   }
   if (openIngestShouldFail(result)) {
     process.exitCode = 1;

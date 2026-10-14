@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { previewSlugHash } from "@/lib/deals/public-slug";
 
 import { normalizeTitle } from "@/ingestion/normalizers/text";
+import { textHasReferenceToken } from "@/ingestion/sources/gca/link";
 import type {
   AwardRecord,
   ContractRecord,
@@ -383,6 +384,26 @@ export function createMemoryIngestionStore(seed?: {
     },
     async findDealByOcid(ocid) {
       return state.deals.find((deal) => deal.ocid === ocid) ?? null;
+    },
+    async findDealByPortalReference(sourceKeys, reference) {
+      const ids = new Set(
+        state.sources
+          .filter((source) => sourceKeys.includes(source.sourceKey))
+          .map((source) => source.id),
+      );
+      const token = reference.trim().toLowerCase();
+      const owned = state.deals.filter(
+        (deal) => deal.primarySourceId != null && ids.has(deal.primarySourceId),
+      );
+      return (
+        owned.find((deal) => deal.reference?.trim().toLowerCase() === token) ??
+        owned.find(
+          (deal) =>
+            textHasReferenceToken(reference, deal.sourceTitle) ||
+            textHasReferenceToken(reference, deal.sourceDescription),
+        ) ??
+        null
+      );
     },
     async findDealBySourceReference(sourceId, reference) {
       return (
