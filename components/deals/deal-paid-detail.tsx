@@ -92,7 +92,7 @@ export function DealPaidDetail({
           <SnapshotItem label="Exact value" value={value} />
           <SnapshotItem
             label="Submission deadline"
-            value={formatDealDateTime(deal.submissionDeadline)}
+            value={formatDealDateTime(deal.submissionDeadline) ?? "Deadline TBC"}
           />
           <SnapshotItem
             label="Enquiry deadline"

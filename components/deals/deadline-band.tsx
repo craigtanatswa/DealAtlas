@@ -1,8 +1,10 @@
 import { cn } from "@/lib/utils";
 
 export function DeadlineBand({ value }: { value: string | null }) {
-  const closingSoon =
-    value != null && /soon|week|days?/i.test(value) && !/not stated/i.test(value);
+  if (value == null || value === "Upcoming / date not yet fixed") {
+    return <span className="text-[0.8125rem] leading-5 text-foreground">Deadline TBC</span>;
+  }
+  const closingSoon = /soon|week|days?/i.test(value) && !/not stated/i.test(value);
 
   return (
     <span

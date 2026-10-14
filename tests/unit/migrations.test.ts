@@ -48,7 +48,7 @@ describe("supabase migrations", () => {
   const files = listMigrations();
   const sql = files.map(readMigration).join("\n");
 
-  it("are numbered 0001-0025 in order with no gaps", () => {
+  it("are numbered 0001-0025 then 0028, leaving 0026 and 0027 for open pull requests", () => {
     expect(files).toEqual([
       "0001_extensions_and_types.sql",
       "0002_core_schema.sql",
@@ -75,7 +75,17 @@ describe("supabase migrations", () => {
       "0023_contracts_finder_ocds.sql",
       "0024_service_role_statement_timeout.sql",
       "0025_publish_upcoming_and_biddable_sort.sql",
+      "0028_publish_all_compliant_sources.sql",
     ]);
+  });
+
+  it("publishes compliant sources with a null open deadline", () => {
+    const sql = readMigration("0028_publish_all_compliant_sources.sql");
+    expect(sql).toContain("OPEN_LICENSE");
+    expect(sql).toContain("PERMISSION_GRANTED");
+    expect(sql).not.toContain("OCDS_API");
+    expect(sql).not.toContain("find-a-tender");
+    expect(sql).not.toMatch(/disable row level security/i);
   });
 
   it("publishes undated upcoming notices and sorts biddable deals first", () => {
