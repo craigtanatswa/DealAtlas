@@ -2,7 +2,7 @@ import { DatabaseQueryError, throwIfQueryError } from "@/lib/db/errors";
 import { writeInBatches } from "@/ingestion/store/write-batch";
 import type { Database, Json } from "@/lib/db/database.types";
 
-import { normalizeTitle } from "@/ingestion/normalizers/text";
+import { londonDeadlineDate, normalizeTitle } from "@/ingestion/normalizers/text";
 import type {
   AwardRecord,
   ContractRecord,
@@ -981,6 +981,60 @@ export function createSupabaseIngestionStore(
         (row) => normalizeTitle(row.source_title) === normalizedTitle,
       );
       return match ? mapDeal(match) : null;
+    },
+    async findDealByReferenceAmongSources(sourceIds, reference) {
+      const needle = reference.trim();
+      if (sourceIds.length === 0 || !needle) {
+        return null;
+      }
+      const result = await client
+        .from("deals")
+        .select("*")
+        .in("primary_source_id", sourceIds)
+        .eq("reference", needle)
+        .limit(2);
+      const rows = throwIfQueryError("Find deal by reference among sources", result) ?? [];
+      return rows.length === 1 && rows[0] ? mapDeal(rows[0]) : null;
+    },
+    async findDealByTitleBuyerDeadline(input) {
+      if (input.sourceIds.length === 0 || !input.deadlineDate) {
+        return null;
+      }
+      const day = Date.parse(`${input.deadlineDate}T00:00:00.000Z`);
+      if (Number.isNaN(day)) {
+        return null;
+      }
+      const result = await client
+        .from("deals")
+        .select("*")
+        .in("primary_source_id", input.sourceIds)
+        .gte("submission_deadline", new Date(day - 36 * 60 * 60 * 1000).toISOString())
+        .lt("submission_deadline", new Date(day + 36 * 60 * 60 * 1000).toISOString())
+        .limit(50);
+      const rows = throwIfQueryError("Find deal by title buyer deadline", result) ?? [];
+      const matches = [];
+      for (const row of rows) {
+        const deal = mapDeal(row);
+        if (deal.normalizedTitle !== input.normalizedTitle) {
+          continue;
+        }
+        if (londonDeadlineDate(deal.submissionDeadline) !== input.deadlineDate) {
+          continue;
+        }
+        if (!deal.buyerOrganizationId) {
+          continue;
+        }
+        const buyer = await client
+          .from("organizations")
+          .select("normalized_name")
+          .eq("id", deal.buyerOrganizationId)
+          .maybeSingle();
+        const org = throwIfQueryError("Find buyer for deadline match", buyer);
+        if (org?.normalized_name === input.normalizedBuyerName) {
+          matches.push(deal);
+        }
+      }
+      return matches.length === 1 ? matches[0] ?? null : null;
     },
     async createDeal(input) {
       const result = await client

@@ -32,6 +32,10 @@ Implementation decisions are also stored on `data_sources`.
 | `constructionline` | UNKNOWN | false | no | Commercial supplier-register / opportunity platform; not a public open feed. |
 | `achilles-uvdb` | UNKNOWN | false | no | Paid/login qualification database used by utilities. |
 | `private-source-template` | UNKNOWN | false | no | Workflow template only. Do not enable. |
+| `the-chest` | UNKNOWN | false | no | Public ProContract listing; no reuse licence; copy of the system is withheld. Not fetched. |
+| `kent-business-portal` | PROHIBITED | false | no | BiP terms forbid robots, page-scraping and redistribution. Not fetched. |
+| `source-leicestershire` | UNKNOWN | false | no | Old domain is not the portal. East Mids Tenders successor has no reuse licence. Not fetched. |
+| `essex-procontract` | UNKNOWN | false | no | Live notices moved to Open (HTTP 403). No public ProContract list. Not fetched. |
 
 Only **one** researched source met the automation bar. That is below the target of three useful private/supply-chain sources. The standard was not lowered.
 
@@ -274,6 +278,78 @@ Only **one** researched source met the automation bar. That is below the target 
 | Automated scraping permitted? | **No** |
 | Date checked | 14 September 2026 |
 | Implementation decision | **Do not automate.** |
+
+---
+
+## 16. The Chest (ProContract)
+
+Checked: **14 October 2026**.
+
+| Field | Evidence |
+| --- | --- |
+| Official source URL | [The Chest](https://www.the-chest.org.uk/) links Current Opportunities to [procontract.due-north.com/Opportunities/portal/thechest](https://procontract.due-north.com/Opportunities/portal/thechest). That shortcut returns HTTP 200 and lands on `/Opportunities/Index` with portal id `e0cc5631-4690-e511-80fb-000c29c9ba21`. |
+| Opportunity type | Council procurement notices for North West authorities |
+| Access method | Public HTML listing. Advert links use `/Advert?advertId=`. No RSS, Atom, CSV or export link was present on the listing page. Login is required for the buyers' area and supplier registration (`/Login`, `/register`), not for the listing itself (no password field and no CAPTCHA on the listing). |
+| Terms / licence evidence | [ProContract terms](https://procontract.due-north.com/SiteInformation/TermsAndConditions): "All material issued through the System about this procurement activity shall remain the property of the Buying Organisation and shall be used only for this procurement activity." Intellectual property: "The Supplier and its Supplier Users shall have no Intellectual Property Rights in the System, nor shall it have any rights to copy, adapt, modify or interfere with the System." The Chest footer: "This web site is owned and operated by PROACTIS on behalf of The Chest © 2018 PROACTIS." No Open Government Licence or other reuse licence is stated. |
+| Robots / access notes | [procontract.due-north.com/robots.txt](https://procontract.due-north.com/robots.txt) (HTTP 200, `text/plain`): `User-agent: *` / `Disallow:` (empty disallow; the file does not disallow `/Opportunities/` or `/Advert`). [www.the-chest.org.uk/robots.txt](https://www.the-chest.org.uk/robots.txt) returns HTTP 200 with `Content-Type: text/html` and the body "The page you requested is not available." It is not a robots file and publishes no `Disallow` rules. |
+| Reuse status | **UNKNOWN** |
+| Automated scraping permitted? | **No** |
+| Date checked | 14 October 2026 |
+| Implementation decision | **Do not fetch.** Seed `the-chest` disabled. The shared adapter refuses this portal until a licence explicitly allows automated access. |
+
+---
+
+## 17. Kent Business Portal
+
+Checked: **14 October 2026**.
+
+| Field | Evidence |
+| --- | --- |
+| Official source URL | [Kent Business Portal terms](https://www.kentbusinessportal.org.uk/terms-and-conditions/). A ProContract shortcut also exists at [procontract.due-north.com/Opportunities/portal/kentbusinessportal](https://procontract.due-north.com/Opportunities/portal/kentbusinessportal) (HTTP 200, portal id `8691483f-2f3d-e711-80e1-005056b64545`). [kent.gov.uk](https://www.kent.gov.uk/business/doing-business-with-us/supply-goods-and-services-to-us/kent-business-portal) returned HTTP 403 with `cf-mitigated: challenge`. That page was not fetched. |
+| Opportunity type | Kent and Medway council procurement notices |
+| Access method | The branded site is BiP Delta eSourcing. No public RSS was identified. The council host presented a challenge, so it was skipped. |
+| Terms / licence evidence | [Terms and conditions](https://www.kentbusinessportal.org.uk/terms-and-conditions/), clause 15.1: "You may not use any 'deep–link', 'page–scrape', 'robot', 'spider' or other automatic device, program, algorithm or methodology, or any similar or equivalent manual process, to access, acquire, copy or monitor any portion of any BiP websites, the Service or any materials, content, documents or data". Clause 4.10: "You shall not, whether for a fee or free of charge, use, re-use, transfer, share, link to or frame, distribute or make available information or data accessed or copied using the Service to any third parties". Clause 11.2: "Exporting, or extracting BiP data from this website into other databases is expressly prohibited as is the reselling of BiP information." No reuse licence is granted. |
+| Robots / access notes | [www.kentbusinessportal.org.uk/robots.txt](https://www.kentbusinessportal.org.uk/robots.txt) is HTTP 404, body "404 Not Found" (nginx). Absence of a robots file does not override the terms. Due North `robots.txt` is quoted in section 16 and does not disallow `/Opportunities/`. The terms do. |
+| Reuse status | **PROHIBITED** |
+| Automated scraping permitted? | **No** |
+| Date checked | 14 October 2026 |
+| Implementation decision | **Do not fetch** the BiP site or the ProContract shortcut. Seed `kent-business-portal` disabled. |
+
+---
+
+## 18. Source Leicestershire
+
+Checked: **14 October 2026**.
+
+| Field | Evidence |
+| --- | --- |
+| Official source URL | The historic host [sourceleicestershire.co.uk](https://sourceleicestershire.co.uk/) is no longer a council procurement portal. On the check date the homepage was an unrelated third-party site. It was not used. Leicestershire's current ProContract portal is East Mids Tenders: [procontract.due-north.com/Opportunities/portal/eastmidstenders](https://procontract.due-north.com/Opportunities/portal/eastmidstenders) (HTTP 200, portal id `527b4bbd-5c58-e511-80ef-000c29c9ba21`). `www.eastmidstenders.org` did not present a verifiable TLS certificate, so that host was not fetched. `https://www.leicestershire.gov.uk/about-the-council/council-spending/doing-business-with-the-council` returned HTTP 403 and was not retried. |
+| Opportunity type | Leicestershire, Leicester and East Midlands council notices on the ProContract successor |
+| Access method | ProContract HTML listing. No public RSS or export URL was documented. `/Opportunities/portal/sourceleicestershire` is not a real portal: it resolves to portal id `00000000-0000-0000-0000-000000000000`. |
+| Terms / licence evidence | Same [ProContract terms](https://procontract.due-north.com/SiteInformation/TermsAndConditions) quoted in section 16. No reuse licence. |
+| Robots / access notes | [sourceleicestershire.co.uk/robots.txt](https://sourceleicestershire.co.uk/robots.txt) is HTTP 404. Due North [robots.txt](https://procontract.due-north.com/robots.txt): `User-agent: *` / `Disallow:` (empty). The path is not disallowed. The terms still withhold copy rights. |
+| Reuse status | **UNKNOWN** |
+| Automated scraping permitted? | **No** |
+| Date checked | 14 October 2026 |
+| Implementation decision | **Do not fetch** the historic domain or East Mids Tenders. Seed `source-leicestershire` disabled. |
+
+---
+
+## 19. Essex
+
+Checked: **14 October 2026**.
+
+| Field | Evidence |
+| --- | --- |
+| Official source URL | [Find and bid on a contract](https://www.essex.gov.uk/business/doing-business-council/information-suppliers/find-and-bid-contract) (HTTP 200). It says current opportunities are on Open: [open-uk.org/opportunities](https://open-uk.org/opportunities). The same page still links [procontract.due-north.com/Login](https://procontract.due-north.com/Login) for the supply-chain register. [Essex news, 18 March 2026](https://www.essex.gov.uk/news/2026/suppliers-urged-register-new-e-procurement-system) says all new procurement opportunities would be on Open by the end of April 2026. |
+| Opportunity type | Essex County Council tenders |
+| Access method | Open is the live list. `https://open-uk.org/robots.txt` and `https://open-uk.org/opportunities` both returned HTTP 403. That block was not bypassed. ProContract slugs `essex` and `essexcountycouncil` resolve to portal id `00000000-0000-0000-0000-000000000000`, which is not a portal. No public RSS was identified. |
+| Terms / licence evidence | ProContract terms quoted in section 16 apply to the login portal. No reuse licence for Open or ProContract was found. Essex.gov.uk terms are linked from the supplier page (`/about-essexgovuk/terms-and-conditions`) and were not needed once Open refused the request. |
+| Robots / access notes | [www.essex.gov.uk/robots.txt](https://www.essex.gov.uk/robots.txt) (HTTP 200, `text/plain`) includes `User-agent: *` and `Disallow: /admin/`, `Disallow: /search/`, `Disallow: /user/login`, `Disallow: /user/register`, `Disallow: /user/password`, `Disallow: /user/logout`. The supplier information path is not disallowed. Open's robots file was not readable (HTTP 403). |
+| Reuse status | **UNKNOWN** |
+| Automated scraping permitted? | **No** |
+| Date checked | 14 October 2026 |
+| Implementation decision | **Do not fetch.** Seed `essex-procontract` disabled. Do not log into ProContract and do not bypass the Open 403. |
 
 ---
 

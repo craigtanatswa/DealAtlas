@@ -57,6 +57,7 @@ Build adapters in this order, subject to current official access terms:
 4. Sell2Wales official OCDS/API/bulk data if available.
 5. eTendersNI official/public mechanisms where permitted.
 6. Buyer-specific public procurement pages where lawful and worthwhile.
+7. ProContract-family council portals (The Chest, Kent Business Portal, Source Leicestershire, Essex). Checked 14 October 2026 in `docs/SOURCE_COMPLIANCE_REPORT.md`. No portal published a public RSS/export, and none may be fetched: Kent's terms forbid robots and redistribution, the others have no reuse licence and the ProContract user agreement withholds copy rights. Rows are seeded with `enabled = false`, `scraping_permitted = false`, and `reuse_status` UNKNOWN or PROHIBITED. The shared adapter is rate-limited to 6 requests per minute, sends a descriptive User-Agent, continues per row, logs counts only, and preserves previews. It dedupes against Find a Tender and Contracts Finder by OCID, reference, or title + buyer + deadline, and does not block Find a Tender publish.
 
 ## 6. Initial private-sector discovery strategy
 Create a reusable private-source adapter framework rather than hard-coding one private company.

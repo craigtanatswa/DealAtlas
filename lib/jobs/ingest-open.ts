@@ -1,4 +1,9 @@
 import { createAllowlistedJsonClient, type JsonHttpClient } from "@/ingestion/core/http";
+import { createProcontractAdapter } from "@/ingestion/sources/procontract/adapter";
+import {
+  isProcontractSourceKey,
+  procontractPortal,
+} from "@/ingestion/sources/procontract/constants";
 import { runIngestion } from "@/ingestion/core/pipeline";
 import { defaultSleep } from "@/ingestion/core/retry";
 import { createContractsFinderAdapter } from "@/ingestion/sources/contracts-finder/adapter";
@@ -43,6 +48,15 @@ export type OpenIngestResult = {
 };
 
 const MISSING_PREVIEW_CAP = 500;
+
+function openIngestStatus(
+  status: "SUCCEEDED" | "PARTIAL" | "FAILED" | "SKIPPED" | "QUEUED" | "RUNNING",
+): OpenIngestResult["status"] {
+  if (status === "SUCCEEDED" || status === "PARTIAL" || status === "FAILED" || status === "SKIPPED") {
+    return status;
+  }
+  return "FAILED";
+}
 
 function safeErrorText(value: string): string {
   return value
@@ -416,4 +430,78 @@ export function runOpenContractsFinderIngest(
     ...options,
     sourceKey: CONTRACTS_FINDER_SOURCE_KEY,
   });
+}
+
+export async function runOpenProcontractIngest(options: {
+  store: IngestionStore;
+  sourceKey: string;
+  now?: Date;
+  dryRun: boolean;
+  adapter?: SourceAdapter;
+  sleep?: (ms: number) => Promise<void>;
+  phase?: "ingest" | "previews" | "all";
+}): Promise<OpenIngestResult> {
+  const portal = procontractPortal(options.sourceKey);
+  if (!portal || !isProcontractSourceKey(options.sourceKey)) {
+    throw new Error("OPEN_INGEST_SOURCE is not a ProContract portal");
+  }
+  const now = options.now ?? new Date();
+  const sleep = options.sleep ?? defaultSleep;
+  const pace = createRequestPacer({
+    maxRequests: 6,
+    windowMs: 60_000,
+    sleep,
+  });
+  const adapter =
+    options.adapter ??
+    createProcontractAdapter({
+      portal,
+      pace,
+      now: () => now,
+    });
+  const phase = options.phase ?? "ingest";
+  if (phase === "previews") {
+    return {
+      status: "SKIPPED",
+      dryRun: options.dryRun,
+      counts: emptyCounts(),
+      changedDealIds: [],
+      errors: [],
+    };
+  }
+  const result = await runIngestion({
+    sourceKey: portal.sourceKey,
+    store: options.store,
+    adapter,
+    triggerType: options.dryRun ? "DRY_RUN" : "SCHEDULED",
+    now,
+    force: true,
+    minFetchIntervalMs: 0,
+    sleep,
+    dryRun: options.dryRun,
+    skipPreview: false,
+    failureMode: "partial",
+    onPersisted: () => {
+      // Counts only. Deal ids are not copied into the Find a Tender publish set.
+    },
+  });
+  return {
+    status: openIngestStatus(result.status),
+    dryRun: options.dryRun,
+    counts: {
+      fetched: result.counters.fetched,
+      new: result.counters.new,
+      updated: result.counters.updated,
+      unchanged: result.counters.unchanged,
+      failed: result.counters.errorCount,
+      capped: 0,
+    },
+    changedDealIds: [],
+    errors: result.errors.map((error) => ({
+      stage: error.stage,
+      code: error.code ?? "INGESTION_ERROR",
+      message: error.message,
+      details: error.details,
+    })),
+  };
 }

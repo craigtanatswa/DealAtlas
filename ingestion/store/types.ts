@@ -414,6 +414,16 @@ export type IngestionStore = {
     buyerOrganizationId: string,
     normalizedTitle: string,
   ): Promise<DealRecord | null>;
+  findDealByReferenceAmongSources(
+    sourceIds: string[],
+    reference: string,
+  ): Promise<DealRecord | null>;
+  findDealByTitleBuyerDeadline(input: {
+    sourceIds: string[];
+    normalizedTitle: string;
+    normalizedBuyerName: string;
+    deadlineDate: string;
+  }): Promise<DealRecord | null>;
   createDeal(input: CreateDealInput): Promise<DealRecord>;
   updateDeal(id: string, patch: Partial<DealRecord>): Promise<DealRecord>;
 

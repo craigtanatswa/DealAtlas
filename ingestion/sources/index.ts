@@ -8,4 +8,8 @@ export {
   UK_INFRASTRUCTURE_PIPELINE_SOURCE_KEY,
 } from "@/ingestion/sources/uk-infrastructure-pipeline";
 export { createPrivateSourceAdapter } from "@/ingestion/sources/private";
+export {
+  createProcontractAdapter,
+  PROCONTRACT_PORTALS,
+} from "@/ingestion/sources/procontract";
 export { getSourceAdapter, listRegisteredSourceKeys } from "@/ingestion/sources/registry";
