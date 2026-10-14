@@ -27,7 +27,7 @@ export function HeaderSearch({
       </Label>
       <button
         type="submit"
-        className="absolute top-1/2 left-1 z-10 flex size-8 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground transition-colors duration-150 ease-out hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+        className="absolute top-1/2 left-0 z-10 flex size-11 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground transition-colors duration-150 ease-out hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
         aria-label="Search"
       >
         <SearchIcon className="size-4" aria-hidden="true" />
@@ -40,7 +40,7 @@ export function HeaderSearch({
         autoComplete="off"
         enterKeyHint="search"
         placeholder="Search opportunities"
-        className="h-10 rounded-full bg-muted/50 pr-3 pl-10"
+        className="h-11 min-h-11 rounded-full bg-muted/50 pr-3 pl-11"
       />
     </form>
   );

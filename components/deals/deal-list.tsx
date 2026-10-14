@@ -7,11 +7,13 @@ export function DealList({
   hrefForSlug,
   signedIn = false,
   className,
+  proLock = false,
 }: {
   items: RankedDealSearchItem[];
   hrefForSlug?: (slug: string) => string;
   signedIn?: boolean;
   className?: string;
+  proLock?: boolean;
 }) {
   return (
     <ul className={cn("grid gap-3", className)}>
@@ -25,6 +27,7 @@ export function DealList({
             )}
             href={hrefForSlug?.(item.preview.slug)}
             signedIn={signedIn}
+            proLock={proLock}
           />
         </li>
       ))}
