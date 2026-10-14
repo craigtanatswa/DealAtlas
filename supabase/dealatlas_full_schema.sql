@@ -6989,7 +6989,7 @@ grant execute on function public.claim_founding_activation(text, text, uuid) to 
 -- ============================================================================
 
 -- ============================================================================
--- BEGIN 0031_preview_detail_allowlist.sql
+-- BEGIN 0041_preview_detail_allowlist.sql
 -- ============================================================================
 
 -- Project allow-listed free-preview detail lines out of requirements_preview.
@@ -7085,5 +7085,5 @@ $$;
 revoke execute on function private.preview_dto_requirements(jsonb) from public, anon, authenticated;
 
 -- ============================================================================
--- END 0031_preview_detail_allowlist.sql
+-- END 0041_preview_detail_allowlist.sql
 -- ============================================================================

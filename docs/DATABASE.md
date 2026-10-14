@@ -400,7 +400,7 @@ Included in the build pack:
 - `0017_job_runs.sql`
 - `0018_preview_gate_v2_and_dto_rpcs.sql` (additive; apply before the app release that uses the DTO RPCs)
 - `0019_revoke_client_preview_table_access.sql` (apply only after that app release is live)
-- `0031_preview_detail_allowlist.sql` (allow-lists free preview detail fields inside `requirements_preview`; apply before the app release that reads them)
+- `0041_preview_detail_allowlist.sql` (allow-lists free preview detail fields inside `requirements_preview`; apply before the app release that reads them)
 
 Apply in numeric order with the Supabase CLI (`npx supabase db reset` locally, or `npx supabase db push` to a linked project). Never reset or drop a linked production database. `db push` applies every pending file, so roll out `0018` and `0019` as separate pushes (push from a checkout without `0019`, deploy the app, then push again) or apply them manually in order.
 
