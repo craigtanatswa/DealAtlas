@@ -53,13 +53,16 @@ function FeatureList({ items }: { items: readonly string[] }) {
   );
 }
 
-function Price({ label }: { label: string }) {
+function Price({ label, includeVat }: { label: string; includeVat?: boolean }) {
   const price = splitPrice(label);
   return (
     <p className="mt-4 text-4xl font-semibold tracking-tight text-foreground tabular-nums">
       {price.amount}
       {price.period ? (
         <span className="text-base font-medium text-muted-foreground">{price.period}</span>
+      ) : null}
+      {includeVat ? (
+        <span className="text-base font-medium text-muted-foreground"> (incl. VAT)</span>
       ) : null}
     </p>
   );
@@ -188,7 +191,7 @@ export function PricingPlans({
               {FOUNDING_COPY.badge}
             </p>
             <h2 className="font-heading text-xl font-semibold text-balance">{FOUNDING_COPY.title}</h2>
-            <Price label={DISPLAY_PRICING.foundingAnnual} />
+            <Price label={DISPLAY_PRICING.foundingAnnual} includeVat />
             <p className="mt-1 text-sm font-medium text-[#00806A]">{FOUNDING_COPY.lessThanAnnual}</p>
             <p className="mt-4 flex items-start gap-2 text-sm font-medium text-foreground">
               <LockIcon className="mt-0.5 size-4 shrink-0 text-[#00806A]" aria-hidden="true" />
