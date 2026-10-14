@@ -1,0 +1,37 @@
+{
+  "uri": "https://www.contractsfinder.service.gov.uk/Published/Notices/OCDS/Search",
+  "version": "1.1",
+  "releases": [
+    {
+      "ocid": "ocds-b5fd17-fixture-dup",
+      "id": "cf-000004-2026",
+      "date": "2026-09-03T09:00:00Z",
+      "tag": ["tender"],
+      "initiationType": "tender",
+      "tender": {
+        "id": "CF-REF-4",
+        "title": "Synthetic duplicate of a Find a Tender notice",
+        "status": "active",
+        "value": { "amount": 900000, "currency": "GBP" },
+        "tenderPeriod": { "endDate": "2026-12-01T12:00:00Z" }
+      },
+      "relatedProcesses": [
+        {
+          "id": "1",
+          "relationship": ["prior"],
+          "scheme": "ocid",
+          "identifier": "ocds-h6vhtk-fixture-shared"
+        }
+      ],
+      "parties": [
+        {
+          "id": "GB-PPON-IIII-5555-JJJJ",
+          "name": "Example Department",
+          "identifier": { "scheme": "GB-PPON", "id": "IIII-5555-JJJJ" },
+          "roles": ["buyer"]
+        }
+      ],
+      "buyer": { "id": "GB-PPON-IIII-5555-JJJJ", "name": "Example Department" }
+    }
+  ]
+}

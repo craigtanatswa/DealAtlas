@@ -1,6 +1,11 @@
 import { createAllowlistedJsonClient, type JsonHttpClient } from "@/ingestion/core/http";
 import { runIngestion } from "@/ingestion/core/pipeline";
 import { defaultSleep } from "@/ingestion/core/retry";
+import { createContractsFinderAdapter } from "@/ingestion/sources/contracts-finder/adapter";
+import {
+  CONTRACTS_FINDER_FETCH_POLICY,
+  CONTRACTS_FINDER_SOURCE_KEY,
+} from "@/ingestion/sources/contracts-finder/constants";
 import { createFindATenderAdapter } from "@/ingestion/sources/find-a-tender/adapter";
 import {
   FIND_A_TENDER_FETCH_POLICY,
@@ -236,11 +241,19 @@ export async function runOpenFindATenderIngest(options: {
   /** ingest writes canonical rows. previews rebuilds changed deals. all does both. */
   phase?: "ingest" | "previews" | "all";
   dealIds?: string[];
+  sourceKey?: typeof FIND_A_TENDER_SOURCE_KEY | typeof CONTRACTS_FINDER_SOURCE_KEY;
 }): Promise<OpenIngestResult> {
   const now = options.now ?? new Date();
   const sleep = options.sleep ?? defaultSleep;
   const pace = createRequestPacer({ sleep });
-  const http = options.http ?? createAllowlistedJsonClient(FIND_A_TENDER_FETCH_POLICY);
+  const sourceKey = options.sourceKey ?? FIND_A_TENDER_SOURCE_KEY;
+  const http =
+    options.http ??
+    createAllowlistedJsonClient(
+      sourceKey === CONTRACTS_FINDER_SOURCE_KEY
+        ? CONTRACTS_FINDER_FETCH_POLICY
+        : FIND_A_TENDER_FETCH_POLICY,
+    );
   const paced: JsonHttpClient = {
     async getJson(url: string) {
       await pace();
@@ -249,10 +262,15 @@ export async function runOpenFindATenderIngest(options: {
   };
   const adapter =
     options.adapter ??
-    createFindATenderAdapter({
-      http: paced,
-      now: () => now,
-    });
+    (sourceKey === CONTRACTS_FINDER_SOURCE_KEY
+      ? createContractsFinderAdapter({
+          http: paced,
+          now: () => now,
+        })
+      : createFindATenderAdapter({
+          http: paced,
+          now: () => now,
+        }));
 
   const counts = emptyCounts();
   const errors: OpenIngestError[] = [];
@@ -271,7 +289,7 @@ export async function runOpenFindATenderIngest(options: {
         break;
       }
       const result = await runIngestion({
-        sourceKey: FIND_A_TENDER_SOURCE_KEY,
+        sourceKey,
         store: options.store,
         adapter,
         triggerType: options.dryRun ? "DRY_RUN" : "SCHEDULED",
@@ -389,4 +407,13 @@ export async function runOpenFindATenderIngest(options: {
     changedDealIds: phase === "previews" ? [] : [...changed],
     errors,
   };
+}
+
+export function runOpenContractsFinderIngest(
+  options: Omit<Parameters<typeof runOpenFindATenderIngest>[0], "sourceKey">,
+): Promise<OpenIngestResult> {
+  return runOpenFindATenderIngest({
+    ...options,
+    sourceKey: CONTRACTS_FINDER_SOURCE_KEY,
+  });
 }

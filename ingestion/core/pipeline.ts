@@ -8,6 +8,8 @@ import { contentHash } from "@/ingestion/core/hash";
 import { persistCandidate } from "@/ingestion/core/persist";
 import { contextFromCandidate } from "@/ingestion/intelligence/types";
 import { persistIntelligenceAndPreview } from "@/ingestion/preview/publish";
+import { CONTRACTS_FINDER_SOURCE_KEY } from "@/ingestion/sources/contracts-finder/constants";
+import { linkContractsFinderDuplicate } from "@/ingestion/sources/contracts-finder/link";
 import { defaultSleep } from "@/ingestion/core/retry";
 import { unwrapReleasePayload } from "@/ingestion/sources/find-a-tender/parse";
 import type {
@@ -299,6 +301,20 @@ export async function runIngestion(
           }
 
           for (const candidate of candidates) {
+            if (source.sourceKey === CONTRACTS_FINDER_SOURCE_KEY) {
+              const linked = await linkContractsFinderDuplicate({
+                store: options.store,
+                source,
+                raw: snapshot.record,
+                candidate,
+                now,
+              });
+              if (linked) {
+                counters.duplicatesLinked += 1;
+                continue;
+              }
+            }
+
             const persisted = await persistCandidate({
               store: options.store,
               source,

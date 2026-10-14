@@ -1,0 +1,36 @@
+{
+  "uri": "https://www.contractsfinder.service.gov.uk/Published/Notices/OCDS/Search",
+  "version": "1.1",
+  "releases": [
+    {
+      "ocid": "ocds-b5fd17-fixture-award",
+      "id": "cf-000003-2026",
+      "date": "2026-08-01T09:00:00Z",
+      "tag": ["award"],
+      "initiationType": "tender",
+      "tender": {
+        "id": "CF-REF-3",
+        "title": "Synthetic awarded catering",
+        "status": "complete"
+      },
+      "awards": [
+        {
+          "id": "award-1",
+          "title": "Synthetic awarded catering",
+          "status": "active",
+          "date": "2026-08-01T00:00:00Z",
+          "value": { "amount": 10000, "currency": "GBP" }
+        }
+      ],
+      "parties": [
+        {
+          "id": "GB-PPON-GGGG-4444-HHHH",
+          "name": "Example Hospital",
+          "identifier": { "scheme": "GB-PPON", "id": "GGGG-4444-HHHH" },
+          "roles": ["buyer"]
+        }
+      ],
+      "buyer": { "id": "GB-PPON-GGGG-4444-HHHH", "name": "Example Hospital" }
+    }
+  ]
+}
