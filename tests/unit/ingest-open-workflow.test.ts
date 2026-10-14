@@ -15,7 +15,7 @@ describe("ingest-open workflow", () => {
     expect(workflow).toContain("backfill_days:");
     expect(workflow).toContain("type: string");
     expect(workflow).toContain('default: "7"');
-    expect(workflow.match(/BACKFILL_DAYS="\$\{BACKFILL_DAYS%\.0\}"/g)).toHaveLength(2);
+    expect(workflow.match(/BACKFILL_DAYS="\$\{BACKFILL_DAYS%\.0\}"/g)).toHaveLength(4);
     expect(workflow).toContain("inputs.backfill_days || '7'");
     expect(workflow).toContain("inputs.dry_run || 'false'");
     expect(workflow).toContain('cron: "41 4 */3 * *"');
@@ -62,10 +62,20 @@ describe("ingest-open workflow", () => {
     const publishStep = ingestJob.slice(ingestJob.indexOf("id: publish"), ingestJob.indexOf("name: Publish alert"));
     expect(publishStep).toContain("steps.ingest.outcome == 'success' && steps.build.outcome == 'success'");
     expect(publishStep).not.toContain("steps.contracts_finder.outcome");
+    expect(publishStep).not.toContain("public_contracts_scotland");
+    expect(publishStep).not.toContain("sell2wales");
     expect(ingestJob).not.toContain("continue-on-error");
     expect(ingestJob.indexOf("id: ingest")).toBeLessThan(ingestJob.indexOf("id: contracts_finder"));
-    expect(ingestJob.indexOf("id: contracts_finder")).toBeLessThan(ingestJob.indexOf("id: build"));
+    expect(ingestJob.indexOf("id: contracts_finder")).toBeLessThan(
+      ingestJob.indexOf("id: public_contracts_scotland"),
+    );
+    expect(ingestJob.indexOf("id: public_contracts_scotland")).toBeLessThan(
+      ingestJob.indexOf("id: sell2wales"),
+    );
+    expect(ingestJob.indexOf("id: sell2wales")).toBeLessThan(ingestJob.indexOf("id: build"));
     expect(ingestJob).toContain("OPEN_INGEST_SOURCE: contracts-finder");
+    expect(ingestJob).toContain("OPEN_INGEST_SOURCE: public-contracts-scotland");
+    expect(ingestJob).toContain("OPEN_INGEST_SOURCE: sell2wales");
     expect(ingestJob).toContain("CONTRACTS_FINDER_OK: ${{ steps.contracts_finder.outcome == 'success' && '1' || '0' }}");
     expect(unpublishJob).not.toContain("ingest-open");
     expect(unpublishJob).not.toContain("Build previews");
@@ -105,6 +115,12 @@ describe("ingest-open workflow", () => {
       const sql = fs.readFileSync(path.join(migrations, name), "utf8");
       if (name.startsWith("0023_")) {
         expect(sql).toContain("'contracts-finder'");
+        continue;
+      }
+      if (name.startsWith("0032_")) {
+        expect(sql).toContain("'public-contracts-scotland'");
+        expect(sql).toContain("'sell2wales'");
+        expect(sql).toMatch(/'OPEN_LICENSE',\n\s*false,\n\s*false,/);
         continue;
       }
       expect(sql).not.toMatch(/insert into public\.data_sources[\s\S]{0,800}contracts-finder/i);
