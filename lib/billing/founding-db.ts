@@ -2,8 +2,10 @@ import "server-only";
 
 import {
   asFoundingReservation,
+  FOUNDING_CAP,
   foundingAvailabilityPayload,
   foundingOfferCopy,
+  type FoundingPublicCount,
 } from "@/lib/billing/founding";
 import type { FoundingReservation } from "@/lib/billing/types";
 import { getServerEnv } from "@/lib/env/server";
@@ -13,6 +15,9 @@ function foundingConfigured(): boolean {
   const env = getServerEnv();
   return env.DODO_PAYMENTS_ENVIRONMENT === "test_mode" && Boolean(env.DODO_FOUNDING_PRODUCT_ID);
 }
+
+const COUNT_CACHE_MS = 30_000;
+let countCache: { at: number; remaining: number } | null = null;
 
 export async function readFoundingMember(userId: string): Promise<boolean> {
   try {
@@ -57,14 +62,31 @@ export async function readFoundingOffer(): Promise<{
 
 export async function readFoundingRemaining(): Promise<number> {
   if (!foundingConfigured()) return 0;
+  if (countCache && Date.now() - countCache.at < COUNT_CACHE_MS) {
+    return countCache.remaining;
+  }
   try {
     const admin = createSupabaseAdminClient();
     const { data, error } = await admin.rpc("founding_availability");
     if (error || typeof data !== "number") return 0;
-    return foundingAvailabilityPayload(data).remaining;
+    const remaining = foundingAvailabilityPayload(data).remaining;
+    countCache = { at: Date.now(), remaining };
+    return remaining;
   } catch {
     return 0;
   }
+}
+
+/** Counts only. `offered` is server config, not a customer list. */
+export async function readFoundingPublicCount(): Promise<FoundingPublicCount> {
+  if (!foundingConfigured()) {
+    return { offered: false, remaining: 0, cap: FOUNDING_CAP };
+  }
+  return {
+    offered: true,
+    remaining: await readFoundingRemaining(),
+    cap: FOUNDING_CAP,
+  };
 }
 
 export async function syncFoundingSlot(input: {

@@ -4,9 +4,10 @@ import { Checkout } from "@dodopayments/nextjs";
 import { NextRequest, NextResponse } from "next/server";
 
 import { checkoutMetadata } from "@/lib/billing/metadata";
-import { reservationForCheckout } from "@/lib/billing/founding";
+import { reservationForCheckout, resolveFoundingCheckout } from "@/lib/billing/founding";
 import { mapPlanKey, parseCheckoutRequest, selectCheckoutProduct } from "@/lib/billing/plans";
 import { readFoundingMember, reserveFoundingSlot } from "@/lib/billing/founding-db";
+import type { FoundingReservation } from "@/lib/billing/types";
 import { requireDodoCheckoutConfig } from "@/lib/billing/config";
 import { BillingConfigError } from "@/lib/billing/errors";
 import { checkoutReturnUrl, parseCheckoutReturnTo } from "@/lib/deals/paths";
@@ -33,7 +34,12 @@ async function readCheckoutBody(request: NextRequest): Promise<unknown> {
 
   try {
     const form = await request.formData();
-    return { planKey: form.get("planKey"), returnTo: form.get("returnTo") };
+    const offer = form.get("offer");
+    return {
+      planKey: form.get("planKey"),
+      returnTo: form.get("returnTo"),
+      offer: typeof offer === "string" ? offer : null,
+    };
   } catch {
     return null;
   }
@@ -81,27 +87,48 @@ export async function createAuthenticatedCheckoutResponse(input: {
     throw error;
   }
 
+  const record =
+    body && typeof body === "object" && !Array.isArray(body)
+      ? (body as Record<string, unknown>)
+      : null;
+  const offer = record?.offer ?? null;
+  const returnTo = parseCheckoutReturnTo(record?.returnTo);
+  const foundingProductConfigured = Boolean(config.products.FOUNDING_ANNUAL);
+  const testMode = config.environment === "test_mode";
   const foundingCheckout =
-    parsed.planKey === "PRO_ANNUAL" &&
-    config.environment === "test_mode" &&
-    Boolean(config.products.FOUNDING_ANNUAL);
+    parsed.planKey === "PRO_ANNUAL" && testMode && foundingProductConfigured;
   const founder = foundingCheckout ? await readFoundingMember(input.user.id) : false;
-  const reservation = reservationForCheckout(
-    founder,
-    foundingCheckout && !founder ? await reserveFoundingSlot(input.user.id) : "unavailable",
-  );
+  let reservation: FoundingReservation = "unavailable";
+  if (foundingCheckout && (founder || offer === "founding")) {
+    reservation = reservationForCheckout(
+      founder,
+      founder ? "unavailable" : await reserveFoundingSlot(input.user.id),
+    );
+  }
+  const decision = founder
+    ? "founding"
+    : resolveFoundingCheckout({
+        planKey: parsed.planKey,
+        offer,
+        reservation,
+        testMode,
+        foundingProductConfigured,
+      });
+  if (decision === "founding_full") {
+    if (wantsJson(input.request)) {
+      return NextResponse.json({ error: "founding_full" }, { status: 409 });
+    }
+    const race = new URL("/checkout/founding-full", input.request.url);
+    if (returnTo) race.searchParams.set("next", returnTo);
+    return NextResponse.redirect(race, 303);
+  }
   const chosen = selectCheckoutProduct({
     planKey: parsed.planKey,
     products: config.products,
-    reservation,
-    testMode: config.environment === "test_mode",
+    reservation: decision === "founding" ? reservation : "unavailable",
+    testMode,
   });
   const mapped = mapPlanKey(parsed.planKey, config.products);
-  const returnTo = parseCheckoutReturnTo(
-    body && typeof body === "object" && !Array.isArray(body)
-      ? (body as Record<string, unknown>).returnTo
-      : null,
-  );
   const returnUrl = checkoutReturnUrl(config.returnUrl, returnTo);
   const checkout = Checkout({
     bearerToken: config.bearerToken,

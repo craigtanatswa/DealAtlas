@@ -20,8 +20,13 @@ import {
 import {
   foundingAvailabilityPayload,
   foundingOfferCopy,
+  foundingPaywallPlaces,
+  foundingPlacesLabel,
   foundingSideEffect,
+  foundingSoldOutNote,
+  foundingUiState,
   reservationForCheckout,
+  resolveFoundingCheckout,
 } from "@/lib/billing/founding";
 import { liveDodoConfigErrors } from "@/lib/env/production";
 import type { IncomingBillingEvent, PlanProductMap } from "@/lib/billing/types";
@@ -117,6 +122,48 @@ describe("founding member checkout", () => {
         testMode: true,
       }).founding,
     ).toBe(false);
+  });
+
+  it("shows a counts-only place label and never reopens a hidden offer", () => {
+    expect(foundingUiState({ offered: false, remaining: 25 })).toBe("hidden");
+    expect(foundingUiState({ offered: true, remaining: 17 })).toBe("available");
+    expect(foundingUiState({ offered: true, remaining: 1 })).toBe("last");
+    expect(foundingUiState({ offered: true, remaining: 0 })).toBe("sold_out");
+    expect(foundingPlacesLabel(17)).toBe("17 of 25 founding places left");
+    expect(foundingPlacesLabel(1)).toBe("Last founding place · 1 of 25 places left");
+    expect(foundingPaywallPlaces(17)).toBe("17 of 25 places left");
+    expect(foundingPaywallPlaces(1)).toBe("Last founding place · 1 of 25 places left");
+    expect(foundingSoldOutNote()).toBe(
+      "Founding membership is full. Thanks to our first 25 customers.",
+    );
+    expect(foundingPlacesLabel(-4)).toBe("0 of 25 founding places left");
+  });
+
+  it("returns founding_full instead of charging the standard annual price", () => {
+    const ready = {
+      planKey: "PRO_ANNUAL" as const,
+      offer: "founding",
+      reservation: "reserved" as const,
+      testMode: true,
+      foundingProductConfigured: true,
+    };
+    expect(resolveFoundingCheckout(ready)).toBe("founding");
+    expect(resolveFoundingCheckout({ ...ready, reservation: "sold_out" })).toBe("founding_full");
+    expect(resolveFoundingCheckout({ ...ready, reservation: "unavailable" })).toBe("founding_full");
+    expect(resolveFoundingCheckout({ ...ready, planKey: "PRO_MONTHLY" })).toBe("founding_full");
+    expect(resolveFoundingCheckout({ ...ready, testMode: false })).toBe("founding_full");
+    expect(resolveFoundingCheckout({ ...ready, foundingProductConfigured: false })).toBe(
+      "founding_full",
+    );
+    expect(resolveFoundingCheckout({ ...ready, offer: null })).toBe("standard");
+    expect(resolveFoundingCheckout({ ...ready, offer: "founding", reservation: "active" })).toBe(
+      "founding",
+    );
+
+    const checkout = fs.readFileSync(path.join(process.cwd(), "lib/billing/checkout.ts"), "utf8");
+    expect(checkout).toContain('offer === "founding"');
+    expect(checkout).toContain("founding_full");
+    expect(checkout).not.toMatch(/planKey:\s*"FOUNDING"/);
   });
 
   it("rounds the public offer down to a band", () => {
