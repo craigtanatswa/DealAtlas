@@ -12,6 +12,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { requireUser } from "@/lib/auth/session";
+import { readFoundingMember } from "@/lib/billing/founding-db";
 import { loadDodoCustomerIdForUser } from "@/lib/billing/store";
 import { getCurrentEntitlement } from "@/lib/entitlements/service";
 import { isProEntitlement } from "@/lib/entitlements/policy";
@@ -23,8 +24,11 @@ export const metadata: Metadata = {
 
 export default async function BillingPage() {
   const { user } = await requireUser("/app/billing");
-  const entitlement = await getCurrentEntitlement(user.id);
-  const customerId = await loadDodoCustomerIdForUser(user.id);
+  const [entitlement, customerId, foundingMember] = await Promise.all([
+    getCurrentEntitlement(user.id),
+    loadDodoCustomerIdForUser(user.id),
+    readFoundingMember(user.id),
+  ]);
   const pro = isProEntitlement(entitlement);
 
   return (
@@ -36,6 +40,7 @@ export default async function BillingPage() {
       <BillingSummary
         entitlement={entitlement}
         hasCustomerPortal={Boolean(customerId)}
+        foundingMember={foundingMember}
       />
       {pro ? null : (
         <Card>
