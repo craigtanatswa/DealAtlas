@@ -30,14 +30,14 @@ values (
 
 delete from public.data_sources where source_key = 'contracts-finder';
 
-insert into public.data_sources (id, source_key, name, source_type, access_method, reuse_status, enabled)
+insert into public.data_sources (id, source_key, name, source_type, access_method, reuse_status, scraping_permitted, enabled)
 values
-  ('d6000000-0000-4000-8000-000000000001', 'contracts-finder', 'Contracts Finder', 'GOVERNMENT_OPEN_DATA', 'OCDS_API', 'OPEN_LICENSE', true),
-  ('d6000000-0000-4000-8000-000000000002', 'pr6-unknown', 'Unknown feed', 'GOVERNMENT_OPEN_DATA', 'JSON_API', 'UNKNOWN', false),
-  ('d6000000-0000-4000-8000-000000000028', 'pr6-licensed', 'Licensed notice feed', 'GOVERNMENT_OPEN_DATA', 'OCDS_API', 'LICENSED', true),
-  ('d6000000-0000-4000-8000-000000000029', 'pr6-terms', 'Terms reviewed feed', 'GOVERNMENT_OPEN_DATA', 'OCDS_API', 'TERMS_REVIEWED', true),
-  ('d6000000-0000-4000-8000-000000000030', 'pr6-disabled', 'Disabled notice feed', 'GOVERNMENT_OPEN_DATA', 'OCDS_API', 'OPEN_LICENSE', false),
-  ('d6000000-0000-4000-8000-000000000032', 'pr6-unpub-disabled', 'Unpublish disabled feed', 'GOVERNMENT_OPEN_DATA', 'OCDS_API', 'OPEN_LICENSE', false);
+  ('d6000000-0000-4000-8000-000000000001', 'contracts-finder', 'Contracts Finder', 'GOVERNMENT_OPEN_DATA', 'OCDS_API', 'OPEN_LICENSE', true, true),
+  ('d6000000-0000-4000-8000-000000000002', 'pr6-unknown', 'Unknown feed', 'GOVERNMENT_OPEN_DATA', 'JSON_API', 'UNKNOWN', true, false),
+  ('d6000000-0000-4000-8000-000000000028', 'pr6-licensed', 'Licensed notice feed', 'GOVERNMENT_OPEN_DATA', 'OCDS_API', 'LICENSED', true, true),
+  ('d6000000-0000-4000-8000-000000000029', 'pr6-terms', 'Terms reviewed feed', 'GOVERNMENT_OPEN_DATA', 'OCDS_API', 'TERMS_REVIEWED', true, true),
+  ('d6000000-0000-4000-8000-000000000030', 'pr6-disabled', 'Disabled notice feed', 'GOVERNMENT_OPEN_DATA', 'OCDS_API', 'OPEN_LICENSE', true, false),
+  ('d6000000-0000-4000-8000-000000000032', 'pr6-unpub-disabled', 'Unpublish disabled feed', 'GOVERNMENT_OPEN_DATA', 'OCDS_API', 'OPEN_LICENSE', true, false);
 
 insert into public.deals (
   id, primary_source_id, source_title, buyer_organization_id,

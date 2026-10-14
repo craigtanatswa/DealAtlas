@@ -15,12 +15,12 @@ values (
   'brynlow vale county borough council'
 );
 
-insert into public.data_sources (id, source_key, name, source_type, access_method, reuse_status, enabled)
+insert into public.data_sources (id, source_key, name, source_type, access_method, reuse_status, scraping_permitted, enabled)
 values
-  ('d8000000-0000-4000-8000-000000000001', 'pr28-json', 'JSON notice feed', 'GOVERNMENT_OPEN_DATA', 'JSON_API', 'OPEN_LICENSE', true),
-  ('d8000000-0000-4000-8000-000000000002', 'pr28-unknown', 'Unknown feed', 'GOVERNMENT_OPEN_DATA', 'JSON_API', 'UNKNOWN', false),
-  ('d8000000-0000-4000-8000-000000000003', 'pr28-prohibited', 'Prohibited feed', 'GOVERNMENT_OPEN_DATA', 'OCDS_API', 'PROHIBITED', false),
-  ('d8000000-0000-4000-8000-000000000004', 'pr28-disabled', 'Disabled feed', 'GOVERNMENT_OPEN_DATA', 'JSON_API', 'OPEN_LICENSE', false);
+  ('d8000000-0000-4000-8000-000000000001', 'pr28-json', 'JSON notice feed', 'GOVERNMENT_OPEN_DATA', 'JSON_API', 'OPEN_LICENSE', true, true),
+  ('d8000000-0000-4000-8000-000000000002', 'pr28-unknown', 'Unknown feed', 'GOVERNMENT_OPEN_DATA', 'JSON_API', 'UNKNOWN', true, false),
+  ('d8000000-0000-4000-8000-000000000003', 'pr28-prohibited', 'Prohibited feed', 'GOVERNMENT_OPEN_DATA', 'OCDS_API', 'PROHIBITED', true, false),
+  ('d8000000-0000-4000-8000-000000000004', 'pr28-disabled', 'Disabled feed', 'GOVERNMENT_OPEN_DATA', 'JSON_API', 'OPEN_LICENSE', true, false);
 
 insert into public.deals (
   id, primary_source_id, source_title, buyer_organization_id,

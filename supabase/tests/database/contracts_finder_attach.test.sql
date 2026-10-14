@@ -10,6 +10,10 @@ delete from private.publish_denylist;
 insert into private.publish_denylist (deal_id, reason)
 values ('00000000-0000-4000-8000-0000000000d1', 'test seed so publish can run');
 
+update public.data_sources
+set scraping_permitted = true
+where source_key = 'find-a-tender';
+
 insert into public.organizations (id, canonical_name, normalized_name)
 values (
   'a7000000-0000-4000-8000-000000000001',
