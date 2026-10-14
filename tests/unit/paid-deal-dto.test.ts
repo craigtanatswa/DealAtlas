@@ -330,4 +330,15 @@ describe("paid deal DTO", () => {
     expect(dto.intelligence?.summary.evidence[0]?.field).toBe("source_title");
     expect(dto.sourceTitle).toContain("CANARY SOURCE TITLE NEVER FREE");
   });
+
+  it("accepts a null submission deadline", () => {
+    const dto = toPaidDealDto({
+      ...mappingInput,
+      deal: { ...mappingInput.deal, submission_deadline: null },
+      lots: [{ ...mappingInput.lots![0], submission_deadline: null }],
+    });
+    expect(dto.submissionDeadline).toBeNull();
+    expect(dto.lots[0]?.submissionDeadline).toBeNull();
+    expect(dto.timeline.some((event) => event.id === "deadline:submission")).toBe(false);
+  });
 });
