@@ -1,4 +1,5 @@
 import { CheckoutPlanForm } from "@/components/billing/checkout-plan-form";
+import { FoundingUnlockActions } from "@/components/billing/founding-unlock-actions";
 import { LockedField } from "@/components/deals/locked-field";
 import { Button } from "@/components/ui/button";
 import {
@@ -8,6 +9,7 @@ import {
   CardFooter,
   CardHeader,
 } from "@/components/ui/card";
+import { foundingUiState, type FoundingPublicCount } from "@/lib/billing/founding-ui";
 import Link from "next/link";
 
 export const LOCKED_INTELLIGENCE_FIELDS = [
@@ -28,6 +30,7 @@ export function UnlockPanel({
   loginHref = "/login?next=/pricing",
   revealHref,
   returnTo,
+  founding,
 }: {
   heading?: string;
   fields?: readonly { label: string; benefit: string }[];
@@ -35,6 +38,8 @@ export function UnlockPanel({
   loginHref?: string;
   revealHref?: string;
   returnTo?: string;
+  /** Counts only. Omitted, or not offered, keeps the standard Pro CTA. */
+  founding?: FoundingPublicCount;
 }) {
   if (mode === "pro") {
     return (
@@ -57,6 +62,8 @@ export function UnlockPanel({
     );
   }
 
+  const foundingState = founding ? foundingUiState(founding) : "hidden";
+
   return (
     <Card>
       <CardHeader>
@@ -77,21 +84,40 @@ export function UnlockPanel({
           />
         ))}
       </CardContent>
-      <CardFooter className="flex flex-wrap items-center gap-3">
-        {mode === "free" ? (
-          <CheckoutPlanForm
-            planKey="PRO_MONTHLY"
-            label="Unlock with DealAtlas Pro"
+      <CardFooter
+        className={
+          foundingState === "hidden"
+            ? "flex flex-wrap items-center gap-3"
+            : "flex-col items-stretch gap-2"
+        }
+      >
+        {foundingState === "hidden" ? (
+          <>
+            {mode === "free" ? (
+              <CheckoutPlanForm
+                planKey="PRO_MONTHLY"
+                label="Unlock with DealAtlas Pro"
+                returnTo={returnTo}
+              />
+            ) : (
+              <Button asChild>
+                <Link href={loginHref}>Unlock with DealAtlas Pro</Link>
+              </Button>
+            )}
+            <Button asChild variant="link">
+              <Link href="/pricing">View pricing</Link>
+            </Button>
+          </>
+        ) : (
+          <FoundingUnlockActions
+            state={foundingState}
+            remaining={founding?.remaining ?? 0}
+            cap={founding?.cap ?? 25}
+            mode={mode === "free" ? "free" : "anonymous"}
+            loginHref={loginHref}
             returnTo={returnTo}
           />
-        ) : (
-          <Button asChild>
-            <Link href={loginHref}>Unlock with DealAtlas Pro</Link>
-          </Button>
         )}
-        <Button asChild variant="link">
-          <Link href="/pricing">View pricing</Link>
-        </Button>
       </CardFooter>
     </Card>
   );
