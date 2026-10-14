@@ -4,12 +4,15 @@ import { createContractsFinderAdapter } from "@/ingestion/sources/contracts-find
 import { CONTRACTS_FINDER_SOURCE_KEY } from "@/ingestion/sources/contracts-finder/constants";
 import { createFindATenderAdapter } from "@/ingestion/sources/find-a-tender/adapter";
 import { FIND_A_TENDER_SOURCE_KEY } from "@/ingestion/sources/find-a-tender/constants";
+import { createTedAdapter } from "@/ingestion/sources/ted/adapter";
+import { TED_SOURCE_KEY } from "@/ingestion/sources/ted/constants";
 import { createUkInfrastructurePipelineAdapter } from "@/ingestion/sources/uk-infrastructure-pipeline/adapter";
 import { UK_INFRASTRUCTURE_PIPELINE_SOURCE_KEY } from "@/ingestion/sources/uk-infrastructure-pipeline/constants";
 
 const adapters = new Map<string, () => SourceAdapter>([
   [FIND_A_TENDER_SOURCE_KEY, () => createFindATenderAdapter()],
   [CONTRACTS_FINDER_SOURCE_KEY, () => createContractsFinderAdapter()],
+  [TED_SOURCE_KEY, () => createTedAdapter()],
   [
     UK_INFRASTRUCTURE_PIPELINE_SOURCE_KEY,
     () => createUkInfrastructurePipelineAdapter(),
@@ -42,5 +45,6 @@ export function registerSourceAdapter(
 export {
   CONTRACTS_FINDER_SOURCE_KEY,
   FIND_A_TENDER_SOURCE_KEY,
+  TED_SOURCE_KEY,
   UK_INFRASTRUCTURE_PIPELINE_SOURCE_KEY,
 };

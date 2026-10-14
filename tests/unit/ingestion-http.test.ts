@@ -7,6 +7,7 @@ import {
   createAllowlistedTextClient,
 } from "@/ingestion/core/http";
 import { FIND_A_TENDER_FETCH_POLICY } from "@/ingestion/sources/find-a-tender/constants";
+import { TED_FETCH_POLICY, TED_SEARCH_API } from "@/ingestion/sources/ted/constants";
 import { NISTA_FETCH_POLICY } from "@/ingestion/sources/uk-infrastructure-pipeline/constants";
 
 describe("Find a Tender fetch allowlist", () => {
@@ -140,5 +141,29 @@ describe("allowlisted fetch SSRF controls", () => {
     ).rejects.toMatchObject({
       message: "HTTP 502 from www.find-tender.service.gov.uk",
     });
+  });
+
+  it("posts JSON only to the TED search path", async () => {
+    let method = "";
+    let body = "";
+    const fetchImpl = (async (_input: RequestInfo | URL, init?: RequestInit) => {
+      method = init?.method ?? "";
+      body = String(init?.body ?? "");
+      return new Response('{"notices":[]}', {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    }) as typeof fetch;
+    const client = createAllowlistedJsonClient(TED_FETCH_POLICY, { fetchImpl });
+    const result = await client.postJson?.(TED_SEARCH_API, { query: "notice-type = cn-standard" });
+    expect(method).toBe("POST");
+    expect(JSON.parse(body)).toEqual({ query: "notice-type = cn-standard" });
+    expect(result?.body).toEqual({ notices: [] });
+    expect(() =>
+      assertAllowedUrl("https://ted.europa.eu/en/notice/-/detail/1", TED_FETCH_POLICY),
+    ).toThrow(/host/);
+    expect(() =>
+      assertAllowedUrl("https://api.ted.europa.eu/v3/notices/999111-2026", TED_FETCH_POLICY),
+    ).toThrow(/path/);
   });
 });

@@ -28,6 +28,8 @@ export type TextHttpClient = {
 
 export type JsonHttpClient = {
   getJson: (url: string) => Promise<JsonGetResult>;
+  /** Present on the shared allowlisted client. GET-only callers can omit it. */
+  postJson?: (url: string, body: unknown) => Promise<JsonGetResult>;
 };
 
 const DEFAULT_TIMEOUT_MS = 30_000;
@@ -106,7 +108,7 @@ export function createAllowlistedTextClient(
 
   return {
     async getText(url: string) {
-      return getTextFollowingRedirects(url, policy, fetchImpl, timeoutMs, accept, 0);
+      return requestText(url, policy, fetchImpl, timeoutMs, accept, 0, { method: "GET" });
     },
   };
 }
@@ -119,62 +121,90 @@ export function createAllowlistedJsonClient(
     accept?: string;
   },
 ): JsonHttpClient {
-  const textClient = createAllowlistedTextClient(policy, {
-    fetchImpl: options?.fetchImpl,
-    timeoutMs: options?.timeoutMs,
-    accept: options?.accept ?? "application/json",
-  });
+  const fetchImpl = options?.fetchImpl ?? fetch;
+  const timeoutMs = options?.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  const accept = options?.accept ?? "application/json";
 
   return {
     async getJson(url: string) {
-      const response = await textClient.getText(url);
-      let body: unknown = null;
-      if (response.body.trim()) {
-        try {
-          body = JSON.parse(response.body) as unknown;
-        } catch {
-          throw new IngestionError({
-            message: `Non-JSON response from ${hostOf(response.url)}`,
-            stage: "fetch",
-            code: "HTTP_NOT_JSON",
-            retryable: false,
-            details: { contentType: response.contentType },
-          });
-        }
-      }
-
-      return {
-        url: response.url,
-        status: response.status,
-        contentType: response.contentType,
-        body,
-        rawText: response.body,
-      };
+      const response = await requestText(
+        url,
+        policy,
+        fetchImpl,
+        timeoutMs,
+        accept,
+        0,
+        { method: "GET" },
+      );
+      return parseJsonResult(response);
+    },
+    async postJson(url: string, body: unknown) {
+      const response = await requestText(
+        url,
+        policy,
+        fetchImpl,
+        timeoutMs,
+        accept,
+        0,
+        { method: "POST", body: JSON.stringify(body) },
+      );
+      return parseJsonResult(response);
     },
   };
 }
 
-async function getTextFollowingRedirects(
+function parseJsonResult(response: TextGetResult): JsonGetResult {
+  let body: unknown = null;
+  if (response.body.trim()) {
+    try {
+      body = JSON.parse(response.body) as unknown;
+    } catch {
+      throw new IngestionError({
+        message: `Non-JSON response from ${hostOf(response.url)}`,
+        stage: "fetch",
+        code: "HTTP_NOT_JSON",
+        retryable: false,
+        details: { contentType: response.contentType },
+      });
+    }
+  }
+
+  return {
+    url: response.url,
+    status: response.status,
+    contentType: response.contentType,
+    body,
+    rawText: response.body,
+  };
+}
+
+async function requestText(
   url: string,
   policy: AllowedFetchPolicy,
   fetchImpl: typeof fetch,
   timeoutMs: number,
   accept: string,
   redirectCount: number,
+  request: { method: "GET" | "POST"; body?: string },
 ): Promise<TextGetResult> {
   const parsed = assertAllowedUrl(url, policy);
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
+    const headers: Record<string, string> = {
+      Accept: accept,
+      "User-Agent": DEFAULT_USER_AGENT,
+    };
+    if (request.method === "POST") {
+      headers["Content-Type"] = "application/json";
+    }
     const response = await fetchImpl(parsed, {
-      method: "GET",
+      method: request.method,
       redirect: "manual",
       signal: controller.signal,
-      headers: {
-        Accept: accept,
-        "User-Agent": DEFAULT_USER_AGENT,
-      },
+      headers,
+      body: request.method === "POST" ? request.body : undefined,
     });
 
     if (response.status >= 300 && response.status < 400) {
@@ -189,13 +219,15 @@ async function getTextFollowingRedirects(
         });
       }
       const next = new URL(location, parsed);
-      return getTextFollowingRedirects(
+      // A redirect drops the POST body. The next hop is still allowlisted.
+      return requestText(
         next.toString(),
         policy,
         fetchImpl,
         timeoutMs,
         accept,
         redirectCount + 1,
+        { method: "GET" },
       );
     }
 
