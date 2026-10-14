@@ -21,7 +21,7 @@ export default function CategoriesIndexPage() {
   const landings = indexableCategoryLandings();
 
   return (
-    <Main className="gap-10">
+    <Main back className="gap-10">
       <JsonLd
         data={[
           webPageJsonLd({
