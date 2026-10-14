@@ -165,34 +165,8 @@ jobs:
           LEAK_ALERT_EMAIL_TO: ${{ secrets.LEAK_ALERT_EMAIL_TO }}
         run: npm run ingest-alert
 
-      # After Find a Tender publish. A portal failure cannot skip or delay that publish.
-      - name: Ingest The Chest
-        id: procontract_chest
-        if: always() && steps.ingest.outcome != 'cancelled'
-        env:
-          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'false' }}
-          OPEN_INGEST_PHASE: ingest
-          OPEN_INGEST_SOURCE: the-chest
-        run: npm run ingest-open
-
-      - name: Ingest Kent Business Portal
-        id: procontract_kent
-        if: always() && steps.ingest.outcome != 'cancelled'
-        env:
-          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'false' }}
-          OPEN_INGEST_PHASE: ingest
-          OPEN_INGEST_SOURCE: kent-business-portal
-        run: npm run ingest-open
-
-      - name: Ingest Source Leicestershire
-        id: procontract_leicestershire
-        if: always() && steps.ingest.outcome != 'cancelled'
-        env:
-          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'false' }}
-          OPEN_INGEST_PHASE: ingest
-          OPEN_INGEST_SOURCE: source-leicestershire
-        run: npm run ingest-open
-
+      # After Find a Tender publish. Terms that ban scraping or commercial reuse have no step.
+      # Essex terms are silent, so this step exists and stays disabled. It cannot skip or delay publish.
       - name: Ingest Essex ProContract
         id: procontract_essex
         if: always() && steps.ingest.outcome != 'cancelled'

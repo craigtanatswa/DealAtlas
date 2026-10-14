@@ -19,6 +19,7 @@ import {
   PROCONTRACT_REQUEST_WINDOW_MS,
   PROCONTRACT_USER_AGENT,
   pathBlockedByRobots,
+  procontractFetcherAllowed,
   type ProcontractPortal,
 } from "@/ingestion/sources/procontract/constants";
 import {
@@ -52,6 +53,14 @@ export function createProcontractAdapter(
   options: ProcontractAdapterOptions,
 ): SourceAdapter {
   const portal = options.portal;
+  if (!procontractFetcherAllowed(portal)) {
+    throw new IngestionError({
+      message: `ProContract portal ${portal.sourceKey} is PROHIBITED. No fetcher is built.`,
+      stage: "compliance",
+      code: "REUSE_PROHIBITED",
+      retryable: false,
+    });
+  }
   const now = options.now ?? (() => new Date());
   const http = options.http ?? createProcontractTextClient();
   const pace =

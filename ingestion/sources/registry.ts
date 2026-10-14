@@ -5,7 +5,10 @@ import { CONTRACTS_FINDER_SOURCE_KEY } from "@/ingestion/sources/contracts-finde
 import { createFindATenderAdapter } from "@/ingestion/sources/find-a-tender/adapter";
 import { FIND_A_TENDER_SOURCE_KEY } from "@/ingestion/sources/find-a-tender/constants";
 import { createProcontractAdapter } from "@/ingestion/sources/procontract/adapter";
-import { PROCONTRACT_PORTALS } from "@/ingestion/sources/procontract/constants";
+import {
+  PROCONTRACT_PORTALS,
+  procontractFetcherAllowed,
+} from "@/ingestion/sources/procontract/constants";
 import { createUkInfrastructurePipelineAdapter } from "@/ingestion/sources/uk-infrastructure-pipeline/adapter";
 import { UK_INFRASTRUCTURE_PIPELINE_SOURCE_KEY } from "@/ingestion/sources/uk-infrastructure-pipeline/constants";
 
@@ -16,7 +19,7 @@ const adapters = new Map<string, () => SourceAdapter>([
     UK_INFRASTRUCTURE_PIPELINE_SOURCE_KEY,
     () => createUkInfrastructurePipelineAdapter(),
   ],
-  ...PROCONTRACT_PORTALS.map(
+  ...PROCONTRACT_PORTALS.filter(procontractFetcherAllowed).map(
     (portal) =>
       [portal.sourceKey, () => createProcontractAdapter({ portal })] as const,
   ),

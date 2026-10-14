@@ -445,6 +445,21 @@ export async function runOpenProcontractIngest(options: {
   if (!portal || !isProcontractSourceKey(options.sourceKey)) {
     throw new Error("OPEN_INGEST_SOURCE is not a ProContract portal");
   }
+  if (portal.reuseStatus === "PROHIBITED") {
+    return {
+      status: "SKIPPED",
+      dryRun: options.dryRun,
+      counts: emptyCounts(),
+      changedDealIds: [],
+      errors: [
+        {
+          stage: "compliance",
+          code: "REUSE_PROHIBITED",
+          message: `ProContract portal ${portal.sourceKey} is PROHIBITED. No fetcher is built.`,
+        },
+      ],
+    };
+  }
   const now = options.now ?? new Date();
   const sleep = options.sleep ?? defaultSleep;
   const pace = createRequestPacer({

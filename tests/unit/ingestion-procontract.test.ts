@@ -8,8 +8,10 @@ import {
   PROCONTRACT_PORTALS,
   PROCONTRACT_USER_AGENT,
   pathBlockedByRobots,
+  procontractFetcherAllowed,
   type ProcontractPortal,
 } from "@/ingestion/sources/procontract/constants";
+import { listRegisteredSourceKeys } from "@/ingestion/sources/registry";
 import { linkProcontractDuplicate } from "@/ingestion/sources/procontract/link";
 import {
   parseProcontractDetail,
@@ -41,7 +43,13 @@ const DETAIL = `<table>
 </table>`;
 
 function portal(overrides: Partial<ProcontractPortal> = {}): ProcontractPortal {
-  return { ...PROCONTRACT_PORTALS[0]!, ...overrides };
+  const base = PROCONTRACT_PORTALS.find((item) => item.sourceKey === "essex-procontract")!;
+  return {
+    ...base,
+    listingUrl: "https://procontract.due-north.com/Opportunities/portal/thechest",
+    robotsDisallow: [],
+    ...overrides,
+  };
 }
 
 function raw(id = "raw-1"): RawRecordRow {
@@ -117,9 +125,18 @@ describe("ProContract portals", () => {
       expect(item.enabled).toBe(false);
       expect(item.rssUrl).toBeNull();
     }
-    expect(PROCONTRACT_PORTALS.find((item) => item.sourceKey === "kent-business-portal")?.reuseStatus).toBe(
-      "PROHIBITED",
-    );
+    const prohibited = ["the-chest", "kent-business-portal", "source-leicestershire"];
+    for (const key of prohibited) {
+      const item = PROCONTRACT_PORTALS.find((portal) => portal.sourceKey === key)!;
+      expect(item.reuseStatus).toBe("PROHIBITED");
+      expect(procontractFetcherAllowed(item)).toBe(false);
+      expect(() => createProcontractAdapter({ portal: item })).toThrow(/PROHIBITED/);
+    }
+    const essex = PROCONTRACT_PORTALS.find((item) => item.sourceKey === "essex-procontract")!;
+    expect(essex.reuseStatus).toBe("UNKNOWN");
+    expect(procontractFetcherAllowed(essex)).toBe(true);
+    expect(listRegisteredSourceKeys().filter((key) => prohibited.includes(key))).toEqual([]);
+    expect(listRegisteredSourceKeys()).toContain("essex-procontract");
   });
 
   it("does not request a disabled portal", async () => {
@@ -279,6 +296,7 @@ describe("ProContract portals", () => {
       },
     });
     expect(result.status).toBe("SKIPPED");
+    expect(result.errors[0]?.code).toBe("REUSE_PROHIBITED");
     expect(result.changedDealIds).toEqual([]);
     expect(discovered).toBe(0);
     expect(openIngestLogLine(result.counts)).not.toMatch(/http|title|buyer|ocds/i);
@@ -287,8 +305,9 @@ describe("ProContract portals", () => {
   it("links Find a Tender and Contracts Finder duplicates and preserves the preview", async () => {
     const store = createMemoryIngestionStore({
       sources: [
-        procontractSourceRecord("the-chest", {
-          id: "chest",
+        procontractSourceRecord("the-chest", { id: "chest" }),
+        procontractSourceRecord("essex-procontract", {
+          id: "essex",
           enabled: true,
           reuseStatus: "TERMS_REVIEWED",
           scrapingPermitted: true,
@@ -397,7 +416,7 @@ describe("ProContract portals", () => {
       },
     };
     const outcome = await runIngestion({
-      sourceKey: "the-chest",
+      sourceKey: "essex-procontract",
       store,
       adapter: createProcontractAdapter({
         portal: portal({ fetchPermitted: true }),

@@ -106,8 +106,8 @@ describe("supabase migrations", () => {
     ]) {
       expect(sql).toContain(`'${key}'`);
     }
-    expect(sql).toContain("'PROHIBITED'");
-    expect(sql).toContain("'UNKNOWN'");
+    expect(sql.match(/'PROHIBITED'/g)).toHaveLength(3);
+    expect(sql.match(/'UNKNOWN'/g)).toHaveLength(1);
     expect(sql).not.toMatch(/scraping_permitted,\n\s*enabled\n[\s\S]{0,80}true,\n\s*true,/);
     expect(sql.match(/false,\n\s*false,/g)?.length).toBeGreaterThanOrEqual(4);
     expect(sql).toContain("'kent business portal'");

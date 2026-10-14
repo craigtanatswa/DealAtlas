@@ -32,10 +32,10 @@ Implementation decisions are also stored on `data_sources`.
 | `constructionline` | UNKNOWN | false | no | Commercial supplier-register / opportunity platform; not a public open feed. |
 | `achilles-uvdb` | UNKNOWN | false | no | Paid/login qualification database used by utilities. |
 | `private-source-template` | UNKNOWN | false | no | Workflow template only. Do not enable. |
-| `the-chest` | UNKNOWN | false | no | Public ProContract listing; no reuse licence; copy of the system is withheld. Not fetched. |
-| `kent-business-portal` | PROHIBITED | false | no | BiP terms forbid robots, page-scraping and redistribution. Not fetched. |
-| `source-leicestershire` | UNKNOWN | false | no | Old domain is not the portal. East Mids Tenders successor has no reuse licence. Not fetched. |
-| `essex-procontract` | UNKNOWN | false | no | Live notices moved to Open (HTTP 403). No public ProContract list. Not fetched. |
+| `the-chest` | PROHIBITED | false | no | Terms forbid copying the system and limit material to the procurement. No fetcher. |
+| `kent-business-portal` | PROHIBITED | false | no | BiP terms forbid robots, page-scraping and redistribution. No fetcher. |
+| `source-leicestershire` | PROHIBITED | false | no | East Mids Tenders uses the same ProContract copy and reuse limits. No fetcher. |
+| `essex-procontract` | UNKNOWN | false | no | Readable terms are silent. Disabled. Fetcher does not live-fetch. |
 
 Only **one** researched source met the automation bar. That is below the target of three useful private/supply-chain sources. The standard was not lowered.
 
@@ -292,10 +292,10 @@ Checked: **14 October 2026**.
 | Access method | Public HTML listing. Advert links use `/Advert?advertId=`. No RSS, Atom, CSV or export link was present on the listing page. Login is required for the buyers' area and supplier registration (`/Login`, `/register`), not for the listing itself (no password field and no CAPTCHA on the listing). |
 | Terms / licence evidence | [ProContract terms](https://procontract.due-north.com/SiteInformation/TermsAndConditions): "All material issued through the System about this procurement activity shall remain the property of the Buying Organisation and shall be used only for this procurement activity." Intellectual property: "The Supplier and its Supplier Users shall have no Intellectual Property Rights in the System, nor shall it have any rights to copy, adapt, modify or interfere with the System." The Chest footer: "This web site is owned and operated by PROACTIS on behalf of The Chest © 2018 PROACTIS." No Open Government Licence or other reuse licence is stated. |
 | Robots / access notes | [procontract.due-north.com/robots.txt](https://procontract.due-north.com/robots.txt) (HTTP 200, `text/plain`): `User-agent: *` / `Disallow:` (empty disallow; the file does not disallow `/Opportunities/` or `/Advert`). [www.the-chest.org.uk/robots.txt](https://www.the-chest.org.uk/robots.txt) returns HTTP 200 with `Content-Type: text/html` and the body "The page you requested is not available." It is not a robots file and publishes no `Disallow` rules. |
-| Reuse status | **UNKNOWN** |
+| Reuse status | **PROHIBITED** |
 | Automated scraping permitted? | **No** |
 | Date checked | 14 October 2026 |
-| Implementation decision | **Do not fetch.** Seed `the-chest` disabled. The shared adapter refuses this portal until a licence explicitly allows automated access. |
+| Implementation decision | **No fetcher.** The terms explicitly limit issued material to the procurement activity and forbid copying the system. Seed `the-chest` with `reuse_status = PROHIBITED` and `enabled = false`. |
 
 ---
 
@@ -313,7 +313,7 @@ Checked: **14 October 2026**.
 | Reuse status | **PROHIBITED** |
 | Automated scraping permitted? | **No** |
 | Date checked | 14 October 2026 |
-| Implementation decision | **Do not fetch** the BiP site or the ProContract shortcut. Seed `kent-business-portal` disabled. |
+| Implementation decision | **No fetcher.** Clauses 15.1, 4.10 and 11.2 explicitly ban robots, page-scraping and redistribution. Seed `kent-business-portal` with `reuse_status = PROHIBITED` and `enabled = false`. |
 
 ---
 
@@ -328,10 +328,10 @@ Checked: **14 October 2026**.
 | Access method | ProContract HTML listing. No public RSS or export URL was documented. `/Opportunities/portal/sourceleicestershire` is not a real portal: it resolves to portal id `00000000-0000-0000-0000-000000000000`. |
 | Terms / licence evidence | Same [ProContract terms](https://procontract.due-north.com/SiteInformation/TermsAndConditions) quoted in section 16. No reuse licence. |
 | Robots / access notes | [sourceleicestershire.co.uk/robots.txt](https://sourceleicestershire.co.uk/robots.txt) is HTTP 404. Due North [robots.txt](https://procontract.due-north.com/robots.txt): `User-agent: *` / `Disallow:` (empty). The path is not disallowed. The terms still withhold copy rights. |
-| Reuse status | **UNKNOWN** |
+| Reuse status | **PROHIBITED** |
 | Automated scraping permitted? | **No** |
 | Date checked | 14 October 2026 |
-| Implementation decision | **Do not fetch** the historic domain or East Mids Tenders. Seed `source-leicestershire` disabled. |
+| Implementation decision | **No fetcher.** East Mids Tenders is under the ProContract terms quoted in section 16, which explicitly limit reuse and forbid copying the system. Seed `source-leicestershire` with `reuse_status = PROHIBITED` and `enabled = false`. |
 
 ---
 
@@ -349,7 +349,7 @@ Checked: **14 October 2026**.
 | Reuse status | **UNKNOWN** |
 | Automated scraping permitted? | **No** |
 | Date checked | 14 October 2026 |
-| Implementation decision | **Do not fetch.** Seed `essex-procontract` disabled. Do not log into ProContract and do not bypass the Open 403. |
+| Implementation decision | **Seed `UNKNOWN` and disabled.** The terms and robots.txt that could be read do not explicitly ban scraping or commercial reuse. Open's terms were not readable (HTTP 403) and were not bypassed. The shared adapter is registered for this key only and does not live-fetch. |
 
 ---
 

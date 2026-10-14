@@ -41,14 +41,14 @@ values
     null,
     null,
     'https://procontract.due-north.com/SiteInformation/TermsAndConditions',
-    'UNKNOWN',
+    'PROHIBITED',
     false,
     false,
     null,
     6,
     timestamptz '2026-10-14T00:00:00Z',
     timestamptz '2026-10-14T00:00:00Z',
-    'North West ProContract portal. Public listing exists and robots.txt allows the path, but the user agreement grants no reuse licence and forbids copying the system. Not automated. See docs/SOURCE_COMPLIANCE_REPORT.md.'
+    'ProContract terms forbid copying the system and limit issued material to the procurement activity. robots.txt does not disallow the path. Explicit reuse ban: no fetcher. See docs/SOURCE_COMPLIANCE_REPORT.md.'
   ),
   (
     'kent-business-portal',
@@ -67,7 +67,7 @@ values
     6,
     timestamptz '2026-10-14T00:00:00Z',
     timestamptz '2026-10-14T00:00:00Z',
-    'BiP Delta terms forbid robots, page-scraping and redistribution. robots.txt is 404. Not fetched. See docs/SOURCE_COMPLIANCE_REPORT.md.'
+    'BiP Delta terms forbid robots, page-scraping and redistribution. robots.txt is 404. Explicit ban: no fetcher. See docs/SOURCE_COMPLIANCE_REPORT.md.'
   ),
   (
     'source-leicestershire',
@@ -79,14 +79,14 @@ values
     null,
     null,
     'https://procontract.due-north.com/SiteInformation/TermsAndConditions',
-    'UNKNOWN',
+    'PROHIBITED',
     false,
     false,
     null,
     6,
     timestamptz '2026-10-14T00:00:00Z',
     timestamptz '2026-10-14T00:00:00Z',
-    'Historic Source Leicestershire host is no longer the council portal. East Mids Tenders is the ProContract successor. No reuse licence. Not automated. See docs/SOURCE_COMPLIANCE_REPORT.md.'
+    'East Mids Tenders uses the ProContract terms, which forbid copying the system and limit issued material to the procurement activity. Explicit reuse ban: no fetcher. See docs/SOURCE_COMPLIANCE_REPORT.md.'
   ),
   (
     'essex-procontract',
@@ -105,7 +105,7 @@ values
     6,
     timestamptz '2026-10-14T00:00:00Z',
     timestamptz '2026-10-14T00:00:00Z',
-    'Essex moved new opportunities to Open. Open returned HTTP 403. No stable public ProContract portal slug. Login link only. Not automated. See docs/SOURCE_COMPLIANCE_REPORT.md.'
+    'Terms that were readable do not explicitly ban scraping or commercial reuse. Open returned HTTP 403. No stable public ProContract portal slug. Seeded UNKNOWN and disabled. Live fetch stays off. See docs/SOURCE_COMPLIANCE_REPORT.md.'
   )
 on conflict (source_key) do update set
   name = excluded.name,

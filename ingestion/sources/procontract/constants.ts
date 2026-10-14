@@ -57,7 +57,7 @@ export const PROCONTRACT_PORTALS: readonly ProcontractPortal[] = [
     robotsUrl: PROCONTRACT_ROBOTS_URL,
     robotsDisallow: [],
     fetchPermitted: false,
-    reuseStatus: "UNKNOWN",
+    reuseStatus: "PROHIBITED",
     scrapingPermitted: false,
     enabled: false,
   },
@@ -83,7 +83,7 @@ export const PROCONTRACT_PORTALS: readonly ProcontractPortal[] = [
     robotsUrl: PROCONTRACT_ROBOTS_URL,
     robotsDisallow: [],
     fetchPermitted: false,
-    reuseStatus: "UNKNOWN",
+    reuseStatus: "PROHIBITED",
     scrapingPermitted: false,
     enabled: false,
   },
@@ -115,6 +115,11 @@ export function procontractPortal(sourceKey: string): ProcontractPortal | null {
 
 export function isProcontractSourceKey(sourceKey: string): boolean {
   return procontractPortal(sourceKey) != null;
+}
+
+/** Terms or robots.txt that explicitly ban scraping or commercial reuse get no fetcher. */
+export function procontractFetcherAllowed(portal: ProcontractPortal): boolean {
+  return portal.reuseStatus !== "PROHIBITED";
 }
 
 export function pathBlockedByRobots(pathname: string, disallow: readonly string[]): boolean {

@@ -10,6 +10,7 @@ export {
   SOURCE_LEICESTERSHIRE_SOURCE_KEY,
   THE_CHEST_SOURCE_KEY,
   isProcontractSourceKey,
+  procontractFetcherAllowed,
   procontractPortal,
 } from "@/ingestion/sources/procontract/constants";
 export { linkProcontractDuplicate } from "@/ingestion/sources/procontract/link";

@@ -67,27 +67,14 @@ describe("ingest-open workflow", () => {
     expect(ingestJob.indexOf("id: ingest")).toBeLessThan(ingestJob.indexOf("id: contracts_finder"));
     expect(ingestJob.indexOf("id: contracts_finder")).toBeLessThan(ingestJob.indexOf("id: build"));
     expect(ingestJob).toContain("OPEN_INGEST_SOURCE: contracts-finder");
-    expect(ingestJob.indexOf("id: publish")).toBeLessThan(ingestJob.indexOf("id: procontract_chest"));
+    expect(ingestJob.indexOf("id: publish")).toBeLessThan(ingestJob.indexOf("id: procontract_essex"));
     expect(ingestJob.indexOf("npm run ingest-alert")).toBeLessThan(
-      ingestJob.indexOf("id: procontract_chest"),
-    );
-    for (const source of [
-      "the-chest",
-      "kent-business-portal",
-      "source-leicestershire",
-      "essex-procontract",
-    ]) {
-      expect(ingestJob).toContain(`OPEN_INGEST_SOURCE: ${source}`);
-    }
-    expect(ingestJob.indexOf("id: procontract_chest")).toBeLessThan(
-      ingestJob.indexOf("id: procontract_kent"),
-    );
-    expect(ingestJob.indexOf("id: procontract_kent")).toBeLessThan(
-      ingestJob.indexOf("id: procontract_leicestershire"),
-    );
-    expect(ingestJob.indexOf("id: procontract_leicestershire")).toBeLessThan(
       ingestJob.indexOf("id: procontract_essex"),
     );
+    expect(ingestJob).toContain("OPEN_INGEST_SOURCE: essex-procontract");
+    expect(ingestJob).not.toContain("OPEN_INGEST_SOURCE: the-chest");
+    expect(ingestJob).not.toContain("OPEN_INGEST_SOURCE: kent-business-portal");
+    expect(ingestJob).not.toContain("OPEN_INGEST_SOURCE: source-leicestershire");
     expect(ingestJob).toContain("CONTRACTS_FINDER_OK: ${{ steps.contracts_finder.outcome == 'success' && '1' || '0' }}");
     expect(unpublishJob).not.toContain("ingest-open");
     expect(unpublishJob).not.toContain("Build previews");
