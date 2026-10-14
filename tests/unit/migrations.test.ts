@@ -48,7 +48,7 @@ describe("supabase migrations", () => {
   const files = listMigrations();
   const sql = files.map(readMigration).join("\n");
 
-  it("are numbered 0001-0025 then 0028 and 0029, leaving 0026 and 0027 for open pull requests", () => {
+  it("are numbered 0001-0025 then 0028 and 0031, leaving 0026, 0027, 0029 and 0030 for open pull requests", () => {
     expect(files).toEqual([
       "0001_extensions_and_types.sql",
       "0002_core_schema.sql",
@@ -76,12 +76,12 @@ describe("supabase migrations", () => {
       "0024_service_role_statement_timeout.sql",
       "0025_publish_upcoming_and_biddable_sort.sql",
       "0028_publish_all_compliant_sources.sql",
-      "0029_ted_search_api.sql",
+      "0031_ted_search_api.sql",
     ]);
   });
 
   it("adds a disabled TED Search API source and does not publish it", () => {
-    const sql = readMigration("0029_ted_search_api.sql");
+    const sql = readMigration("0031_ted_search_api.sql");
     expect(sql).toContain("'ted'");
     expect(sql).toContain("'JSON_API'");
     expect(sql).toContain("'OPEN_LICENSE'");

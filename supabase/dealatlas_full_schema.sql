@@ -6639,10 +6639,10 @@ comment on function public.unpublish_stale_previews(text) is
 -- ============================================================================
 
 -- ============================================================================
--- BEGIN 0029_ted_search_api.sql
+-- BEGIN 0031_ted_search_api.sql
 -- ============================================================================
 
--- DealAtlas migration 0029
+-- DealAtlas migration 0031
 -- TED Search API v3. Disabled until an operator turns the source on.
 
 insert into public.data_sources (
@@ -6696,5 +6696,5 @@ on conflict (source_key) do update set
   updated_at = now();
 
 -- ============================================================================
--- END 0029_ted_search_api.sql
+-- END 0031_ted_search_api.sql
 -- ============================================================================
