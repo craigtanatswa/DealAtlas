@@ -110,6 +110,7 @@ export type LiveDodoEnv = {
   DODO_PAYMENTS_RETURN_URL?: string;
   DODO_PRO_MONTHLY_PRODUCT_ID?: string;
   DODO_PRO_ANNUAL_PRODUCT_ID?: string;
+  DODO_FOUNDING_PRODUCT_ID?: string;
 };
 
 export function liveDodoConfigErrors(env: LiveDodoEnv): string[] {
@@ -160,6 +161,12 @@ export function liveDodoConfigErrors(env: LiveDodoEnv): string[] {
   ) {
     errors.push(
       "Live Dodo product IDs must come from the live catalogue, not local billing fixtures.",
+    );
+  }
+
+  if (env.DODO_FOUNDING_PRODUCT_ID) {
+    errors.push(
+      "DODO_FOUNDING_PRODUCT_ID is preview/test only and must not be set when DODO_PAYMENTS_ENVIRONMENT=live_mode.",
     );
   }
 

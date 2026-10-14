@@ -48,7 +48,7 @@ describe("supabase migrations", () => {
   const files = listMigrations();
   const sql = files.map(readMigration).join("\n");
 
-  it("are numbered 0001-0025 then 0028, leaving 0026 and 0027 for open pull requests", () => {
+  it("are numbered 0001-0025 then 0028-0030, leaving 0026 and 0027 for open pull requests", () => {
     expect(files).toEqual([
       "0001_extensions_and_types.sql",
       "0002_core_schema.sql",
@@ -76,7 +76,34 @@ describe("supabase migrations", () => {
       "0024_service_role_statement_timeout.sql",
       "0025_publish_upcoming_and_biddable_sort.sql",
       "0028_publish_all_compliant_sources.sql",
+      "0029_founding_member_slots.sql",
+      "0030_founding_availability_and_claims.sql",
     ]);
+  });
+
+  it("keeps founding slots private and capped", () => {
+    const sql = readMigration("0029_founding_member_slots.sql");
+    expect(sql).toContain("private.founding_slots");
+    expect(sql).toContain("pg_advisory_xact_lock");
+    expect(sql).toContain("v_held >= 25");
+    expect(sql).toContain("v_others < 25");
+    expect(sql).toContain("private.founding_cap_fallbacks");
+    expect(sql).toContain("return 'standard'");
+    expect(sql).not.toMatch(/set founding_member = false/);
+    expect(sql).toContain("interval '30 minutes'");
+    expect(sql).toContain("revoke all on table private.founding_slots from public, anon, authenticated, service_role");
+    expect(sql).not.toMatch(/disable row level security/i);
+  });
+
+  it("claims one founder per event and per subscription", () => {
+    const sql = readMigration("0030_founding_availability_and_claims.sql");
+    expect(sql).toContain("provider_event_id text primary key");
+    expect(sql).toContain("unique (dodo_subscription_id)");
+    expect(sql).toContain("when unique_violation then");
+    expect(sql).toContain(
+      "revoke all on table private.founding_event_claims from public, anon, authenticated, service_role",
+    );
+    expect(sql).not.toMatch(/disable row level security/i);
   });
 
   it("publishes compliant sources with a null open deadline", () => {

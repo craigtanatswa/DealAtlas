@@ -4,6 +4,7 @@ import type { BillingInterval } from "@/lib/entitlements/types";
 import {
   CHECKOUT_PLAN_KEYS,
   type CheckoutPlanKey,
+  type FoundingReservation,
   type MappedPlan,
   type PlanProductMap,
 } from "@/lib/billing/types";
@@ -84,9 +85,37 @@ export function mapProductId(
   if (productId === products.PRO_ANNUAL) {
     return mapPlanKey("PRO_ANNUAL", products);
   }
+  if (products.FOUNDING_ANNUAL && productId === products.FOUNDING_ANNUAL) {
+    return mapPlanKey("PRO_ANNUAL", products);
+  }
   return null;
 }
 
+export function isFoundingProduct(
+  productId: string | null | undefined,
+  products: PlanProductMap,
+): boolean {
+  return Boolean(productId && products.FOUNDING_ANNUAL && productId === products.FOUNDING_ANNUAL);
+}
+
 export function allowlistedProductIds(products: PlanProductMap): string[] {
-  return [products.PRO_MONTHLY, products.PRO_ANNUAL];
+  return [products.PRO_MONTHLY, products.PRO_ANNUAL, products.FOUNDING_ANNUAL].filter(
+    (id): id is string => Boolean(id),
+  );
+}
+
+/** The browser sends a plan key. The server picks the Dodo product. */
+export function selectCheckoutProduct(input: {
+  planKey: CheckoutPlanKey;
+  products: PlanProductMap;
+  reservation: FoundingReservation;
+  testMode: boolean;
+}): { productId: string; founding: boolean } {
+  if (input.planKey === "PRO_MONTHLY" || !input.testMode || !input.products.FOUNDING_ANNUAL) {
+    return { productId: input.products[input.planKey], founding: false };
+  }
+  if (input.reservation === "reserved" || input.reservation === "active") {
+    return { productId: input.products.FOUNDING_ANNUAL, founding: true };
+  }
+  return { productId: input.products.PRO_ANNUAL, founding: false };
 }

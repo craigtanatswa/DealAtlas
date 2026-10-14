@@ -7,9 +7,11 @@ export {
   allowlistedProductIds,
   billingIntervalForPlan,
   isCheckoutPlanKey,
+  isFoundingProduct,
   mapPlanKey,
   mapProductId,
   parseCheckoutRequest,
+  selectCheckoutProduct,
   type CheckoutPlanKey,
   type PlanProductMap,
 } from "@/lib/billing/plans";

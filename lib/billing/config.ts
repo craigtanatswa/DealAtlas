@@ -9,9 +9,12 @@ export function getPlanProductMap(): PlanProductMap | null {
   if (!env.DODO_PRO_MONTHLY_PRODUCT_ID || !env.DODO_PRO_ANNUAL_PRODUCT_ID) {
     return null;
   }
+  const founding =
+    env.DODO_PAYMENTS_ENVIRONMENT === "test_mode" ? env.DODO_FOUNDING_PRODUCT_ID : undefined;
   return {
     PRO_MONTHLY: env.DODO_PRO_MONTHLY_PRODUCT_ID,
     PRO_ANNUAL: env.DODO_PRO_ANNUAL_PRODUCT_ID,
+    ...(founding ? { FOUNDING_ANNUAL: founding } : {}),
   };
 }
 

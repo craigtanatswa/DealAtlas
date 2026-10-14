@@ -237,6 +237,7 @@ jobs:
           mv supabase/migrations/0020_*.sql "$RUNNER_TEMP/held-migrations/"
           shopt -s nullglob
           mv supabase/migrations/002[1-9]_*.sql "$RUNNER_TEMP/held-migrations/"
+          mv supabase/migrations/00[3-9][0-9]_*.sql "$RUNNER_TEMP/held-migrations/"
       - name: Start local Supabase (migrations 0001-0018)
         run: npx supabase start -x studio,imgproxy,edge-runtime,logflare,vector,supavisor,postgres-meta,realtime,storage-api
       - name: Export local Supabase connection details
