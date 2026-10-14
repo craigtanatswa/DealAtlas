@@ -124,6 +124,7 @@ export function HomeOpportunitySections({
 
 export function HomeLiveOpportunities({
   items,
+  total,
   signedIn = false,
 }: {
   items: PublicDealPreview[];
@@ -134,13 +135,27 @@ export function HomeLiveOpportunities({
     return null;
   }
 
+  const shown = items.length;
+
   return (
     <section className="border-b border-border" aria-labelledby="latest-opportunities-heading">
       <Container className="flex flex-col gap-6 py-12 md:py-16">
         <SectionHeader
           id="latest-opportunities-heading"
           title="Latest opportunities"
-          description="Open and upcoming opportunities first. Join DealAtlas Pro to unlock buyer and source details."
+          description={
+            <div className="flex flex-col gap-2">
+              {total > 0 ? (
+                <p className="text-sm text-muted-foreground tabular-nums">
+                  Showing {shown} of {total} opportunities
+                </p>
+              ) : null}
+              <Text variant="muted">
+                Open and upcoming opportunities first. Join DealAtlas Pro to unlock buyer and
+                source details.
+              </Text>
+            </div>
+          }
           action={
             <Button asChild variant="outline" className="min-h-11">
               <Link href="/deals">View all opportunities</Link>

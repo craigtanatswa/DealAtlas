@@ -10,6 +10,7 @@ import {
 } from "@/components/deals/types";
 import { MetaItem } from "@/components/intelligence/meta-item";
 import { Heading, Text } from "@/components/layout/heading";
+import type { FoundingPublicCount } from "@/lib/billing/founding-ui";
 import { BUYER_SECTOR_LABELS } from "@/lib/constants";
 import type { PublicDealPreview } from "@/lib/search/dto";
 import type { SafeMatchView } from "@/lib/matching/types";
@@ -33,6 +34,7 @@ export function DealPreviewDetail({
     loginHref?: string;
     revealHref?: string;
     returnTo?: string;
+    founding?: FoundingPublicCount;
   };
   signedIn?: boolean;
 }) {
@@ -161,6 +163,7 @@ export function DealPreviewDetail({
           loginHref={unlock?.loginHref}
           revealHref={unlock?.revealHref}
           returnTo={unlock?.returnTo}
+          founding={unlock?.founding}
         />
       </section>
     </article>
