@@ -56,12 +56,17 @@ export function DealCard({
               {deal.previewTitle}
             </Link>
           </h3>
-          <p className="mt-2 max-w-3xl text-pretty text-[0.9375rem] leading-6 text-muted-foreground">
+            <p
+            className={cn(
+              "mt-2 max-w-3xl text-pretty text-[0.9375rem] leading-6 text-muted-foreground",
+              proLock && "line-clamp-3",
+            )}
+          >
             {deal.previewSummary}
           </p>
           {proLock ? (
             <p className="mt-3 text-[0.8125rem] leading-5 text-muted-foreground">
-              Buyer, documents, contacts: Pro
+              🔒 Buyer, documents and contacts with Pro
             </p>
           ) : null}
           <dl className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">

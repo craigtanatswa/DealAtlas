@@ -49,7 +49,7 @@ export function NavLink({
       onClick={onClick}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "inline-flex min-h-10 items-center text-sm font-medium transition-colors duration-150 ease-out focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none",
+        "inline-flex min-h-11 items-center whitespace-nowrap text-sm font-medium transition-colors duration-150 ease-out focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none",
         tone === "sidebar"
           ? cn(
               "rounded-md px-2 py-1.5",
