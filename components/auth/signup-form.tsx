@@ -5,13 +5,21 @@ import Link from "next/link";
 
 import { signUpAction } from "@/lib/auth/actions";
 import { INITIAL_ACTION_STATE } from "@/lib/auth/messages";
+import { loginPathForPlan, loginPathWithNext } from "@/lib/auth/redirect";
+import type { CheckoutPlanKey } from "@/lib/billing/types";
 import { FormStatus } from "@/components/auth/form-status";
 import { GoogleSignInButton } from "@/components/auth/google-sign-in-button";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 
-export function SignupForm({ nextPath }: { nextPath: string }) {
+export function SignupForm({
+  nextPath,
+  plan,
+}: {
+  nextPath: string;
+  plan: CheckoutPlanKey | null;
+}) {
   const [state, action, pending] = useActionState(
     signUpAction,
     INITIAL_ACTION_STATE,
@@ -66,7 +74,10 @@ export function SignupForm({ nextPath }: { nextPath: string }) {
         </Button>
         <p className="text-sm text-muted-foreground">
           Already have an account?{" "}
-          <Link href="/login" className="underline-offset-4 hover:underline">
+          <Link
+            href={plan ? loginPathForPlan(plan) : loginPathWithNext(nextPath)}
+            className="underline-offset-4 hover:underline"
+          >
             Sign in
           </Link>
         </p>

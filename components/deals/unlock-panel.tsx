@@ -10,6 +10,7 @@ import {
   CardHeader,
 } from "@/components/ui/card";
 import { foundingUiState, type FoundingPublicCount } from "@/lib/billing/founding-ui";
+import { signupPathForPlan } from "@/lib/auth/redirect";
 import Link from "next/link";
 
 export const LOCKED_INTELLIGENCE_FIELDS = [
@@ -27,7 +28,6 @@ export function UnlockPanel({
   heading = "Unlock the buyer and pursue this opportunity",
   fields = LOCKED_INTELLIGENCE_FIELDS,
   mode = "anonymous",
-  loginHref = "/login?next=/pricing",
   revealHref,
   returnTo,
   founding,
@@ -101,7 +101,7 @@ export function UnlockPanel({
               />
             ) : (
               <Button asChild>
-                <Link href={loginHref}>Unlock with DealAtlas Pro</Link>
+                <Link href={signupPathForPlan("PRO_MONTHLY")}>Unlock with DealAtlas Pro</Link>
               </Button>
             )}
             <Button asChild variant="link">
@@ -114,7 +114,6 @@ export function UnlockPanel({
             remaining={founding?.remaining ?? 0}
             cap={founding?.cap ?? 25}
             mode={mode === "free" ? "free" : "anonymous"}
-            loginHref={loginHref}
             returnTo={returnTo}
           />
         )}
