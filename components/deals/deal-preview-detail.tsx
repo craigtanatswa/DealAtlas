@@ -122,15 +122,6 @@ export function DealPreviewDetail({
           />
           <MetaItem label={keyFact?.label ?? "Deadline"} value={deal.keyDates ?? keyFact?.value ?? deal.deadlineBand} />
           <MetaItem label="Contract term" value={deal.durationBand} />
-          <MetaItem label="Procedure" value={deal.procedureType} />
-          <MetaItem
-            label="Lots"
-            value={deal.lotCount == null ? null : deal.lotCount === 1 ? "1 lot" : `${deal.lotCount} lots`}
-          />
-          <MetaItem
-            label="Framework"
-            value={deal.framework == null ? null : deal.framework ? "Framework" : "Not a framework"}
-          />
           <MetaItem label="Stage" value={DEAL_STAGE_LABELS[deal.stage]} />
         </dl>
       </section>

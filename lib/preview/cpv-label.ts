@@ -1,4 +1,3 @@
-import { leakTokens } from "@/lib/redaction/gate-normalize";
 
 /**
  * Official CPV division titles (2-digit). Free previews use these as the
@@ -72,7 +71,6 @@ const CPV_GROUP: Record<string, string> = {
   "805": "Training services",
 };
 
-const MAX_DESCRIPTION_WORDS = 8;
 
 function digits(code: string | null | undefined): string {
   return (code ?? "").replace(/\D/g, "");
@@ -106,21 +104,12 @@ export function cpvGroupLabel(code: string | null | undefined): string | null {
 }
 
 /**
- * Goods phrase for a free preview. A short official description is kept
- * (division/group style, for example "Construction work for hospital
- * facilities"). Longer leaf text rolls up to the group, then the division.
- * The 8-digit code is never returned.
+ * Goods phrase for a free preview: the official CPV division title only.
+ * Source descriptions, leaf and group titles are never returned (they are
+ * quasi-identifiers and source-supplied text). Unknown codes return null.
  */
-export function cpvGoodsLabel(
-  code: string | null | undefined,
-  description: string | null | undefined,
-): string | null {
-  const text = stripCpvCodes(description);
-  const significant = digits(code).replace(/0+$/, "");
-  if (text && leakTokens(text).length <= MAX_DESCRIPTION_WORDS) {
-    if (significant.length <= 3 || leakTokens(text).length <= 6) {
-      return text;
-    }
-  }
-  return cpvGroupLabel(code) ?? cpvDivisionLabel(code) ?? text;
+export function cpvGoodsLabel(code: string | null | undefined): string | null {
+  return cpvDivisionLabel(code);
 }
+
+export const CPV_DIVISION_TITLES: readonly string[] = Object.values(CPV_DIVISION);

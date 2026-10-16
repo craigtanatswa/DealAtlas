@@ -129,15 +129,113 @@ describe("free channels stay high information and low identifiability", () => {
     }
   });
 
-  it("shows CPV descriptions, a day-count deadline and a publication month", async () => {
+  it("shows the CPV division, banded dates and value, and no day count or month", async () => {
     const store = await ingest("normal.json");
     const preview = store.previews[0]!;
     const text = `${preview.previewTitle} ${preview.previewSummary} ${preview.requirementsPreview.join(" ")}`;
     expect(text.toLowerCase()).toContain("it services");
-    expect(text).toMatch(/Closes in \d+ days/);
-    expect(text).toContain("September 2026");
+    expect(text).toContain("Closing window");
+    expect(text).not.toMatch(/\bin \d+ days?\b/i);
+    expect(text).not.toMatch(/(January|February|March|April|May|June|July|August|September|October|November|December) 20\d\d/);
+    expect(text).not.toMatch(/\blots?\b/i);
+    expect(text).not.toMatch(/\d+ ?(percent|%)/i);
+    expect(text).not.toMatch(/procedure/i);
     expect(text).toContain("£250k–£500k");
     expect(text).not.toContain("Manchester");
     expect(preview.leakageRisk).toBe("LOW");
+  });
+});
+
+const ADVERSARIAL_MARKERS = [
+  "westford",
+  "wbc",
+  "bids@westford.gov.uk",
+  "westford.gov.uk",
+  "westford-procurement.co.uk",
+  "01793",
+  "466 000",
+  "ocds-",
+  "tender_998877",
+  "000777-2026",
+  "ref:",
+  "wbc/ict/77",
+  "rm6187",
+  "management consultancy framework",
+  "crown commercial",
+  "g-cloud",
+  "in-tend",
+  "proactis",
+  "swindon",
+  "sn1",
+  "99999999",
+  "240",
+];
+
+describe("adversarial source text never reaches a free channel (P1-3, P1-4)", () => {
+  it("DTO JSON, card, detail, metadata/OG, JSON-LD, sitemap and analytics carry no identifiers", async () => {
+    const store = await ingest("adversarial.json");
+    const blob = freeChannelBlob(store).toLowerCase();
+    for (const marker of ADVERSARIAL_MARKERS) {
+      expect(blob, marker).not.toContain(marker);
+    }
+    expect(blob).not.toMatch(/https?:\/\/(?!localhost|schema\.org|www\.w3\.org|www\.sitemaps\.org)/);
+    expect(blob).not.toMatch(/\b\d{8}\b/);
+  });
+
+  it("drops scope and technical specs when the source text is risky (fail-closed)", async () => {
+    const store = await ingest("adversarial.json");
+    const preview = store.previews[0]!;
+    const lines = preview.requirementsPreview.map((item) =>
+      typeof item === "string" ? item : JSON.stringify(item),
+    );
+    expect(lines.some((line) => line.startsWith("scope:"))).toBe(false);
+    expect(lines.some((line) => line.startsWith("technicalSpecs:"))).toBe(false);
+    expect(lines.some((line) => /^quantities: .*\d/.test(line))).toBe(false);
+  });
+
+  it("the DTO decoder drops risky or unknown stored lines even if the DB held them", () => {
+    const dto = toPublicDealPreview({
+      slug: "it-services-for-a-public-organisation-deadbeef",
+      preview_title: "IT services for a public organisation",
+      preview_summary: "A public organisation is procuring IT services.",
+      deal_type: "PUBLIC_TENDER",
+      buyer_sector: "PUBLIC",
+      stage: "LIVE",
+      status: "OPEN",
+      main_category: "Technology",
+      broad_region: "South West England",
+      value_band: "£250k–£500k",
+      deadline_band: "Within 30 days",
+      duration_band: "1–2 years",
+      sme_suitability: "HIGH",
+      bid_complexity: "MEDIUM",
+      competition_level: "UNKNOWN",
+      requirements_preview: [
+        "scope: Contact bids@westford.gov.uk for the pack",
+        "technicalSpecs: Hosted via In-Tend",
+        "scope: Supply to Swindon",
+        "keyDates: Closes in 21 days",
+        "lotCount: 3",
+        "procedureType: open procedure",
+        "framework: yes",
+        "Contact: x@y.com",
+        "WESTFORD BOROUGH COUNCIL requirement",
+        "financial capacity evidence",
+        "standards: ISO 27001 information security",
+      ],
+      relevance_tags: [],
+      freshness_label: null,
+    } as PreviewDtoFields);
+    const json = JSON.stringify(dto).toLowerCase();
+    for (const marker of ["westford", "in-tend", "swindon", "closes in", "x@y.com", "open procedure"]) {
+      expect(json, marker).not.toContain(marker);
+    }
+    expect(dto.requirementsPreview).toEqual(["financial capacity evidence"]);
+    expect(dto.standards).toEqual(["ISO 27001 information security"]);
+    expect(dto.scope).toBeNull();
+    expect(dto.technicalSpecs).toEqual([]);
+    expect(dto.keyDates).toBeNull();
+    expect(Object.keys(dto)).not.toContain("lotCount");
+    expect(Object.keys(dto)).not.toContain("framework");
   });
 });

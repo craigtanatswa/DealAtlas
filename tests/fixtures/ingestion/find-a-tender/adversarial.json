@@ -1,0 +1,169 @@
+{
+  "uri": "https://www.find-tender.service.gov.uk/api/1.0/ocdsReleasePackages/000777-2026",
+  "version": "1.1",
+  "license": "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
+  "publisher": {
+    "name": "Cabinet Office"
+  },
+  "releases": [
+    {
+      "ocid": "ocds-h6vhtk-adv001",
+      "id": "000777-2026",
+      "date": "2026-09-01T09:00:00Z",
+      "tag": [
+        "tender"
+      ],
+      "initiationType": "tender",
+      "tender": {
+        "id": "REF-ADV-7",
+        "title": "Westford managed IT support",
+        "description": "Managed IT support and service desk for 240 devices for WESTFORD BOROUGH COUNCIL (WBC). Contact bids@westford.gov.uk or call 01793 466 000 ext 42, see https://westford.gov.uk/tenders and westford-procurement.co.uk. Ref: WBC/ICT/77, ocds-h6vhtk-adv001, tender_998877, notice 000777-2026. Call-off from RM6187 Management Consultancy Framework Three via Crown Commercial Service G-Cloud. Responses through the In-Tend portal and Proactis. Delivery to Swindon SN1 2JH.",
+        "status": "active",
+        "procurementMethod": "open",
+        "mainProcurementCategory": "services",
+        "value": {
+          "amount": 250000,
+          "currency": "GBP"
+        },
+        "tenderPeriod": {
+          "startDate": "2026-09-01T09:00:00Z",
+          "endDate": "2026-10-01T12:00:00Z"
+        },
+        "enquiryPeriod": {
+          "endDate": "2026-09-20T12:00:00Z"
+        },
+        "classification": {
+          "scheme": "CPV",
+          "id": "72000000",
+          "description": "IT services WESTFORD BOROUGH COUNCIL bids@westford.gov.uk"
+        },
+        "lots": [
+          {
+            "id": "1",
+            "title": "Managed IT support",
+            "description": "Managed IT support and service desk for 240 devices for WESTFORD BOROUGH COUNCIL (WBC). Contact bids@westford.gov.uk or call 01793 466 000 ext 42, see https://westford.gov.uk/tenders and westford-procurement.co.uk. Ref: WBC/ICT/77, ocds-h6vhtk-adv001, tender_998877, notice 000777-2026. Call-off from RM6187 Management Consultancy Framework Three via Crown Commercial Service G-Cloud. Responses through the In-Tend portal and Proactis. Delivery to Swindon SN1 2JH.",
+            "status": "active",
+            "value": {
+              "amount": 250000,
+              "currency": "GBP"
+            },
+            "awardCriteria": {
+              "criteria": [
+                {
+                  "type": "quality",
+                  "description": "Quality 60%",
+                  "numbers": [
+                    {
+                      "weight": 60
+                    }
+                  ]
+                },
+                {
+                  "type": "price",
+                  "description": "Price 40%",
+                  "numbers": [
+                    {
+                      "weight": 40
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ],
+        "items": [
+          {
+            "id": "1",
+            "relatedLot": "1",
+            "additionalClassifications": [
+              {
+                "scheme": "CPV",
+                "id": "99999999",
+                "description": "Swindon RM6187 ocds-h6vhtk-adv001 Westford portal"
+              }
+            ],
+            "deliveryAddresses": [
+              {
+                "locality": "Swindon",
+                "region": "UKK",
+                "country": "GB",
+                "countryName": "United Kingdom",
+                "postalCode": "SN1 2JH"
+              }
+            ]
+          }
+        ],
+        "selectionCriteria": {
+          "criteria": [
+            {
+              "type": "economic",
+              "description": "Minimum turnover \u00a3500,000"
+            },
+            {
+              "type": "technical",
+              "description": "ISO 27001 certification"
+            },
+            {
+              "type": "technical",
+              "description": "ISO 9001 and a WBC approved In-Tend account, Ref: WBC/ICT/77, phone 01793 466 000"
+            }
+          ]
+        },
+        "suitability": {
+          "sme": true,
+          "vcse": false
+        },
+        "documents": [
+          {
+            "id": "1",
+            "documentType": "tenderNotice",
+            "description": "Notice on Find a Tender",
+            "url": "https://www.find-tender.service.gov.uk/Notice/000777-2026",
+            "format": "text/html",
+            "datePublished": "2026-09-01T09:00:00Z"
+          }
+        ]
+      },
+      "parties": [
+        {
+          "id": "GB-PPON-AAAA-1111-BBBB",
+          "name": "Westford Borough Council",
+          "identifier": {
+            "scheme": "GB-PPON",
+            "id": "AAAA-1111-BBBB"
+          },
+          "address": {
+            "streetAddress": "Town Hall",
+            "locality": "Swindon",
+            "region": "UKK",
+            "postalCode": "SN1 2JH",
+            "country": "GB",
+            "countryName": "United Kingdom"
+          },
+          "contactPoint": {
+            "name": "Bids",
+            "email": "bids@westford.gov.uk",
+            "telephone": "01793 466 000"
+          },
+          "roles": [
+            "buyer"
+          ],
+          "details": {
+            "url": "https://westford.gov.uk",
+            "classifications": [
+              {
+                "scheme": "UK_CA_TYPE",
+                "id": "publicAuthorityLocal",
+                "description": "Public authority - local"
+              }
+            ]
+          }
+        }
+      ],
+      "buyer": {
+        "id": "GB-PPON-AAAA-1111-BBBB",
+        "name": "Example City Council"
+      }
+    }
+  ]
+}

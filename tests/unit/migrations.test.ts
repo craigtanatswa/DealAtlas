@@ -300,6 +300,42 @@ describe("supabase migrations", () => {
     expect(sql).not.toMatch(grantPattern);
   });
 
+  it("0041 keeps the rich-preview filter fail-closed and private (S&B PR42)", () => {
+    const m = readMigration("0041_preview_detail_allowlist.sql");
+    expect(m).toContain("create or replace function private.preview_detail_text_risky(p text)");
+    expect(m).toContain("not private.preview_detail_text_risky(i.body)");
+    expect(m).toContain(
+      "revoke execute on function private.preview_dto_requirements(jsonb) from public, anon, authenticated;",
+    );
+    expect(m).toContain(
+      "revoke execute on function private.preview_detail_text_risky(text) from public, anon, authenticated;",
+    );
+    expect(m).toContain("private.preview_dto_requirements(ranked.requirements_preview)");
+    expect(m).toContain("private.preview_detail_findings(p_preview_title, p_preview_summary, p_requirements)");
+    // Banned quasi-identifier fields are not in any allow-list.
+    expect(m).not.toMatch(/when '(lotCount|procedureType|framework)' then/);
+    expect(m).not.toMatch(/grant\s+execute[^;]*to\s+(anon|authenticated)/i);
+  });
+
+  it("0041 vocabularies match the TypeScript sources", async () => {
+    const m = readMigration("0041_preview_detail_allowlist.sql");
+    const q = (value: string) => `'${value.replace(/'/g, "''")}'`;
+    const { CPV_DIVISION_TITLES } = await import("@/lib/preview/cpv-label");
+    const { BROAD_REGIONS } = await import("@/lib/preview/region");
+    const { REQUIREMENT_PREVIEW_LABELS } = await import("@/lib/preview/labels");
+    const { PORTAL_TERMS, FRAMEWORK_TERMS, SAFE_UPPERCASE_TOKENS } = await import("@/lib/preview/risk");
+    for (const value of [
+      ...CPV_DIVISION_TITLES,
+      ...BROAD_REGIONS,
+      ...REQUIREMENT_PREVIEW_LABELS,
+      ...PORTAL_TERMS,
+      ...FRAMEWORK_TERMS,
+      ...SAFE_UPPERCASE_TOKENS,
+    ]) {
+      expect(m, value).toContain(q(value));
+    }
+  });
+
   it("keep the combined schema file in sync with migrations", () => {
     const bundled = fs.readFileSync(
       path.join(ROOT, "supabase", "dealatlas_full_schema.sql"),

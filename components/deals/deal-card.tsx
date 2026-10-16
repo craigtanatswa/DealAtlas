@@ -114,18 +114,6 @@ export function DealCard({
               <dt className="sr-only">SME fit</dt>
               <dd>SME fit {levelLabel(deal.smeSuitability, "not stated")}</dd>
             </div>
-            {deal.lotCount ? (
-              <div className="text-[0.8125rem] leading-5 text-muted-foreground tabular-nums">
-                <dt className="sr-only">Lots</dt>
-                <dd>{deal.lotCount === 1 ? "1 lot" : `${deal.lotCount} lots`}</dd>
-              </div>
-            ) : null}
-            {deal.framework != null ? (
-              <div className="text-[0.8125rem] leading-5 text-muted-foreground">
-                <dt className="sr-only">Framework</dt>
-                <dd>{deal.framework ? "Framework" : "Not a framework"}</dd>
-              </div>
-            ) : null}
           </dl>
           {tags.length > 0 ? (
             <ul className="mt-3 flex flex-wrap gap-2">

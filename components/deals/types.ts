@@ -25,9 +25,6 @@ export type DealCardData = {
   quantities?: string[];
   standards?: string[];
   keyDates?: string | null;
-  procedureType?: string | null;
-  lotCount?: number | null;
-  framework?: boolean | null;
   specificSector?: string | null;
   currency?: string | null;
   matchScore?: number | null;
