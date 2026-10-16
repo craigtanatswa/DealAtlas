@@ -383,7 +383,7 @@ select pg_temp.preview('b6', 'school-catering-services-7f1a2e5c',
   '["Catering experience"]', array['catering services'], 'Scotland');
 
 select pg_temp.preview(r, s, t, 'A public body needs a supplier for routine upkeep work at its premises.',
-  '["Maintenance experience"]', array['maintenance'], 'East of England', '£100k–£250k')
+  '["evidence of comparable delivery"]', array['maintenance'], 'East of England', '£100k–£250k')
 from (values
   ('f1', 'grounds-and-site-services-1f0a0001', 'Grounds and site services for a public organisation'),
   ('f2', 'facilities-and-fleet-services-1f0a0002', 'Facilities and fleet maintenance services'),
