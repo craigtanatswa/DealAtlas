@@ -49,6 +49,8 @@ select is(
     'quantities: Quantities specified (devices)',
     'quantities: Quantity 240 devices',
     'deliveryRequirements: Delivery within South West England',
+    'deliveryRequirements: Delivery within Nationwide',
+    'deliveryRequirements: UK-wide delivery',
     'deliveryRequirements: Delivery within Swindon',
     'commercialRequirements: Price scored',
     'commercialRequirements: Price scored at 40 percent',
@@ -69,6 +71,7 @@ select is(
     jsonb_build_object('field', 'keyDates', 'text', 'Closing window Within 30 days. Contract term 1–2 years'),
     jsonb_build_object('field', 'quantities', 'text', 'Quantities specified (devices)'),
     jsonb_build_object('field', 'deliveryRequirements', 'text', 'Delivery within South West England'),
+    jsonb_build_object('field', 'deliveryRequirements', 'text', 'UK-wide delivery'),
     jsonb_build_object('field', 'commercialRequirements', 'text', 'Price scored'),
     jsonb_build_object('field', 'scope', 'text', 'Managed service desk and endpoint management for staff'),
     to_jsonb('financial capacity evidence'::text)

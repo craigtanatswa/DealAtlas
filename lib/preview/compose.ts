@@ -319,7 +319,9 @@ export function composeFreePreview(
           .map((item) => safeProse(item.description ?? item.name, corpus, protectedTerms)),
         4,
       );
-  const delivery = aggressive || !region ? [] : [`Delivery within ${region}`];
+  const delivery = aggressive || !region
+    ? []
+    : [region === "Nationwide" ? "UK-wide delivery" : `Delivery within ${region}`];
   const commercial = commercialLines(context.awardCriteria);
 
   // Bands only. No day counts, no publication or award month.

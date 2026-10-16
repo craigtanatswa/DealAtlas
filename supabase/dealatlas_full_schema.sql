@@ -7640,7 +7640,7 @@ as $$
         when 'commercialRequirements' then i.parts <@ v.commercial
         when 'keyDates' then i.body = any(v.key_dates)
         when 'deliveryRequirements' then
-          (select bool_and(x like 'Delivery within %' and substr(x, 17) = any(v.regions)) from unnest(i.parts) as x)
+          (select bool_and(x = 'UK-wide delivery' or (x like 'Delivery within %' and substr(x, 17) = any(v.regions) and substr(x, 17) <> 'Nationwide')) from unnest(i.parts) as x)
         when 'quantities' then
           (select bool_and(x ~ '^Quantities specified \([a-z]+\)$'
                            and rtrim(substr(x, 23, length(x) - 23), 's') = any(
