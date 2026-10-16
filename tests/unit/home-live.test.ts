@@ -26,11 +26,13 @@ describe("homepage latest opportunities", () => {
     );
     const start = source.indexOf("export function HomeLiveOpportunities");
     const fn = source.slice(start, source.indexOf("export function HomeTestimonialsSection"));
+    const text = fn.replace(/\s+/g, " ");
     expect(fn).toContain("if (items.length === 0)");
     expect(fn).toContain("return null");
     expect(fn).toContain("Latest opportunities");
-    expect(fn).toContain("Open and upcoming opportunities first. Join DealAtlas Pro to unlock buyer and");
-    expect(fn).toContain("source details.");
+    expect(text).toContain(
+      "Open and upcoming opportunities first. Join DealAtlas Pro to unlock buyer and source details.",
+    );
     expect(fn).toContain("View all opportunities");
     expect(fn).toContain("DealList");
     expect(fn).toContain("proLock");
