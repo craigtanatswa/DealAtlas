@@ -31,6 +31,7 @@ export function UnlockPanel({
   revealHref,
   returnTo,
   founding,
+  hasScope = false,
 }: {
   heading?: string;
   fields?: readonly { label: string; benefit: string }[];
@@ -40,6 +41,7 @@ export function UnlockPanel({
   returnTo?: string;
   /** Counts only. Omitted, or not offered, keeps the standard Pro CTA. */
   founding?: FoundingPublicCount;
+  hasScope?: boolean;
 }) {
   if (mode === "pro") {
     return (
@@ -71,8 +73,9 @@ export function UnlockPanel({
           {heading}
         </h2>
         <CardDescription>
-          You already have the commercial context. Pro reveals who is buying,
-          the original notice, and how to apply after a verified subscription.
+          {hasScope
+            ? "You already have the commercial context. Pro reveals who is buying, the original notice, and how to apply after a verified subscription."
+            : "Pro reveals who is buying, the original notice, and how to apply after a verified subscription."}
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-2 sm:grid-cols-2">

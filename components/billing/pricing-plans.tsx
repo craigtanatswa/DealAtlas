@@ -191,6 +191,7 @@ export function PricingPlans({
               {FOUNDING_COPY.badge}
             </p>
             <h2 className="font-heading text-xl font-semibold text-balance">{FOUNDING_COPY.title}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">{FOUNDING_COPY.firstMembers}</p>
             <Price label={DISPLAY_PRICING.foundingAnnual} includeVat />
             <p className="mt-1 text-sm font-medium text-[#00806A]">{FOUNDING_COPY.lessThanAnnual}</p>
             <p className="mt-4 flex items-start gap-2 text-sm font-medium text-foreground">

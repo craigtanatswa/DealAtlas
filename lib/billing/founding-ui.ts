@@ -95,6 +95,7 @@ function clampFoundingRemaining(remaining: number, cap: number): number {
 export const FOUNDING_COPY = {
   badge: "Founding member",
   title: "Founding member Pro",
+  firstMembers: `First ${FOUNDING_CAP} members only`,
   lessThanAnnual: foundingLessThanAnnual(),
   priceLocked: "Locked for life",
   rechecked: "Availability is re-checked at checkout.",

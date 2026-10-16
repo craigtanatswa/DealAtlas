@@ -1,4 +1,4 @@
-import type { BuyerSector } from "@/lib/constants";
+import { BUYER_SECTOR_LABELS, type BuyerSector } from "@/lib/constants";
 import type { Database } from "@/lib/db/database.types";
 import type { DealType } from "@/lib/search/filters";
 
@@ -31,8 +31,17 @@ export type DealCardData = {
   matchReasons?: string[];
 };
 
-export function buyerVisibilityLabel(sector: BuyerSector): "Public" | "Private" {
-  return sector === "PUBLIC" ? "Public" : "Private";
+export function buyerSectorLabel(
+  sector: BuyerSector,
+  dealType?: DealType | null,
+): string | null {
+  if (sector === "PRIVATE" && dealType === "PUBLIC_TENDER") {
+    return null;
+  }
+  if (sector === "PUBLIC" && dealType === "PRIVATE_TENDER") {
+    return null;
+  }
+  return BUYER_SECTOR_LABELS[sector];
 }
 
 export function levelLabel(level: SuitabilityLevel | null, fallback: string) {

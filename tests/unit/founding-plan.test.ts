@@ -24,6 +24,7 @@ import {
   reservationForCheckout,
 } from "@/lib/billing/founding";
 import {
+  FOUNDING_CAP,
   FOUNDING_COPY,
   foundingPaywallPlaces,
   foundingPlacesLabel,
@@ -149,6 +150,7 @@ describe("founding member checkout", () => {
     expect(FOUNDING_COPY.paywallCta).toContain("£290/yr");
     expect(FOUNDING_COPY.lessThanAnnual).toBe("£100 less than standard annual");
     expect(FOUNDING_COPY.priceLocked).toBe("Locked for life");
+    expect(FOUNDING_COPY.firstMembers).toBe(`First ${FOUNDING_CAP} members only`);
   });
 
   it("rounds the public offer down to a band", () => {

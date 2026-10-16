@@ -11,7 +11,6 @@ import { Heading, Text } from "@/components/layout/heading";
 import { BrandLogo } from "@/components/navigation/brand-mark";
 import { SectionHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
-import { signupPathWithNext } from "@/lib/auth/redirect";
 import { APP_NAME } from "@/lib/constants";
 import { HOW_IT_WORKS_STEPS } from "@/lib/seo/pages";
 import type { PublicDealPreview, RankedDealSearchResult } from "@/lib/search/dto";
@@ -164,9 +163,7 @@ export function HomeLiveOpportunities({
         />
         <DealList
           items={items.map((preview) => ({ preview, match: null }))}
-          hrefForSlug={(slug) =>
-            signedIn ? `/deals/${slug}` : signupPathWithNext(`/deals/${slug}`)
-          }
+          hrefForSlug={(slug) => `/deals/${slug}`}
           signedIn={signedIn}
           proLock
         />

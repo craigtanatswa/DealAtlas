@@ -4,12 +4,12 @@ import { DealKeywordForm } from "@/components/deals/deal-keyword-form";
 import type { PublicSearchFilters } from "@/lib/search/params";
 
 export const HOME_SEARCH_EXAMPLES = [
-  "office furniture",
-  "cybersecurity",
+  "IT services",
+  "energy",
+  "water",
+  "transport",
+  "education",
   "construction",
-  "medical equipment",
-  "vehicle maintenance",
-  "maize seed",
 ] as const;
 
 const EMPTY_FILTERS: PublicSearchFilters = {
