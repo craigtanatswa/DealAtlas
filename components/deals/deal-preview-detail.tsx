@@ -5,13 +5,12 @@ import { deadlineKeyFact, DealStatusBadge } from "@/components/deals/deal-status
 import { OpeningAlertButton } from "@/components/deals/opening-alert";
 import { UnlockPanel, type UnlockCtaMode } from "@/components/deals/unlock-panel";
 import {
-  buyerVisibilityLabel,
+  buyerSectorLabel,
   levelLabel,
 } from "@/components/deals/types";
 import { MetaItem } from "@/components/intelligence/meta-item";
 import { Heading, Text } from "@/components/layout/heading";
 import type { FoundingPublicCount } from "@/lib/billing/founding-ui";
-import { BUYER_SECTOR_LABELS } from "@/lib/constants";
 import type { PublicDealPreview } from "@/lib/search/dto";
 import type { SafeMatchView } from "@/lib/matching/types";
 import {
@@ -42,16 +41,14 @@ export function DealPreviewDetail({
     status: deal.status,
     deadlineBand: deal.deadlineBand,
   });
+  const buyerLabel = buyerSectorLabel(deal.buyerSector, deal.dealType);
   return (
     <article className="flex flex-col gap-10">
       <header className="flex flex-col gap-4 border-b border-border pb-8">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
           <DealStatusBadge status={deal.status} deadlineBand={deal.deadlineBand} />
-          <span>{buyerVisibilityLabel(deal.buyerSector)} buyer</span>
+          {buyerLabel ? <span>{buyerLabel} buyer</span> : null}
           <span>{DEAL_TYPE_LABELS[deal.dealType]}</span>
-          {deal.buyerSector !== "PUBLIC" && deal.buyerSector !== "PRIVATE" ? (
-            <span>{BUYER_SECTOR_LABELS[deal.buyerSector]}</span>
-          ) : null}
           {deal.freshnessLabel ? <span>{deal.freshnessLabel}</span> : null}
         </div>
         <Heading>{deal.previewTitle}</Heading>
@@ -101,7 +98,7 @@ export function DealPreviewDetail({
         </Heading>
         <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <MetaItem label="Category" value={deal.mainCategory} />
-          <MetaItem label="Location" value={deal.broadRegion} />
+          <MetaItem label="Region" value={deal.broadRegion} />
           <MetaItem label="Value" value={deal.valueBand} />
           <MetaItem label={keyFact?.label ?? "Deadline"} value={keyFact?.value ?? deal.deadlineBand} />
           <MetaItem label="Contract term" value={deal.durationBand} />
@@ -164,6 +161,7 @@ export function DealPreviewDetail({
           revealHref={unlock?.revealHref}
           returnTo={unlock?.returnTo}
           founding={unlock?.founding}
+          hasScope={deal.requirementsPreview.length > 0}
         />
       </section>
     </article>
