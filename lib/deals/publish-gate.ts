@@ -1,9 +1,13 @@
-/** Mirrors the publish predicate in migration 0028. */
+/** Mirrors the publish predicate in migration 0040. */
 
-export const PUBLISHABLE_REUSE = ["OPEN_LICENSE", "PERMISSION_GRANTED"] as const;
+export const PUBLISHABLE_REUSE = ["OPEN_LICENSE", "PERMISSION_GRANTED", "UNKNOWN"] as const;
 
 export function sourceMayPublish(source: { enabled: boolean; reuseStatus: string }): boolean {
-  return source.enabled && (PUBLISHABLE_REUSE as readonly string[]).includes(source.reuseStatus);
+  return (
+    source.enabled &&
+    (PUBLISHABLE_REUSE as readonly string[]).includes(source.reuseStatus) &&
+    source.reuseStatus !== "PROHIBITED"
+  );
 }
 
 export function stageMayPublish(status: string, stage: string): boolean {

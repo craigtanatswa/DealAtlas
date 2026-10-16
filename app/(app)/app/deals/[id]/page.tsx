@@ -11,6 +11,7 @@ import { DatabaseQueryError } from "@/lib/db/errors";
 import { appDealPath, parseDealIdParam } from "@/lib/deals/paths";
 import { loadPaidDealDto } from "@/lib/deals/protected";
 import { loadDealHistory } from "@/lib/intelligence/protected";
+import { readFoundingPublicCount } from "@/lib/billing/founding-public";
 import { isProEntitlement } from "@/lib/entitlements/policy";
 import { getCurrentEntitlement } from "@/lib/entitlements/service";
 import { loadExportUsageForMonth } from "@/lib/exports/usage";
@@ -127,7 +128,10 @@ export default async function AppDealPage({ params }: PageProps) {
     );
   }
 
-  const previewPage = await getPublicDealPreviewPageByDealId(client, dealId);
+  const [previewPage, founding] = await Promise.all([
+    getPublicDealPreviewPageByDealId(client, dealId),
+    readFoundingPublicCount(),
+  ]);
   if (!previewPage) {
     notFound();
   }
@@ -142,6 +146,7 @@ export default async function AppDealPage({ params }: PageProps) {
           mode: "free",
           returnTo: appDealPath(dealId),
           revealHref: appDealPath(dealId),
+          founding: founding.offered ? founding : undefined,
         }}
       />
     </Main>

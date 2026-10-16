@@ -48,7 +48,7 @@ describe("supabase migrations", () => {
   const files = listMigrations();
   const sql = files.map(readMigration).join("\n");
 
-  it("are numbered 0001-0025, 0028-0030, then 0041, leaving 0026, 0027, and 0031-0040 for open pull requests", () => {
+  it("are numbered 0001-0025, 0028-0030, 0040, then 0041, leaving 0026, 0027, and 0031-0039 for open pull requests", () => {
     expect(files).toEqual([
       "0001_extensions_and_types.sql",
       "0002_core_schema.sql",
@@ -78,6 +78,7 @@ describe("supabase migrations", () => {
       "0028_publish_all_compliant_sources.sql",
       "0029_founding_member_slots.sql",
       "0030_founding_availability_and_claims.sql",
+      "0040_publish_unknown_terms_sources.sql",
       "0041_preview_detail_allowlist.sql",
     ]);
   });
@@ -104,6 +105,14 @@ describe("supabase migrations", () => {
     expect(sql).toContain(
       "revoke all on table private.founding_event_claims from public, anon, authenticated, service_role",
     );
+    expect(sql).not.toMatch(/disable row level security/i);
+  });
+
+  it("publishes enabled UNKNOWN terms and keeps prohibited or unscrapeable sources out", () => {
+    const sql = readMigration("0040_publish_unknown_terms_sources.sql");
+    expect(sql).toContain("'UNKNOWN'::public.reuse_status");
+    expect(sql).toContain("s.reuse_status <> 'PROHIBITED'::public.reuse_status");
+    expect(sql).not.toContain("scraping_permitted");
     expect(sql).not.toMatch(/disable row level security/i);
   });
 
