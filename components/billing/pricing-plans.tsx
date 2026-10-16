@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 import { CheckoutPlanForm } from "@/components/billing/checkout-plan-form";
 import { Heading, Text } from "@/components/layout/heading";
 import { Button } from "@/components/ui/button";
-import { loginPathWithNext, signupPathWithNext } from "@/lib/auth/redirect";
+import { signupPathForPlan, signupPathWithNext } from "@/lib/auth/redirect";
 import {
   FOUNDING_COPY,
   foundingPlacesLabel,
@@ -127,7 +127,7 @@ function PlanCta({
   if (!signedIn) {
     return (
       <Button asChild variant={variant} className={cn("h-11 w-full", buttonClassName)}>
-        <Link href={loginPathWithNext("/pricing")}>{label}</Link>
+        <Link href={signupPathForPlan(planKey)}>{label}</Link>
       </Button>
     );
   }

@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { CheckoutPlanForm } from "@/components/billing/checkout-plan-form";
 import { Button } from "@/components/ui/button";
+import { signupPathForPlan } from "@/lib/auth/redirect";
 import {
   FOUNDING_COPY,
   foundingPaywallPlaces,
@@ -16,14 +17,13 @@ export function FoundingUnlockActions({
   remaining,
   cap,
   mode,
-  loginHref,
   returnTo,
 }: {
   state: Exclude<FoundingUiState, "hidden">;
   remaining: number;
   cap: number;
   mode: "anonymous" | "free";
-  loginHref: string;
+  loginHref?: string;
   returnTo?: string;
 }) {
   if (state === "sold_out") {
@@ -51,10 +51,10 @@ export function FoundingUnlockActions({
         ) : (
           <>
             <Button asChild className="h-11 w-full">
-              <Link href={loginHref}>{FOUNDING_COPY.soldOutMonthly}</Link>
+              <Link href={signupPathForPlan("PRO_MONTHLY")}>{FOUNDING_COPY.soldOutMonthly}</Link>
             </Button>
             <Button asChild variant="link">
-              <Link href={loginHref}>{FOUNDING_COPY.soldOutAnnual}</Link>
+              <Link href={signupPathForPlan("PRO_ANNUAL")}>{FOUNDING_COPY.soldOutAnnual}</Link>
             </Button>
           </>
         )}
@@ -75,7 +75,7 @@ export function FoundingUnlockActions({
         />
       ) : (
         <Button asChild className={`h-11 ${FOUNDING_BUTTON}`}>
-          <Link href={loginHref}>{FOUNDING_COPY.paywallCta}</Link>
+          <Link href={signupPathForPlan("PRO_ANNUAL")}>{FOUNDING_COPY.paywallCta}</Link>
         </Button>
       )}
       <p className="text-center text-[0.8125rem] leading-5 text-pretty text-muted-foreground">
@@ -94,7 +94,7 @@ export function FoundingUnlockActions({
         />
       ) : (
         <Button asChild variant="link">
-          <Link href={loginHref}>{FOUNDING_COPY.paywallMonthly}</Link>
+          <Link href={signupPathForPlan("PRO_MONTHLY")}>{FOUNDING_COPY.paywallMonthly}</Link>
         </Button>
       )}
     </div>
