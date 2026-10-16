@@ -25,6 +25,7 @@ describe("founding pricing cards", () => {
 
     expect(screen.getByRole("heading", { name: "Pricing" })).toBeTruthy();
     expect(screen.getByText("17 of 25 founding places left")).toBeTruthy();
+    expect(screen.getByText("First 25 members only")).toBeTruthy();
     expect(screen.getByText("Locked for life")).toBeTruthy();
     expect(screen.getByText("£100 less than standard annual")).toBeTruthy();
     expect(screen.getByText("(incl. VAT)")).toBeTruthy();

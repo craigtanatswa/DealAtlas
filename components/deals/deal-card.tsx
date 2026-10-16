@@ -5,7 +5,7 @@ import { DealStatusBadge } from "@/components/deals/deal-status";
 import { OpeningAlertButton } from "@/components/deals/opening-alert";
 import { MatchScore } from "@/components/deals/match-score";
 import {
-  buyerVisibilityLabel,
+  buyerSectorLabel,
   levelLabel,
   type DealCardData,
 } from "@/components/deals/types";
@@ -29,6 +29,7 @@ export function DealCard({
   const dealPath = `/deals/${deal.slug}`;
   const destination = href ?? dealPath;
   const tags = (deal.relevanceTags ?? []).slice(0, 4);
+  const buyerLabel = buyerSectorLabel(deal.buyerSector, deal.dealType);
 
   return (
     <article
@@ -41,9 +42,9 @@ export function DealCard({
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[0.8125rem] leading-5">
             <DealStatusBadge status={deal.status} deadlineBand={deal.deadlineBand} />
-            <span className="text-muted-foreground">
-              {buyerVisibilityLabel(deal.buyerSector)} buyer
-            </span>
+            {buyerLabel ? (
+              <span className="text-muted-foreground">{buyerLabel} buyer</span>
+            ) : null}
             {deal.freshnessLabel ? (
               <span className="text-muted-foreground">{deal.freshnessLabel}</span>
             ) : null}
