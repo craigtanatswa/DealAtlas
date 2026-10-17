@@ -48,7 +48,7 @@ describe("supabase migrations", () => {
   const files = listMigrations();
   const sql = files.map(readMigration).join("\n");
 
-  it("are numbered 0001-0025 then 0028-0030 and 0033, leaving 0026, 0027, 0031 and 0032 for open pull requests", () => {
+  it("are numbered 0001-0025, 0028-0030, 0040, then 0041, leaving 0026, 0027, and 0031-0039 for open pull requests", () => {
     expect(files).toEqual([
       "0001_extensions_and_types.sql",
       "0002_core_schema.sql",
@@ -78,7 +78,8 @@ describe("supabase migrations", () => {
       "0028_publish_all_compliant_sources.sql",
       "0029_founding_member_slots.sql",
       "0030_founding_availability_and_claims.sql",
-      "0033_grant_sources.sql",
+      "0040_publish_unknown_terms_sources.sql",
+      "0041_preview_detail_allowlist.sql",
     ]);
   });
 
@@ -104,6 +105,14 @@ describe("supabase migrations", () => {
     expect(sql).toContain(
       "revoke all on table private.founding_event_claims from public, anon, authenticated, service_role",
     );
+    expect(sql).not.toMatch(/disable row level security/i);
+  });
+
+  it("publishes enabled UNKNOWN terms and keeps prohibited or unscrapeable sources out", () => {
+    const sql = readMigration("0040_publish_unknown_terms_sources.sql");
+    expect(sql).toContain("'UNKNOWN'::public.reuse_status");
+    expect(sql).toContain("s.reuse_status <> 'PROHIBITED'::public.reuse_status");
+    expect(sql).not.toContain("scraping_permitted");
     expect(sql).not.toMatch(/disable row level security/i);
   });
 
@@ -291,16 +300,40 @@ describe("supabase migrations", () => {
     expect(sql).not.toMatch(grantPattern);
   });
 
-  it("seeds blocked grant portals as prohibited and disabled", () => {
-    const sql = readMigration("0033_grant_sources.sql");
-    for (const key of ["etendersni", "ukri-funding-finder"]) {
-      const row = sql.slice(sql.indexOf(`'${key}'`));
-      expect(row).toContain("'PROHIBITED'");
-      expect(row.slice(0, 700)).toContain("false");
+  it("0041 keeps the rich-preview filter fail-closed and private (S&B PR42)", () => {
+    const m = readMigration("0041_preview_detail_allowlist.sql");
+    expect(m).toContain("create or replace function private.preview_detail_text_risky(p text)");
+    expect(m).toContain("not private.preview_detail_text_risky(i.body)");
+    expect(m).toContain(
+      "revoke execute on function private.preview_dto_requirements(jsonb) from public, anon, authenticated;",
+    );
+    expect(m).toContain(
+      "revoke execute on function private.preview_detail_text_risky(text) from public, anon, authenticated;",
+    );
+    expect(m).toContain("private.preview_dto_requirements(ranked.requirements_preview)");
+    expect(m).toContain("private.preview_detail_findings(p_preview_title, p_preview_summary, p_requirements)");
+    // Banned quasi-identifier fields are not in any allow-list.
+    expect(m).not.toMatch(/when '(lotCount|procedureType|framework)' then/);
+    expect(m).not.toMatch(/grant\s+execute[^;]*to\s+(anon|authenticated)/i);
+  });
+
+  it("0041 vocabularies match the TypeScript sources", async () => {
+    const m = readMigration("0041_preview_detail_allowlist.sql");
+    const q = (value: string) => `'${value.replace(/'/g, "''")}'`;
+    const { CPV_DIVISION_TITLES } = await import("@/lib/preview/cpv-label");
+    const { BROAD_REGIONS } = await import("@/lib/preview/region");
+    const { REQUIREMENT_PREVIEW_LABELS } = await import("@/lib/preview/labels");
+    const { PORTAL_TERMS, FRAMEWORK_TERMS, SAFE_UPPERCASE_TOKENS } = await import("@/lib/preview/risk");
+    for (const value of [
+      ...CPV_DIVISION_TITLES,
+      ...BROAD_REGIONS,
+      ...REQUIREMENT_PREVIEW_LABELS,
+      ...PORTAL_TERMS,
+      ...FRAMEWORK_TERMS,
+      ...SAFE_UPPERCASE_TOKENS,
+    ]) {
+      expect(m, value).toContain(q(value));
     }
-    expect(sql).toContain("Cloudflare/WAF");
-    expect(sql).toContain("electronic reproduction");
-    expect(sql).not.toMatch(/disable row level security/i);
   });
 
   it("keep the combined schema file in sync with migrations", () => {

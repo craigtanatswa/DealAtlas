@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 import { CheckoutPlanForm } from "@/components/billing/checkout-plan-form";
 import { Heading, Text } from "@/components/layout/heading";
 import { Button } from "@/components/ui/button";
-import { loginPathWithNext, signupPathWithNext } from "@/lib/auth/redirect";
+import { signupPathForPlan, signupPathWithNext } from "@/lib/auth/redirect";
 import {
   FOUNDING_COPY,
   foundingPlacesLabel,
@@ -53,13 +53,16 @@ function FeatureList({ items }: { items: readonly string[] }) {
   );
 }
 
-function Price({ label }: { label: string }) {
+function Price({ label, includeVat }: { label: string; includeVat?: boolean }) {
   const price = splitPrice(label);
   return (
     <p className="mt-4 text-4xl font-semibold tracking-tight text-foreground tabular-nums">
       {price.amount}
       {price.period ? (
         <span className="text-base font-medium text-muted-foreground">{price.period}</span>
+      ) : null}
+      {includeVat ? (
+        <span className="text-base font-medium text-muted-foreground"> (incl. VAT)</span>
       ) : null}
     </p>
   );
@@ -124,7 +127,7 @@ function PlanCta({
   if (!signedIn) {
     return (
       <Button asChild variant={variant} className={cn("h-11 w-full", buttonClassName)}>
-        <Link href={loginPathWithNext("/pricing")}>{label}</Link>
+        <Link href={signupPathForPlan(planKey)}>{label}</Link>
       </Button>
     );
   }
@@ -188,7 +191,8 @@ export function PricingPlans({
               {FOUNDING_COPY.badge}
             </p>
             <h2 className="font-heading text-xl font-semibold text-balance">{FOUNDING_COPY.title}</h2>
-            <Price label={DISPLAY_PRICING.foundingAnnual} />
+            <p className="mt-1 text-sm text-muted-foreground">{FOUNDING_COPY.firstMembers}</p>
+            <Price label={DISPLAY_PRICING.foundingAnnual} includeVat />
             <p className="mt-1 text-sm font-medium text-[#00806A]">{FOUNDING_COPY.lessThanAnnual}</p>
             <p className="mt-4 flex items-start gap-2 text-sm font-medium text-foreground">
               <LockIcon className="mt-0.5 size-4 shrink-0 text-[#00806A]" aria-hidden="true" />

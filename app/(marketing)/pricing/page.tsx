@@ -65,6 +65,9 @@ export default async function PricingPage() {
       ) : (
         <PricingPlans signedIn={Boolean(user)} count={count} state={state} />
       )}
+      <p className="text-center text-sm text-muted-foreground">
+        All prices include VAT.
+      </p>
     </Main>
   );
 }
@@ -121,7 +124,8 @@ function LegacyPricing({
           </p>
           {founding.foundingAvailable ? (
             <p className="mt-3 text-sm text-muted-foreground">
-              Founding Member annual checkout is {DISPLAY_PRICING.foundingAnnual}. Locked for life.
+              Founding Member annual checkout is {DISPLAY_PRICING.foundingAnnual}{" "}
+              (incl. VAT). Locked for life.
               {founding.note ? ` ${founding.note}.` : ""}
             </p>
           ) : null}

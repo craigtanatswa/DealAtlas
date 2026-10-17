@@ -5,7 +5,7 @@ import { DealStatusBadge } from "@/components/deals/deal-status";
 import { OpeningAlertButton } from "@/components/deals/opening-alert";
 import { MatchScore } from "@/components/deals/match-score";
 import {
-  buyerVisibilityLabel,
+  buyerSectorLabel,
   levelLabel,
   type DealCardData,
 } from "@/components/deals/types";
@@ -29,6 +29,7 @@ export function DealCard({
   const dealPath = `/deals/${deal.slug}`;
   const destination = href ?? dealPath;
   const tags = (deal.relevanceTags ?? []).slice(0, 4);
+  const buyerLabel = buyerSectorLabel(deal.buyerSector, deal.dealType);
 
   return (
     <article
@@ -41,9 +42,9 @@ export function DealCard({
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[0.8125rem] leading-5">
             <DealStatusBadge status={deal.status} deadlineBand={deal.deadlineBand} />
-            <span className="text-muted-foreground">
-              {buyerVisibilityLabel(deal.buyerSector)} buyer
-            </span>
+            {buyerLabel ? (
+              <span className="text-muted-foreground">{buyerLabel} buyer</span>
+            ) : null}
             {deal.freshnessLabel ? (
               <span className="text-muted-foreground">{deal.freshnessLabel}</span>
             ) : null}
@@ -56,7 +57,7 @@ export function DealCard({
               {deal.previewTitle}
             </Link>
           </h3>
-            <p
+          <p
             className={cn(
               "mt-2 max-w-3xl text-pretty text-[0.9375rem] leading-6 text-muted-foreground",
               proLock && "line-clamp-3",
@@ -64,6 +65,16 @@ export function DealCard({
           >
             {deal.previewSummary}
           </p>
+          {deal.goodsServices && deal.goodsServices.length > 0 ? (
+            <p className="mt-2 text-pretty text-[0.8125rem] leading-5 text-foreground">
+              {deal.goodsServices.slice(0, 2).join(" · ")}
+            </p>
+          ) : null}
+          {deal.keyDates ? (
+            <p className="mt-1 text-pretty text-[0.8125rem] leading-5 text-muted-foreground tabular-nums">
+              {deal.keyDates}
+            </p>
+          ) : null}
           {proLock ? (
             <p className="mt-3 text-[0.8125rem] leading-5 text-muted-foreground">
               🔒 Buyer, documents and contacts with Pro
