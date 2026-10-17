@@ -294,6 +294,7 @@ describe("CI workflow", () => {
       "mv supabase/migrations/0019_",
       "mv supabase/migrations/0020_",
       "mv supabase/migrations/002[1-9]_",
+      "mv supabase/migrations/00[3-9][0-9]_",
       "npx supabase start",
       "node scripts/ci-guard-env.mjs",
       "npm run build",

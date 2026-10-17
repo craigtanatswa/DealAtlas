@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 
 import { DealSortForm } from "@/components/deals/deal-sort-form";
 import { DealSearchPanel } from "@/components/deals/deal-search-filters";
@@ -12,6 +13,7 @@ import {
   hasActivePublicFilters,
   parsePublicSearchParams,
   PUBLIC_DEALS_PAGE_SIZE,
+  searchHref,
 } from "@/lib/search/params";
 import { publicDealsIndexMetadata } from "@/lib/search/metadata";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -47,6 +49,11 @@ export default async function DealsIndexPage({ searchParams }: PageProps) {
     pageSize: PUBLIC_DEALS_PAGE_SIZE,
   });
   const showRelevance = Boolean(companyProfileId);
+
+  const lastPage = Math.max(1, Math.ceil(result.total / filters.limit));
+  if (result.total > 0 && filters.page > lastPage) {
+    redirect(searchHref(filters, lastPage, "/deals"));
+  }
 
   return (
     <Main back className="gap-8">

@@ -174,7 +174,7 @@ const FILTER_CHIPS: Array<{
     value: (filters) =>
       filters.buyerSector ? BUYER_SECTOR_LABELS[filters.buyerSector] : undefined,
   },
-  { key: "region", label: "Location", value: (filters) => filters.region },
+  { key: "region", label: "Region", value: (filters) => filters.region },
   { key: "valueBand", label: "Value", value: (filters) => filters.valueBand },
   {
     key: "deadlineBand",

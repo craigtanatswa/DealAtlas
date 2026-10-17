@@ -48,8 +48,12 @@ One row per Supabase Auth user.
 - email
 - display_name
 - role USER/ADMIN
+- founding_member — set only by the founding webhook path and kept after cancel or expiry
+- founding_since
 - created_at
 - updated_at
+
+`private.founding_slots` holds one row per user (`reserved`, `active`, or `released`). Service role calls the slot functions; anon and authenticated cannot read the table or execute the functions. A reserved row expires after 30 minutes. An active row stays occupied after cancel. `private.founding_event_claims` has one row per processed event and one row per Dodo subscription. `GET /api/founding` returns the remaining count and a sold-out flag only.
 
 ### subscriptions
 Local mirror of Dodo subscription entitlement state.

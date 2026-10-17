@@ -4,7 +4,9 @@ import { Checkout } from "@dodopayments/nextjs";
 import { NextRequest, NextResponse } from "next/server";
 
 import { checkoutMetadata } from "@/lib/billing/metadata";
-import { mapPlanKey, parseCheckoutRequest } from "@/lib/billing/plans";
+import { reservationForCheckout } from "@/lib/billing/founding";
+import { mapPlanKey, parseCheckoutRequest, selectCheckoutProduct } from "@/lib/billing/plans";
+import { readFoundingMember, reserveFoundingSlot } from "@/lib/billing/founding-db";
 import { requireDodoCheckoutConfig } from "@/lib/billing/config";
 import { BillingConfigError } from "@/lib/billing/errors";
 import { checkoutReturnUrl, parseCheckoutReturnTo } from "@/lib/deals/paths";
@@ -79,6 +81,19 @@ export async function createAuthenticatedCheckoutResponse(input: {
     throw error;
   }
 
+  const foundingCheckout =
+    parsed.planKey === "PRO_ANNUAL" && Boolean(config.products.FOUNDING_ANNUAL);
+  const founder = foundingCheckout ? await readFoundingMember(input.user.id) : false;
+  const reservation = reservationForCheckout(
+    founder,
+    foundingCheckout && !founder ? await reserveFoundingSlot(input.user.id) : "unavailable",
+  );
+  const chosen = selectCheckoutProduct({
+    planKey: parsed.planKey,
+    products: config.products,
+    reservation,
+    testMode: config.environment === "test_mode" || Boolean(config.products.FOUNDING_ANNUAL),
+  });
   const mapped = mapPlanKey(parsed.planKey, config.products);
   const returnTo = parseCheckoutReturnTo(
     body && typeof body === "object" && !Array.isArray(body)
@@ -97,7 +112,7 @@ export async function createAuthenticatedCheckoutResponse(input: {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({
-      product_cart: [{ product_id: mapped.productId, quantity: 1 }],
+      product_cart: [{ product_id: chosen.productId, quantity: 1 }],
       customer: {
         email,
         name: checkoutCustomerName(input.profile, email),
