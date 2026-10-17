@@ -11,6 +11,12 @@ import {
 import { MetaItem } from "@/components/intelligence/meta-item";
 import { Heading, Text } from "@/components/layout/heading";
 import type { FoundingPublicCount } from "@/lib/billing/founding-ui";
+import {
+  categoryLabel,
+  disclosed,
+  distinctSpecificSector,
+  keyDatesRemainder,
+} from "@/lib/preview/display";
 import type { PublicDealPreview } from "@/lib/search/dto";
 import type { SafeMatchView } from "@/lib/matching/types";
 import {
@@ -42,6 +48,33 @@ export function DealPreviewDetail({
     deadlineBand: deal.deadlineBand,
   });
   const buyerLabel = buyerSectorLabel(deal.buyerSector, deal.dealType);
+  const category = categoryLabel(deal.mainCategory);
+  const valueBand = disclosed(deal.valueBand);
+  const durationBand = disclosed(deal.durationBand);
+  const deadlineValue = disclosed(keyFact?.value ?? deal.deadlineBand);
+  // Placeholders (UNKNOWN, Not disclosed) and duplicates are not rendered.
+  const details: Array<[string, string | null]> = [
+    ["Sector", distinctSpecificSector(deal.specificSector, deal.goodsServices, category)],
+    ["Category", category],
+    ["Region", disclosed(deal.broadRegion)],
+    ["Value", valueBand && deal.currency ? `${valueBand} (${deal.currency})` : valueBand],
+    [keyFact?.label ?? "Deadline", deadlineValue],
+    [
+      "Key dates",
+      keyDatesRemainder(deal.keyDates, {
+        deadlineBand: deal.deadlineBand,
+        durationBand: deal.durationBand,
+      }),
+    ],
+    ["Contract term", durationBand],
+    ["Stage", DEAL_STAGE_LABELS[deal.stage]],
+  ];
+  const fit: Array<[string, string | null]> = [
+    ["SME suitability", disclosed(levelLabel(deal.smeSuitability, ""))],
+    ["Bid complexity", disclosed(levelLabel(deal.bidComplexity, ""))],
+    ["Competition", disclosed(levelLabel(deal.competitionLevel, ""))],
+  ];
+  const visibleFit = fit.filter(([, value]) => value);
   return (
     <article className="flex flex-col gap-10">
       <header className="flex flex-col gap-4 border-b border-border pb-8">
@@ -110,16 +143,11 @@ export function DealPreviewDetail({
           Opportunity details
         </Heading>
         <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          <MetaItem label="Sector" value={deal.specificSector ?? deal.mainCategory} />
-          <MetaItem label="Category" value={deal.mainCategory} />
-          <MetaItem label="Region" value={deal.broadRegion} />
-          <MetaItem
-            label="Value"
-            value={deal.currency && deal.valueBand ? `${deal.valueBand} (${deal.currency})` : deal.valueBand}
-          />
-          <MetaItem label={keyFact?.label ?? "Deadline"} value={deal.keyDates ?? keyFact?.value ?? deal.deadlineBand} />
-          <MetaItem label="Contract term" value={deal.durationBand} />
-          <MetaItem label="Stage" value={DEAL_STAGE_LABELS[deal.stage]} />
+          {details
+            .filter(([, value]) => value)
+            .map(([label, value]) => (
+              <MetaItem key={label} label={label} value={value} />
+            ))}
         </dl>
       </section>
 
@@ -157,20 +185,13 @@ export function DealPreviewDetail({
         <p className="text-[0.8125rem] leading-5 text-muted-foreground">
           These labels are DealAtlas analysis, not official procurement facts.
         </p>
-        <dl className="grid gap-3 sm:grid-cols-3">
-          <MetaItem
-            label="SME suitability"
-            value={levelLabel(deal.smeSuitability, "Not stated")}
-          />
-          <MetaItem
-            label="Bid complexity"
-            value={levelLabel(deal.bidComplexity, "Not stated")}
-          />
-          <MetaItem
-            label="Competition"
-            value={levelLabel(deal.competitionLevel, "Not stated")}
-          />
-        </dl>
+        {visibleFit.length > 0 ? (
+          <dl className="grid gap-3 sm:grid-cols-3">
+            {visibleFit.map(([label, value]) => (
+              <MetaItem key={label} label={label} value={value} />
+            ))}
+          </dl>
+        ) : null}
         {deal.relevanceTags.length > 0 ? (
           <ul className="flex flex-wrap gap-2">
             {deal.relevanceTags.map((tag) => (
