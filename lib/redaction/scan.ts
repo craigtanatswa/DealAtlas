@@ -42,6 +42,7 @@ export type LeakFindingCode =
   | "REFERENCE_ID"
   | "REFERENCE_PATTERN"
   | "DATE_EXACT"
+  | "DATE_DAY_COUNT"
   | "DATE_SOURCE"
   | "POSTCODE"
   | "POSTCODE_KNOWN_OUTWARD"
@@ -320,6 +321,10 @@ export function scanPreviewLeaks(input: LeakScanInput): LeakScanResult {
   }
 
   // Dates --------------------------------------------------------------------
+  // A day count plus the publish/lastModified date gives the exact day.
+  for (const m of matches(all, /((?:closes?|closing|due|questions?\s+close)\s+in\s+\d+\s+days?)/gi)) {
+    push("DATE_DAY_COUNT", "HIGH", "Preview states a day count to a deadline", m[1]);
+  }
   for (const re of DATE_EXACT_RES) {
     for (const m of matches(all, re)) {
       if (m[1] !== "24/7") {
