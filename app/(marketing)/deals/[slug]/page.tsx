@@ -86,7 +86,7 @@ export default async function DealPreviewPage({ params }: PageProps) {
   const indexable = isIndexablePublicPreview(page.preview);
 
   return (
-    <Main>
+    <Main back>
       {indexable ? (
         <JsonLd
           data={webPageJsonLd({

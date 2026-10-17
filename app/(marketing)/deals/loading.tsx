@@ -4,7 +4,7 @@ import { Main } from "@/components/layout/container";
 
 export default function DealsLoading() {
   return (
-    <Main className="gap-8">
+    <Main back className="gap-8">
       <LoadingState label="Loading opportunities" />
       <div className="grid gap-4">
         <DealCardSkeleton />

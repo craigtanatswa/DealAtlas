@@ -1,5 +1,6 @@
 import type { ComponentPropsWithoutRef, ElementType, ReactNode } from "react";
 
+import { PublicBackLink } from "@/components/navigation/public-back-link";
 import { cn } from "@/lib/utils";
 
 const WIDTH_CLASS = {
@@ -38,10 +39,11 @@ export function Container<T extends ElementType = "div">({
 }
 
 export function Main({
+  back = false,
   className,
   children,
   ...props
-}: Omit<ContainerProps<"main">, "as">) {
+}: Omit<ContainerProps<"main">, "as"> & { back?: boolean }) {
   return (
     <Container
       as="main"
@@ -49,6 +51,7 @@ export function Main({
       className={cn("flex flex-1 flex-col gap-8 py-10 md:py-14", className)}
       {...props}
     >
+      {back ? <PublicBackLink /> : null}
       {children}
     </Container>
   );
