@@ -98,15 +98,17 @@ export function createAllowlistedTextClient(
     fetchImpl?: typeof fetch;
     timeoutMs?: number;
     accept?: string;
+    userAgent?: string;
   },
 ): TextHttpClient {
   const fetchImpl = options?.fetchImpl ?? fetch;
   const timeoutMs = options?.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const accept = options?.accept ?? "text/plain, text/csv, text/html, application/json";
+  const userAgent = options?.userAgent ?? DEFAULT_USER_AGENT;
 
   return {
     async getText(url: string) {
-      return getTextFollowingRedirects(url, policy, fetchImpl, timeoutMs, accept, 0);
+      return getTextFollowingRedirects(url, policy, fetchImpl, timeoutMs, accept, userAgent, 0);
     },
   };
 }
@@ -160,6 +162,7 @@ async function getTextFollowingRedirects(
   fetchImpl: typeof fetch,
   timeoutMs: number,
   accept: string,
+  userAgent: string,
   redirectCount: number,
 ): Promise<TextGetResult> {
   const parsed = assertAllowedUrl(url, policy);
@@ -173,7 +176,7 @@ async function getTextFollowingRedirects(
       signal: controller.signal,
       headers: {
         Accept: accept,
-        "User-Agent": DEFAULT_USER_AGENT,
+        "User-Agent": userAgent,
       },
     });
 
@@ -195,6 +198,7 @@ async function getTextFollowingRedirects(
         fetchImpl,
         timeoutMs,
         accept,
+        userAgent,
         redirectCount + 1,
       );
     }

@@ -164,30 +164,151 @@ export type PreviewDtoFields = Pick<
   | "freshness_label"
 >;
 
+const PREVIEW_FIELD_KEYS = new Set<string>([
+  "slug",
+  "preview_title",
+  "preview_summary",
+  "deal_type",
+  "buyer_sector",
+  "stage",
+  "status",
+  "main_category",
+  "broad_region",
+  "value_band",
+  "deadline_band",
+  "duration_band",
+  "sme_suitability",
+  "bid_complexity",
+  "competition_level",
+  "requirements_preview",
+  "relevance_tags",
+  "freshness_label",
+]);
+
+const SOURCE_IDENTITY_PATTERNS = [
+  /https?:\/\/\S+/gi,
+  /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g,
+  /\bocds-[a-z0-9-]+\b/gi,
+  /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi,
+  /\bprocontract\b/gi,
+  /\bdue[- ]north\b/gi,
+  /\bthe chest\b/gi,
+  /\bkent business portal\b/gi,
+  /\bsource leicestershire\b/gi,
+  /\beast mids tenders\b/gi,
+  /\bessex procontract\b/gi,
+  /\bfind a tender\b/gi,
+  /\bcontracts finder\b/gi,
+];
+
+const IDENTITY_KEYS = new Set([
+  "source_title",
+  "sourceTitle",
+  "source_url",
+  "sourceUrl",
+  "source_key",
+  "sourceKey",
+  "ocid",
+  "reference",
+  "buyer_name",
+  "buyerName",
+  "canonical_name",
+  "canonicalName",
+  "notice_identifier",
+  "noticeIdentifier",
+  "application_url",
+  "applicationUrl",
+  "advert_id",
+  "advertId",
+]);
+
+function extraSourceStrings(row: object): string[] {
+  const found: string[] = [];
+  for (const [key, value] of Object.entries(row)) {
+    if (PREVIEW_FIELD_KEYS.has(key) || typeof value !== "string") {
+      continue;
+    }
+    const trimmed = value.trim();
+    const min = IDENTITY_KEYS.has(key) ? 4 : 12;
+    if (trimmed.length >= min) {
+      found.push(trimmed);
+    }
+  }
+  return found;
+}
+
+/** Drop source identity from a free-user string. Extra row fields are never copied through. */
+export function sanitizePublicPreviewText(value: string, blocked: readonly string[] = []): string {
+  let next = value;
+  for (const pattern of SOURCE_IDENTITY_PATTERNS) {
+    pattern.lastIndex = 0;
+    next = next.replace(pattern, " ");
+  }
+  for (const secret of blocked) {
+    const escaped = secret.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    next = next.replace(new RegExp(escaped, "gi"), " ");
+  }
+  return next.replace(/\s+/g, " ").trim();
+}
+
 export function toPublicDealPreview(row: PreviewDtoFields): PublicDealPreview {
+  const blocked = extraSourceStrings(row);
+  const title = sanitizePublicPreviewText(row.preview_title, blocked) || "Public sector opportunity";
+  const summary = sanitizePublicPreviewText(row.preview_summary, blocked);
   return {
     slug: row.slug,
-    previewTitle: row.preview_title,
-    previewSummary: row.preview_summary,
+    previewTitle: title,
+    previewSummary: summary,
     dealType: parseEnum(row.deal_type, DEAL_TYPES, "PUBLIC_TENDER"),
     buyerSector: parseBuyerSector(row.buyer_sector),
     stage: parseEnum(row.stage, DEAL_STAGES, "LIVE"),
     status: parseEnum(row.status, DEAL_STATUSES, "OPEN"),
-    mainCategory: row.main_category,
-    broadRegion: row.broad_region,
-    valueBand: row.value_band,
-    deadlineBand: row.deadline_band,
-    durationBand: row.duration_band,
+    mainCategory: cleanPreviewText(row.main_category, blocked),
+    broadRegion: cleanPreviewText(row.broad_region, blocked),
+    valueBand: cleanPreviewText(row.value_band, blocked),
+    deadlineBand: cleanPreviewText(row.deadline_band, blocked),
+    durationBand: cleanPreviewText(row.duration_band, blocked),
     smeSuitability: parseLevel(row.sme_suitability),
     bidComplexity: parseLevel(row.bid_complexity),
     competitionLevel: parseLevel(row.competition_level),
-    requirementsPreview: parseRequirementsPreview(row.requirements_preview),
+    requirementsPreview: parseRequirementsPreview(row.requirements_preview)
+      .map((item) => sanitizePublicPreviewText(item, blocked))
+      .filter((item) => item.length > 0),
     relevanceTags: Array.isArray(row.relevance_tags)
-      ? row.relevance_tags.filter((tag): tag is string => typeof tag === "string").slice(0, 12)
+      ? row.relevance_tags
+          .filter((tag): tag is string => typeof tag === "string")
+          .map((tag) => sanitizePublicPreviewText(tag, blocked))
+          .filter((tag) => tag.length > 0)
+          .slice(0, 12)
       : [],
-    freshnessLabel: row.freshness_label?.trim() || null,
-    ...decodePreviewDetails(row.requirements_preview).details,
+    freshnessLabel: cleanPreviewText(row.freshness_label, blocked),
+    ...sanitizePreviewDetails(decodePreviewDetails(row.requirements_preview).details, blocked),
   };
+}
+
+/** Run the decoded rich-preview detail fields through the same source-identity scrub. */
+function sanitizePreviewDetails(details: PreviewDetails, blocked: readonly string[]): PreviewDetails {
+  const list = (items: string[]) =>
+    items.map((item) => sanitizePublicPreviewText(item, blocked)).filter((item) => item.length > 0);
+  return {
+    ...details,
+    goodsServices: list(details.goodsServices),
+    quantities: list(details.quantities),
+    technicalSpecs: list(details.technicalSpecs),
+    standards: list(details.standards),
+    deliveryRequirements: list(details.deliveryRequirements),
+    commercialRequirements: list(details.commercialRequirements),
+    keyDates: cleanPreviewText(details.keyDates, blocked),
+    scope: cleanPreviewText(details.scope, blocked),
+    specificSector: cleanPreviewText(details.specificSector, blocked),
+  };
+}
+
+function cleanPreviewText(value: string | null, blocked: readonly string[]): string | null {
+  if (!value) {
+    return null;
+  }
+  return sanitizePublicPreviewText(value, blocked) || null;
 }
 
 export function toDealCardData(

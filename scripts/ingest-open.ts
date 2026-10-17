@@ -58,7 +58,9 @@ async function main() {
     publicIngestErrorLine,
     runOpenContractsFinderIngest,
     runOpenFindATenderIngest,
+    runOpenProcontractIngest,
   } = await import("@/lib/jobs/ingest-open");
+  const { isProcontractSourceKey } = await import("@/ingestion/sources/procontract/constants");
   const { createSupabaseIngestionStore } = await import("@/ingestion/store/supabase");
   const { createIngestionSupabaseClient } = await import(
     "@/ingestion/store/worker-client"
@@ -68,21 +70,32 @@ async function main() {
   const store = createSupabaseIngestionStore(createIngestionSupabaseClient());
   const statePath = process.env.OPEN_INGEST_STATE;
   const source = (process.env.OPEN_INGEST_SOURCE ?? "find-a-tender").trim();
-  if (source !== "find-a-tender" && source !== "contracts-finder") {
-    throw new Error("OPEN_INGEST_SOURCE must be find-a-tender or contracts-finder");
+  if (
+    source !== "find-a-tender" &&
+    source !== "contracts-finder" &&
+    !isProcontractSourceKey(source)
+  ) {
+    throw new Error(
+      "OPEN_INGEST_SOURCE must be find-a-tender, contracts-finder, or a ProContract portal key",
+    );
   }
-  const run =
-    source === "contracts-finder"
-      ? runOpenContractsFinderIngest
-      : runOpenFindATenderIngest;
-  const result = await run({
-    store,
-    dryRun: phase === "previews" ? false : dryRun,
-    backfillDays,
-    phase,
-    dealIds: phase === "previews" ? readChangedDealIds(statePath) : undefined,
-  });
-  if (phase === "ingest" && statePath && !dryRun) {
+  const result = isProcontractSourceKey(source)
+    ? await runOpenProcontractIngest({
+        store,
+        sourceKey: source,
+        dryRun: phase === "previews" ? false : dryRun,
+        phase,
+      })
+    : await (source === "contracts-finder"
+        ? runOpenContractsFinderIngest
+        : runOpenFindATenderIngest)({
+        store,
+        dryRun: phase === "previews" ? false : dryRun,
+        backfillDays,
+        phase,
+        dealIds: phase === "previews" ? readChangedDealIds(statePath) : undefined,
+      });
+  if (phase === "ingest" && statePath && !dryRun && !isProcontractSourceKey(source)) {
     const prior =
       source === "contracts-finder" ? readChangedDealIds(statePath) : [];
     const ids = [...new Set([...prior, ...result.changedDealIds])];
