@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { CheckoutPlanForm } from "@/components/billing/checkout-plan-form";
+import { PricingPlans } from "@/components/billing/pricing-plans";
 import { Heading, Text } from "@/components/layout/heading";
 import { Main } from "@/components/layout/container";
 import { JsonLd } from "@/components/seo/json-ld";
@@ -9,13 +10,17 @@ import { Button } from "@/components/ui/button";
 import { getAuthUser } from "@/lib/auth/session";
 import { getAppOrigin } from "@/lib/auth/urls";
 import { loginPathWithNext } from "@/lib/auth/redirect";
-import { DISPLAY_PRICING } from "@/lib/constants";
+import { readFoundingPublicCount } from "@/lib/billing/founding-public";
+import { foundingUiState } from "@/lib/billing/founding-ui";
 import { readFoundingOffer } from "@/lib/billing/founding-db";
+import { DISPLAY_PRICING } from "@/lib/constants";
 import { webPageJsonLd } from "@/lib/seo/json-ld";
 import { marketingPageMetadata } from "@/lib/seo/metadata";
 import { PUBLIC_PAGE_COPY } from "@/lib/seo/pages";
 
 const origin = getAppOrigin();
+
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = marketingPageMetadata({
   ...PUBLIC_PAGE_COPY.pricing,
@@ -38,8 +43,12 @@ const PRO_FEATURES = [
 ];
 
 export default async function PricingPage() {
-  const user = await getAuthUser();
-  const founding = await readFoundingOffer();
+  const [user, count, founding] = await Promise.all([
+    getAuthUser(),
+    readFoundingPublicCount(),
+    readFoundingOffer(),
+  ]);
+  const state = foundingUiState(count);
 
   return (
     <Main className="gap-10">
@@ -51,6 +60,27 @@ export default async function PricingPage() {
           description: PUBLIC_PAGE_COPY.pricing.description,
         })}
       />
+      {state === "hidden" ? (
+        <LegacyPricing signedIn={Boolean(user)} founding={founding} />
+      ) : (
+        <PricingPlans signedIn={Boolean(user)} count={count} state={state} />
+      )}
+      <p className="text-center text-sm text-muted-foreground">
+        All prices include VAT.
+      </p>
+    </Main>
+  );
+}
+
+function LegacyPricing({
+  signedIn,
+  founding,
+}: {
+  signedIn: boolean;
+  founding: { foundingAvailable: boolean; note: string | null };
+}) {
+  return (
+    <>
       <div className="mx-auto flex max-w-3xl flex-col gap-3 text-center">
         <Heading>DealAtlas Pro</Heading>
         <Text variant="muted">
@@ -94,7 +124,8 @@ export default async function PricingPage() {
           </p>
           {founding.foundingAvailable ? (
             <p className="mt-3 text-sm text-muted-foreground">
-              Founding Member annual checkout is {DISPLAY_PRICING.foundingAnnual}. Locked for life.
+              Founding Member annual checkout is {DISPLAY_PRICING.foundingAnnual}{" "}
+              (incl. VAT). Locked for life.
               {founding.note ? ` ${founding.note}.` : ""}
             </p>
           ) : null}
@@ -109,7 +140,7 @@ export default async function PricingPage() {
             ))}
           </ul>
           <div className="mt-8 flex flex-col gap-3">
-            {user ? (
+            {signedIn ? (
               <>
                 <CheckoutPlanForm
                   planKey="PRO_MONTHLY"
@@ -135,6 +166,6 @@ export default async function PricingPage() {
           </div>
         </section>
       </div>
-    </Main>
+    </>
   );
 }

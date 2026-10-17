@@ -1,7 +1,7 @@
--- DealAtlas migration 0041
+-- DealAtlas migration 0042
 -- Government Commercial Agency agreements and pipeline, plus NHS catalogue rows.
--- Numbered after 0040, reserved by an open pull request. 0031-0033 are also reserved.
--- 0026 and 0027 stay free. All four sources stay disabled.
+-- Renumbered from 0041 to 0042 after main took 0041 (preview detail allowlist).
+-- All four sources stay disabled. 0026 and 0027 stay free.
 
 insert into public.data_sources (
   source_key,

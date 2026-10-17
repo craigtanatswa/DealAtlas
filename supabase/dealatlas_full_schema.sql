@@ -6989,139 +6989,908 @@ grant execute on function public.claim_founding_activation(text, text, uuid) to 
 -- ============================================================================
 
 -- ============================================================================
--- BEGIN 0041_gca_and_nhs_sources.sql
+-- BEGIN 0040_publish_unknown_terms_sources.sql
 -- ============================================================================
 
--- DealAtlas migration 0041
--- Government Commercial Agency agreements and pipeline, plus NHS catalogue rows.
--- Numbered after 0040, reserved by an open pull request. 0031-0033 are also reserved.
--- 0026 and 0027 stay free. All four sources stay disabled.
+-- Enabled sources with OPEN_LICENSE, PERMISSION_GRANTED or silent UNKNOWN
+-- terms may publish. Access method is not a publish gate.
+-- PROHIBITED and disabled sources stay excluded.
+-- OPEN and CLOSING_SOON may have a null submission_deadline. A non-null
+-- deadline must be more than 24 hours away on first publish, and must not
+-- be in the past. A null deadline is not unpublished.
+-- UPCOMING PLANNING is allowed from any compliant source. EARLY, AWARD,
+-- CONTRACT and other stages stay unpublishable.
 
-insert into public.data_sources (
-  source_key,
-  name,
-  source_type,
-  access_method,
-  base_url,
-  api_url,
-  licence_name,
-  licence_url,
-  terms_url,
-  reuse_status,
-  scraping_permitted,
-  enabled,
-  schedule_expression,
-  rate_limit_per_minute,
-  robots_checked_at,
-  terms_checked_at,
-  compliance_notes
+create or replace function public.publish_eligible_previews(
+  p_cap integer default 300,
+  p_run_id text default null
 )
-values
-  (
-    'gca-agreements',
-    'Government Commercial Agency agreements',
-    'GOVERNMENT_OPEN_DATA',
-    'JSON_API',
-    'https://www.gca.gov.uk/',
-    'https://www.gca.gov.uk/api/frameworks',
-    'Open Government Licence v3.0',
-    'https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/',
-    'https://www.gca.gov.uk/terms-and-conditions',
-    'OPEN_LICENSE',
-    false,
-    false,
-    null,
-    6,
-    timestamptz '2026-10-14T00:00:00Z',
-    timestamptz '2026-10-14T00:00:00Z',
-    'Crown Commercial Service became the Government Commercial Agency on 1 April 2026. Official JSON feed with no query string. robots.txt disallows page, limit, status and search queries, so only the first page is read. OGL v3.0. Disabled. Preserve-only. See docs/SOURCE_COMPLIANCE_REPORT.md.'
-  ),
-  (
-    'gca-procurement-pipeline',
-    'Government Commercial Agency pipeline',
-    'GOVERNMENT_OPEN_DATA',
-    'CSV',
-    'https://www.gca.gov.uk/agreements/upcoming',
-    'https://assets.gca.gov.uk/wp-content/uploads/Government-Commercial-Agency-Pipeline-10.08.2026.ods.xlsx.ods',
-    'Open Government Licence v3.0',
-    'https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/',
-    'https://www.gca.gov.uk/terms-and-conditions',
-    'OPEN_LICENSE',
-    false,
-    false,
-    null,
-    6,
-    timestamptz '2026-10-14T00:00:00Z',
-    timestamptz '2026-10-14T00:00:00Z',
-    'Official ODS download linked from the upcoming-agreements page. Recorded as CSV because that is the tabular access method. One request. OGL v3.0. Disabled. Preserve-only. See docs/SOURCE_COMPLIANCE_REPORT.md.'
-  ),
-  (
-    'nhs-supply-chain',
-    'NHS Supply Chain',
-    'GOVERNMENT_WEB',
-    'MANUAL',
-    'https://www.supplychain.nhs.uk/',
-    null,
-    null,
-    null,
-    'https://www.supplychain.nhs.uk/legal-information/terms-of-use/',
-    'PROHIBITED',
-    false,
-    false,
-    null,
-    null,
-    timestamptz '2026-10-14T00:00:00Z',
-    timestamptz '2026-10-14T00:00:00Z',
-    'Terms ban reuse without a written licence and ban electronic copies of copyright material. robots.txt disallows /wp-json/. PROHIBITED, disabled, no fetcher.'
-  ),
-  (
-    'nhs-sbs',
-    'NHS Shared Business Services',
-    'PROCUREMENT_PLATFORM',
-    'MANUAL',
-    'https://www.sbs.nhs.uk/',
-    null,
-    null,
-    null,
-    'https://www.sbs.nhs.uk/website-terms-and-conditions/',
-    'PROHIBITED',
-    false,
-    false,
-    null,
-    null,
-    timestamptz '2026-10-14T00:00:00Z',
-    timestamptz '2026-10-14T00:00:00Z',
-    'Terms ban copying and commercial use without prior written consent. The framework portal requires registration. PROHIBITED, disabled, no fetcher. Above-threshold notices stay on Find a Tender.'
-  )
-on conflict (source_key) do update set
-  name = excluded.name,
-  source_type = excluded.source_type,
-  access_method = excluded.access_method,
-  base_url = excluded.base_url,
-  api_url = excluded.api_url,
-  licence_name = excluded.licence_name,
-  licence_url = excluded.licence_url,
-  terms_url = excluded.terms_url,
-  reuse_status = excluded.reuse_status,
-  scraping_permitted = excluded.scraping_permitted,
-  enabled = excluded.enabled,
-  schedule_expression = excluded.schedule_expression,
-  rate_limit_per_minute = excluded.rate_limit_per_minute,
-  robots_checked_at = excluded.robots_checked_at,
-  terms_checked_at = excluded.terms_checked_at,
-  compliance_notes = excluded.compliance_notes,
-  updated_at = now();
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_cap integer := least(500, greatest(1, coalesce(p_cap, 300)));
+  v_result jsonb;
+begin
+  if not exists (select 1 from private.publish_denylist) then
+    raise exception 'publish denylist is empty';
+  end if;
 
-insert into private.leak_gate_terms (kind, term) values
-  ('source_platform', 'government commercial agency'),
-  ('source_platform', 'government commercial agency agreements'),
-  ('source_platform', 'government commercial agency pipeline'),
-  ('source_platform', 'nhs sbs'),
-  ('source_platform', 'nhs shared business services'),
-  ('source_platform', 'nhs supply chain'),
-  ('source_platform', 'supply chain coordination limited')
-on conflict (kind, term) do nothing;
+  with classified as (
+    select
+      dp.deal_id,
+      d.submission_deadline,
+      case
+        when dp.unpublished_by_admin
+          or exists (select 1 from private.preview_holds h where h.deal_id = dp.deal_id)
+          then 'held'
+        when exists (select 1 from private.publish_denylist x where x.deal_id = dp.deal_id)
+          then 'denylist'
+        when not exists (
+          select 1 from public.data_sources s
+          where s.id = d.primary_source_id
+            and s.enabled
+            and s.reuse_status in (
+              'OPEN_LICENSE'::public.reuse_status,
+              'PERMISSION_GRANTED'::public.reuse_status,
+              'UNKNOWN'::public.reuse_status
+            )
+            and s.reuse_status <> 'PROHIBITED'::public.reuse_status
+        ) then 'source'
+        when not (
+          dp.status = d.status
+          and (
+            (
+              d.status in ('OPEN', 'CLOSING_SOON')
+              and d.stage = 'LIVE'
+              and dp.stage = 'LIVE'
+            )
+            or (
+              d.status = 'UPCOMING'
+              and d.stage = 'PLANNING'
+              and dp.stage = 'PLANNING'
+            )
+          )
+        ) then 'status'
+        -- A null deadline is unknown, not expired, for OPEN, CLOSING_SOON and
+        -- UPCOMING. A non-null OPEN or CLOSING_SOON deadline must be more than
+        -- 24 hours away. A non-null UPCOMING deadline must still be in the
+        -- future. An expired deadline is never published.
+        when d.submission_deadline is not null
+          and (
+            (
+              d.status is distinct from 'UPCOMING'::public.deal_status
+              and d.submission_deadline <= pg_catalog.now() + interval '24 hours'
+            )
+            or (
+              d.status = 'UPCOMING'::public.deal_status
+              and d.submission_deadline <= pg_catalog.now()
+            )
+          )
+          then 'deadline'
+        when not private.preview_slug_is_template(dp.slug, dp.preview_title, dp.deal_id)
+          then 'slug'
+        when public.preview_slug_is_retired(dp.slug)
+          then 'retired'
+        when dp.leakage_risk is distinct from 'LOW'::public.leakage_risk
+          then 'risk'
+        when private.detect_preview_leakage(
+          dp.deal_id, dp.slug, dp.preview_title, dp.preview_summary,
+          dp.requirements_preview, dp.relevance_tags, dp.broad_region
+        ) is distinct from 'LOW'::public.leakage_risk
+          then 'risk'
+        else 'eligible'
+      end as reason
+    from public.deal_previews dp
+    join public.deals d on d.id = dp.deal_id
+    where dp.is_published = false
+  ),
+  ranked as (
+    select
+      deal_id,
+      row_number() over (order by submission_deadline asc, deal_id asc) as n
+    from classified
+    where reason = 'eligible'
+  ),
+  chosen as (
+    select deal_id from ranked where n <= v_cap
+  ),
+  flipped as (
+    update public.deal_previews dp
+    set is_published = true,
+        updated_at = pg_catalog.now()
+    where dp.deal_id in (select chosen.deal_id from chosen)
+      and dp.is_published = false
+    returning dp.deal_id, dp.is_published
+  ),
+  audited as (
+    insert into public.admin_audit_events (actor_id, action, entity_type, entity_id, summary, metadata)
+    select null, 'preview.publish'::text, 'deal_preview'::text, f.deal_id::text,
+      'Published LOW-risk preview for deal '::text || f.deal_id::text,
+      pg_catalog.jsonb_build_object('actor'::text, 'system:ingest-open'::text, 'run_id'::text, p_run_id)
+    from flipped f
+    where f.is_published
+    returning id
+  )
+  select pg_catalog.jsonb_build_object(
+    'selected'::text, (select count(*)::int from ranked),
+    'published'::text, (select count(*)::int from audited),
+    'skipped_risk'::text,
+      (select count(*)::int from classified where reason = 'risk'::text)
+      + (select count(*)::int from flipped where not is_published),
+    'skipped_source'::text, (select count(*)::int from classified where reason = 'source'::text),
+    'skipped_status'::text, (select count(*)::int from classified where reason = 'status'::text),
+    'skipped_deadline'::text, (select count(*)::int from classified where reason = 'deadline'::text),
+    'skipped_held'::text, (select count(*)::int from classified where reason = 'held'::text),
+    'skipped_slug'::text, (select count(*)::int from classified where reason = 'slug'::text),
+    'skipped_retired'::text, (select count(*)::int from classified where reason = 'retired'::text),
+    'skipped_denylist'::text, (select count(*)::int from classified where reason = 'denylist'::text),
+    'skipped_cap'::text, (select count(*)::int from ranked) - (select count(*)::int from chosen)
+  )
+  into v_result;
+
+  return v_result;
+end;
+$$;
+
+revoke all on function public.publish_eligible_previews(integer, text) from public, anon, authenticated;
+grant execute on function public.publish_eligible_previews(integer, text) to service_role;
+
+drop function if exists public.unpublish_stale_previews();
+drop function if exists public.unpublish_stale_previews(text);
+
+-- A deadline under 24 hours away, and a non-template or retired slug, only
+-- gate first publication. This function does not unpublish for those.
+-- A published row still comes down once its deadline is null or past.
+create or replace function public.unpublish_stale_previews(p_run_id text default null)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_result jsonb;
+begin
+  with doomed as (
+    select dp.deal_id
+    from public.deal_previews dp
+    join public.deals d on d.id = dp.deal_id
+    where dp.is_published
+      and (
+        (
+          d.submission_deadline is not null
+          and d.submission_deadline <= pg_catalog.now()
+        )
+        or d.status is distinct from dp.status
+        or d.stage is distinct from dp.stage
+        or not exists (
+          select 1 from public.data_sources s
+          where s.id = d.primary_source_id
+            and s.enabled
+            and s.reuse_status in (
+              'OPEN_LICENSE'::public.reuse_status,
+              'PERMISSION_GRANTED'::public.reuse_status,
+              'UNKNOWN'::public.reuse_status
+            )
+            and s.reuse_status <> 'PROHIBITED'::public.reuse_status
+        )
+        or exists (
+          select 1 from private.publish_denylist x where x.deal_id = dp.deal_id
+        )
+        or not (
+          (
+            d.status in ('OPEN', 'CLOSING_SOON')
+            and d.stage = 'LIVE'
+            and dp.stage = 'LIVE'
+          )
+          or (
+            d.status = 'UPCOMING'
+            and d.stage = 'PLANNING'
+            and dp.stage = 'PLANNING'
+          )
+        )
+      )
+  ),
+  flipped as (
+    update public.deal_previews dp
+    set is_published = false,
+        updated_at = pg_catalog.now()
+    where dp.deal_id in (select doomed.deal_id from doomed)
+      and dp.is_published
+    returning dp.deal_id, dp.is_published
+  ),
+  audited as (
+    insert into public.admin_audit_events (actor_id, action, entity_type, entity_id, summary, metadata)
+    select null, 'preview.unpublish'::text, 'deal_preview'::text, f.deal_id::text,
+      'Unpublished stale preview for deal '::text || f.deal_id::text,
+      pg_catalog.jsonb_build_object('actor'::text, 'system:ingest-open'::text, 'run_id'::text, p_run_id)
+    from flipped f
+    where not f.is_published
+    returning id
+  )
+  select pg_catalog.jsonb_build_object(
+    'selected'::text, (select count(*)::int from doomed),
+    'unpublished'::text, (select count(*)::int from audited)
+  )
+  into v_result;
+
+  return v_result;
+end;
+$$;
+
+revoke all on function public.unpublish_stale_previews(text) from public, anon, authenticated;
+grant execute on function public.unpublish_stale_previews(text) to service_role;
+
+comment on function public.unpublish_stale_previews(text) is
+  'Does not unpublish a row only because its deadline is under 24 hours away, null, or because its slug is non-template or retired. Those checks gate first publication, except a null deadline which stays publishable. OPEN, CLOSING_SOON and UPCOMING come down once a non-null deadline is in the past. EARLY, AWARD and CONTRACT stages come down. A disabled or PROHIBITED source comes down. UNKNOWN terms stay up when the source is enabled.';
 
 -- ============================================================================
--- END 0041_gca_and_nhs_sources.sql
+-- END 0040_publish_unknown_terms_sources.sql
+-- ============================================================================
+
+-- ============================================================================
+-- BEGIN 0041_preview_detail_allowlist.sql
+-- ============================================================================
+
+-- 0041 Rich free previews: allow-listed, vocabulary-bounded detail lines.
+--
+-- Principle: hide the source, not the value. Detail lines are stored in
+-- deal_previews.requirements_preview as "<field>: <text>". Before any line can
+-- leave the database through an anon/authenticated DTO RPC it must:
+--   * use an allow-listed field (lotCount, procedureType and framework are NOT
+--     allowed: they are quasi-identifiers, S&B PR42 P1-2);
+--   * for structured fields, match a fixed vocabulary (CPV division titles,
+--     standards, commercial lines, banded key dates, broad regions, quantity
+--     units). Out-of-vocabulary text is dropped, so no new high-cardinality
+--     quasi-identifier can ship (P1-2);
+--   * for free-text fields (scope, technicalSpecs) and every other line, pass
+--     private.preview_detail_text_risky. Any hit drops the line (fail-closed,
+--     P1-3, P2-1);
+--   * untagged lines must be one of the closed requirement labels (P2-3).
+-- The publish gate (private.detect_preview_leakage) also raises HIGH for any
+-- risky detail line or a deadline day count in the title/summary (P1-1, P1-3).
+-- search_deal_previews_for_profile now projects through the same filter (P2-4).
+-- The vocabularies mirror lib/preview/*.ts; tests/unit/migrations.test.ts
+-- checks parity.
+
+-- ---------------------------------------------------------------------------
+-- Risk detector. Mirrors lib/preview/risk.ts freeTextRisk.
+-- ---------------------------------------------------------------------------
+create or replace function private.preview_detail_text_risky(p text)
+returns boolean
+language plpgsql
+immutable
+set search_path = ''
+as $$
+declare
+  v_lower text := lower(coalesce(p, ''));
+  v_tok text;
+  v_term text;
+  v_safe text[] := array[
+      'ISO',
+      'IEC',
+      'PAS',
+      'GDPR',
+      'UK',
+      'IT',
+      'ICT',
+      'SME',
+      'SMES',
+      'VAT',
+      'HR',
+      'AI',
+      'CCTV',
+      'LED',
+      'PPE',
+      'BIM',
+      'HVAC',
+      'GBP',
+      'EUR',
+      'USD',
+      'BS',
+      'EN',
+      'PC',
+      'PCS',
+      'TV',
+      'CPD',
+      'KPI',
+      'KPIS',
+      'SLA',
+      'SLAS',
+      'API',
+      'APIS',
+      'PDF'
+    ]::text[];
+  v_terms text[] := array[
+      'esourcing',
+      'in-tend',
+      'proactis',
+      'bluelight',
+      'jaggaer',
+      'atamis',
+      'delta esourcing',
+      'contracts finder',
+      'find a tender',
+      'sell2wales',
+      'public contracts scotland',
+      'publiccontractsscotland',
+      'etendersni',
+      'bravo',
+      'mytenders',
+      'due north',
+      'procontract',
+      'tenders electronic daily',
+      'ted',
+      'supply2gov',
+      'achilles',
+      'constructionline',
+      'eu-supply',
+      'crown commercial service',
+      'ccs',
+      'ypo',
+      'espo',
+      'nepo',
+      'nhs supply chain',
+      'g-cloud',
+      'gcloud',
+      'digital outcomes',
+      'technology products and services',
+      'network services',
+      'pagabo',
+      'fusion21',
+      'lhc',
+      'scape',
+      'procure22',
+      'procure 22',
+      'nhs sbs',
+      'shared business services',
+      'pretium',
+      'lot 1'
+    ]::text[];
+begin
+  if p is null or btrim(p) = '' then
+    return false;
+  end if;
+  if p ~* '[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}'                                   -- email
+     or p ~* 'https?://|\mwww\.'                                                     -- url
+     or p ~* '\m[a-z0-9-]+\.(co\.uk|org\.uk|gov\.uk|nhs\.uk|ac\.uk|com|org|net|uk|io|eu)\M' -- domain
+     or p ~* '\mocds-'
+     or p ~* '\mtender_[a-z0-9]+'
+     or p ~ '\m[0-9]{6}-[0-9]{4}\M'                                              -- FTS notice id
+     or p ~* '\m[0-9a-f]{8}-[0-9a-f]{4}-'                                          -- CF / uuid ids
+     or p ~* '\mref(erence)?\s*(no\.?|number)?\s*[:#]'
+     or p ~* '\mrm\s?[0-9]{3,4}\M'
+     or p ~* '\m(closes?|closing|due|questions?\s+close)\s+in\s+[0-9]+\s+days?\M'    -- day count
+     or p ~* '(\+?[0-9][0-9 ().-]{5,}[0-9])|\mext(ension)?\.?\s*[0-9]+'            -- phone
+     or p ~* '\m[a-z]{1,2}[0-9][a-z0-9]?\s*[0-9][a-z]{2}\M'                       -- postcode
+     or p ~* '\m(?=[a-z_]*[0-9])(?=[0-9]*[a-z_])[a-z0-9_]{4,}([/-][a-z0-9_]+)+\M'     -- long codes
+  then
+    return true;
+  end if;
+  -- ALL-CAPS tokens (acronyms of bodies, shouted names), except generic ones.
+  for v_tok in select m[1] from regexp_matches(p, '\m([A-Z][A-Z0-9&]{1,})\M', 'g') as m loop
+    if v_tok <> all(v_safe) then
+      return true;
+    end if;
+  end loop;
+  -- Portal and framework names.
+  foreach v_term in array v_terms loop
+    if v_lower ~ ('(^|[^a-z0-9])' || regexp_replace(v_term, '([.*+?^${}()|\[\]\\-])', '\\\1', 'g') || '($|[^a-z0-9])') then
+      return true;
+    end if;
+  end loop;
+  return false;
+end;
+$$;
+
+revoke execute on function private.preview_detail_text_risky(text) from public, anon, authenticated;
+
+-- ---------------------------------------------------------------------------
+-- DTO projection. Allow-list + vocabulary + fail-closed risk check.
+-- ---------------------------------------------------------------------------
+create or replace function private.preview_dto_requirements(p jsonb)
+returns jsonb
+language sql
+immutable
+set search_path = ''
+as $$
+  with vocab as (
+    select
+      array[
+      'Agricultural, farming, fishing and forestry products',
+      'Petroleum, fuel, electricity and other energy',
+      'Mining, basic metals and related products',
+      'Food, beverages, tobacco and related products',
+      'Agricultural machinery',
+      'Clothing, footwear, luggage and accessories',
+      'Leather, textile, plastic and rubber materials',
+      'Printed matter and related products',
+      'Chemical products',
+      'Office and computing machinery and supplies',
+      'Electrical machinery, apparatus and lighting',
+      'Communications and telecommunications equipment',
+      'Medical equipment, pharmaceuticals and personal care',
+      'Transport equipment',
+      'Security, fire-fighting and defence equipment',
+      'Musical instruments, sports goods, games and toys',
+      'Laboratory, optical and precision equipment',
+      'Furniture, furnishings, domestic appliances and cleaning products',
+      'Collected and purified water',
+      'Industrial machinery',
+      'Mining, quarrying and construction machinery',
+      'Construction structures and materials',
+      'Construction work',
+      'Software packages and information systems',
+      'Repair and maintenance services',
+      'Installation services',
+      'Hotel, restaurant and retail services',
+      'Transport services',
+      'Supporting transport and travel-agency services',
+      'Postal and telecommunications services',
+      'Public utilities',
+      'Financial and insurance services',
+      'Real estate services',
+      'Architectural, engineering and inspection services',
+      'IT services: consulting, software development, Internet and support',
+      'Research and development services',
+      'Administration, defence and social security services',
+      'Oil and gas industry services',
+      'Agricultural, forestry and horticultural services',
+      'Business services: law, marketing, consulting, recruitment and security',
+      'Education and training services',
+      'Health and social work services',
+      'Sewage, refuse, cleaning and environmental services',
+      'Recreational, cultural and sporting services',
+      'Other community, social and personal services'
+    ]::text[] as cpv_divisions,
+      array[
+      'ISO 27001 information security',
+      'ISO 9001 quality management',
+      'ISO 14001 environmental management',
+      'Cyber Essentials Plus',
+      'Cyber Essentials',
+      'PAS 91 construction prequalification',
+      'UK data-protection duties'
+    ]::text[] as standards,
+      array[
+      'Price scored',
+      'Quality scored',
+      'Social value scored'
+    ]::text[] as commercial,
+      array[
+      'financial capacity evidence',
+      'information-security capability',
+      'appropriate insurance cover',
+      'data-protection capability',
+      'evidence of comparable delivery',
+      'social value contribution',
+      'ongoing support capability',
+      'implementation and mobilisation capability'
+    ]::text[] as labels,
+      array[
+      'Nationwide',
+      'London',
+      'South East England',
+      'South West England',
+      'East of England',
+      'East Midlands',
+      'West Midlands',
+      'Yorkshire and the Humber',
+      'North West England',
+      'North East England',
+      'Scotland',
+      'Wales',
+      'Northern Ireland',
+      'Remote'
+    ]::text[] as regions,
+      array[
+      'Closing window Closing today',
+      'Closing window Closing today. Contract term Under 3 months',
+      'Closing window Closing today. Contract term 3–6 months',
+      'Closing window Closing today. Contract term 6–12 months',
+      'Closing window Closing today. Contract term 1–2 years',
+      'Closing window Closing today. Contract term 2–3 years',
+      'Closing window Closing today. Contract term 3–5 years',
+      'Closing window Closing today. Contract term 5+ years',
+      'Closing window Within 3 days',
+      'Closing window Within 3 days. Contract term Under 3 months',
+      'Closing window Within 3 days. Contract term 3–6 months',
+      'Closing window Within 3 days. Contract term 6–12 months',
+      'Closing window Within 3 days. Contract term 1–2 years',
+      'Closing window Within 3 days. Contract term 2–3 years',
+      'Closing window Within 3 days. Contract term 3–5 years',
+      'Closing window Within 3 days. Contract term 5+ years',
+      'Closing window Within 7 days',
+      'Closing window Within 7 days. Contract term Under 3 months',
+      'Closing window Within 7 days. Contract term 3–6 months',
+      'Closing window Within 7 days. Contract term 6–12 months',
+      'Closing window Within 7 days. Contract term 1–2 years',
+      'Closing window Within 7 days. Contract term 2–3 years',
+      'Closing window Within 7 days. Contract term 3–5 years',
+      'Closing window Within 7 days. Contract term 5+ years',
+      'Closing window Within 14 days',
+      'Closing window Within 14 days. Contract term Under 3 months',
+      'Closing window Within 14 days. Contract term 3–6 months',
+      'Closing window Within 14 days. Contract term 6–12 months',
+      'Closing window Within 14 days. Contract term 1–2 years',
+      'Closing window Within 14 days. Contract term 2–3 years',
+      'Closing window Within 14 days. Contract term 3–5 years',
+      'Closing window Within 14 days. Contract term 5+ years',
+      'Closing window Within 30 days',
+      'Closing window Within 30 days. Contract term Under 3 months',
+      'Closing window Within 30 days. Contract term 3–6 months',
+      'Closing window Within 30 days. Contract term 6–12 months',
+      'Closing window Within 30 days. Contract term 1–2 years',
+      'Closing window Within 30 days. Contract term 2–3 years',
+      'Closing window Within 30 days. Contract term 3–5 years',
+      'Closing window Within 30 days. Contract term 5+ years',
+      'Closing window More than 30 days',
+      'Closing window More than 30 days. Contract term Under 3 months',
+      'Closing window More than 30 days. Contract term 3–6 months',
+      'Closing window More than 30 days. Contract term 6–12 months',
+      'Closing window More than 30 days. Contract term 1–2 years',
+      'Closing window More than 30 days. Contract term 2–3 years',
+      'Closing window More than 30 days. Contract term 3–5 years',
+      'Closing window More than 30 days. Contract term 5+ years',
+      'Closing window Closed',
+      'Closing window Closed. Contract term Under 3 months',
+      'Closing window Closed. Contract term 3–6 months',
+      'Closing window Closed. Contract term 6–12 months',
+      'Closing window Closed. Contract term 1–2 years',
+      'Closing window Closed. Contract term 2–3 years',
+      'Closing window Closed. Contract term 3–5 years',
+      'Closing window Closed. Contract term 5+ years',
+      'Closing window Upcoming / date not yet fixed',
+      'Closing window Upcoming / date not yet fixed. Contract term Under 3 months',
+      'Closing window Upcoming / date not yet fixed. Contract term 3–6 months',
+      'Closing window Upcoming / date not yet fixed. Contract term 6–12 months',
+      'Closing window Upcoming / date not yet fixed. Contract term 1–2 years',
+      'Closing window Upcoming / date not yet fixed. Contract term 2–3 years',
+      'Closing window Upcoming / date not yet fixed. Contract term 3–5 years',
+      'Closing window Upcoming / date not yet fixed. Contract term 5+ years',
+      'Closing window Not disclosed',
+      'Closing window Not disclosed. Contract term Under 3 months',
+      'Closing window Not disclosed. Contract term 3–6 months',
+      'Closing window Not disclosed. Contract term 6–12 months',
+      'Closing window Not disclosed. Contract term 1–2 years',
+      'Closing window Not disclosed. Contract term 2–3 years',
+      'Closing window Not disclosed. Contract term 3–5 years',
+      'Closing window Not disclosed. Contract term 5+ years',
+      'Contract term Under 3 months',
+      'Contract term 3–6 months',
+      'Contract term 6–12 months',
+      'Contract term 1–2 years',
+      'Contract term 2–3 years',
+      'Contract term 3–5 years',
+      'Contract term 5+ years'
+    ]::text[] as key_dates,
+      array[
+      'device',
+      'devices',
+      'each',
+      'hour',
+      'hours',
+      'item',
+      'items',
+      'licences',
+      'litre',
+      'litres',
+      'set',
+      'sets',
+      'site',
+      'sites',
+      'tonne',
+      'tonnes',
+      'unit',
+      'units',
+      'user',
+      'users',
+      'vehicle',
+      'vehicles'
+    ]::text[] as units
+  ),
+  raw as (
+    select
+      a.ord,
+      case
+        when jsonb_typeof(a.e) = 'object' then nullif(a.e ->> 'field', '')
+        when jsonb_typeof(a.e) = 'string'
+          and split_part(btrim(a.e #>> '{}'), ': ', 1) ~ '^[a-z][A-Za-z0-9]+$'
+          and position(': ' in btrim(a.e #>> '{}')) > 0
+          then split_part(btrim(a.e #>> '{}'), ': ', 1)
+        else null
+      end as field,
+      btrim(
+        case
+          when jsonb_typeof(a.e) = 'object' then coalesce(a.e ->> 'text', a.e ->> 'label', '')
+          when jsonb_typeof(a.e) = 'string'
+            and split_part(btrim(a.e #>> '{}'), ': ', 1) ~ '^[a-z][A-Za-z0-9]+$'
+            and position(': ' in btrim(a.e #>> '{}')) > 0
+            then substr(btrim(a.e #>> '{}'), length(split_part(btrim(a.e #>> '{}'), ': ', 1)) + 3)
+          when jsonb_typeof(a.e) = 'string' then a.e #>> '{}'
+          else ''
+        end
+      ) as body
+    from jsonb_array_elements(case when jsonb_typeof(p) = 'array' then p else '[]'::jsonb end)
+      with ordinality as a(e, ord)
+  ),
+  items as (
+    -- List fields are joined with " · "; every item is checked on its own.
+    select r.ord, r.field, r.body,
+      coalesce(
+        (select array_agg(btrim(x)) from unnest(string_to_array(r.body, ' · ')) as x where btrim(x) <> ''),
+        '{}'::text[]
+      ) as parts
+    from raw r
+  ),
+  checked as (
+    select i.ord, i.field, i.body
+    from items i, vocab v
+    where i.body <> ''
+      and length(i.body) <= 500
+      and i.body !~ '\m[0-9]{8}(-[0-9])?\M'
+      and not private.preview_detail_text_risky(i.body)
+      and cardinality(i.parts) > 0
+      and case i.field
+        when 'goodsServices' then i.parts <@ v.cpv_divisions
+        when 'specificSector' then i.parts <@ v.cpv_divisions and cardinality(i.parts) = 1
+        when 'standards' then i.parts <@ v.standards
+        when 'commercialRequirements' then i.parts <@ v.commercial
+        when 'keyDates' then i.body = any(v.key_dates)
+        when 'deliveryRequirements' then
+          (select bool_and(x = 'UK-wide delivery' or (x like 'Delivery within %' and substr(x, 17) = any(v.regions) and substr(x, 17) <> 'Nationwide')) from unnest(i.parts) as x)
+        when 'quantities' then
+          (select bool_and(x ~ '^Quantities specified \([a-z]+\)$'
+                           and rtrim(substr(x, 23, length(x) - 23), 's') = any(
+                             select rtrim(u, 's') from unnest(v.units) as u))
+           from unnest(i.parts) as x)
+        when 'currency' then i.body ~ '^[A-Z]{3}$'
+        when 'scope' then true
+        when 'technicalSpecs' then true
+        else i.field is null and i.body = any(v.labels)
+      end
+  )
+  select coalesce(jsonb_agg(
+    case
+      when c.field is not null then jsonb_build_object('field', c.field, 'text', c.body)
+      else to_jsonb(c.body)
+    end
+    order by c.ord
+  ), '[]'::jsonb)
+  from (select * from checked order by ord limit 40) c;
+$$;
+
+revoke execute on function private.preview_dto_requirements(jsonb) from public, anon, authenticated;
+
+-- ---------------------------------------------------------------------------
+-- Publish gate: extra findings for the rich-preview fields.
+-- ---------------------------------------------------------------------------
+create or replace function private.preview_detail_findings(
+  p_preview_title text,
+  p_preview_summary text,
+  p_requirements jsonb
+)
+returns table (finding_code text, finding_risk public.leakage_risk, finding_token text)
+language sql
+immutable
+set search_path = ''
+as $$
+  select 'DATE_DAY_COUNT'::text, 'HIGH'::public.leakage_risk, left(t, 120)
+  from unnest(array[p_preview_title, p_preview_summary]) as t
+  where t ~* '\m(closes?|closing|due|questions?\s+close)\s+in\s+[0-9]+\s+days?\M'
+  union all
+  select 'DETAIL_RISK'::text, 'HIGH'::public.leakage_risk, left(btrim(v #>> '{}'), 120)
+  from jsonb_path_query(
+    case when jsonb_typeof(p_requirements) in ('array', 'object') then p_requirements else '[]'::jsonb end,
+    'strict $.**'
+  ) as v
+  where jsonb_typeof(v) = 'string'
+    and private.preview_detail_text_risky(
+      case
+        when (v #>> '{}') ~ '^[a-z][A-Za-z0-9]+: ' then substr(v #>> '{}', position(': ' in (v #>> '{}')) + 2)
+        else v #>> '{}'
+      end
+    )
+  union all
+  select 'DETAIL_FIELD_BANNED'::text, 'HIGH'::public.leakage_risk, left(btrim(v #>> '{}'), 120)
+  from jsonb_path_query(
+    case when jsonb_typeof(p_requirements) in ('array', 'object') then p_requirements else '[]'::jsonb end,
+    'strict $.**'
+  ) as v
+  where jsonb_typeof(v) = 'string'
+    and (v #>> '{}') ~ '^(lotCount|procedureType|framework)(: |$)';
+$$;
+
+revoke execute on function private.preview_detail_findings(text, text, jsonb) from public, anon, authenticated;
+
+create or replace function private.detect_preview_leakage(
+  p_deal_id uuid,
+  p_slug text,
+  p_preview_title text,
+  p_preview_summary text,
+  p_requirements jsonb,
+  p_relevance_tags text[] default '{}'::text[],
+  p_broad_region text default null
+)
+returns public.leakage_risk
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select coalesce(max(f.r), 'LOW'::public.leakage_risk)
+  from (
+    select lf.finding_risk as r
+    from private.preview_leak_findings(
+      p_deal_id, p_slug, p_preview_title, p_preview_summary, p_requirements, p_relevance_tags, p_broad_region
+    ) as lf
+    union all
+    select df.finding_risk
+    from private.preview_detail_findings(p_preview_title, p_preview_summary, p_requirements) as df
+  ) f;
+$$;
+
+revoke execute on function private.detect_preview_leakage(uuid, text, text, text, jsonb, text[], text)
+  from public, anon, authenticated;
+
+-- ---------------------------------------------------------------------------
+-- P2-4: the legacy profile search projects requirements through the filter.
+-- Body unchanged from 0018 except that one column. Existing grants (revoked
+-- from client roles by 0019) are preserved by CREATE OR REPLACE.
+-- ---------------------------------------------------------------------------
+create or replace function public.search_deal_previews_for_profile(
+  p_company_profile_id uuid,
+  p_query text default null,
+  p_category text default null,
+  p_buyer_sector public.buyer_sector default null,
+  p_deal_type public.deal_type default null,
+  p_region text default null,
+  p_status public.deal_status default null,
+  p_value_band text default null,
+  p_deadline_band text default null,
+  p_min_score numeric default null,
+  p_sort text default 'updated',
+  p_limit integer default 20,
+  p_offset integer default 0
+)
+returns table (
+  deal_id uuid,
+  slug text,
+  preview_title text,
+  preview_summary text,
+  deal_type public.deal_type,
+  buyer_sector public.buyer_sector,
+  stage public.deal_stage,
+  status public.deal_status,
+  main_category text,
+  broad_region text,
+  value_band text,
+  deadline_band text,
+  duration_band text,
+  sme_suitability text,
+  bid_complexity text,
+  competition_level text,
+  requirements_preview jsonb,
+  relevance_tags text[],
+  freshness_label text,
+  relevance_score numeric,
+  preview_reasons jsonb,
+  total_count bigint
+)
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  with ranked as (
+    select
+      dp.deal_id,
+      dp.slug,
+      dp.preview_title,
+      dp.preview_summary,
+      dp.deal_type,
+      dp.buyer_sector,
+      dp.stage,
+      dp.status,
+      dp.main_category,
+      dp.broad_region,
+      dp.value_band,
+      dp.deadline_band,
+      dp.duration_band,
+      dp.sme_suitability,
+      dp.bid_complexity,
+      dp.competition_level,
+      dp.requirements_preview,
+      dp.relevance_tags,
+      dp.freshness_label,
+      dm.relevance_score,
+      case
+        when auth.role() = 'service_role' then coalesce(dm.preview_reasons, '[]'::jsonb)
+        else '[]'::jsonb
+      end as preview_reasons,
+      dp.updated_at,
+      case
+        when p_query is null or btrim(p_query) = '' then 0
+        else ts_rank(
+          to_tsvector(
+            'english',
+            coalesce(dp.preview_title, '') || ' ' || coalesce(dp.preview_summary, '') || ' ' || coalesce(dp.main_category, '')
+          ),
+          websearch_to_tsquery('english', p_query)
+        )
+      end as query_rank
+    from public.deal_previews dp
+    left join public.deal_matches dm
+      on dm.deal_id = dp.deal_id
+     and dm.company_profile_id = p_company_profile_id
+     and (
+       auth.role() = 'service_role'
+       or exists (
+         select 1
+         from public.company_profiles cp
+         where cp.id = p_company_profile_id
+           and cp.user_id = auth.uid()
+       )
+     )
+    where dp.is_published = true
+      and dp.leakage_risk = 'LOW'
+      and (p_category is null or dp.main_category = p_category)
+      and (p_buyer_sector is null or dp.buyer_sector = p_buyer_sector)
+      and (p_deal_type is null or dp.deal_type = p_deal_type)
+      and (p_region is null or dp.broad_region = p_region)
+      and (p_status is null or dp.status = p_status)
+      and (p_value_band is null or dp.value_band = p_value_band)
+      and (p_deadline_band is null or dp.deadline_band = p_deadline_band)
+      and (
+        p_min_score is null
+        or coalesce(dm.relevance_score, -1) >= p_min_score
+      )
+      and (
+        p_query is null
+        or btrim(p_query) = ''
+        or to_tsvector(
+             'english',
+             coalesce(dp.preview_title, '') || ' ' || coalesce(dp.preview_summary, '') || ' ' || coalesce(dp.main_category, '')
+           ) @@ websearch_to_tsquery('english', p_query)
+      )
+  )
+  select
+    ranked.deal_id,
+    ranked.slug,
+    ranked.preview_title,
+    ranked.preview_summary,
+    ranked.deal_type,
+    ranked.buyer_sector,
+    ranked.stage,
+    ranked.status,
+    ranked.main_category,
+    ranked.broad_region,
+    ranked.value_band,
+    ranked.deadline_band,
+    ranked.duration_band,
+    ranked.sme_suitability,
+    ranked.bid_complexity,
+    ranked.competition_level,
+    private.preview_dto_requirements(ranked.requirements_preview),
+    ranked.relevance_tags,
+    ranked.freshness_label,
+    ranked.relevance_score,
+    ranked.preview_reasons,
+    count(*) over() as total_count
+  from ranked
+  order by
+    case when lower(coalesce(p_sort, 'updated')) = 'relevance'
+      then coalesce(ranked.relevance_score, -1)
+      else 0
+    end desc,
+    ranked.query_rank desc,
+    ranked.updated_at desc
+  limit greatest(1, least(coalesce(p_limit, 20), 50))
+  offset greatest(coalesce(p_offset, 0), 0);
+$$;
+
+-- ============================================================================
+-- END 0041_preview_detail_allowlist.sql
 -- ============================================================================

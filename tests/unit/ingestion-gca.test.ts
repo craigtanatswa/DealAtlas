@@ -515,7 +515,7 @@ describe("Government Commercial Agency adapters", () => {
     expect(keys).not.toContain("nhs-supply-chain");
     expect(keys).not.toContain("nhs-sbs");
     const sql = fs.readFileSync(
-      path.join(ROOT, "supabase/migrations/0041_gca_and_nhs_sources.sql"),
+      path.join(ROOT, "supabase/migrations/0042_gca_and_nhs_sources.sql"),
       "utf8",
     );
     expect(sql).toContain("'gca-agreements'");

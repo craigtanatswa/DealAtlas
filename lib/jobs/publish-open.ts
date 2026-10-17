@@ -1,6 +1,10 @@
 import { alertDepsFromEnv } from "@/lib/leak-scan/alert";
 
 export const LIVE_PUBLISHED_MINIMUM = 100;
+/** The under-100 alert applies only while the catalogue is still below this total. */
+export const LIVE_PUBLISHED_ALERT_BELOW = 1000;
+export const PUBLISH_BATCH_SIZE = 500;
+export const PUBLISH_BATCH_MAX = 40;
 
 export type PublishJobStatus = "SUCCEEDED" | "PARTIAL" | "FAILED";
 
@@ -71,6 +75,19 @@ export function publishAlertText(input: {
   return lines.join("\n");
 }
 
+export function publishStatusForLiveCount(publishedLive: number): PublishJobStatus {
+  if (publishedLive >= LIVE_PUBLISHED_ALERT_BELOW) {
+    return "SUCCEEDED";
+  }
+  return publishedLive < LIVE_PUBLISHED_MINIMUM ? "PARTIAL" : "SUCCEEDED";
+}
+
+function addCounts(totals: Record<string, number>, counts: Record<string, number>): void {
+  for (const [key, value] of Object.entries(counts)) {
+    totals[key] = (totals[key] ?? 0) + value;
+  }
+}
+
 async function countPublished(client: PublishJobClient): Promise<number> {
   const { count, error } = await client
     .from("deal_previews")
@@ -119,27 +136,36 @@ export async function runPublishEligible(input: {
   if (input.mode !== "live") {
     return { status: "SUCCEEDED", dryRun: true, publishedLive, counts: {} };
   }
-  const { data, error } = await input.client.rpc("publish_eligible_previews", {
-    p_cap: 300,
-    p_run_id: input.env?.GITHUB_RUN_ID ?? null,
-  });
-  const counts = error ? null : numericCounts(data);
-  const after = await countPublished(input.client);
-  if (!counts) {
-    const errorMessage = formatRpcError(error);
-    await notify({
-      job: "publish-eligible",
-      status: "FAILED",
-      publishedLive: after,
-      counts: {},
-      mode: input.mode,
-      env: input.env ?? {},
-      fetchImpl: input.fetchImpl,
-      alert: input.alert,
+  const counts: Record<string, number> = {};
+  const runId = input.env?.GITHUB_RUN_ID ?? null;
+  for (let batch = 0; batch < PUBLISH_BATCH_MAX; batch += 1) {
+    const { data, error } = await input.client.rpc("publish_eligible_previews", {
+      p_cap: PUBLISH_BATCH_SIZE,
+      p_run_id: runId,
     });
-    return { status: "FAILED", dryRun: false, publishedLive: after, counts: {}, errorMessage };
+    const batchCounts = error ? null : numericCounts(data);
+    if (!batchCounts) {
+      const after = await countPublished(input.client);
+      const errorMessage = formatRpcError(error);
+      await notify({
+        job: "publish-eligible",
+        status: "FAILED",
+        publishedLive: after,
+        counts: {},
+        mode: input.mode,
+        env: input.env ?? {},
+        fetchImpl: input.fetchImpl,
+        alert: input.alert,
+      });
+      return { status: "FAILED", dryRun: false, publishedLive: after, counts: {}, errorMessage };
+    }
+    addCounts(counts, batchCounts);
+    if ((batchCounts.published ?? 0) === 0) {
+      break;
+    }
   }
-  const status: PublishJobStatus = after < LIVE_PUBLISHED_MINIMUM ? "PARTIAL" : "SUCCEEDED";
+  const after = await countPublished(input.client);
+  const status = publishStatusForLiveCount(after);
   if (status === "PARTIAL") {
     await notify({
       job: "publish-eligible",
@@ -199,7 +225,7 @@ export async function runPublishAlert(input: {
   if (input.mode !== "live") {
     return { status: "SUCCEEDED", dryRun: true, publishedLive, counts: {} };
   }
-  const status: PublishJobStatus = publishedLive < LIVE_PUBLISHED_MINIMUM ? "PARTIAL" : "SUCCEEDED";
+  const status = publishStatusForLiveCount(publishedLive);
   await notify({
     job: "publish-alert",
     status,

@@ -23,6 +23,14 @@ import {
   foundingSideEffect,
   reservationForCheckout,
 } from "@/lib/billing/founding";
+import {
+  FOUNDING_CAP,
+  FOUNDING_COPY,
+  foundingPaywallPlaces,
+  foundingPlacesLabel,
+  foundingSoldOutNote,
+  foundingUiState,
+} from "@/lib/billing/founding-ui";
 import { liveDodoConfigErrors } from "@/lib/env/production";
 import type { IncomingBillingEvent, PlanProductMap } from "@/lib/billing/types";
 import { WebhookPayloadSchema } from "@dodopayments/core/schemas";
@@ -125,6 +133,24 @@ describe("founding member checkout", () => {
         testMode: true,
       }).founding,
     ).toBe(false);
+  });
+
+  it("shows a counts-only place label when founding is offered in the UI", () => {
+    expect(foundingUiState({ offered: false, remaining: 25 })).toBe("hidden");
+    expect(foundingUiState({ offered: true, remaining: 17 })).toBe("available");
+    expect(foundingUiState({ offered: true, remaining: 1 })).toBe("last");
+    expect(foundingUiState({ offered: true, remaining: 0 })).toBe("sold_out");
+    expect(foundingPlacesLabel(17)).toBe("17 of 25 founding places left");
+    expect(foundingPlacesLabel(1)).toBe("Last founding place · 1 of 25 places left");
+    expect(foundingPaywallPlaces(17)).toBe("17 of 25 places left");
+    expect(foundingPaywallPlaces(1)).toBe("Last founding place · 1 of 25 places left");
+    expect(foundingSoldOutNote()).toBe(
+      "Founding membership is full. Thanks to our first 25 customers.",
+    );
+    expect(FOUNDING_COPY.paywallCta).toContain("£290/yr");
+    expect(FOUNDING_COPY.lessThanAnnual).toBe("£100 less than standard annual");
+    expect(FOUNDING_COPY.priceLocked).toBe("Locked for life");
+    expect(FOUNDING_COPY.firstMembers).toBe(`First ${FOUNDING_CAP} members only`);
   });
 
   it("rounds the public offer down to a band", () => {

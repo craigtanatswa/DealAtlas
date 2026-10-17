@@ -26,17 +26,18 @@ describe("homepage latest opportunities", () => {
     );
     const start = source.indexOf("export function HomeLiveOpportunities");
     const fn = source.slice(start, source.indexOf("export function HomeTestimonialsSection"));
-    const copy = fn.replace(/\s+/g, " ");
+    const text = fn.replace(/\s+/g, " ");
     expect(fn).toContain("if (items.length === 0)");
     expect(fn).toContain("return null");
     expect(fn).toContain("Latest opportunities");
-    expect(copy).toContain(
+    expect(text).toContain(
       "Open and upcoming opportunities first. Join DealAtlas Pro to unlock buyer and source details.",
     );
     expect(fn).toContain("View all opportunities");
     expect(fn).toContain("DealList");
     expect(fn).toContain("proLock");
-    expect(fn).toContain("signupPathWithNext");
+    expect(fn).not.toContain("signupPathWithNext");
+    expect(fn).toContain("hrefForSlug={(slug) => `/deals/${slug}`}");
     expect(fn).toContain("See all live deals →");
     expect(fn).not.toContain("grid-cols");
     expect(fn).not.toContain("HomeTeaser");

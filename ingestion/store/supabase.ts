@@ -598,12 +598,25 @@ export function createSupabaseIngestionStore(
     async listAwardCriteriaForDeal(dealId) {
       const result = await client
         .from("award_criteria")
-        .select("criterion_name, criterion_description")
+        .select("criterion_name, criterion_description, weight_percent")
         .eq("deal_id", dealId);
       const rows = throwIfQueryError("List award criteria", result) ?? [];
       return rows.map((row) => ({
         name: row.criterion_name,
         description: row.criterion_description,
+        weightPercent: row.weight_percent,
+      }));
+    },
+    async listClassificationsForDeal(dealId) {
+      const result = await client
+        .from("deal_classifications")
+        .select("cpv_code, source_description, is_primary")
+        .eq("deal_id", dealId);
+      const rows = throwIfQueryError("List classifications", result) ?? [];
+      return rows.map((row) => ({
+        code: row.cpv_code,
+        description: row.source_description,
+        isPrimary: row.is_primary,
       }));
     },
     async countDocumentsForDeal(dealId) {

@@ -197,3 +197,15 @@ export function broadRegionFromLocation(
 
   return nutsRegion(blob);
 }
+
+const NUTS1_WORD =
+  /^(britain|england|scotland|wales|london|ireland|northern|east|west|north|south|midlands|yorkshire|humber|nationwide|remote|kingdom|united)$/;
+
+/** True for a place name finer than NUTS1. NUTS1 words themselves are kept. */
+export function isBelowNuts1Place(word: string): boolean {
+  const token = word.toLowerCase();
+  if (!token || NUTS1_WORD.test(token)) {
+    return false;
+  }
+  return CITY_REGIONS.some((entry) => entry.pattern.test(token));
+}

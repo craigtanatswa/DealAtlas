@@ -18,7 +18,7 @@ describe("ingest-open workflow", () => {
     expect(workflow.match(/BACKFILL_DAYS="\$\{BACKFILL_DAYS%\.0\}"/g)).toHaveLength(2);
     expect(workflow).toContain("inputs.backfill_days || '7'");
     expect(workflow).toContain("inputs.dry_run || 'false'");
-    expect(workflow).toContain('cron: "41 4 */3 * *"');
+    expect(workflow).toContain('cron: "0 21 * * *"');
     expect(workflow).toContain('cron: "17 5 * * *"');
     expect(workflow).toContain('cron: "23 */6 * * *"');
     expect(workflow).toContain("publish_only:");
@@ -82,6 +82,7 @@ describe("ingest-open workflow", () => {
     expect(unpublishJob).toContain('github.event.schedule == \'17 5 * * *\'');
     const publishJob = workflow.slice(workflow.indexOf("  publish:"));
     expect(ingestJob).toContain("inputs.publish_only != true");
+    expect(ingestJob).toContain("github.event.schedule == '0 21 * * *'");
     expect(ingestJob).not.toContain("github.event_name == 'push'");
     expect(publishJob).toContain("github.event_name == 'push'");
     expect(publishJob).toContain("inputs.publish_only == true");

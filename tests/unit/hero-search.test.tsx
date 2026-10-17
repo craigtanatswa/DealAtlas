@@ -21,6 +21,18 @@ describe("homepage discovery controls", () => {
     ).toBe(`/deals?q=${encodeURIComponent(HOME_SEARCH_EXAMPLES[0])}`);
   });
 
+  it("lists only search examples with published results", () => {
+    expect(HOME_SEARCH_EXAMPLES).not.toContain("maize seed");
+    expect(HOME_SEARCH_EXAMPLES).toEqual([
+      "IT services",
+      "energy",
+      "water",
+      "transport",
+      "education",
+      "construction",
+    ]);
+  });
+
   it("links category shortcuts into existing search filters", () => {
     render(<CategoryShortcuts />);
 
