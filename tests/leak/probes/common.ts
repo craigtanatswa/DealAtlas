@@ -43,6 +43,7 @@ export const STATIC_PAGES = [
   "/cookies",
   "/categories",
   "/checkout/success",
+  "/checkout/founding-full",
 ];
 
 export const DTO_SNAKE_KEYS = [

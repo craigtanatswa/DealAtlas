@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { DealList } from "@/components/deals/deal-list";
+import { HOME_SEARCH_EXAMPLES } from "@/components/deals/hero-search-form";
 import { PaginationNav } from "@/components/deals/pagination-nav";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { Button } from "@/components/ui/button";
@@ -55,6 +56,24 @@ export function DealSearchResults({
         <Button asChild variant="outline">
           <Link href={path}>Clear filters</Link>
         </Button>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Try one of these searches:{" "}
+          {HOME_SEARCH_EXAMPLES.map((term, index) => (
+            <span key={term}>
+              <Link
+                href={searchHref(
+                  { page: 1, limit: filters.limit, query: term },
+                  1,
+                  path,
+                )}
+                className="font-medium text-foreground underline-offset-4 hover:underline focus-visible:rounded-sm focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+              >
+                {term}
+              </Link>
+              {index < HOME_SEARCH_EXAMPLES.length - 1 ? ", " : "."}
+            </span>
+          ))}
+        </p>
       </EmptyState>
     );
   }

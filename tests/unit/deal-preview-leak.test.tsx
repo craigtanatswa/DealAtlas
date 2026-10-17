@@ -27,6 +27,7 @@ describe("free discovery HTML and protected paths", () => {
 
     const html = `${detail.container.innerHTML}\n${search.container.innerHTML}`;
     expect(findProtectedMarkerLeaks(html)).toEqual([]);
+    expect(html).not.toMatch(/\b\d{8}\b/);
     expect(html).not.toMatch(/blur/);
     expect(html).toContain(DEAL_PREVIEW_DETAIL_FIXTURE.previewTitle);
     expect(html).toContain("Unlock the buyer and pursue this opportunity");

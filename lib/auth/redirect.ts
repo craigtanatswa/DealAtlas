@@ -1,6 +1,9 @@
+import { CHECKOUT_PLAN_KEYS, type CheckoutPlanKey } from "@/lib/billing/types";
+
 export const AUTH_HOME_PATH = "/app";
 export const LOGIN_PATH = "/login";
 export const SIGNUP_PATH = "/signup";
+export const CHECKOUT_PATH = "/checkout";
 export const FORGOT_PASSWORD_PATH = "/forgot-password";
 export const RESET_PASSWORD_PATH = "/reset-password";
 export const VERIFY_EMAIL_PATH = "/verify-email";
@@ -134,6 +137,25 @@ export function signupPathWithNext(nextPath: string): string {
 export function signupPathWithAlert(nextPath: string): string {
   const next = sanitizeRedirectPath(nextPath);
   return `${SIGNUP_PATH}?intent=alert&next=${encodeURIComponent(next)}`;
+}
+
+export function checkoutPathForPlan(plan: CheckoutPlanKey): string {
+  return `${CHECKOUT_PATH}?plan=${plan}`;
+}
+
+export function signupPathForPlan(plan: CheckoutPlanKey): string {
+  return `${SIGNUP_PATH}?plan=${plan}&next=${encodeURIComponent(checkoutPathForPlan(plan))}`;
+}
+
+export function loginPathForPlan(plan: CheckoutPlanKey): string {
+  return `${LOGIN_PATH}?plan=${plan}&next=${encodeURIComponent(checkoutPathForPlan(plan))}`;
+}
+
+export function parseCheckoutPlan(
+  value: string | null | undefined,
+): CheckoutPlanKey | null {
+  const match = CHECKOUT_PLAN_KEYS.find((key) => key === value);
+  return match ?? null;
 }
 
 export function defaultPathForAuthType(type: string | null | undefined): string {

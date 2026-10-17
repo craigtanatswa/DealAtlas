@@ -1,7 +1,7 @@
--- DealAtlas migration 0041
+-- DealAtlas migration 0044 (renumbered from 0041; main took 0041)
 -- ProContract-family council portals. Represented and disabled.
 -- No licence is documented. Scraping is not permitted. Live fetch stays off.
--- Follows 0030 on main. Open pull requests reserve 0026, 0027, 0031-0033 and 0040.
+-- Open pull requests reserve 0042, 0043, 0045 and 0046.
 
 insert into private.leak_gate_terms (kind, term)
 values

@@ -36,7 +36,8 @@ describe("homepage latest opportunities", () => {
     expect(fn).toContain("View all opportunities");
     expect(fn).toContain("DealList");
     expect(fn).toContain("proLock");
-    expect(fn).toContain("signupPathWithNext");
+    expect(fn).not.toContain("signupPathWithNext");
+    expect(fn).toContain("hrefForSlug={(slug) => `/deals/${slug}`}");
     expect(fn).toContain("See all live deals →");
     expect(fn).not.toContain("grid-cols");
     expect(fn).not.toContain("HomeTeaser");
