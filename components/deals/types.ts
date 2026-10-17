@@ -21,6 +21,12 @@ export type DealCardData = {
   dealType?: DealType;
   relevanceTags?: string[];
   freshnessLabel?: string | null;
+  goodsServices?: string[];
+  quantities?: string[];
+  standards?: string[];
+  keyDates?: string | null;
+  specificSector?: string | null;
+  currency?: string | null;
   matchScore?: number | null;
   matchReasons?: string[];
 };
