@@ -1,4 +1,9 @@
-import { createAllowlistedJsonClient, type JsonHttpClient } from "@/ingestion/core/http";
+import {
+  createAllowlistedJsonClient,
+  createAllowlistedTextClient,
+  type JsonHttpClient,
+  type TextHttpClient,
+} from "@/ingestion/core/http";
 import { runIngestion } from "@/ingestion/core/pipeline";
 import { defaultSleep } from "@/ingestion/core/retry";
 import { createContractsFinderAdapter } from "@/ingestion/sources/contracts-finder/adapter";
@@ -6,12 +11,22 @@ import {
   CONTRACTS_FINDER_FETCH_POLICY,
   CONTRACTS_FINDER_SOURCE_KEY,
 } from "@/ingestion/sources/contracts-finder/constants";
+import { createFindAGrantAdapter } from "@/ingestion/sources/find-a-grant/adapter";
+import {
+  FIND_A_GRANT_FETCH_POLICY,
+  FIND_A_GRANT_SOURCE_KEY,
+} from "@/ingestion/sources/find-a-grant/constants";
 import { createFindATenderAdapter } from "@/ingestion/sources/find-a-tender/adapter";
 import {
   FIND_A_TENDER_FETCH_POLICY,
   FIND_A_TENDER_SOURCE_KEY,
   formatOcdsDateTime,
 } from "@/ingestion/sources/find-a-tender/constants";
+import { createInnovateUkAdapter } from "@/ingestion/sources/innovate-uk/adapter";
+import {
+  INNOVATE_UK_FETCH_POLICY,
+  INNOVATE_UK_SOURCE_KEY,
+} from "@/ingestion/sources/innovate-uk/constants";
 import { createRequestPacer } from "@/ingestion/sources/find-a-tender/pace";
 import type { SourceAdapter } from "@/ingestion/core/types";
 import type { IngestionStore } from "@/ingestion/store/types";
@@ -416,4 +431,156 @@ export function runOpenContractsFinderIngest(
     ...options,
     sourceKey: CONTRACTS_FINDER_SOURCE_KEY,
   });
+}
+
+const GRANT_REQUESTS_PER_MINUTE = 10;
+const GRANT_WINDOW_MS = 60_000;
+
+function pacedTextClient(
+  http: TextHttpClient,
+  sleep: (ms: number) => Promise<void>,
+): TextHttpClient {
+  const pace = createRequestPacer({
+    maxRequests: GRANT_REQUESTS_PER_MINUTE,
+    windowMs: GRANT_WINDOW_MS,
+    sleep,
+  });
+  return {
+    async getText(url: string) {
+      await pace();
+      return http.getText(url);
+    },
+  };
+}
+
+export async function runOpenCatalogueIngest(options: {
+  sourceKey: typeof FIND_A_GRANT_SOURCE_KEY | typeof INNOVATE_UK_SOURCE_KEY;
+  store: IngestionStore;
+  now?: Date;
+  dryRun: boolean;
+  adapter?: SourceAdapter;
+  http?: TextHttpClient;
+  sleep?: (ms: number) => Promise<void>;
+  limit?: number;
+  phase?: "ingest" | "previews" | "all";
+  dealIds?: string[];
+}): Promise<OpenIngestResult> {
+  const now = options.now ?? new Date();
+  const sleep = options.sleep ?? defaultSleep;
+  const http =
+    options.http ??
+    createAllowlistedTextClient(
+      options.sourceKey === INNOVATE_UK_SOURCE_KEY
+        ? INNOVATE_UK_FETCH_POLICY
+        : FIND_A_GRANT_FETCH_POLICY,
+    );
+  const paced = pacedTextClient(http, sleep);
+  const adapter =
+    options.adapter ??
+    (options.sourceKey === INNOVATE_UK_SOURCE_KEY
+      ? createInnovateUkAdapter({ http: paced, now: () => now })
+      : createFindAGrantAdapter({ http: paced, now: () => now }));
+  const counts = emptyCounts();
+  const errors: OpenIngestError[] = [];
+  const changed = new Set<string>(options.dealIds ?? []);
+  const phase = options.phase ?? "all";
+  let status: OpenIngestResult["status"] = "SUCCEEDED";
+
+  if (phase !== "previews") {
+    const result = await runIngestion({
+      sourceKey: options.sourceKey,
+      store: options.store,
+      adapter,
+      triggerType: options.dryRun ? "DRY_RUN" : "SCHEDULED",
+      limit: options.limit ?? MAX_RECORDS,
+      now,
+      force: true,
+      pageSize: 100,
+      minFetchIntervalMs: 0,
+      sleep,
+      dryRun: options.dryRun,
+      skipPreview: true,
+      failureMode: "partial",
+      onPersisted: (info) => {
+        if (info.outcome === "new" || info.outcome === "updated" || info.outcome === "linked") {
+          changed.add(info.dealId);
+        }
+      },
+    });
+    counts.fetched += result.counters.fetched;
+    counts.new += result.counters.new;
+    counts.updated += result.counters.updated;
+    counts.unchanged += result.counters.unchanged;
+    counts.failed += result.counters.errorCount;
+    for (const error of result.errors) {
+      errors.push({
+        stage: error.stage,
+        code: error.code ?? "INGESTION_ERROR",
+        message: error.message,
+        details: error.details,
+      });
+    }
+    if (result.status === "SKIPPED") {
+      return {
+        status: "SKIPPED",
+        dryRun: options.dryRun,
+        counts,
+        changedDealIds: [],
+        errors,
+      };
+    }
+    if (result.status === "FAILED" || result.status === "PARTIAL") {
+      status = result.status === "FAILED" ? "FAILED" : "PARTIAL";
+    }
+  }
+
+  const previewIds = phase === "ingest" ? [] : [...changed];
+  if (!options.dryRun && phase !== "ingest") {
+    const missing = await options.store.listDealIdsMissingPreview(MISSING_PREVIEW_CAP);
+    const seen = new Set(previewIds);
+    for (const dealId of missing) {
+      if (seen.has(dealId)) continue;
+      seen.add(dealId);
+      previewIds.push(dealId);
+    }
+  }
+  if (!options.dryRun && previewIds.length > 0 && phase !== "ingest") {
+    const previews = await rebuildChangedPreviews({
+      store: options.store,
+      now,
+      mode: "live",
+      changedSince: now.toISOString(),
+      dealIds: previewIds,
+      limit: previewIds.length,
+      countsOnly: true,
+    });
+    if (phase === "previews") {
+      counts.fetched = previews.selected;
+      counts.new = previews.published;
+      counts.updated = previews.processed;
+      counts.unchanged = previews.blocked;
+    }
+    counts.failed += previews.failures;
+    if (previews.failures > 0) status = "PARTIAL";
+  }
+
+  return {
+    status,
+    dryRun: options.dryRun,
+    counts,
+    changedDealIds: phase === "previews" ? [] : [...changed],
+    errors,
+  };
+}
+
+export function runOpenFindAGrantIngest(
+  options: Omit<Parameters<typeof runOpenCatalogueIngest>[0], "sourceKey">,
+): Promise<OpenIngestResult> {
+  return runOpenCatalogueIngest({ ...options, sourceKey: FIND_A_GRANT_SOURCE_KEY });
+}
+
+export function runOpenInnovateUkIngest(
+  options: Omit<Parameters<typeof runOpenCatalogueIngest>[0], "sourceKey">,
+): Promise<OpenIngestResult> {
+  return runOpenCatalogueIngest({ ...options, sourceKey: INNOVATE_UK_SOURCE_KEY });
 }

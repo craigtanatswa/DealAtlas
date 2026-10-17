@@ -417,6 +417,13 @@ export function createMemoryIngestionStore(seed?: {
         ) ?? null
       );
     },
+    async findDealByNormalizedTitle(normalizedTitle) {
+      return (
+        state.deals.find(
+          (deal) => deal.normalizedTitle === normalizedTitle && deal.dealType === "GRANT",
+        ) ?? null
+      );
+    },
     async createDeal(input) {
       const deal: DealRecord = {
         ...input,
