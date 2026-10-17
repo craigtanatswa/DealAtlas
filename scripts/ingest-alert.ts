@@ -17,6 +17,8 @@ async function main() {
     buildCountsJson: process.env.BUILD_COUNTS,
     ingestOk: process.env.INGEST_OK,
     contractsFinderOk: process.env.CONTRACTS_FINDER_OK,
+    publicContractsScotlandOk: process.env.PUBLIC_CONTRACTS_SCOTLAND_OK,
+    sell2WalesOk: process.env.SELL2WALES_OK,
     buildOk: process.env.BUILD_OK,
     unpublishOk: process.env.UNPUBLISH_OK,
     publishOk: process.env.PUBLISH_OK,

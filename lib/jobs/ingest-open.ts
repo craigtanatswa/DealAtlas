@@ -1,4 +1,8 @@
-import { createAllowlistedJsonClient, type JsonHttpClient } from "@/ingestion/core/http";
+import {
+  createAllowlistedJsonClient,
+  type AllowedFetchPolicy,
+  type JsonHttpClient,
+} from "@/ingestion/core/http";
 import { runIngestion } from "@/ingestion/core/pipeline";
 import { defaultSleep } from "@/ingestion/core/retry";
 import { createContractsFinderAdapter } from "@/ingestion/sources/contracts-finder/adapter";
@@ -12,7 +16,21 @@ import {
   FIND_A_TENDER_SOURCE_KEY,
   formatOcdsDateTime,
 } from "@/ingestion/sources/find-a-tender/constants";
-import { createRequestPacer } from "@/ingestion/sources/find-a-tender/pace";
+import {
+  FIND_A_TENDER_REQUEST_LIMIT,
+  FIND_A_TENDER_REQUEST_WINDOW_MS,
+  createRequestPacer,
+} from "@/ingestion/sources/find-a-tender/pace";
+import { createPublicContractsScotlandAdapter } from "@/ingestion/sources/public-contracts-scotland/adapter";
+import {
+  PUBLIC_CONTRACTS_SCOTLAND_FETCH_POLICY,
+  PUBLIC_CONTRACTS_SCOTLAND_SOURCE_KEY,
+} from "@/ingestion/sources/public-contracts-scotland/constants";
+import { createSell2WalesAdapter } from "@/ingestion/sources/sell2wales/adapter";
+import {
+  SELL2WALES_FETCH_POLICY,
+  SELL2WALES_SOURCE_KEY,
+} from "@/ingestion/sources/sell2wales/constants";
 import type { SourceAdapter } from "@/ingestion/core/types";
 import type { IngestionStore } from "@/ingestion/store/types";
 import { rebuildChangedPreviews } from "@/lib/jobs/previews";
@@ -218,6 +236,42 @@ function emptyCounts(): OpenIngestCounts {
   return { fetched: 0, new: 0, updated: 0, unchanged: 0, failed: 0, capped: 0 };
 }
 
+export const OPEN_INGEST_SOURCE_KEYS = [
+  FIND_A_TENDER_SOURCE_KEY,
+  CONTRACTS_FINDER_SOURCE_KEY,
+  PUBLIC_CONTRACTS_SCOTLAND_SOURCE_KEY,
+  SELL2WALES_SOURCE_KEY,
+] as const;
+
+export type OpenIngestSourceKey = (typeof OPEN_INGEST_SOURCE_KEYS)[number];
+
+/** Devolved portals stay at or under 10 requests a minute. Find a Tender stays slower. */
+export function openIngestPacerOptions(sourceKey: string): {
+  maxRequests: number;
+  windowMs: number;
+} {
+  if (
+    sourceKey === PUBLIC_CONTRACTS_SCOTLAND_SOURCE_KEY ||
+    sourceKey === SELL2WALES_SOURCE_KEY
+  ) {
+    return { maxRequests: 10, windowMs: 60_000 };
+  }
+  return {
+    maxRequests: FIND_A_TENDER_REQUEST_LIMIT,
+    windowMs: FIND_A_TENDER_REQUEST_WINDOW_MS,
+  };
+}
+
+/** Find a Tender starts the changed-id file. Later sources append so a failure cannot drop it. */
+export function mergeOpenIngestChangedIds(
+  source: string,
+  prior: string[],
+  current: string[],
+): string[] {
+  const base = source === FIND_A_TENDER_SOURCE_KEY ? [] : prior;
+  return [...new Set([...base, ...current])];
+}
+
 export function openIngestLogLine(counts: OpenIngestCounts): string {
   return JSON.stringify({
     fetched: counts.fetched,
@@ -241,36 +295,21 @@ export async function runOpenFindATenderIngest(options: {
   /** ingest writes canonical rows. previews rebuilds changed deals. all does both. */
   phase?: "ingest" | "previews" | "all";
   dealIds?: string[];
-  sourceKey?: typeof FIND_A_TENDER_SOURCE_KEY | typeof CONTRACTS_FINDER_SOURCE_KEY;
+  sourceKey?: OpenIngestSourceKey;
 }): Promise<OpenIngestResult> {
   const now = options.now ?? new Date();
   const sleep = options.sleep ?? defaultSleep;
-  const pace = createRequestPacer({ sleep });
   const sourceKey = options.sourceKey ?? FIND_A_TENDER_SOURCE_KEY;
+  const pace = createRequestPacer({ sleep, ...openIngestPacerOptions(sourceKey) });
   const http =
-    options.http ??
-    createAllowlistedJsonClient(
-      sourceKey === CONTRACTS_FINDER_SOURCE_KEY
-        ? CONTRACTS_FINDER_FETCH_POLICY
-        : FIND_A_TENDER_FETCH_POLICY,
-    );
+    options.http ?? createAllowlistedJsonClient(fetchPolicyFor(sourceKey));
   const paced: JsonHttpClient = {
     async getJson(url: string) {
       await pace();
       return http.getJson(url);
     },
   };
-  const adapter =
-    options.adapter ??
-    (sourceKey === CONTRACTS_FINDER_SOURCE_KEY
-      ? createContractsFinderAdapter({
-          http: paced,
-          now: () => now,
-        })
-      : createFindATenderAdapter({
-          http: paced,
-          now: () => now,
-        }));
+  const adapter = options.adapter ?? adapterFor(sourceKey, paced, () => now);
 
   const counts = emptyCounts();
   const errors: OpenIngestError[] = [];
@@ -409,11 +448,59 @@ export async function runOpenFindATenderIngest(options: {
   };
 }
 
+function fetchPolicyFor(sourceKey: OpenIngestSourceKey): AllowedFetchPolicy {
+  switch (sourceKey) {
+    case CONTRACTS_FINDER_SOURCE_KEY:
+      return CONTRACTS_FINDER_FETCH_POLICY;
+    case PUBLIC_CONTRACTS_SCOTLAND_SOURCE_KEY:
+      return PUBLIC_CONTRACTS_SCOTLAND_FETCH_POLICY;
+    case SELL2WALES_SOURCE_KEY:
+      return SELL2WALES_FETCH_POLICY;
+    default:
+      return FIND_A_TENDER_FETCH_POLICY;
+  }
+}
+
+function adapterFor(
+  sourceKey: OpenIngestSourceKey,
+  http: JsonHttpClient,
+  now: () => Date,
+): SourceAdapter {
+  switch (sourceKey) {
+    case CONTRACTS_FINDER_SOURCE_KEY:
+      return createContractsFinderAdapter({ http, now });
+    case PUBLIC_CONTRACTS_SCOTLAND_SOURCE_KEY:
+      return createPublicContractsScotlandAdapter({ http, now });
+    case SELL2WALES_SOURCE_KEY:
+      return createSell2WalesAdapter({ http, now });
+    default:
+      return createFindATenderAdapter({ http, now });
+  }
+}
+
 export function runOpenContractsFinderIngest(
   options: Omit<Parameters<typeof runOpenFindATenderIngest>[0], "sourceKey">,
 ): Promise<OpenIngestResult> {
   return runOpenFindATenderIngest({
     ...options,
     sourceKey: CONTRACTS_FINDER_SOURCE_KEY,
+  });
+}
+
+export function runOpenPublicContractsScotlandIngest(
+  options: Omit<Parameters<typeof runOpenFindATenderIngest>[0], "sourceKey">,
+): Promise<OpenIngestResult> {
+  return runOpenFindATenderIngest({
+    ...options,
+    sourceKey: PUBLIC_CONTRACTS_SCOTLAND_SOURCE_KEY,
+  });
+}
+
+export function runOpenSell2WalesIngest(
+  options: Omit<Parameters<typeof runOpenFindATenderIngest>[0], "sourceKey">,
+): Promise<OpenIngestResult> {
+  return runOpenFindATenderIngest({
+    ...options,
+    sourceKey: SELL2WALES_SOURCE_KEY,
   });
 }

@@ -58,6 +58,8 @@ describe("open ingest alerts", () => {
       build_capped: 0,
       ingest_ok: 1,
       contracts_finder_ok: 0,
+      public_contracts_scotland_ok: 0,
+      sell2wales_ok: 0,
       build_ok: 0,
       unpublish_ok: 1,
       publish_ok: 0,
