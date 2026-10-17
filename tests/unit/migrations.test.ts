@@ -48,7 +48,7 @@ describe("supabase migrations", () => {
   const files = listMigrations();
   const sql = files.map(readMigration).join("\n");
 
-  it("are numbered 0001-0025, 0028-0030, 0040, then 0041, leaving 0026, 0027, and 0031-0039 for open pull requests", () => {
+  it("are numbered 0001-0025, 0028-0030, 0040-0042, leaving gaps for open pull requests", () => {
     expect(files).toEqual([
       "0001_extensions_and_types.sql",
       "0002_core_schema.sql",
@@ -80,6 +80,7 @@ describe("supabase migrations", () => {
       "0030_founding_availability_and_claims.sql",
       "0040_publish_unknown_terms_sources.sql",
       "0041_preview_detail_allowlist.sql",
+      "0042_gca_and_nhs_sources.sql",
     ]);
   });
 

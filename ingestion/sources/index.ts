@@ -7,5 +7,11 @@ export {
   createUkInfrastructurePipelineAdapter,
   UK_INFRASTRUCTURE_PIPELINE_SOURCE_KEY,
 } from "@/ingestion/sources/uk-infrastructure-pipeline";
+export {
+  createGcaAgreementsAdapter,
+  createGcaPipelineAdapter,
+  GCA_AGREEMENTS_SOURCE_KEY,
+  GCA_PIPELINE_SOURCE_KEY,
+} from "@/ingestion/sources/gca";
 export { createPrivateSourceAdapter } from "@/ingestion/sources/private";
 export { getSourceAdapter, listRegisteredSourceKeys } from "@/ingestion/sources/registry";
