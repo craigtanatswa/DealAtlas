@@ -2,7 +2,7 @@ name: Ingest open notices
 
 # Find a Tender, then Contracts Finder, via official OCDS feeds.
 # Manual dispatch defaults to dry_run so a click fetches and counts without writing.
-# The every-third-day cron ingests. A separate daily cron only unpublishes expired deals.
+# The daily cron ingests (21:00 UTC, 23:00 CAT). A separate daily cron only unpublishes expired deals.
 # scheduled-jobs.yml is not part of this workflow.
 on:
   workflow_dispatch:
@@ -20,7 +20,7 @@ on:
         type: boolean
         default: false
   schedule:
-    - cron: "41 4 */3 * *"
+    - cron: "0 21 * * *"
     - cron: "17 5 * * *"
     - cron: "23 */6 * * *"
   push:
@@ -39,7 +39,7 @@ concurrency:
 jobs:
   ingest:
     name: Ingest Find a Tender
-    if: (github.event_name == 'workflow_dispatch' && inputs.publish_only != true) || github.event.schedule == '41 4 */3 * *'
+    if: (github.event_name == 'workflow_dispatch' && inputs.publish_only != true) || github.event.schedule == '0 21 * * *'
     runs-on: ubuntu-latest
     environment: ingest
     timeout-minutes: 300
