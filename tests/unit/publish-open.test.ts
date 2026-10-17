@@ -4,7 +4,11 @@ import { jobProcessShouldFail, parseJobArgs } from "@/lib/jobs/cli";
 import { errorMessage } from "@/lib/observability/log";
 import {
   formatRpcError,
+  LIVE_PUBLISHED_ALERT_BELOW,
+  PUBLISH_BATCH_MAX,
+  PUBLISH_BATCH_SIZE,
   publishAlertText,
+  publishStatusForLiveCount,
   runPublishAlert,
   runPublishEligible,
   runUnpublishStale,
@@ -64,7 +68,7 @@ describe("publish jobs", () => {
       mode: "live",
       client: client({
         count: 12,
-        rpc: () => ({ selected: 3, published: 1, skipped_cap: 2 }),
+        rpc: () => ({ selected: 3, published: 0, skipped_cap: 2 }),
       }),
       alert: async (_subject, text) => {
         messages.push(text);
@@ -77,7 +81,7 @@ describe("publish jobs", () => {
         job: "publish-eligible",
         status: "PARTIAL",
         publishedLive: 12,
-        counts: { selected: 3, published: 1, skipped_cap: 2 },
+        counts: { selected: 3, published: 0, skipped_cap: 2 },
       }),
     ]);
     expect(messages[0]).not.toMatch(/[0-9a-f]{8}-[0-9a-f]{4}-/);
@@ -89,7 +93,7 @@ describe("publish jobs", () => {
       mode: "live",
       client: client({
         count: 100,
-        rpc: () => ({ selected: 1, published: 1 }),
+        rpc: () => ({ selected: 1, published: 0 }),
       }),
       alert: async (_subject, text) => {
         messages.push(text);
@@ -161,6 +165,9 @@ describe("publish jobs", () => {
         count: 12,
         rpc: (_fn, args) => {
           if (args) rpcArgs.push(args);
+          if (rpcArgs.length > 1) {
+            return { selected: 0, published: 0, skipped_cap: 0 };
+          }
           return { selected: 3, published: 1, skipped_cap: 2 };
         },
       }),
@@ -173,7 +180,10 @@ describe("publish jobs", () => {
       fetchImpl,
     });
     expect(result.status).toBe("PARTIAL");
-    expect(rpcArgs).toEqual([{ p_cap: 300, p_run_id: "4242" }]);
+    expect(rpcArgs).toEqual([
+      { p_cap: PUBLISH_BATCH_SIZE, p_run_id: "4242" },
+      { p_cap: PUBLISH_BATCH_SIZE, p_run_id: "4242" },
+    ]);
     const payload = JSON.parse(bodies[0] ?? "{}") as { to?: string; text?: string };
     expect(payload.to).toBe("craig@example.com");
     expect(payload.text).toContain("published=1");
@@ -218,5 +228,90 @@ describe("publish jobs", () => {
       JSON.stringify({ code: "57014", message: "canceling statement due to statement timeout" }),
     );
     expect(errorMessage("plain")).toBe("plain");
+  });
+
+  it("publishes in batches of 500 until a batch publishes nothing", async () => {
+    const caps: number[] = [];
+    const pages = [
+      { selected: 500, published: 500, skipped_cap: 700 },
+      { selected: 500, published: 200, skipped_cap: 200 },
+      { selected: 0, published: 0, skipped_cap: 0 },
+    ];
+    const result = await runPublishEligible({
+      mode: "live",
+      client: client({
+        count: 700,
+        rpc: (_fn, args) => {
+          caps.push(Number(args?.p_cap));
+          return pages[caps.length - 1];
+        },
+      }),
+      alert: async () => {
+        throw new Error("a full catalogue should not alert");
+      },
+    });
+    expect(caps).toEqual([PUBLISH_BATCH_SIZE, PUBLISH_BATCH_SIZE, PUBLISH_BATCH_SIZE]);
+    expect(result.status).toBe("SUCCEEDED");
+    expect(result.counts).toEqual({ selected: 1000, published: 700, skipped_cap: 900 });
+  });
+
+  it("stops after 40 batches when every batch still publishes", async () => {
+    let calls = 0;
+    const result = await runPublishEligible({
+      mode: "live",
+      client: client({
+        count: LIVE_PUBLISHED_ALERT_BELOW,
+        rpc: () => {
+          calls += 1;
+          return { selected: PUBLISH_BATCH_SIZE, published: PUBLISH_BATCH_SIZE };
+        },
+      }),
+    });
+    expect(calls).toBe(PUBLISH_BATCH_MAX);
+    expect(result.status).toBe("SUCCEEDED");
+    expect(result.counts.published).toBe(PUBLISH_BATCH_SIZE * PUBLISH_BATCH_MAX);
+  });
+
+  it("checks the under-100 alert only while the published total is below 1000", async () => {
+    expect(publishStatusForLiveCount(99)).toBe("PARTIAL");
+    expect(publishStatusForLiveCount(100)).toBe("SUCCEEDED");
+    expect(publishStatusForLiveCount(999)).toBe("SUCCEEDED");
+    expect(publishStatusForLiveCount(LIVE_PUBLISHED_ALERT_BELOW)).toBe("SUCCEEDED");
+
+    const statuses: string[] = [];
+    const belowMinimum = await runPublishEligible({
+      mode: "live",
+      client: client({
+        count: 40,
+        rpc: () => ({ published: 0 }),
+      }),
+      alert: async (subject) => {
+        statuses.push(subject);
+      },
+    });
+    const atCeiling = await runPublishEligible({
+      mode: "live",
+      client: client({
+        count: LIVE_PUBLISHED_ALERT_BELOW,
+        rpc: () => ({ published: 0 }),
+      }),
+      alert: async () => {
+        throw new Error("1000 published rows should not raise the minimum alert");
+      },
+    });
+    const backstop = await runPublishAlert({
+      mode: "live",
+      client: client({ count: LIVE_PUBLISHED_ALERT_BELOW }),
+      alert: async (subject) => {
+        statuses.push(subject);
+      },
+    });
+    expect(belowMinimum.status).toBe("PARTIAL");
+    expect(atCeiling.status).toBe("SUCCEEDED");
+    expect(backstop.status).toBe("SUCCEEDED");
+    expect(statuses).toEqual([
+      "DealAtlas publish PARTIAL",
+      "DealAtlas publish SUCCEEDED",
+    ]);
   });
 });

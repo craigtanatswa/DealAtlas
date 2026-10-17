@@ -1,6 +1,6 @@
--- DealAtlas migration 0032
+-- DealAtlas migration 0045 (renumbered from 0032)
 -- Public Contracts Scotland and Sell2Wales official OCDS APIs.
--- Both stay disabled. Scraping is not permitted. 0031 is reserved by an open pull request.
+-- Both stay disabled. Scraping is not permitted. Open pull requests reserve 0042-0044 and 0046.
 
 insert into public.data_sources (
   source_key,
