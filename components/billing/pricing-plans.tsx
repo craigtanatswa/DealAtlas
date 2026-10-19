@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { CheckoutPlanForm } from "@/components/billing/checkout-plan-form";
+import { FoundingPriceLead } from "@/components/billing/founding-price";
 import { Heading, Text } from "@/components/layout/heading";
 import { Button } from "@/components/ui/button";
 import { signupPathForPlan, signupPathWithNext } from "@/lib/auth/redirect";
@@ -53,16 +54,13 @@ function FeatureList({ items }: { items: readonly string[] }) {
   );
 }
 
-function Price({ label, includeVat }: { label: string; includeVat?: boolean }) {
+function Price({ label }: { label: string }) {
   const price = splitPrice(label);
   return (
     <p className="mt-4 text-4xl font-semibold tracking-tight text-foreground tabular-nums">
       {price.amount}
       {price.period ? (
         <span className="text-base font-medium text-muted-foreground">{price.period}</span>
-      ) : null}
-      {includeVat ? (
-        <span className="text-base font-medium text-muted-foreground"> (incl. VAT)</span>
       ) : null}
     </p>
   );
@@ -84,30 +82,6 @@ function PlanCard({
     >
       {children}
     </section>
-  );
-}
-
-function PlacesMeter({ remaining, cap }: { remaining: number; cap: number }) {
-  const taken = Math.min(cap, Math.max(0, cap - remaining));
-  const percent = cap > 0 ? Math.round((taken / cap) * 100) : 0;
-  const label = foundingPlacesLabel(remaining, cap);
-  return (
-    <div className="mt-5">
-      <p className="text-sm font-medium text-foreground tabular-nums">{label}</p>
-      <div
-        className="mt-2 h-1.5 overflow-hidden rounded-full bg-dealatlas-teal/15"
-        role="progressbar"
-        aria-valuemin={0}
-        aria-valuemax={cap}
-        aria-valuenow={taken}
-        aria-valuetext={label}
-      >
-        <div className="h-full rounded-full bg-dealatlas-teal" style={{ width: `${percent}%` }} />
-      </div>
-      <p className="mt-2 text-[0.8125rem] leading-5 text-muted-foreground">
-        {FOUNDING_COPY.rechecked}
-      </p>
-    </div>
   );
 }
 
@@ -191,14 +165,13 @@ export function PricingPlans({
               {FOUNDING_COPY.badge}
             </p>
             <h2 className="font-heading text-xl font-semibold text-balance">{FOUNDING_COPY.title}</h2>
-            <p className="mt-1 text-sm text-muted-foreground">{FOUNDING_COPY.firstMembers}</p>
-            <Price label={DISPLAY_PRICING.foundingAnnual} includeVat />
-            <p className="mt-1 text-sm font-medium text-[#00806A]">{FOUNDING_COPY.lessThanAnnual}</p>
+            <FoundingPriceLead className="mt-4" />
             <p className="mt-4 flex items-start gap-2 text-sm font-medium text-foreground">
               <LockIcon className="mt-0.5 size-4 shrink-0 text-[#00806A]" aria-hidden="true" />
               <span>{FOUNDING_COPY.priceLocked}</span>
             </p>
-            <PlacesMeter remaining={count.remaining} cap={count.cap} />
+            <p className="mt-4 text-sm font-semibold text-emerald-700 tabular-nums">{foundingPlacesLabel(count.remaining, count.cap)}</p>
+            <p className="mt-1 text-[0.8125rem] leading-5 text-muted-foreground">{FOUNDING_COPY.rechecked}</p>
             <FeatureList items={PRO_FEATURES} />
             <div className="mt-auto flex flex-col gap-3 pt-6">
               <PlanCta

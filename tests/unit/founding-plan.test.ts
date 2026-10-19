@@ -24,12 +24,15 @@ import {
   reservationForCheckout,
 } from "@/lib/billing/founding";
 import {
-  FOUNDING_CAP,
   FOUNDING_COPY,
+  foundingBilledLine,
+  foundingDueToday,
+  foundingMonthlyEquivalent,
   foundingPaywallPlaces,
   foundingPlacesLabel,
   foundingSoldOutNote,
   foundingUiState,
+  proMonthlyWasLabel,
 } from "@/lib/billing/founding-ui";
 import { liveDodoConfigErrors } from "@/lib/env/production";
 import type { IncomingBillingEvent, PlanProductMap } from "@/lib/billing/types";
@@ -140,17 +143,25 @@ describe("founding member checkout", () => {
     expect(foundingUiState({ offered: true, remaining: 17 })).toBe("available");
     expect(foundingUiState({ offered: true, remaining: 1 })).toBe("last");
     expect(foundingUiState({ offered: true, remaining: 0 })).toBe("sold_out");
-    expect(foundingPlacesLabel(17)).toBe("17 of 25 founding places left");
-    expect(foundingPlacesLabel(1)).toBe("Last founding place · 1 of 25 places left");
-    expect(foundingPaywallPlaces(17)).toBe("17 of 25 places left");
-    expect(foundingPaywallPlaces(1)).toBe("Last founding place · 1 of 25 places left");
+    expect(foundingPlacesLabel(17)).toBe("17 places left");
+    expect(foundingPlacesLabel(1)).toBe("Last founding place · 1 place left");
+    expect(foundingPaywallPlaces(17)).toBe("17 places left");
+    expect(foundingPaywallPlaces(1)).toBe("Last founding place · 1 place left");
     expect(foundingSoldOutNote()).toBe(
-      "Founding membership is full. Thanks to our first 25 customers.",
+      "Founding membership is full. Thanks to our founding members.",
     );
     expect(FOUNDING_COPY.paywallCta).toContain("£290/yr");
-    expect(FOUNDING_COPY.lessThanAnnual).toBe("£100 less than standard annual");
+    expect(FOUNDING_COPY.lessThanAnnual).toBe("£60 less than standard annual");
     expect(FOUNDING_COPY.priceLocked).toBe("Locked for life");
-    expect(FOUNDING_COPY.firstMembers).toBe(`First ${FOUNDING_CAP} members only`);
+    expect(FOUNDING_COPY.firstMembers).toBe("Founding places are limited");
+  });
+
+  it("derives the founding price display from the annual amount", () => {
+    expect(foundingMonthlyEquivalent()).toBe("£24.17");
+    expect(foundingBilledLine()).toBe("billed £290/yr, VAT included");
+    expect(foundingDueToday()).toBe("£290.00");
+    expect(FOUNDING_COPY.annualSaving).toBe("Save 25% vs monthly.");
+    expect(proMonthlyWasLabel()).toBe("was £39 a month");
   });
 
   it("rounds the public offer down to a band", () => {

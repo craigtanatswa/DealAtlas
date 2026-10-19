@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { FoundingFullNotice } from "@/components/billing/founding-full-notice";
 import { PricingPlans } from "@/components/billing/pricing-plans";
+import { FoundingCheckoutSummary } from "@/components/billing/founding-checkout-summary";
 import { UnlockPanel } from "@/components/deals/unlock-panel";
 import { FOUNDING_CAP } from "@/lib/billing/founding-ui";
 
@@ -24,11 +25,13 @@ describe("founding pricing cards", () => {
     );
 
     expect(screen.getByRole("heading", { name: "Pricing" })).toBeTruthy();
-    expect(screen.getByText("17 of 25 founding places left")).toBeTruthy();
-    expect(screen.getByText("First 25 members only")).toBeTruthy();
+    expect(screen.getByText("17 places left")).toBeTruthy();
     expect(screen.getByText("Locked for life")).toBeTruthy();
-    expect(screen.getByText("£100 less than standard annual")).toBeTruthy();
-    expect(screen.getByText("(incl. VAT)")).toBeTruthy();
+    expect(screen.getByText("billed £290/yr, VAT included")).toBeTruthy();
+    expect(screen.getByText("£24.17")).toBeTruthy();
+    expect(container.querySelector('s[aria-label="was £39 a month"]')).toBeTruthy();
+    expect(container.textContent).not.toMatch(/of 25/);
+    expect(container.querySelector('[role="progressbar"]')).toBeNull();
     expect(container.textContent).not.toMatch(/Example value/i);
     expect(container.textContent).not.toMatch(/only today|testimonial|#1/i);
 
@@ -44,7 +47,7 @@ describe("founding pricing cards", () => {
     const { container } = render(
       <PricingPlans signedIn count={lastCount} state="last" />,
     );
-    expect(screen.getByText("Last founding place · 1 of 25 places left")).toBeTruthy();
+    expect(screen.getByText("Last founding place · 1 place left")).toBeTruthy();
     expect(container.textContent).not.toMatch(/only today|hurry|almost gone/i);
   });
 
@@ -53,7 +56,7 @@ describe("founding pricing cards", () => {
       <PricingPlans signedIn={false} count={soldOutCount} state="sold_out" />,
     );
     expect(
-      screen.getByText("Founding membership is full. Thanks to our first 25 customers."),
+      screen.getByText("Founding membership is full. Thanks to our founding members."),
     ).toBeTruthy();
     expect(screen.getByText("Recommended")).toBeTruthy();
     expect(screen.queryByText("Become a founding member")).toBeNull();
@@ -74,7 +77,7 @@ describe("founding deal paywall", () => {
       />,
     );
     expect(screen.getByRole("button", { name: "Become a founding member – £290/yr" })).toBeTruthy();
-    expect(screen.getByText(/17 of 25 places left/)).toBeTruthy();
+    expect(screen.getByText(/17 places left/)).toBeTruthy();
     expect(screen.getByText(/Locked for life/)).toBeTruthy();
     const founding = planForms(container).find(
       (form) =>
@@ -90,7 +93,7 @@ describe("founding deal paywall", () => {
   it("falls back to standard prices when founding is sold out", () => {
     const { container } = render(<UnlockPanel mode="free" founding={soldOutCount} />);
     expect(screen.getByRole("button", { name: "Start Pro – £39/mo" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "or £390/yr (save £78)" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "or £350/yr (save 25%)" })).toBeTruthy();
     expect(container.querySelector("input[name='offer']")).toBeNull();
     expect(
       container.querySelector("input[name='planKey'][value='PRO_ANNUAL']"),
@@ -117,7 +120,7 @@ describe("founding checkout race", () => {
     expect(
       screen.getByText("Founding places just filled up. You haven't been charged."),
     ).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Continue with annual – £390/yr" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Continue with annual – £350/yr" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Choose monthly – £39/mo" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "Grounds maintenance for community sites" })).toBeTruthy();
     expect(container.querySelector("input[name='offer']")).toBeNull();
@@ -125,5 +128,20 @@ describe("founding checkout race", () => {
       input.getAttribute("value"),
     );
     expect(keys.sort()).toEqual(["PRO_ANNUAL", "PRO_MONTHLY"]);
+  });
+});
+
+describe("founding checkout summary", () => {
+  it("shows the monthly-equivalent price, due today and remaining places only", () => {
+    const { container } = render(<FoundingCheckoutSummary remaining={24} cap={25} />);
+    expect(screen.getByText("24 places left")).toBeTruthy();
+    expect(screen.getByText("£24.17")).toBeTruthy();
+    expect(screen.getByText("billed £290/yr, VAT included")).toBeTruthy();
+    expect(screen.getByText("Due today")).toBeTruthy();
+    expect(screen.getByText("£290.00")).toBeTruthy();
+    expect(container.querySelector('s[aria-label="was £39 a month"]')?.textContent).toBe("£39/mo");
+    expect(screen.getByRole("button", { name: "Continue to payment" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Switch to Pro £39/mo instead" })).toBeTruthy();
+    expect(container.textContent).not.toMatch(/of 25|25 places/);
   });
 });
