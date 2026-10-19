@@ -49,7 +49,7 @@ export function SiteHeader({ isAuthenticated }: { isAuthenticated: boolean }) {
               <NavLink href={AUTH_NAV[0].href} tone="bar">
                 {AUTH_NAV[0].label}
               </NavLink>
-              <Button asChild className="rounded-full px-4">
+              <Button asChild className="min-h-11 rounded-full px-4 whitespace-nowrap">
                 <Link href={AUTH_NAV[1].href}>{AUTH_NAV[1].label}</Link>
               </Button>
             </>
@@ -59,6 +59,9 @@ export function SiteHeader({ isAuthenticated }: { isAuthenticated: boolean }) {
           <MobileNav
             title="Menu"
             description="Public navigation"
+            search={
+              <HeaderSearch path="/deals" idPrefix="site-header-menu" className="w-full" />
+            }
             footer={
               isAuthenticated ? (
                 <SignOutButton />

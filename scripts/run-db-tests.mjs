@@ -76,6 +76,7 @@ try {
   process.exit(1);
 }
 run("npx", ["supabase", "test", "db", "--local"]);
+run("node", ["scripts/founding-cap-race.mjs", dbUrl]);
 try {
   runRollbackChecks(dbUrl);
 } catch (error) {

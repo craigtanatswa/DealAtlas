@@ -63,7 +63,8 @@ describe("auth source guards", () => {
 
   it("sanitizes auth callback next paths", () => {
     const callback = read("app/auth/callback/route.ts");
-    expect(callback).toContain("sanitizeRedirectPath");
+    // resolveNextPath wraps sanitizeRedirectPath (invalid supplied values fall back to /deals).
+    expect(callback).toContain("resolveNextPath");
     expect(callback).toContain("exchangeCodeForSession");
     expect(callback).toContain("verifyOtp");
     expect(callback).toContain("OAUTH_NEXT_COOKIE");

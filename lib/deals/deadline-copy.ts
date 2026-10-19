@@ -81,7 +81,12 @@ function bandPhrase(status: DealStatus, band: string | null | undefined): Deadli
     return { text: null, datetime: null, tone: "muted", keyFact: null };
   }
   if (!value || value === "Upcoming / date not yet fixed") {
-    return { text: null, datetime: null, tone: status === "CLOSING_SOON" ? "soon" : "muted", keyFact: null };
+    return {
+      text: "Deadline TBC",
+      datetime: null,
+      tone: "muted",
+      keyFact: { label: "Deadline", value: "Deadline TBC" },
+    };
   }
   const text =
     value === "Closing today"

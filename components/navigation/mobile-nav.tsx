@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 import { BrandLogo } from "@/components/navigation/brand-mark";
 import { Button } from "@/components/ui/button";
 import { APP_NAME } from "@/lib/constants";
+import { cn } from "@/lib/utils";
 import {
   Sheet,
   SheetContent,
@@ -21,11 +22,15 @@ export function MobileNav({
   description = "Primary navigation",
   children,
   footer,
+  search,
+  hideClassName = "xl:hidden",
 }: {
   title: string;
   description?: string;
   children: ReactNode;
   footer?: ReactNode;
+  search?: ReactNode;
+  hideClassName?: string;
 }) {
   return (
     <Sheet>
@@ -33,8 +38,7 @@ export function MobileNav({
         <Button
           type="button"
           variant="ghost"
-          size="icon"
-          className="lg:hidden"
+          className={cn("min-h-11 min-w-11 px-0", hideClassName)}
           aria-label="Open menu"
         >
           <MenuIcon />
@@ -46,6 +50,7 @@ export function MobileNav({
           <SheetTitle>{title}</SheetTitle>
           <SheetDescription>{description}</SheetDescription>
         </SheetHeader>
+        {search ? <div className="px-4 pb-3">{search}</div> : null}
         <nav aria-label={title} className="flex flex-col gap-1 px-4">
           {children}
         </nav>

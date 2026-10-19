@@ -24,6 +24,9 @@ export const publicEnvSchema = z.object({
     .trim()
     .regex(/^GTM-[A-Z0-9]+$/, "Expected a GTM ID such as GTM-XXXXXXX")
     .optional(),
+  // PostHog public project key. A missing or malformed key disables analytics
+  // (see lib/analytics/config.ts) instead of failing the whole public env.
+  NEXT_PUBLIC_POSTHOG_KEY: z.string().trim().min(1).optional(),
 });
 
 export type PublicEnv = z.infer<typeof publicEnvSchema>;
@@ -36,4 +39,5 @@ export const PUBLIC_ENV_KEYS = [
   "NEXT_PUBLIC_GOOGLE_CLIENT_ID",
   "NEXT_PUBLIC_GA_MEASUREMENT_ID",
   "NEXT_PUBLIC_GTM_ID",
+  "NEXT_PUBLIC_POSTHOG_KEY",
 ] as const satisfies ReadonlyArray<keyof PublicEnv>;

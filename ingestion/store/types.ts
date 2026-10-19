@@ -328,7 +328,10 @@ export type IngestionStore = {
   >;
   listAwardCriteriaForDeal(
     dealId: string,
-  ): Promise<Array<{ name: string; description: string | null }>>;
+  ): Promise<Array<{ name: string; description: string | null; weightPercent?: number | null }>>;
+  listClassificationsForDeal(
+    dealId: string,
+  ): Promise<Array<{ code: string | null; description: string | null; isPrimary: boolean }>>;
   countDocumentsForDeal(dealId: string): Promise<number>;
   updateSource(
     id: string,

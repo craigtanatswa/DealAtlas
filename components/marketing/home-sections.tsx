@@ -1,11 +1,8 @@
 import Link from "next/link";
-import { Fragment } from "react";
 
 import { CategoryShortcuts } from "@/components/deals/category-shortcuts";
-import { DealCard } from "@/components/deals/deal-card";
 import { DealList } from "@/components/deals/deal-list";
 import { HeroSearchForm } from "@/components/deals/hero-search-form";
-import { HomeTeaserBand, HomeTeaserSticky } from "@/components/marketing/home-teaser-cta";
 import { HeroCategoryCloud } from "@/components/marketing/hero-category-cloud";
 import { TestimonialCarousel } from "@/components/marketing/testimonial-carousel";
 import { EmptyState } from "@/components/feedback/empty-state";
@@ -14,10 +11,9 @@ import { Heading, Text } from "@/components/layout/heading";
 import { BrandLogo } from "@/components/navigation/brand-mark";
 import { SectionHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
-import { signupPathWithNext } from "@/lib/auth/redirect";
 import { APP_NAME } from "@/lib/constants";
 import { HOW_IT_WORKS_STEPS } from "@/lib/seo/pages";
-import { toDealCardData, type PublicDealPreview, type RankedDealSearchResult } from "@/lib/search/dto";
+import type { PublicDealPreview, RankedDealSearchResult } from "@/lib/search/dto";
 
 const VALUE_PROPS = [
   {
@@ -125,8 +121,6 @@ export function HomeOpportunitySections({
   );
 }
 
-const TEASER_SENTINEL = "home-teaser-after-8";
-
 export function HomeLiveOpportunities({
   items,
   total,
@@ -140,46 +134,45 @@ export function HomeLiveOpportunities({
     return null;
   }
 
+  const shown = items.length;
+
   return (
-    <section className="border-b border-border" aria-labelledby="live-opportunities-heading">
+    <section className="border-b border-border" aria-labelledby="latest-opportunities-heading">
       <Container className="flex flex-col gap-6 py-12 md:py-16">
-        <div className="max-w-3xl">
-          <Heading id="live-opportunities-heading" level={2}>
-            Live opportunities
-          </Heading>
-          <p className="mt-2 text-[0.9375rem] leading-7 text-gray-600">
-            Open and closing soon first, then upcoming.
-          </p>
+        <SectionHeader
+          id="latest-opportunities-heading"
+          title="Latest opportunities"
+          description={
+            <div className="flex flex-col gap-2">
+              {total > 0 ? (
+                <p className="text-sm text-muted-foreground tabular-nums">
+                  Showing {shown} of {total} opportunities
+                </p>
+              ) : null}
+              <Text variant="muted">
+                Open and upcoming opportunities first. Join DealAtlas Pro to unlock buyer and
+                source details.
+              </Text>
+            </div>
+          }
+          action={
+            <Button asChild variant="outline" className="min-h-11">
+              <Link href="/deals">View all opportunities</Link>
+            </Button>
+          }
+        />
+        <DealList
+          items={items.map((preview) => ({ preview, match: null }))}
+          hrefForSlug={(slug) => `/deals/${slug}`}
+          signedIn={signedIn}
+          proLock
+        />
+        <div className="text-center">
+          <Button asChild variant="link" className="h-auto min-h-11 px-0">
+            <Link href="/deals">See all live deals →</Link>
+          </Button>
         </div>
-        <ul className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {items.map((preview, index) => {
-            const dealPath = `/deals/${preview.slug}`;
-            return (
-              <Fragment key={preview.slug}>
-                <li id={index === 7 ? TEASER_SENTINEL : undefined} className="min-w-0">
-                  <DealCard
-                    deal={toDealCardData(preview)}
-                    href={signedIn ? dealPath : signupPathWithNext(dealPath)}
-                    signedIn={signedIn}
-                    proLock
-                  />
-                </li>
-                {(index + 1) % 8 === 0 && !signedIn ? (
-                  <li className="col-span-full">
-                    <HomeTeaserBand />
-                  </li>
-                ) : null}
-              </Fragment>
-            );
-          })}
-        </ul>
-        <Button asChild variant="link" className="h-auto min-h-11 w-full px-0 md:w-fit">
-          <Link href="/deals">See all {total} live deals</Link>
-        </Button>
       </Container>
-      {signedIn || items.length < 8 ? null : (
-        <HomeTeaserSticky sentinelId={TEASER_SENTINEL} />
-      )}
     </section>
   );
 }

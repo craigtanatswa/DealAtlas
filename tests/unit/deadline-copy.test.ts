@@ -38,6 +38,14 @@ describe("deadline copy", () => {
     ).toBe("Closes 9 Jan 2027");
   });
 
+  it("shows Deadline TBC when an open preview has no deadline", () => {
+    const copy = deadlineCopy({ status: "OPEN", deadline: null, deadlineBand: null, now: NOW });
+    expect(copy.text).toBe("Deadline TBC");
+    expect(copy.datetime).toBeNull();
+    expect(copy.keyFact).toEqual({ label: "Deadline", value: "Deadline TBC" });
+    expect(JSON.stringify(copy)).not.toMatch(/http|@|ocds|reference/i);
+  });
+
   it("uses a preview band on public pages and does not invent a calendar date", () => {
     const open = deadlineCopy({ status: "OPEN", deadlineBand: "Within 14 days", now: NOW });
     expect(open.text).toBe("Closes within 14 days");

@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  clampSearchPage,
   hasActivePublicFilters,
   parsePublicSearchParams,
+  parseSearchPage,
   parseSignedInSearchParams,
   publicSearchHref,
   searchHref,
@@ -43,6 +45,7 @@ describe("public search params", () => {
       buyerSector: "SECRET",
       dealType: "NOT_A_TYPE",
       status: "HACKED",
+      region: "Scotland",
       page: "nope",
     });
 
@@ -50,7 +53,30 @@ describe("public search params", () => {
     expect(filters.buyerSector).toBeUndefined();
     expect(filters.dealType).toBeUndefined();
     expect(filters.status).toBeUndefined();
+    expect(filters.region).toBe("Scotland");
     expect(filters.page).toBe(1);
+  });
+
+  it("clamps page to a positive integer without dropping other filters", () => {
+    expect(parseSearchPage(undefined)).toBe(1);
+    expect(parseSearchPage("0")).toBe(1);
+    expect(parseSearchPage("-4")).toBe(1);
+    expect(parseSearchPage("1.5")).toBe(1);
+    expect(parseSearchPage("nope")).toBe(1);
+    expect(parseSearchPage("3")).toBe(3);
+    expect(parseSearchPage("9999")).toBe(500);
+
+    const filters = parsePublicSearchParams({
+      q: "construction",
+      region: "Scotland",
+      page: "0",
+    });
+    expect(filters.query).toBe("construction");
+    expect(filters.region).toBe("Scotland");
+    expect(filters.page).toBe(1);
+    expect(clampSearchPage(9, 16, 10)).toBe(2);
+    expect(clampSearchPage(1, 16, 10)).toBe(1);
+    expect(clampSearchPage(4, 0, 10)).toBe(1);
   });
 
   it("builds shareable URLs without empty filters", () => {

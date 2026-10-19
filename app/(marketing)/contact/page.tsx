@@ -20,7 +20,7 @@ export const metadata: Metadata = marketingPageMetadata({
 
 export default function ContactPage() {
   return (
-    <Main className="gap-8" width="narrow">
+    <Main back className="gap-8" width="narrow">
       <JsonLd
         data={webPageJsonLd({
           origin,

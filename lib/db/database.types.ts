@@ -2541,6 +2541,8 @@ export type Database = {
           created_at: string
           display_name: string | null
           email: string
+          founding_member: boolean
+          founding_since: string | null
           id: string
           role: Database["public"]["Enums"]["app_role"]
           updated_at: string
@@ -2549,6 +2551,8 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           email: string
+          founding_member?: boolean
+          founding_since?: string | null
           id: string
           role?: Database["public"]["Enums"]["app_role"]
           updated_at?: string
@@ -2557,6 +2561,8 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           email?: string
+          founding_member?: boolean
+          founding_since?: string | null
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           updated_at?: string
@@ -3052,8 +3058,18 @@ export type Database = {
           value_band: string
         }[]
       }
+      activate_founding_slot: { Args: { p_user_id: string }; Returns: string }
+      claim_founding_activation: {
+        Args: { p_event_id: string; p_subscription_id: string; p_user_id: string }
+        Returns: boolean
+      }
+      close_founding_membership: { Args: { p_user_id: string }; Returns: undefined }
+      founding_availability: { Args: never; Returns: number }
+      founding_offer: { Args: never; Returns: string }
       maintain_deals_leak_index: { Args: never; Returns: undefined }
       preview_slug_is_retired: { Args: { p_slug: string }; Returns: boolean }
+      release_founding_reservation: { Args: { p_user_id: string }; Returns: undefined }
+      reserve_founding_slot: { Args: { p_user_id: string }; Returns: string }
       publish_eligible_previews: { Args: { p_cap?: number; p_run_id?: string }; Returns: Json }
       unpublish_stale_previews: { Args: { p_run_id?: string }; Returns: Json }
       resolve_preview_deal_id: { Args: { p_slug: string }; Returns: string }

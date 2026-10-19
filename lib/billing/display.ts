@@ -20,12 +20,16 @@ export const STATUS_LABELS: Record<string, string> = {
   UNKNOWN: "Unknown",
 };
 
-export function planLabel(planKey: string | null, billingInterval: string | null): string {
+export function planLabel(
+  planKey: string | null,
+  billingInterval: string | null,
+  foundingMember = false,
+): string {
   if (planKey === "PRO_MONTHLY" || billingInterval === "MONTHLY") {
     return PLAN_KEY_LABELS.PRO_MONTHLY;
   }
   if (planKey === "PRO_ANNUAL" || billingInterval === "ANNUAL") {
-    return PLAN_KEY_LABELS.PRO_ANNUAL;
+    return foundingMember ? "Founding Pro — Locked for life" : PLAN_KEY_LABELS.PRO_ANNUAL;
   }
   return "Free";
 }

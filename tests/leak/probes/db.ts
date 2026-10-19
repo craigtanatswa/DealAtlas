@@ -18,6 +18,13 @@ const PHASE_B_ADDED_FUNCTIONS = new Set([
   "maintain_deals_leak_index",
   "publish_eligible_previews",
   "unpublish_stale_previews",
+  "reserve_founding_slot",
+  "activate_founding_slot",
+  "release_founding_reservation",
+  "close_founding_membership",
+  "founding_offer",
+  "founding_availability",
+  "claim_founding_activation",
 ]);
 
 export type Acl = {

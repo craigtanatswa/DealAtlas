@@ -6,9 +6,11 @@ import type { PublicSearchFilters } from "@/lib/search/params";
 export function DealSortForm({
   filters,
   path = "/deals",
+  showRelevance = false,
 }: {
   filters: PublicSearchFilters;
   path?: string;
+  showRelevance?: boolean;
 }) {
   return (
     <form
@@ -29,7 +31,10 @@ export function DealSortForm({
       ) : null}
       {filters.dealType ? <input type="hidden" name="dealType" value={filters.dealType} /> : null}
       {filters.status ? <input type="hidden" name="status" value={filters.status} /> : null}
-      <DealSortSelect filters={filters} idPrefix="deals-sort" />
+      {filters.minScore != null ? (
+        <input type="hidden" name="minScore" value={String(filters.minScore)} />
+      ) : null}
+      <DealSortSelect filters={filters} idPrefix="deals-sort" showRelevance={showRelevance} />
     </form>
   );
 }

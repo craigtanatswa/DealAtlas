@@ -6,11 +6,11 @@ import { SignOutButton } from "@/components/account/sign-out-button";
 import { BrandMark } from "@/components/navigation/brand-mark";
 import { HeaderSearch } from "@/components/navigation/header-search";
 import {
-  HEADER_ACTIONS_CLASS,
+  HEADER_ACTIONS_APP_CLASS,
   HEADER_BAR_CLASS,
   HEADER_BAR_INNER_CLASS,
   HEADER_BRAND_CLASS,
-  HEADER_MOBILE_CLASS,
+  HEADER_MOBILE_APP_CLASS,
   HEADER_NAV_APP_CLASS,
   HEADER_SEARCH_APP_CLASS,
 } from "@/components/navigation/header-shell";
@@ -49,11 +49,22 @@ export function AppHeader({ isAdmin }: { isAdmin: boolean }) {
             </NavLink>
           ) : null}
         </nav>
-        <div className={HEADER_ACTIONS_CLASS}>
+        <div className={HEADER_ACTIONS_APP_CLASS}>
           <AccountMenu />
         </div>
-        <div className={HEADER_MOBILE_CLASS}>
-          <MobileNav title="Workspace" description="Authenticated navigation">
+        <div className={HEADER_MOBILE_APP_CLASS}>
+          <MobileNav
+            title="Workspace"
+            description="Authenticated navigation"
+            hideClassName="min-[1440px]:hidden"
+            search={
+              <HeaderSearch
+                path="/app/search"
+                idPrefix="app-header-menu"
+                className="w-full"
+              />
+            }
+          >
             {APP_NAV.map((item) => (
               <NavLink key={item.href} href={item.href} className="w-full">
                 <NavItemLabel item={item} />
@@ -83,7 +94,7 @@ function AccountMenu() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button type="button" variant="outline" className="rounded-full px-4">
+        <Button type="button" variant="outline" className="min-h-11 rounded-full px-4 whitespace-nowrap">
           Account
         </Button>
       </DropdownMenuTrigger>

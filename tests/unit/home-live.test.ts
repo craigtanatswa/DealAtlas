@@ -5,37 +5,44 @@ import { describe, expect, it } from "vitest";
 
 const ROOT = process.cwd();
 
-describe("homepage live opportunities", () => {
-  it("loads published previews through the existing search RPC", () => {
+describe("homepage latest opportunities", () => {
+  it("loads six published previews through the existing search RPC", () => {
     const source = fs.readFileSync(path.join(ROOT, "lib/search/public.ts"), "utf8");
     const fn = source.slice(source.indexOf("export async function searchLiveHomePreviews"));
     expect(fn).toContain("searchPublishedDealPreviews");
     expect(fn).toContain('statuses: ["CLOSING_SOON", "OPEN", "UPCOMING"]');
     expect(fn).toContain('sort: "biddable"');
-    expect(fn).toContain("takeHomeTeaser");
-    expect(fn).toContain("buyerSector");
-    expect(source).toContain("export const HOME_LIVE_LIMIT = 24");
+    expect(fn).toContain("limit: HOME_LIVE_LIMIT");
+    expect(source).toContain("export const HOME_LIVE_LIMIT = 6");
+    expect(fn).not.toContain("takeHomeTeaser");
     expect(fn).not.toContain("buyer_name");
     expect(fn).not.toContain("source_url");
   });
 
-  it("hides an empty grid and links the live count to /deals", () => {
+  it("renders a single-column list and hides the section when empty", () => {
     const source = fs.readFileSync(
       path.join(ROOT, "components/marketing/home-sections.tsx"),
       "utf8",
     );
-    const fn = source.slice(source.indexOf("export function HomeLiveOpportunities"));
+    const start = source.indexOf("export function HomeLiveOpportunities");
+    const fn = source.slice(start, source.indexOf("export function HomeTestimonialsSection"));
+    const text = fn.replace(/\s+/g, " ");
     expect(fn).toContain("if (items.length === 0)");
     expect(fn).toContain("return null");
-    expect(fn).toContain("DealCard");
+    expect(fn).toContain("Latest opportunities");
+    expect(text).toContain(
+      "Open and upcoming opportunities first. Join DealAtlas Pro to unlock buyer and source details.",
+    );
+    expect(fn).toContain("View all opportunities");
+    expect(fn).toContain("DealList");
     expect(fn).toContain("proLock");
-    expect(fn).toContain("signupPathWithNext");
-    expect(fn).toContain("xl:grid-cols-4");
-    expect(fn).toContain('href="/deals"');
-    expect(fn).toContain("See all {total} live deals");
-    expect(source).toContain("Create free account");
+    expect(fn).not.toContain("signupPathWithNext");
+    expect(fn).toContain("hrefForSlug={(slug) => `/deals/${slug}`}");
+    expect(fn).toContain("See all live deals →");
+    expect(fn).not.toContain("grid-cols");
+    expect(fn).not.toContain("HomeTeaser");
     const card = fs.readFileSync(path.join(ROOT, "components/deals/deal-card.tsx"), "utf8");
-    expect(card).toContain("Buyer, documents, contacts: Pro");
+    expect(card).toContain("🔒 Buyer, documents and contacts with Pro");
     expect(card).not.toMatch(/blur|backdrop-filter/);
   });
 });
