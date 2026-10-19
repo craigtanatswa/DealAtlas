@@ -70,7 +70,12 @@ test.describe("Checkout plan keys", () => {
       headers,
       data: { planKey: "PRO_ANNUAL" },
     });
-    expect([400, 409]).not.toContain(annual.status());
+    // The e2e Dodo key is a placeholder, so session creation itself may fail upstream.
+    // What matters: the plan key was accepted and no founding path ran.
+    expect(annual.status()).not.toBe(409);
+    const annualBody = (await annual.text()) || "";
+    expect(annualBody).not.toContain("INVALID_PLAN");
+    expect(annualBody).not.toContain("FOUNDING_CAP_FULL");
 
     const founding = await page.request.post("/api/billing/checkout", {
       headers,
