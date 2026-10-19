@@ -4,14 +4,18 @@ import { Checkout } from "@dodopayments/nextjs";
 import { NextRequest, NextResponse } from "next/server";
 
 import { checkoutMetadata } from "@/lib/billing/metadata";
-import { CHECKOUT_ERROR_CODES, FOUNDING_UNAVAILABLE_MESSAGE } from "@/lib/billing/founding";
+import {
+  CHECKOUT_ERROR_CODES,
+  FOUNDING_NOT_ELIGIBLE_MESSAGE,
+  FOUNDING_UNAVAILABLE_MESSAGE,
+} from "@/lib/billing/founding";
 import {
   parseCheckoutRequest,
   selectCheckoutProduct,
   shouldReserveFoundingSlot,
   subscriptionPlanKeyFor,
 } from "@/lib/billing/plans";
-import { readFoundingMember, reserveFoundingSlot } from "@/lib/billing/founding-db";
+import { reserveFoundingSlot } from "@/lib/billing/founding-db";
 import { requireDodoCheckoutConfig } from "@/lib/billing/config";
 import { BillingConfigError } from "@/lib/billing/errors";
 import { checkoutReturnUrl, parseCheckoutReturnTo } from "@/lib/deals/paths";
@@ -95,37 +99,34 @@ export async function createAuthenticatedCheckoutResponse(input: {
       : null,
   );
 
-  const readsFounder =
-    (parsed.planKey === "FOUNDING" || parsed.planKey === "PRO_ANNUAL") &&
-    Boolean(config.products.FOUNDING_ANNUAL);
-  const founder = readsFounder ? await readFoundingMember(input.user.id) : false;
-  const reservation = shouldReserveFoundingSlot(
-    parsed.planKey,
-    config.products,
-    founder,
-  )
+  const reservation = shouldReserveFoundingSlot(parsed.planKey, config.products)
     ? await reserveFoundingSlot(input.user.id)
     : null;
   const chosen = selectCheckoutProduct({
     planKey: parsed.planKey,
     products: config.products,
-    founder,
     reservation,
   });
   if (!chosen.ok) {
+    const notEligible = chosen.reason === "founding_not_eligible";
+    const message = notEligible ? FOUNDING_NOT_ELIGIBLE_MESSAGE : FOUNDING_UNAVAILABLE_MESSAGE;
     if (wantsJson(input.request)) {
       return NextResponse.json(
         {
-          error: FOUNDING_UNAVAILABLE_MESSAGE,
-          message: FOUNDING_UNAVAILABLE_MESSAGE,
-          code: CHECKOUT_ERROR_CODES.foundingCapFull,
+          error: message,
+          message,
+          code: notEligible
+            ? CHECKOUT_ERROR_CODES.foundingNotEligible
+            : CHECKOUT_ERROR_CODES.foundingCapFull,
         },
         { status: 409 },
       );
     }
-    const foundingFullPath = returnTo
-      ? `/checkout/founding-full?next=${encodeURIComponent(returnTo)}`
-      : "/checkout/founding-full";
+    const query = new URLSearchParams();
+    if (returnTo) query.set("next", returnTo);
+    if (notEligible) query.set("reason", "not_eligible");
+    const qs = query.toString();
+    const foundingFullPath = qs ? `/checkout/founding-full?${qs}` : "/checkout/founding-full";
     return NextResponse.redirect(new URL(foundingFullPath, input.request.url), 303);
   }
 

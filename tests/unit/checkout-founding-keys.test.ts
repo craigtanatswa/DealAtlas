@@ -141,7 +141,7 @@ describe("checkout founding plan keys", () => {
 
     expect(response.status).toBe(200);
     expect(mocks.reserveFoundingSlot).not.toHaveBeenCalled();
-    expect(mocks.readFoundingMember).toHaveBeenCalledTimes(1);
+    expect(mocks.readFoundingMember).not.toHaveBeenCalled();
     expect(mocks.sessions).toHaveLength(1);
     expect(sessionProduct(mocks.sessions[0])).toBe(mocks.products.PRO_ANNUAL);
   });
@@ -288,30 +288,25 @@ describe("selectCheckoutProduct matrix", () => {
   };
   const reservations: Array<FoundingReservation | null> = [
     "reserved",
-    "active",
+    "ineligible",
     "sold_out",
-    "closed",
     "unavailable",
     null,
   ];
 
   it("never upgrades standard annual to founding for a non-founder", () => {
     for (const products of [withFounding, withoutFounding]) {
-      for (const founder of [false]) {
+      {
         for (const reservation of reservations) {
           const selection = selectCheckoutProduct({
             planKey: "PRO_ANNUAL",
             products,
-            founder,
             reservation,
           });
           expect(selection).toEqual({
             ok: true,
-            productId:
-              founder && products.FOUNDING_ANNUAL
-                ? products.FOUNDING_ANNUAL
-                : products.PRO_ANNUAL,
-            founding: Boolean(founder && products.FOUNDING_ANNUAL),
+            productId: products.PRO_ANNUAL,
+            founding: false,
           });
         }
       }
@@ -320,19 +315,20 @@ describe("selectCheckoutProduct matrix", () => {
 
   it("never falls back from founding to standard annual or a legacy id", () => {
     for (const products of [withFounding, withoutFounding]) {
-      for (const founder of [false]) {
-        // "active" / "closed" belong to the returning-founder rule (returning-founder.test.ts).
-        for (const reservation of reservations.filter((r) => r !== "active" && r !== "closed")) {
+      {
+        for (const reservation of reservations) {
           const selection = selectCheckoutProduct({
             planKey: "FOUNDING",
             products,
-            founder,
             reservation,
           });
           if (!selection.ok) {
             expect(selection).toEqual({
               ok: false,
-              reason: "founding_unavailable",
+              reason:
+                reservation === "ineligible"
+                  ? "founding_not_eligible"
+                  : "founding_unavailable",
             });
             continue;
           }
@@ -343,7 +339,7 @@ describe("selectCheckoutProduct matrix", () => {
           );
           const eligible =
             Boolean(products.FOUNDING_ANNUAL) &&
-            (founder || reservation === "reserved");
+            reservation === "reserved";
           expect(eligible).toBe(true);
         }
       }
@@ -352,13 +348,12 @@ describe("selectCheckoutProduct matrix", () => {
 
   it("keeps monthly standard for leaders and founders alike", () => {
     for (const products of [withFounding, withoutFounding]) {
-      for (const founder of [false, true]) {
+      {
         for (const reservation of reservations) {
           expect(
             selectCheckoutProduct({
               planKey: "PRO_MONTHLY",
               products,
-              founder,
               reservation,
             }),
           ).toEqual({
@@ -395,6 +390,53 @@ describe("checkout error contract for the UI", () => {
       "Founding places are all taken. You can still subscribe to Pro annual at £350/year.",
     );
     expect(body.checkout_url).toBeUndefined();
+  });
+
+  it("returns 409 FOUNDING_NOT_ELIGIBLE for an ex-founder even with places left", async () => {
+    mocks.reserveFoundingSlot.mockResolvedValue("ineligible");
+
+    const response = await checkout({ planKey: FOUNDING_PLAN_KEY });
+
+    expect(response.status).toBe(409);
+    const body = await response.json();
+    expect(body.code).toBe("FOUNDING_NOT_ELIGIBLE");
+    expect(body.message).toBe(
+      "Founding membership can't be rejoined after cancelling. You can still subscribe to Pro annual at £350/year.",
+    );
+    expect(body.error).toBe(body.message);
+    expect(body.checkout_url).toBeUndefined();
+    expect(mocks.checkoutHandler).not.toHaveBeenCalled();
+    expect(mocks.sessions).toHaveLength(0);
+  });
+
+  it("redirects an ex-founder form post to the founding-full page with the reason", async () => {
+    mocks.reserveFoundingSlot.mockResolvedValue("ineligible");
+
+    const response = await createAuthenticatedCheckoutResponse({
+      request: formRequest({ planKey: "FOUNDING", returnTo: "/pricing" }),
+      user: USER,
+      profile: PROFILE,
+    });
+
+    expect(response.status).toBe(303);
+    const location = response.headers.get("location") ?? "";
+    expect(location).toContain("/checkout/founding-full");
+    expect(location).toContain("next=%2Fpricing");
+    expect(location).toContain("reason=not_eligible");
+    expect(mocks.checkoutHandler).not.toHaveBeenCalled();
+  });
+
+  it("gives an ex-founder choosing PRO_ANNUAL the standard £350 product, never founding", async () => {
+    mocks.readFoundingMember.mockResolvedValue(true);
+    mocks.reserveFoundingSlot.mockResolvedValue("ineligible");
+
+    const response = await checkout({ planKey: "PRO_ANNUAL" });
+
+    expect(response.status).toBe(200);
+    expect(mocks.reserveFoundingSlot).not.toHaveBeenCalled();
+    expect(mocks.sessions).toHaveLength(1);
+    expect(sessionProduct(mocks.sessions[0])).toBe(mocks.products.PRO_ANNUAL);
+    expect(sessionProduct(mocks.sessions[0])).not.toBe(mocks.products.FOUNDING_ANNUAL);
   });
 
   it("returns 400 INVALID_PLAN for tampered or unknown plan keys", async () => {

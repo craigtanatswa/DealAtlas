@@ -59,9 +59,8 @@ describe("founding member checkout", () => {
   it("keeps standard annual standard and only gives founders the founding price", () => {
     for (const reservation of [
       "reserved",
-      "active",
+      "ineligible",
       "sold_out",
-      "closed",
       "unavailable",
       null,
     ] as const) {
@@ -69,7 +68,6 @@ describe("founding member checkout", () => {
         selectCheckoutProduct({
           planKey: "PRO_ANNUAL",
           products,
-          founder: false,
           reservation,
         }),
       ).toEqual({ ok: true, productId: products.PRO_ANNUAL, founding: false });
@@ -82,7 +80,6 @@ describe("founding member checkout", () => {
           PRO_ANNUAL: products.PRO_ANNUAL,
           PRO_ANNUAL_LEGACY: [],
         },
-        founder: true,
         reservation: null,
       }),
     ).toEqual({ ok: true, productId: products.PRO_ANNUAL, founding: false });
@@ -95,7 +92,6 @@ describe("founding member checkout", () => {
         selectCheckoutProduct({
           planKey: "FOUNDING",
           products,
-          founder: false,
           reservation,
         }),
       ).toEqual({
@@ -109,7 +105,6 @@ describe("founding member checkout", () => {
         selectCheckoutProduct({
           planKey: "FOUNDING",
           products,
-          founder: false,
           reservation,
         }),
       ).toEqual({ ok: false, reason: "founding_unavailable" });
@@ -122,7 +117,6 @@ describe("founding member checkout", () => {
           PRO_ANNUAL: products.PRO_ANNUAL,
           PRO_ANNUAL_LEGACY: [],
         },
-        founder: true,
         reservation: "reserved",
       }),
     ).toEqual({ ok: false, reason: "founding_unavailable" });
@@ -130,16 +124,15 @@ describe("founding member checkout", () => {
       selectCheckoutProduct({
         planKey: "PRO_MONTHLY",
         products,
-        founder: true,
         reservation: "reserved",
       }),
     ).toEqual({ ok: true, productId: products.PRO_MONTHLY, founding: false });
   });
 
   it("only reserves a founding slot for a non-founder choosing founding", () => {
-    expect(shouldReserveFoundingSlot("FOUNDING", products, false)).toBe(true);
-    expect(shouldReserveFoundingSlot("PRO_ANNUAL", products, false)).toBe(false);
-    expect(shouldReserveFoundingSlot("PRO_MONTHLY", products, false)).toBe(false);
+    expect(shouldReserveFoundingSlot("FOUNDING", products)).toBe(true);
+    expect(shouldReserveFoundingSlot("PRO_ANNUAL", products)).toBe(false);
+    expect(shouldReserveFoundingSlot("PRO_MONTHLY", products)).toBe(false);
     expect(
       shouldReserveFoundingSlot(
         "FOUNDING",
@@ -148,7 +141,6 @@ describe("founding member checkout", () => {
           PRO_ANNUAL: products.PRO_ANNUAL,
           PRO_ANNUAL_LEGACY: [],
         },
-        false,
       ),
     ).toBe(false);
     expect(subscriptionPlanKeyFor("FOUNDING")).toBe("PRO_ANNUAL");

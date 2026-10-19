@@ -18,7 +18,7 @@ export type PlanProductMap = {
   FOUNDING_ANNUAL?: string;
 };
 
-export type FoundingReservation = "reserved" | "active" | "sold_out" | "closed" | "unavailable";
+export type FoundingReservation = "reserved" | "ineligible" | "sold_out" | "unavailable";
 
 export type MappedPlan = {
   planKey: SubscriptionPlanKey;

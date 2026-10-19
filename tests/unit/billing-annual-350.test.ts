@@ -89,20 +89,18 @@ describe("annual Pro £350 product migration", () => {
     ];
     const reservations: FoundingReservation[] = [
       "reserved",
-      "active",
+      "ineligible",
       "sold_out",
-      "closed",
       "unavailable",
     ];
 
     for (const [, map] of maps) {
       for (const planKey of CHECKOUT_PLAN_KEYS) {
-        for (const founder of [true, false]) {
+        {
           for (const reservation of reservations) {
             const selection = selectCheckoutProduct({
               planKey,
               products: map,
-              founder,
               reservation,
             });
             if (selection.ok) {
@@ -112,7 +110,6 @@ describe("annual Pro £350 product migration", () => {
           const withoutReservation = selectCheckoutProduct({
             planKey,
             products: map,
-            founder,
             reservation: null,
           });
           if (withoutReservation.ok) {

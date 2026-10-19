@@ -1,4 +1,4 @@
-import { FOUNDING_UNAVAILABLE_MESSAGE } from "@/lib/billing/founding";
+import { FOUNDING_NOT_ELIGIBLE_MESSAGE, FOUNDING_UNAVAILABLE_MESSAGE } from "@/lib/billing/founding";
 import type { CheckoutPlanKey } from "@/lib/billing/types";
 import { DISPLAY_PRICING } from "@/lib/constants";
 
@@ -111,6 +111,7 @@ export const FOUNDING_COPY = {
   soldOutMonthly: `Start Pro – ${DISPLAY_PRICING.proMonthly.replace("/month", "/mo")}`,
   soldOutAnnual: soldOutAnnualLink(),
   raceLead: FOUNDING_UNAVAILABLE_MESSAGE,
+  notEligibleLead: FOUNDING_NOT_ELIGIBLE_MESSAGE,
   raceBody: `Continue with standard annual at ${DISPLAY_PRICING.proAnnual.replace("/year", "/yr")}?`,
   raceAnnual: `Continue with annual – ${DISPLAY_PRICING.proAnnual.replace("/year", "/yr")}`,
   raceMonthly: `Choose monthly – ${DISPLAY_PRICING.proMonthly.replace("/month", "/mo")}`,
