@@ -2,9 +2,11 @@ import type { Metadata } from "next";
 import { Inter, Geist_Mono } from "next/font/google";
 import type { ReactNode } from "react";
 
+import { PostHogAnalytics } from "@/components/analytics/posthog-analytics";
 import { SkipLink } from "@/components/layout/skip-link";
 import { PublicNavigationMemory } from "@/components/navigation/public-back-link";
 import { MeasurementScripts } from "@/components/seo/measurement-scripts";
+import { configuredPostHogKey } from "@/lib/analytics/config";
 import { APP_DESCRIPTION, APP_NAME } from "@/lib/constants";
 import { getMeasurementConfig } from "@/lib/seo/analytics";
 import { getPublicEnv } from "@/lib/env/public";
@@ -77,7 +79,9 @@ export default function RootLayout({
 }: Readonly<{
   children: ReactNode;
 }>) {
-  const measurement = getMeasurementConfig(getPublicEnv());
+  const env = getPublicEnv();
+  const measurement = getMeasurementConfig(env);
+  const posthogKey = configuredPostHogKey();
 
   return (
     <html
@@ -86,6 +90,7 @@ export default function RootLayout({
     >
       <body className="flex min-h-full flex-col bg-background text-foreground">
         <MeasurementScripts config={measurement} />
+        {posthogKey ? <PostHogAnalytics apiKey={posthogKey} /> : null}
         <PublicNavigationMemory />
         <SkipLink />
         {children}
