@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import Link from "next/link";
 
+import { AnalyticsAttributionFields } from "@/components/analytics/attribution-fields";
 import { signUpAction } from "@/lib/auth/actions";
 import { INITIAL_ACTION_STATE } from "@/lib/auth/messages";
 import { loginPathForPlan, loginPathWithNext } from "@/lib/auth/redirect";
@@ -16,9 +17,11 @@ import { Input } from "@/components/ui/input";
 export function SignupForm({
   nextPath,
   plan,
+  analyticsEnabled = false,
 }: {
   nextPath: string;
   plan: CheckoutPlanKey | null;
+  analyticsEnabled?: boolean;
 }) {
   const [state, action, pending] = useActionState(
     signUpAction,
@@ -30,6 +33,7 @@ export function SignupForm({
       <GoogleSignInButton nextPath={nextPath} />
       <form action={action} className="flex flex-col gap-4">
         <input type="hidden" name="next" value={nextPath} />
+        <AnalyticsAttributionFields enabled={analyticsEnabled} />
         <Field id="displayName" label="Display name">
           <Input
             id="displayName"

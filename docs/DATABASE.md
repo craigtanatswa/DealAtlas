@@ -48,12 +48,12 @@ One row per Supabase Auth user.
 - email
 - display_name
 - role USER/ADMIN
-- founding_member — set only by the founding webhook path; cleared on cancel or expiry (0042)
+- founding_member — set only by the founding webhook path; cleared on cancel or expiry (0047)
 - founding_since
 - created_at
 - updated_at
 
-`private.founding_slots` holds one row per user (`reserved`, `active`, `released`, or `ended`). Service role calls the slot functions; anon and authenticated cannot read the table or execute the functions. A reserved row expires after 30 minutes. On cancel or expiry `close_founding_membership` (0042) moves an active row to `ended` (sets `ended_at` once) and clears `profiles.founding_member`, so the founding price ends. An ended row still counts as a used place and is never released, deleted or re-activated. `reserve_founding_slot` answers `ineligible` for anyone with an active or ended row (no rejoin; checkout returns 409 `FOUNDING_NOT_ELIGIBLE`), and `activate_founding_slot` refuses an ended row, so a late or replayed activation cannot restore founding. A replayed cancel is a no-op. `private.founding_event_claims` has one row per processed event and one row per Dodo subscription. `GET /api/founding` returns the remaining count and a sold-out flag only.
+`private.founding_slots` holds one row per user (`reserved`, `active`, `released`, or `ended`). Service role calls the slot functions; anon and authenticated cannot read the table or execute the functions. A reserved row expires after 30 minutes. On cancel or expiry `close_founding_membership` (0047) moves an active row to `ended` (sets `ended_at` once) and clears `profiles.founding_member`, so the founding price ends. An ended row still counts as a used place and is never released, deleted or re-activated. `reserve_founding_slot` answers `ineligible` for anyone with an active or ended row (no rejoin; checkout returns 409 `FOUNDING_NOT_ELIGIBLE`), and `activate_founding_slot` refuses an ended row, so a late or replayed activation cannot restore founding. A replayed cancel is a no-op. `private.founding_event_claims` has one row per processed event and one row per Dodo subscription. `GET /api/founding` returns the remaining count and a sold-out flag only.
 
 ### subscriptions
 Local mirror of Dodo subscription entitlement state.

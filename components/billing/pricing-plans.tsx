@@ -119,12 +119,14 @@ function PlanCta({
   label,
   variant = "outline",
   buttonClassName,
+  analyticsPlan,
 }: {
   signedIn: boolean;
   planKey: CheckoutPlanKey;
   label: string;
   variant?: "default" | "outline";
   buttonClassName?: string;
+  analyticsPlan?: "founding";
 }) {
   if (!signedIn) {
     return (
@@ -140,6 +142,7 @@ function PlanCta({
       showPrice={false}
       variant={variant}
       returnTo="/pricing"
+      analyticsPlan={analyticsPlan}
       className="w-full"
       buttonClassName={cn("w-full", buttonClassName)}
     />
@@ -207,6 +210,7 @@ export function PricingPlans({
                 signedIn={signedIn}
                 planKey={FOUNDING_PLAN_KEY}
                 label={FOUNDING_COPY.cta}
+                analyticsPlan="founding"
                 variant="default"
                 buttonClassName={FOUNDING_BUTTON}
               />

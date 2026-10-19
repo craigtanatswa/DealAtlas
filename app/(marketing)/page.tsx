@@ -10,6 +10,7 @@ import { Container } from "@/components/layout/container";
 import { JsonLd } from "@/components/seo/json-ld";
 import { getAuthUser } from "@/lib/auth/session";
 import { getAppOrigin } from "@/lib/auth/urls";
+import { getHomeSearchChips } from "@/lib/search/home-chips-server";
 import { searchLiveHomePreviews } from "@/lib/search/public";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { organizationJsonLd, webPageJsonLd } from "@/lib/seo/json-ld";
@@ -29,7 +30,11 @@ export const metadata: Metadata = marketingPageMetadata({
 });
 
 export default async function HomePage() {
-  const user = await getAuthUser();
+  const [user, searchChips] = await Promise.all([
+    getAuthUser(),
+    // Cached ~1h; on failure show no "Try" chips rather than possibly empty ones.
+    getHomeSearchChips().catch(() => []),
+  ]);
   const live = await searchLiveHomePreviews(await createSupabaseServerClient());
 
   return (
@@ -45,7 +50,7 @@ export default async function HomePage() {
           }),
         ]}
       />
-      <HomeHero signedIn={Boolean(user)} />
+      <HomeHero signedIn={Boolean(user)} searchChips={searchChips} />
       <HomeLiveOpportunities
         items={live.items}
         total={live.total}

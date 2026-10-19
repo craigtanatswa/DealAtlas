@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { cache } from "react";
 
 import { SaveDealButton } from "@/components/saves/save-deal-button";
+import { UpgradeStatusBanner } from "@/components/billing/upgrade-status-banner";
 import { DealPreviewDetail } from "@/components/deals/deal-preview-detail";
 import { Main } from "@/components/layout/container";
 import { JsonLd } from "@/components/seo/json-ld";
@@ -26,6 +27,7 @@ export const dynamic = "force-dynamic";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
 const loadPreviewPage = cache(async (slug: string) => {
@@ -58,8 +60,9 @@ export async function generateMetadata({
   );
 }
 
-export default async function DealPreviewPage({ params }: PageProps) {
+export default async function DealPreviewPage({ params, searchParams }: PageProps) {
   const { slug } = await params;
+  const upgraded = (await searchParams).upgraded === "1";
   const page = await loadPreviewPage(slug);
 
   if (!page) {
@@ -87,6 +90,7 @@ export default async function DealPreviewPage({ params }: PageProps) {
 
   return (
     <Main back>
+      {user && upgraded ? <UpgradeStatusBanner initialPro={mode === "pro"} /> : null}
       {indexable ? (
         <JsonLd
           data={webPageJsonLd({

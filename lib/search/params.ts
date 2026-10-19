@@ -13,6 +13,22 @@ export const PUBLIC_SEARCH_PAGE_SIZE = 20;
 export const PUBLIC_DEALS_PAGE_SIZE = 10;
 export const PUBLIC_SEARCH_MAX_PAGE_SIZE = 50;
 export const PUBLIC_SEARCH_MAX_PAGE = 500;
+/** /deals pager page count: every result page, at least 1. */
+export function publicDealsPageCount(total: number, pageSize: number): number {
+  if (!Number.isFinite(total) || total <= 0) return 1;
+  const size = Number.isFinite(pageSize) && pageSize > 0 ? Math.floor(pageSize) : 1;
+  return Math.max(1, Math.ceil(total / size));
+}
+
+/** True only past the real last /deals page (render a 404). Page 1 always renders. */
+export function isPublicDealsPageOutOfRange(
+  requestedPage: number,
+  total: number,
+  pageSize: number,
+): boolean {
+  if (requestedPage <= 1) return false;
+  return requestedPage > publicDealsPageCount(total, pageSize);
+}
 export const SEARCH_SORTS = ["biddable", "deadline", "updated", "relevance"] as const;
 export type SearchSort = (typeof SEARCH_SORTS)[number];
 

@@ -69,6 +69,7 @@ export function FoundingUnlockActions({
         <CheckoutPlanForm
           planKey={FOUNDING_PLAN_KEY}
           label={FOUNDING_COPY.paywallCta}
+          analyticsPlan="founding"
           showPrice={false}
           returnTo={returnTo}
           className="w-full"
