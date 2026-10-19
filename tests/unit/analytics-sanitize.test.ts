@@ -93,13 +93,35 @@ describe("fail-closed before_send allowlist", () => {
     }
   });
 
-  it("drops external referrers to the hostname", () => {
+  it("buckets external referrers and never sends the raw host or URL", () => {
     const result = sanitizeClientEvent(
       sdkEvent({ $referrer: "https://www.google.com/search?q=CANARY+BUYER" }),
       { origin: ORIGIN },
     );
-    expect(result!.properties.$referrer).toBe("www.google.com");
-    expect(result!.properties.$referring_domain).toBe("www.google.com");
+    expect(result!.properties.$referrer).toBe("google");
+    expect(result!.properties.$referring_domain).toBe("google");
+    expect(JSON.stringify(result)).not.toMatch(/google\.com|CANARY|search/);
+  });
+
+  it("sends unlisted external referrers as other", () => {
+    for (const referrer of [
+      "https://portal.example-council.gov.uk/notice/NTC-998877?ref=CANARY",
+      "https://supplier-portal.example/tenders",
+      "android-app://com.google.android.gm/",
+      "not a url at all",
+      "https://google.evil.example/",
+    ]) {
+      const result = sanitizeClientEvent(sdkEvent({ $referrer: referrer }), { origin: ORIGIN });
+      expect(result!.properties.$referrer, referrer).toBe("other");
+      expect(result!.properties.$referring_domain, referrer).toBe("other");
+      expect(JSON.stringify(result)).not.toMatch(/example|council|portal|NTC-998877|CANARY|evil/);
+    }
+  });
+
+  it("keeps $direct", () => {
+    const result = sanitizeClientEvent(sdkEvent({ $referrer: "$direct" }), { origin: ORIGIN });
+    expect(result!.properties.$referrer).toBe("$direct");
+    expect(result!.properties.$referring_domain).toBe("$direct");
   });
 
   it("strips checkout success identifiers", () => {

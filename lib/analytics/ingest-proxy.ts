@@ -12,6 +12,13 @@ import { sanitizeClientEvent, normalizeOrigin, type SanitizedClientEvent } from 
 export const INGEST_EVENT_PATHS = new Set(["e", "i/v0/e", "batch"]);
 export const MAX_INGEST_BODY_BYTES = 512 * 1024;
 
+/**
+ * Best-effort, per-instance, in-memory limit on /ingest requests per client
+ * IP (Security follow-up 2). posthog-js flushes about every 3 seconds, so a
+ * real visitor sends roughly 20 requests a minute.
+ */
+export const INGEST_RATE_LIMIT = { bucket: "analytics-ingest", limit: 120, windowMs: 60_000 } as const;
+
 function isGzip(bytes: Uint8Array): boolean {
   return bytes.length > 2 && bytes[0] === 0x1f && bytes[1] === 0x8b;
 }
@@ -75,6 +82,9 @@ export function sanitizeIngestEvents(
     }
     const clean = sanitizeClientEvent(event, { origin });
     if (clean) {
+      // The client IP is never forwarded; also tell PostHog not to GeoIP the
+      // proxy's address (Security follow-up 2).
+      clean.properties.$geoip_disable = true;
       sanitized.push(clean);
     }
   }

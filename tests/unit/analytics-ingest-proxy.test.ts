@@ -40,6 +40,17 @@ describe("/ingest proxy re-sanitising", () => {
     expect(JSON.stringify(events)).not.toMatch(/CANARY|canary-a1b2c3|evil/);
   });
 
+  it("marks every forwarded event $geoip_disable", () => {
+    const events = sanitizeIngestEvents(
+      [rawEvent(`${ORIGIN}/pricing`), rawEvent(`${ORIGIN}/deals`)],
+      new Set([ORIGIN]),
+    );
+    expect(events).toHaveLength(2);
+    for (const event of events) {
+      expect(event.properties.$geoip_disable).toBe(true);
+    }
+  });
+
   it("accepts a { batch } envelope and caps the batch size", () => {
     const many = Array.from({ length: 150 }, () => rawEvent(`${ORIGIN}/pricing`));
     expect(sanitizeIngestEvents({ batch: many }, new Set([ORIGIN]))).toHaveLength(100);

@@ -61,7 +61,10 @@ export default function CookiesPage() {
             PostHog never receives opportunity details. Page addresses are
             reduced to page types (for example <code>/deals/[deal]</code>),
             search terms and other query strings are removed except campaign
-            (utm_*) tags, and only the referring site&apos;s domain is kept.
+            (utm_*) tags, and the referring site is recorded only as a broad
+            category (a major search engine or social network by name,
+            otherwise &ldquo;other&rdquo;). Location lookup from your IP
+            address is switched off.
             Session recording, click autocapture, heatmaps, error and
             performance capture and surveys are switched off. Signed-in
             accounts are counted by an internal account ID only, never by

@@ -3,12 +3,14 @@ import { NextResponse, type NextRequest } from "next/server";
 import { POSTHOG_EU_API_HOST, configuredPostHogKey } from "@/lib/analytics/config";
 import {
   INGEST_EVENT_PATHS,
+  INGEST_RATE_LIMIT,
   MAX_INGEST_BODY_BYTES,
   decodeIngestBody,
   sanitizeIngestEvents,
 } from "@/lib/analytics/ingest-proxy";
 import { normalizeOrigin } from "@/lib/analytics/sanitize";
 import { serverAnalyticsKey } from "@/lib/analytics/server";
+import { clientKeyFromRequest, rateLimit, retryAfterSeconds } from "@/lib/security/rate-limit";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -44,6 +46,18 @@ export async function POST(
   const joined = path.join("/");
   if (!INGEST_EVENT_PATHS.has(joined)) {
     return notFound();
+  }
+
+  const limited = rateLimit(
+    clientKeyFromRequest(request, INGEST_RATE_LIMIT.bucket),
+    INGEST_RATE_LIMIT.limit,
+    INGEST_RATE_LIMIT.windowMs,
+  );
+  if (!limited.ok) {
+    return new NextResponse(null, {
+      status: 429,
+      headers: { ...NO_STORE, "Retry-After": String(retryAfterSeconds(limited)) },
+    });
   }
 
   const bytes = new Uint8Array(await request.arrayBuffer());

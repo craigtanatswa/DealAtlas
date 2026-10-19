@@ -38,14 +38,14 @@ describe("server analytics events", () => {
       uuid: expect.stringMatching(/^[0-9a-f-]{36}$/),
       properties: {
         first_landing_path: "/deals/[deal]",
-        first_referrer_domain: "www.google.com",
+        first_referrer_domain: "google",
         utm_source: "newsletter",
         utm_medium: "email",
         signup_source_guide: "how-to-win-council-contracts",
       },
       setOnce: {
         first_landing_path: "/deals/[deal]",
-        first_referrer_domain: "www.google.com",
+        first_referrer_domain: "google",
       },
     });
   });

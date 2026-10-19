@@ -101,28 +101,90 @@ export function cleanUtmValue(value: unknown): string | undefined {
   return UTM_VALUE_PATTERN.test(trimmed) ? trimmed : undefined;
 }
 
-/** Only a bare, valid hostname survives ("www.google.com"). */
-export function cleanReferrerDomain(value: unknown): string | undefined {
-  if (typeof value !== "string") {
+/**
+ * External referrers are bucketed (Security follow-up 1): only these labels,
+ * "$direct" or "other" ever leave the browser or the server. A raw external
+ * hostname or URL is never sent.
+ */
+export const REFERRER_BUCKETS = [
+  "google",
+  "bing",
+  "duckduckgo",
+  "yahoo",
+  "ecosia",
+  "linkedin",
+  "x",
+  "facebook",
+  "reddit",
+  "youtube",
+] as const;
+export const OTHER_REFERRER = "other";
+
+export type ReferrerBucket = (typeof REFERRER_BUCKETS)[number] | typeof DIRECT | typeof OTHER_REFERRER;
+
+// Country-code forms such as google.co.uk, google.com.au and google.de.
+const TLD = String.raw`(?:com|org|net|co\.[a-z]{2}|com\.[a-z]{2}|[a-z]{2})`;
+const BUCKET_HOSTS: ReadonlyArray<[(typeof REFERRER_BUCKETS)[number], RegExp]> = [
+  ["google", new RegExp(String.raw`^(?:[a-z0-9-]+\.)*google\.${TLD}$`)],
+  ["bing", /^(?:[a-z0-9-]+\.)*bing\.com$/],
+  ["duckduckgo", /^(?:[a-z0-9-]+\.)*duckduckgo\.com$/],
+  ["yahoo", new RegExp(String.raw`^(?:[a-z0-9-]+\.)*yahoo\.${TLD}$`)],
+  ["ecosia", /^(?:[a-z0-9-]+\.)*ecosia\.org$/],
+  ["linkedin", /^(?:(?:[a-z0-9-]+\.)*linkedin\.com|lnkd\.in)$/],
+  ["x", /^(?:(?:[a-z0-9-]+\.)*(?:x|twitter)\.com|t\.co)$/],
+  ["facebook", /^(?:(?:[a-z0-9-]+\.)*(?:facebook|fb)\.com|fb\.me)$/],
+  ["reddit", /^(?:(?:[a-z0-9-]+\.)*reddit\.com|redd\.it)$/],
+  ["youtube", /^(?:(?:[a-z0-9-]+\.)*youtube\.com|youtu\.be)$/],
+];
+
+/** Maps a bare hostname to its bucket; anything unlisted is "other". */
+export function referrerBucketForHost(host: string): ReferrerBucket {
+  const normalized = host.trim().toLowerCase().replace(/\.$/, "");
+  for (const [bucket, pattern] of BUCKET_HOSTS) {
+    if (pattern.test(normalized)) {
+      return bucket;
+    }
+  }
+  return OTHER_REFERRER;
+}
+
+export function isReferrerBucket(value: unknown): value is ReferrerBucket {
+  return (
+    value === DIRECT ||
+    value === OTHER_REFERRER ||
+    (REFERRER_BUCKETS as readonly unknown[]).includes(value)
+  );
+}
+
+/**
+ * Buckets an external referrer value (a bucket label, a hostname or a URL).
+ * Bucket labels pass through unchanged, so this is idempotent; any other
+ * non-empty string becomes a bucket or "other".
+ */
+export function cleanReferrerDomain(value: unknown): ReferrerBucket | undefined {
+  if (typeof value !== "string" || value.length > 4096) {
     return undefined;
   }
   const trimmed = value.trim().toLowerCase();
-  if (trimmed === DIRECT) {
-    return DIRECT;
+  if (trimmed === "") {
+    return undefined;
+  }
+  if (isReferrerBucket(trimmed)) {
+    return trimmed;
   }
   let host = trimmed;
   if (trimmed.includes("/") || trimmed.includes(":")) {
     try {
       const url = new URL(trimmed);
       if (url.protocol !== "https:" && url.protocol !== "http:") {
-        return undefined;
+        return OTHER_REFERRER;
       }
       host = url.hostname;
     } catch {
-      return undefined;
+      return OTHER_REFERRER;
     }
   }
-  return HOSTNAME_PATTERN.test(host) ? host : undefined;
+  return HOSTNAME_PATTERN.test(host) ? referrerBucketForHost(host) : OTHER_REFERRER;
 }
 
 type ParsedPage = { cleaned: string; utm: Partial<Record<UtmKey, string>> };
@@ -168,8 +230,9 @@ function utmQuery(utm: Partial<Record<UtmKey, string>>): string {
 }
 
 /**
- * Referrer handling: same-origin referrers become their cleaned path, other
- * referrers become their hostname only, and "$direct" stays "$direct".
+ * Referrer handling: same-origin referrers become their cleaned path (domain:
+ * our own hostname), external referrers become a bucket label for both
+ * $referrer and $referring_domain, and "$direct" stays "$direct".
  */
 export function cleanReferrer(
   value: unknown,
@@ -193,10 +256,10 @@ export function cleanReferrer(
       return cleaned ? { referrer: cleaned, domain: url.hostname } : null;
     }
   } catch {
-    // Not a URL: fall through to the bare hostname check.
+    // Not a URL: fall through to bucketing.
   }
-  const domain = cleanReferrerDomain(trimmed);
-  return domain ? { referrer: domain, domain } : null;
+  const bucket = cleanReferrerDomain(trimmed) ?? OTHER_REFERRER;
+  return { referrer: bucket, domain: bucket };
 }
 
 function isClientEventName(value: unknown): value is ClientEventName {
