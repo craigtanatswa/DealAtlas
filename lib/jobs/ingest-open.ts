@@ -13,6 +13,12 @@ import {
   formatOcdsDateTime,
 } from "@/ingestion/sources/find-a-tender/constants";
 import { createRequestPacer } from "@/ingestion/sources/find-a-tender/pace";
+import { createGcaAgreementsAdapter } from "@/ingestion/sources/gca/agreements";
+import {
+  GCA_AGREEMENTS_SOURCE_KEY,
+  GCA_PIPELINE_SOURCE_KEY,
+} from "@/ingestion/sources/gca/constants";
+import { createGcaPipelineAdapter } from "@/ingestion/sources/gca/pipeline";
 import type { SourceAdapter } from "@/ingestion/core/types";
 import type { IngestionStore } from "@/ingestion/store/types";
 import { rebuildChangedPreviews } from "@/lib/jobs/previews";
@@ -416,4 +422,124 @@ export function runOpenContractsFinderIngest(
     ...options,
     sourceKey: CONTRACTS_FINDER_SOURCE_KEY,
   });
+}
+
+export async function runOpenCatalogueIngest(options: {
+  store: IngestionStore;
+  now?: Date;
+  dryRun: boolean;
+  adapter?: SourceAdapter;
+  sleep?: (ms: number) => Promise<void>;
+  phase?: "ingest" | "previews" | "all";
+  dealIds?: string[];
+  sourceKey: typeof GCA_AGREEMENTS_SOURCE_KEY | typeof GCA_PIPELINE_SOURCE_KEY;
+}): Promise<OpenIngestResult> {
+  const now = options.now ?? new Date();
+  const sleep = options.sleep ?? defaultSleep;
+  const sourceKey = options.sourceKey;
+  const adapter =
+    options.adapter ??
+    (sourceKey === GCA_PIPELINE_SOURCE_KEY
+      ? createGcaPipelineAdapter({ now: () => now, sleep })
+      : createGcaAgreementsAdapter({ now: () => now, sleep }));
+  const counts = emptyCounts();
+  const errors: OpenIngestError[] = [];
+  const changed = new Set<string>(options.dealIds ?? []);
+  const phase = options.phase ?? "all";
+  let status: OpenIngestResult["status"] = "SUCCEEDED";
+
+  if (phase !== "previews") {
+    const result = await runIngestion({
+      sourceKey,
+      store: options.store,
+      adapter,
+      triggerType: options.dryRun ? "DRY_RUN" : "SCHEDULED",
+      limit: MAX_RECORDS,
+      now,
+      force: true,
+      pageSize: 100,
+      minFetchIntervalMs: 0,
+      sleep,
+      dryRun: options.dryRun,
+      skipPreview: true,
+      failureMode: "partial",
+      onPersisted: (info) => {
+        if (info.outcome === "new" || info.outcome === "updated" || info.outcome === "linked") {
+          changed.add(info.dealId);
+        }
+      },
+    });
+    counts.fetched += result.counters.fetched;
+    counts.new += result.counters.new;
+    counts.updated += result.counters.updated;
+    counts.unchanged += result.counters.unchanged;
+    counts.failed += result.counters.errorCount;
+    if (result.truncated) {
+      counts.capped = 1;
+    }
+    for (const error of result.errors) {
+      errors.push({
+        stage: error.stage,
+        code: error.code ?? "INGESTION_ERROR",
+        message: error.message,
+        details: error.details,
+      });
+    }
+    if (result.status === "SKIPPED") {
+      return {
+        status: "SKIPPED",
+        dryRun: options.dryRun,
+        counts,
+        changedDealIds: [],
+        errors,
+      };
+    }
+    if (result.status === "FAILED" || result.status === "PARTIAL" || result.truncated) {
+      status = result.status === "FAILED" ? "FAILED" : "PARTIAL";
+    }
+  }
+
+  const previewIds = phase === "ingest" ? [] : [...changed];
+  if (!options.dryRun && phase !== "ingest") {
+    const missing = await options.store.listDealIdsMissingPreview(MISSING_PREVIEW_CAP);
+    const seen = new Set(previewIds);
+    for (const dealId of missing) {
+      if (seen.has(dealId)) continue;
+      seen.add(dealId);
+      previewIds.push(dealId);
+    }
+  }
+  if (!options.dryRun && previewIds.length > 0 && phase !== "ingest") {
+    const previews = await rebuildChangedPreviews({
+      store: options.store,
+      now,
+      mode: "live",
+      changedSince: now.toISOString(),
+      dealIds: previewIds,
+      limit: previewIds.length,
+      countsOnly: true,
+    });
+    if (phase === "previews") {
+      counts.fetched = previews.selected;
+      counts.new = previews.published;
+      counts.updated = previews.processed;
+      counts.unchanged = previews.blocked;
+    }
+    counts.failed += previews.failures;
+    if (previews.failures > 0) {
+      status = "PARTIAL";
+    }
+  }
+
+  if (counts.failed === 0 && status !== "PARTIAL" && status !== "FAILED") {
+    status = "SUCCEEDED";
+  }
+
+  return {
+    status,
+    dryRun: options.dryRun,
+    counts,
+    changedDealIds: phase === "previews" ? [] : [...changed],
+    errors,
+  };
 }
