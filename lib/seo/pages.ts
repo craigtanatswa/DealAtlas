@@ -80,9 +80,9 @@ export const PUBLIC_PAGE_COPY = {
     path: "/cookies",
   },
   guides: {
-    title: "Guides for UK public sector bidding",
+    title: "UK Public Sector Tender Guides for SMEs",
     description:
-      "Practical guides for SMEs bidding for UK public sector contracts: how buyers run tenders, what to prepare and how bids are scored.",
+      "Plain-English guides to finding and winning UK public sector tenders: council contracts, frameworks, notice types and how bids are scored.",
     path: "/guides",
   },
   categories: {
