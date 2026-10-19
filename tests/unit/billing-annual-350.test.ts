@@ -97,15 +97,28 @@ describe("annual Pro £350 product migration", () => {
 
     for (const [, map] of maps) {
       for (const planKey of CHECKOUT_PLAN_KEYS) {
-        for (const testMode of [true, false]) {
+        for (const founder of [true, false]) {
           for (const reservation of reservations) {
             const selection = selectCheckoutProduct({
               planKey,
               products: map,
+              founder,
               reservation,
-              testMode,
             });
-            expect(selection.productId).not.toBe(BILLING_FIXTURE_LEGACY_PRODUCT_ID);
+            if (selection.ok) {
+              expect(selection.productId).not.toBe(BILLING_FIXTURE_LEGACY_PRODUCT_ID);
+            }
+          }
+          const withoutReservation = selectCheckoutProduct({
+            planKey,
+            products: map,
+            founder,
+            reservation: null,
+          });
+          if (withoutReservation.ok) {
+            expect(withoutReservation.productId).not.toBe(
+              BILLING_FIXTURE_LEGACY_PRODUCT_ID,
+            );
           }
         }
       }

@@ -1,9 +1,12 @@
+import { DISPLAY_PRICING } from "@/lib/constants";
 import { isFoundingProduct } from "@/lib/billing/plans";
 import type {
   FoundingReservation,
   IncomingBillingEvent,
   PlanProductMap,
 } from "@/lib/billing/types";
+
+export const FOUNDING_UNAVAILABLE_MESSAGE = `Founding places are all taken. You can still subscribe to Pro annual at ${DISPLAY_PRICING.proAnnual}.`;
 
 export type FoundingSideEffect = {
   userId: string;
@@ -31,14 +34,6 @@ export function foundingOfferCopy(band: string | null): {
     return { foundingAvailable: true, note: "fewer than 10 left" };
   }
   return { foundingAvailable: false, note: null };
-}
-
-/** A returning founder skips reservation. The flag is read from profiles on the server. */
-export function reservationForCheckout(
-  founder: boolean,
-  reservation: FoundingReservation,
-): FoundingReservation {
-  return founder ? "active" : reservation;
 }
 
 export function asFoundingReservation(value: unknown): FoundingReservation {

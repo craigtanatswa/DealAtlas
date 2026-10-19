@@ -453,7 +453,7 @@ Launch authentication is email/password plus optional Google OAuth with Supabase
 - `GET /api/exports` returns `{ used, limit, remaining, billingMonth }` for Pro users.
 
 ### Dodo billing
-- `/api/billing/checkout` is an authenticated POST. The browser may send only `planKey` (`PRO_MONTHLY` | `PRO_ANNUAL`). The server maps that to `DODO_PRO_*_PRODUCT_ID` and creates a Checkout Session through `@dodopayments/nextjs`.
+- `/api/billing/checkout` is an authenticated POST. The browser may send only `planKey` (`PRO_MONTHLY` | `PRO_ANNUAL` | `FOUNDING`). The server maps that to an environment product ID and creates a Checkout Session through `@dodopayments/nextjs`. Only `FOUNDING` reserves a founding place. `PRO_ANNUAL` never reserves and always uses the standard annual product, except that an existing founder (`profiles.founding_member`) keeps the founding product (locked for life). When founding places are full, `FOUNDING` returns 409 (JSON) or redirects to `/checkout/founding-full` and creates no session. Unknown or tampered plan keys return 400.
 - Checkout metadata `user_id` and `plan_key` are generated from the authenticated session, never from the request body.
 - `/api/webhooks/dodo` uses the official `Webhooks` adapter for Standard Webhooks verification, then writes `billing_events` and the `subscriptions` mirror idempotently.
 - `/checkout/success` polls `/api/billing/entitlement` and does not treat `?success=true` as Pro.

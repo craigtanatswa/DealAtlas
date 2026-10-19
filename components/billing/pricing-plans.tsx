@@ -6,6 +6,7 @@ import { CheckoutPlanForm } from "@/components/billing/checkout-plan-form";
 import { Heading, Text } from "@/components/layout/heading";
 import { Button } from "@/components/ui/button";
 import { signupPathForPlan, signupPathWithNext } from "@/lib/auth/redirect";
+import type { CheckoutPlanKey } from "@/lib/billing/types";
 import {
   FOUNDING_COPY,
   foundingPlacesLabel,
@@ -119,7 +120,7 @@ function PlanCta({
   buttonClassName,
 }: {
   signedIn: boolean;
-  planKey: "PRO_MONTHLY" | "PRO_ANNUAL";
+  planKey: CheckoutPlanKey;
   label: string;
   variant?: "default" | "outline";
   buttonClassName?: string;
@@ -203,7 +204,7 @@ export function PricingPlans({
             <div className="mt-auto flex flex-col gap-3 pt-6">
               <PlanCta
                 signedIn={signedIn}
-                planKey="PRO_ANNUAL"
+                planKey="FOUNDING"
                 label={FOUNDING_COPY.cta}
                 variant="default"
                 buttonClassName={FOUNDING_BUTTON}

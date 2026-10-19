@@ -4,6 +4,7 @@
  */
 export {
   CHECKOUT_PLAN_KEYS,
+  SUBSCRIPTION_PLAN_KEYS,
   allowlistedProductIds,
   billingIntervalForPlan,
   checkoutProductIds,
@@ -14,8 +15,12 @@ export {
   mapProductId,
   parseCheckoutRequest,
   selectCheckoutProduct,
+  shouldReserveFoundingSlot,
+  subscriptionPlanKeyFor,
   type CheckoutPlanKey,
+  type CheckoutSelection,
   type PlanProductMap,
+  type SubscriptionPlanKey,
 } from "@/lib/billing/plans";
 export { checkoutMetadata, CHECKOUT_METADATA_KEYS } from "@/lib/billing/metadata";
 export {

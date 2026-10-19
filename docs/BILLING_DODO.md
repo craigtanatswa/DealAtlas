@@ -130,7 +130,7 @@ const DODO_PRODUCTS = {
 }
 ```
 
-Incoming webhook `product_id` is mapped back to known plan/interval, including legacy annual IDs. Checkout accepts only the current monthly and annual plans (plus the server-controlled founding annual flow). Unknown product IDs do not grant Pro automatically.
+Incoming webhook `product_id` is mapped back to known plan/interval, including legacy annual IDs. Checkout accepts only the plan keys `PRO_MONTHLY`, `PRO_ANNUAL` and `FOUNDING`. Only `FOUNDING` reserves a founding place; when places are full it fails closed (409 / `/checkout/founding-full`) and never falls back to a standard checkout. `PRO_ANNUAL` is always the standard annual product, except that an existing founder keeps the founding product (locked for life). Unknown product IDs do not grant Pro automatically.
 
 ## 14. Taxes/invoices
 Dodo operates as Merchant of Record for customer-side transaction taxes/compliance. DealAtlas should link customers to Dodo invoices/portal and should not attempt to calculate its own VAT for the same checkout flow.

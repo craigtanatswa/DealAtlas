@@ -16,12 +16,14 @@ import {
   mapProductId,
   parseCheckoutRequest,
   selectCheckoutProduct,
+  shouldReserveFoundingSlot,
+  subscriptionPlanKeyFor,
 } from "@/lib/billing";
 import {
+  FOUNDING_UNAVAILABLE_MESSAGE,
   foundingAvailabilityPayload,
   foundingOfferCopy,
   foundingSideEffect,
-  reservationForCheckout,
 } from "@/lib/billing/founding";
 import {
   FOUNDING_CAP,
@@ -54,69 +56,36 @@ function foundingEvent(status: string, type = "subscription.active"): IncomingBi
 }
 
 describe("founding member checkout", () => {
-  it("falls back to the standard annual product when the cap is sold out", () => {
+  it("keeps standard annual standard and only gives founders the founding price", () => {
+    for (const reservation of [
+      "reserved",
+      "active",
+      "sold_out",
+      "closed",
+      "unavailable",
+      null,
+    ] as const) {
+      expect(
+        selectCheckoutProduct({
+          planKey: "PRO_ANNUAL",
+          products,
+          founder: false,
+          reservation,
+        }),
+      ).toEqual({ ok: true, productId: products.PRO_ANNUAL, founding: false });
+    }
     expect(
       selectCheckoutProduct({
         planKey: "PRO_ANNUAL",
         products,
-        reservation: "sold_out",
-        testMode: true,
+        founder: true,
+        reservation: null,
       }),
-    ).toEqual({ productId: products.PRO_ANNUAL, founding: false });
-    expect(
-      selectCheckoutProduct({
-        planKey: "PRO_ANNUAL",
-        products,
-        reservation: "reserved",
-        testMode: true,
-      }).productId,
-    ).toBe(products.FOUNDING_ANNUAL);
-    expect(
-      selectCheckoutProduct({
-        planKey: "PRO_ANNUAL",
-        products,
-        reservation: "active",
-        testMode: true,
-      }).founding,
-    ).toBe(true);
-    expect(
-      selectCheckoutProduct({
-        planKey: "PRO_ANNUAL",
-        products,
-        reservation: "closed",
-        testMode: true,
-      }).productId,
-    ).toBe(products.PRO_ANNUAL);
-    expect(mapProductId(products.FOUNDING_ANNUAL, products)?.planKey).toBe("PRO_ANNUAL");
-    expect(
-      selectCheckoutProduct({
-        planKey: "PRO_ANNUAL",
-        products,
-        reservation: reservationForCheckout(true, "sold_out"),
-        testMode: true,
-      }).productId,
-    ).toBe(products.FOUNDING_ANNUAL);
-    expect(
-      selectCheckoutProduct({
-        planKey: "PRO_ANNUAL",
-        products,
-        reservation: reservationForCheckout(false, "sold_out"),
-        testMode: true,
-      }).productId,
-    ).toBe(products.PRO_ANNUAL);
-  });
-
-  it("ignores a client product id and still reserves founding in live mode", () => {
-    expect(parseCheckoutRequest({ planKey: "PRO_ANNUAL", product_id: products.FOUNDING_ANNUAL }).ok).toBe(false);
-    expect(parseCheckoutRequest({ planKey: "FOUNDING" }).ok).toBe(false);
-    expect(
-      selectCheckoutProduct({
-        planKey: "PRO_ANNUAL",
-        products,
-        reservation: "reserved",
-        testMode: false,
-      }).productId,
-    ).toBe(products.FOUNDING_ANNUAL);
+    ).toEqual({
+      ok: true,
+      productId: products.FOUNDING_ANNUAL,
+      founding: true,
+    });
     expect(
       selectCheckoutProduct({
         planKey: "PRO_ANNUAL",
@@ -125,18 +94,103 @@ describe("founding member checkout", () => {
           PRO_ANNUAL: products.PRO_ANNUAL,
           PRO_ANNUAL_LEGACY: [],
         },
+        founder: true,
+        reservation: null,
+      }),
+    ).toEqual({ ok: true, productId: products.PRO_ANNUAL, founding: false });
+    expect(mapProductId(products.FOUNDING_ANNUAL, products)?.planKey).toBe("PRO_ANNUAL");
+  });
+
+  it("selects founding only through the founding plan key", () => {
+    for (const reservation of ["reserved", "active", "closed"] as const) {
+      expect(
+        selectCheckoutProduct({
+          planKey: "FOUNDING",
+          products,
+          founder: false,
+          reservation,
+        }),
+      ).toEqual({
+        ok: true,
+        productId: products.FOUNDING_ANNUAL,
+        founding: true,
+      });
+    }
+    expect(
+      selectCheckoutProduct({
+        planKey: "FOUNDING",
+        products,
+        founder: true,
+        reservation: null,
+      }),
+    ).toEqual({
+      ok: true,
+      productId: products.FOUNDING_ANNUAL,
+      founding: true,
+    });
+    for (const reservation of ["sold_out", "unavailable", null] as const) {
+      expect(
+        selectCheckoutProduct({
+          planKey: "FOUNDING",
+          products,
+          founder: false,
+          reservation,
+        }),
+      ).toEqual({ ok: false, reason: "founding_unavailable" });
+    }
+    expect(
+      selectCheckoutProduct({
+        planKey: "FOUNDING",
+        products: {
+          PRO_MONTHLY: products.PRO_MONTHLY,
+          PRO_ANNUAL: products.PRO_ANNUAL,
+          PRO_ANNUAL_LEGACY: [],
+        },
+        founder: true,
         reservation: "reserved",
-        testMode: false,
-      }).productId,
-    ).toBe(products.PRO_ANNUAL);
+      }),
+    ).toEqual({ ok: false, reason: "founding_unavailable" });
     expect(
       selectCheckoutProduct({
         planKey: "PRO_MONTHLY",
         products,
+        founder: true,
         reservation: "reserved",
-        testMode: true,
-      }).founding,
+      }),
+    ).toEqual({ ok: true, productId: products.PRO_MONTHLY, founding: false });
+  });
+
+  it("only reserves a founding slot for a non-founder choosing founding", () => {
+    expect(shouldReserveFoundingSlot("FOUNDING", products, false)).toBe(true);
+    expect(shouldReserveFoundingSlot("PRO_ANNUAL", products, false)).toBe(false);
+    expect(shouldReserveFoundingSlot("PRO_MONTHLY", products, false)).toBe(false);
+    expect(shouldReserveFoundingSlot("FOUNDING", products, true)).toBe(false);
+    expect(
+      shouldReserveFoundingSlot(
+        "FOUNDING",
+        {
+          PRO_MONTHLY: products.PRO_MONTHLY,
+          PRO_ANNUAL: products.PRO_ANNUAL,
+          PRO_ANNUAL_LEGACY: [],
+        },
+        false,
+      ),
     ).toBe(false);
+    expect(subscriptionPlanKeyFor("FOUNDING")).toBe("PRO_ANNUAL");
+    expect(subscriptionPlanKeyFor("PRO_ANNUAL")).toBe("PRO_ANNUAL");
+    expect(FOUNDING_UNAVAILABLE_MESSAGE).toContain("Pro annual at £350/year");
+  });
+
+  it("ignores a client product id and rejects unknown plan keys", () => {
+    expect(parseCheckoutRequest({ planKey: "PRO_ANNUAL", product_id: products.FOUNDING_ANNUAL }).ok).toBe(false);
+    expect(parseCheckoutRequest({ planKey: "FOUNDING" })).toEqual({
+      ok: true,
+      planKey: "FOUNDING",
+    });
+    expect(parseCheckoutRequest({ planKey: "FOUNDING_ANNUAL" })).toEqual({
+      ok: false,
+      error: "Choose a DealAtlas Pro plan.",
+    });
   });
 
   it("shows a counts-only place label when founding is offered in the UI", () => {

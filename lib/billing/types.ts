@@ -3,9 +3,13 @@ import type {
   SubscriptionStatus,
 } from "@/lib/entitlements/types";
 
-export const CHECKOUT_PLAN_KEYS = ["PRO_MONTHLY", "PRO_ANNUAL"] as const;
+export const CHECKOUT_PLAN_KEYS = ["PRO_MONTHLY", "PRO_ANNUAL", "FOUNDING"] as const;
 
 export type CheckoutPlanKey = (typeof CHECKOUT_PLAN_KEYS)[number];
+
+export const SUBSCRIPTION_PLAN_KEYS = ["PRO_MONTHLY", "PRO_ANNUAL"] as const;
+
+export type SubscriptionPlanKey = (typeof SUBSCRIPTION_PLAN_KEYS)[number];
 
 export type PlanProductMap = {
   PRO_MONTHLY: string;
@@ -17,7 +21,7 @@ export type PlanProductMap = {
 export type FoundingReservation = "reserved" | "active" | "sold_out" | "closed" | "unavailable";
 
 export type MappedPlan = {
-  planKey: CheckoutPlanKey;
+  planKey: SubscriptionPlanKey;
   billingInterval: BillingInterval;
   productId: string;
 };
@@ -27,7 +31,7 @@ export type SubscriptionSnapshot = {
   dodoSubscriptionId: string;
   dodoProductId: string;
   userId: string | null;
-  planKey: CheckoutPlanKey | null;
+  planKey: SubscriptionPlanKey | null;
   billingInterval: BillingInterval | null;
   status: SubscriptionStatus;
   cancelAtPeriodEnd: boolean;

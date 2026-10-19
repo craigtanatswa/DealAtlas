@@ -1,3 +1,4 @@
+import { FOUNDING_UNAVAILABLE_MESSAGE } from "@/lib/billing/founding";
 import { DISPLAY_PRICING } from "@/lib/constants";
 
 /** Server cap. The browser never supplies this number. */
@@ -105,7 +106,7 @@ export const FOUNDING_COPY = {
   paywallMonthly: `or standard Pro ${DISPLAY_PRICING.proMonthly.replace("/month", "/mo")}`,
   soldOutMonthly: `Start Pro – ${DISPLAY_PRICING.proMonthly.replace("/month", "/mo")}`,
   soldOutAnnual: soldOutAnnualLink(),
-  raceLead: "Founding places just filled up. You haven't been charged.",
+  raceLead: FOUNDING_UNAVAILABLE_MESSAGE,
   raceBody: `Continue with standard annual at ${DISPLAY_PRICING.proAnnual.replace("/year", "/yr")}?`,
   raceAnnual: `Continue with annual – ${DISPLAY_PRICING.proAnnual.replace("/year", "/yr")}`,
   raceMonthly: `Choose monthly – ${DISPLAY_PRICING.proMonthly.replace("/month", "/mo")}`,

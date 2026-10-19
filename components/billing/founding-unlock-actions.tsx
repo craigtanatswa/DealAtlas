@@ -66,7 +66,7 @@ export function FoundingUnlockActions({
     <div className="flex w-full flex-col items-center gap-2">
       {mode === "free" ? (
         <CheckoutPlanForm
-          planKey="PRO_ANNUAL"
+          planKey="FOUNDING"
           label={FOUNDING_COPY.paywallCta}
           showPrice={false}
           returnTo={returnTo}
@@ -75,7 +75,7 @@ export function FoundingUnlockActions({
         />
       ) : (
         <Button asChild className={`h-11 ${FOUNDING_BUTTON}`}>
-          <Link href={signupPathForPlan("PRO_ANNUAL")}>{FOUNDING_COPY.paywallCta}</Link>
+          <Link href={signupPathForPlan("FOUNDING")}>{FOUNDING_COPY.paywallCta}</Link>
         </Button>
       )}
       <p className="text-center text-[0.8125rem] leading-5 text-pretty text-muted-foreground">
