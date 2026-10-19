@@ -165,17 +165,6 @@ jobs:
           LEAK_ALERT_EMAIL_TO: ${{ secrets.LEAK_ALERT_EMAIL_TO }}
         run: npm run ingest-alert
 
-      # After Find a Tender publish. Terms that ban scraping or commercial reuse have no step.
-      # Essex terms are silent, so this step exists and stays disabled. It cannot skip or delay publish.
-      - name: Ingest Essex ProContract
-        id: procontract_essex
-        if: always() && steps.ingest.outcome != 'cancelled'
-        env:
-          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'false' }}
-          OPEN_INGEST_PHASE: ingest
-          OPEN_INGEST_SOURCE: essex-procontract
-        run: npm run ingest-open
-
   unpublish:
     name: Unpublish expired deals
     if: github.event.schedule == '17 5 * * *'
