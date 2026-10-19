@@ -2,10 +2,13 @@ import "server-only";
 
 import type { WebhookPayload } from "@dodopayments/core/schemas";
 
+import { captureServerEvent } from "@/lib/analytics/server";
+import { buildProSubscribedEvent } from "@/lib/analytics/server-events";
 import { applyBillingEvent } from "@/lib/billing/apply";
 import { requirePlanProductMap } from "@/lib/billing/config";
 import { extractBillingEvent } from "@/lib/billing/extract";
 import { foundingSideEffect } from "@/lib/billing/founding";
+import { proSubscribedPlan } from "@/lib/billing/analytics";
 import { syncFoundingSlot } from "@/lib/billing/founding-db";
 import { reconcileDodoSubscription } from "@/lib/billing/reconcile";
 import { createBillingStore } from "@/lib/billing/store";
@@ -56,6 +59,24 @@ export async function processVerifiedDodoWebhook(input: {
         // The slot error is what Dodo must retry.
       }
       throw error;
+    }
+  }
+
+  // pro_subscribed: only on the first processing of a subscription.active
+  // event (duplicates return "duplicate" above), with allowlisted fields only.
+  const plan = result.outcome === "applied" ? proSubscribedPlan(event, products) : null;
+  if (plan && event.subscription) {
+    const stored = await store
+      .getSubscriptionByDodoId(event.subscription.dodoSubscriptionId)
+      .catch(() => null);
+    if (stored?.userId) {
+      await captureServerEvent(
+        buildProSubscribedEvent({
+          userId: stored.userId,
+          providerEventId: event.providerEventId,
+          plan,
+        }),
+      );
     }
   }
 

@@ -124,6 +124,24 @@ export function sanitizeRedirectPath(
   return `${pathname}?${query}`;
 }
 
+/** Where a rejected (supplied but unsafe) `next` value lands. */
+export const NEXT_INVALID_FALLBACK_PATH = "/deals";
+
+/**
+ * Validate a `next` value at a redirect hop. Missing values keep the normal
+ * home path; supplied values that fail validation fall back to /deals so a
+ * tampered unlock link never lands somewhere unexpected.
+ */
+export function resolveNextPath(
+  value: string | null | undefined,
+  missingFallback: string = AUTH_HOME_PATH,
+): string {
+  if (value == null || value.trim() === "") {
+    return missingFallback;
+  }
+  return sanitizeRedirectPath(value, NEXT_INVALID_FALLBACK_PATH);
+}
+
 export function loginPathWithNext(nextPath: string): string {
   const next = sanitizeRedirectPath(nextPath);
   return `${LOGIN_PATH}?next=${encodeURIComponent(next)}`;
@@ -179,7 +197,7 @@ export function resolveProtectedRouteRedirect(
   }
 
   if (isAuthenticated && isAuthEntryPath(pathname)) {
-    return sanitizeRedirectPath(nextValue);
+    return resolveNextPath(nextValue);
   }
 
   return null;

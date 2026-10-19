@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import type { CheckoutAnalyticsPlan } from "@/lib/analytics/events";
 import type { CheckoutPlanKey } from "@/lib/billing/types";
 import { priceLabel } from "@/lib/billing/display";
 import { cn } from "@/lib/utils";
@@ -12,8 +13,11 @@ export function CheckoutPlanForm({
   variant = "default",
   className,
   buttonClassName,
+  analyticsPlan,
 }: {
   planKey: CheckoutPlanKey;
+  /** Only the founding CTA needs this; other plans follow the plan key. */
+  analyticsPlan?: Extract<CheckoutAnalyticsPlan, "founding">;
   label: string;
   recommended?: boolean;
   returnTo?: string;
@@ -26,6 +30,9 @@ export function CheckoutPlanForm({
     <form
       action="/api/billing/checkout"
       method="post"
+      data-analytics-plan={
+        analyticsPlan ?? (planKey === "PRO_MONTHLY" ? "monthly" : "annual")
+      }
       className={cn(showPrice ? "flex flex-col gap-3" : "flex", className)}
     >
       <input type="hidden" name="planKey" value={planKey} />

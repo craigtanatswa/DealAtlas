@@ -7,7 +7,7 @@ import { redirect } from "next/navigation";
 import {
   AUTH_HOME_PATH,
   VERIFY_EMAIL_PATH,
-  sanitizeRedirectPath,
+  resolveNextPath,
 } from "@/lib/auth/redirect";
 import {
   companyProfileSchema,
@@ -22,6 +22,8 @@ import {
   signupFormSchema,
 } from "@/lib/auth/schemas";
 import { getProfileForUser } from "@/lib/auth/profile";
+import { captureServerEvent } from "@/lib/analytics/server";
+import { buildUserSignedUpEvent } from "@/lib/analytics/server-events";
 import { getAuthUser } from "@/lib/auth/session";
 import { mapAuthError, type ActionState } from "@/lib/auth/messages";
 import {
@@ -53,7 +55,7 @@ export async function signInAction(
     return { error: "Enter a valid email and password.", success: null };
   }
 
-  const next = sanitizeRedirectPath(formString(formData, "next") || AUTH_HOME_PATH);
+  const next = resolveNextPath(formString(formData, "next"));
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.auth.signInWithPassword(parsed.data);
   if (error) {
@@ -72,7 +74,7 @@ export async function signInWithGoogleAction(
   _previous: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  const next = sanitizeRedirectPath(formString(formData, "next") || AUTH_HOME_PATH);
+  const next = resolveNextPath(formString(formData, "next"));
   const cookieStore = await cookies();
   cookieStore.set(OAUTH_NEXT_COOKIE, next, {
     httpOnly: true,
@@ -117,7 +119,7 @@ export async function signUpAction(
     };
   }
 
-  const next = sanitizeRedirectPath(formString(formData, "next") || AUTH_HOME_PATH);
+  const next = resolveNextPath(formString(formData, "next"));
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase.auth.signUp({
     email: parsed.data.email,
@@ -133,6 +135,17 @@ export async function signUpAction(
   if (error) {
     console.error("DealAtlas sign-up failed", error.code ?? "", error.message);
     return { error: mapAuthError(error), success: null };
+  }
+
+  // A repeat sign-up for an existing email returns a user with no identities;
+  // only a newly created account is counted.
+  if (data.user && (data.user.identities?.length ?? 0) > 0) {
+    await captureServerEvent(
+      buildUserSignedUpEvent({
+        userId: data.user.id,
+        read: (name) => formData.get(name),
+      }),
+    );
   }
 
   if (data.user && data.session) {
