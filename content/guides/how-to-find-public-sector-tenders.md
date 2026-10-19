@@ -7,6 +7,9 @@ h1: "How to find public sector tenders in the UK"
 breadcrumb: "How to find public sector tenders in the UK"
 datePublished: 2026-10-19
 updated: 2026-10-19
+relatedGuides: ["how-to-win-council-contracts"]
+securityClearedAt: 2026-10-19
+craigApprovedAt: 2026-10-19
 ---
 
 UK public bodies advertise contracts across several websites, and a missed tender can mean waiting until the contract is re-let. This guide explains how to find public sector tenders in the UK under the [Procurement Act 2023](https://www.legislation.gov.uk/ukpga/2023/54/contents), which has applied to new procurements since 24 February 2025. It covers which buyers publish where, the value thresholds that decide what must be advertised, the early signals that appear before a tender, and how to register so you're ready to bid.

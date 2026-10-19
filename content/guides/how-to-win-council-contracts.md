@@ -7,6 +7,9 @@ h1: "How to win council contracts: a practical guide for SMEs"
 breadcrumb: "How to win council contracts"
 datePublished: 2026-10-19
 updated: 2026-10-19
+relatedGuides: ["how-to-find-public-sector-tenders"]
+securityClearedAt: 2026-10-19
+craigApprovedAt: 2026-10-19
 ---
 
 Councils buy works, services and goods all year, often in contract sizes a small firm can deliver. Knowing how to win council contracts comes down to three habits. Find the right opportunities early, meet the entry requirements without last-minute scrambling, and write a bid that answers the published scoring criteria. This guide covers how councils in England, Wales and Northern Ireland buy under the [Procurement Act 2023](https://www.legislation.gov.uk/ukpga/2023/54/contents), which has applied to new procurements since 24 February 2025, and what that means for your next bid.
