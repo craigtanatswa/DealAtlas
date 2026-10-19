@@ -59,7 +59,7 @@ Scottish councils mostly buy under Scotland's own procurement law, not the 2023 
 
 ## Where council tenders are published
 
-Selling to local government in the UK means watching several places at once. Our guide on how to find public sector tenders covers every buyer type; for councils, these are the places to watch.
+Selling to local government in the UK means watching several places at once. Our guide on [how to find public sector tenders](/guides/how-to-find-public-sector-tenders) covers every buyer type; for councils, these are the places to watch.
 
 - Find a Tender, the central digital platform. Since 24 February 2025, above-threshold and below-threshold notices for new procurements are published here, except below-threshold notices in Scotland ([Central digital platform factsheet](https://www.gov.uk/government/publications/procurement-act-2023-short-guides/central-digital-platform-factsheet-html)).
 - Contracts Finder. It still holds lower-value notices for procurements that started under the old rules. Our guide to Find a Tender vs Contracts Finder explains the split.
