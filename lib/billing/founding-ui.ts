@@ -1,12 +1,9 @@
 import { SIGNUP_PATH } from "@/lib/auth/redirect";
 import { DISPLAY_PRICING } from "@/lib/constants";
 
-/**
- * Checkout plan key for the founding offer (separate from PRO_ANNUAL).
- * Owned by Security & Billing; keep this the only place the string appears.
- */
+/** Checkout plan key for the founding offer. Shared with the #49 UI. */
+// When merging with #50, take #50's line: `"FOUNDING" satisfies CheckoutPlanKey`.
 export const FOUNDING_PLAN_KEY = "FOUNDING" as const;
-export type FoundingPlanKey = typeof FOUNDING_PLAN_KEY;
 
 /** Fallback copy for a FOUNDING_CAP_FULL error when the server sends no message. */
 export const FOUNDING_FULL_MESSAGE = `Founding places are all taken. You can still subscribe to Pro annual at ${DISPLAY_PRICING.proAnnual}.`;
