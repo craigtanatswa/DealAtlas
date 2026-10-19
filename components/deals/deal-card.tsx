@@ -10,6 +10,11 @@ import {
   type DealCardData,
 } from "@/components/deals/types";
 import { ValueBand } from "@/components/deals/value-band";
+import {
+  categoryLabel,
+  disclosed,
+  keyDatesRemainder,
+} from "@/lib/preview/display";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DEAL_TYPE_LABELS } from "@/lib/search/filters";
 import { cn } from "@/lib/utils";
@@ -30,6 +35,11 @@ export function DealCard({
   const destination = href ?? dealPath;
   const tags = (deal.relevanceTags ?? []).slice(0, 4);
   const buyerLabel = buyerSectorLabel(deal.buyerSector, deal.dealType);
+  const category = categoryLabel(deal.mainCategory);
+  const valueBand = disclosed(deal.valueBand);
+  const smeFit = disclosed(levelLabel(deal.smeSuitability, ""));
+  // The closing window is already shown as a band below; keep only the rest.
+  const keyDates = keyDatesRemainder(deal.keyDates, { deadlineBand: deal.deadlineBand });
 
   return (
     <article
@@ -70,9 +80,9 @@ export function DealCard({
               {deal.goodsServices.slice(0, 2).join(" · ")}
             </p>
           ) : null}
-          {deal.keyDates ? (
+          {keyDates ? (
             <p className="mt-1 text-pretty text-[0.8125rem] leading-5 text-muted-foreground tabular-nums">
-              {deal.keyDates}
+              {keyDates}
             </p>
           ) : null}
           {proLock ? (
@@ -81,10 +91,10 @@ export function DealCard({
             </p>
           ) : null}
           <dl className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
-            {deal.mainCategory ? (
+            {category ? (
               <div className="text-[0.8125rem] leading-5 text-foreground">
                 <dt className="sr-only">Category</dt>
-                <dd>{deal.mainCategory}</dd>
+                <dd>{category}</dd>
               </div>
             ) : null}
             {deal.dealType ? (
@@ -93,28 +103,32 @@ export function DealCard({
                 <dd>{DEAL_TYPE_LABELS[deal.dealType]}</dd>
               </div>
             ) : null}
-            {deal.broadRegion ? (
+            {disclosed(deal.broadRegion) ? (
               <div className="text-[0.8125rem] leading-5 text-foreground">
                 <dt className="sr-only">Region</dt>
                 <dd>{deal.broadRegion}</dd>
               </div>
             ) : null}
-            <div>
-              <dt className="sr-only">Value</dt>
-              <dd>
-                <ValueBand value={deal.valueBand} />
-              </dd>
-            </div>
+            {valueBand ? (
+              <div>
+                <dt className="sr-only">Value</dt>
+                <dd>
+                  <ValueBand value={valueBand} />
+                </dd>
+              </div>
+            ) : null}
             <div>
               <dt className="sr-only">Closing</dt>
               <dd>
                 <DeadlineBand value={deal.deadlineBand} />
               </dd>
             </div>
-            <div className="text-[0.8125rem] leading-5 text-muted-foreground">
-              <dt className="sr-only">SME fit</dt>
-              <dd>SME fit {levelLabel(deal.smeSuitability, "not stated")}</dd>
-            </div>
+            {smeFit ? (
+              <div className="text-[0.8125rem] leading-5 text-muted-foreground">
+                <dt className="sr-only">SME fit</dt>
+                <dd>SME fit {smeFit}</dd>
+              </div>
+            ) : null}
           </dl>
           {tags.length > 0 ? (
             <ul className="mt-3 flex flex-wrap gap-2">
