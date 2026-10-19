@@ -8,7 +8,6 @@ import { afterEach, describe, expect, it } from "vitest";
 import { PaginationNav } from "@/components/deals/pagination-nav";
 import {
   isPublicDealsPageOutOfRange,
-  PUBLIC_DEALS_MAX_PAGES,
   PUBLIC_DEALS_PAGE_SIZE,
   publicDealsPageCount,
 } from "@/lib/search/params";
@@ -24,48 +23,36 @@ function linkedPages(container: HTMLElement): number[] {
 }
 
 describe("/deals pager reach", () => {
-  it("caps the page count at what public viewers can load", () => {
-    expect(PUBLIC_DEALS_MAX_PAGES).toBe(5);
-    expect(publicDealsPageCount(334, 10)).toBe(5);
+  it("counts every real result page", () => {
+    expect(publicDealsPageCount(334, 10)).toBe(34);
+    expect(publicDealsPageCount(330, 10)).toBe(33);
     expect(publicDealsPageCount(23, 10)).toBe(3);
+    expect(publicDealsPageCount(1, 10)).toBe(1);
     expect(publicDealsPageCount(0, 10)).toBe(1);
   });
 
-  it("never links past the cap (no page 7 or 34 for 334 results)", () => {
+  it("links up to the real last page and no further", () => {
     const { container, unmount } = render(
-      <PaginationNav
-        page={1}
-        pageSize={10}
-        total={334}
-        filters={filters}
-        maxPages={PUBLIC_DEALS_MAX_PAGES}
-      />,
+      <PaginationNav page={1} pageSize={10} total={334} filters={filters} />,
     );
-    const pages = linkedPages(container);
-    expect(Math.max(...pages)).toBe(5);
-    expect(pages).not.toContain(7);
-    expect(pages).not.toContain(34);
+    expect(Math.max(...linkedPages(container))).toBe(34);
+    expect(screen.getByText(/of 334/)).toBeTruthy();
     unmount();
 
-    render(
-      <PaginationNav
-        page={5}
-        pageSize={10}
-        total={334}
-        filters={{ ...filters, page: 5 }}
-        maxPages={PUBLIC_DEALS_MAX_PAGES}
-      />,
+    const last = render(
+      <PaginationNav page={34} pageSize={10} total={334} filters={{ ...filters, page: 34 }} />,
     );
     expect(screen.queryByRole("link", { name: "Next" })).toBeNull();
-    expect(screen.getByRole("button", { name: "5" }).getAttribute("aria-current")).toBe("page");
+    expect(screen.getByRole("button", { name: "34" }).getAttribute("aria-current")).toBe("page");
+    expect(linkedPages(last.container)).not.toContain(35);
   });
 
-  it("marks pages past the pager as out of range (404)", () => {
+  it("is out of range (404) only past the real last page", () => {
     expect(isPublicDealsPageOutOfRange(1, 334, 10)).toBe(false);
-    expect(isPublicDealsPageOutOfRange(5, 334, 10)).toBe(false);
-    expect(isPublicDealsPageOutOfRange(6, 334, 10)).toBe(true);
-    expect(isPublicDealsPageOutOfRange(7, 334, 10)).toBe(true);
-    expect(isPublicDealsPageOutOfRange(34, 334, 10)).toBe(true);
+    expect(isPublicDealsPageOutOfRange(6, 334, 10)).toBe(false);
+    expect(isPublicDealsPageOutOfRange(34, 334, 10)).toBe(false);
+    expect(isPublicDealsPageOutOfRange(35, 334, 10)).toBe(true);
+    expect(isPublicDealsPageOutOfRange(3, 23, 10)).toBe(false);
     expect(isPublicDealsPageOutOfRange(4, 23, 10)).toBe(true);
     expect(isPublicDealsPageOutOfRange(2, 0, 10)).toBe(true);
     expect(isPublicDealsPageOutOfRange(1, 0, 10)).toBe(false);

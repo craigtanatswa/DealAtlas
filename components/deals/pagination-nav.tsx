@@ -9,24 +9,18 @@ export function PaginationNav({
   total,
   filters,
   path = "/deals",
-  maxPages,
 }: {
   page: number;
   pageSize: number;
   total: number;
   filters: PublicSearchFilters;
   path?: string;
-  /** Cap on linked pages (public /deals). Omit for no cap. */
-  maxPages?: number;
 }) {
   if (total === 0) {
     return null;
   }
 
-  const pageCount = Math.max(
-    1,
-    Math.min(Math.ceil(total / pageSize), maxPages ?? Number.POSITIVE_INFINITY),
-  );
+  const pageCount = Math.max(1, Math.ceil(total / pageSize));
   const current = Math.min(page, pageCount);
   const from = (current - 1) * pageSize + 1;
   const to = Math.min(current * pageSize, total);

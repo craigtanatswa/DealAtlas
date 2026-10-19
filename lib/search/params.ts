@@ -13,28 +13,20 @@ export const PUBLIC_SEARCH_PAGE_SIZE = 20;
 export const PUBLIC_DEALS_PAGE_SIZE = 10;
 export const PUBLIC_SEARCH_MAX_PAGE_SIZE = 50;
 export const PUBLIC_SEARCH_MAX_PAGE = 500;
-/**
- * Deepest /deals page anonymous and free viewers can reliably load. Deeper offsets
- * exceed the public role's query time budget, so the pager stops here and later
- * pages return 404.
- */
-export const PUBLIC_DEALS_MAX_PAGES = 5;
-
-/** /deals pager page count: real result pages, capped at PUBLIC_DEALS_MAX_PAGES. */
+/** /deals pager page count: every result page, at least 1. */
 export function publicDealsPageCount(total: number, pageSize: number): number {
   if (!Number.isFinite(total) || total <= 0) return 1;
   const size = Number.isFinite(pageSize) && pageSize > 0 ? Math.floor(pageSize) : 1;
-  return Math.max(1, Math.min(Math.ceil(total / size), PUBLIC_DEALS_MAX_PAGES));
+  return Math.max(1, Math.ceil(total / size));
 }
 
-/** True when a requested /deals page is past what the pager offers (render a 404). */
+/** True only past the real last /deals page (render a 404). Page 1 always renders. */
 export function isPublicDealsPageOutOfRange(
   requestedPage: number,
   total: number,
   pageSize: number,
 ): boolean {
   if (requestedPage <= 1) return false;
-  if (requestedPage > PUBLIC_DEALS_MAX_PAGES) return true;
   return requestedPage > publicDealsPageCount(total, pageSize);
 }
 export const SEARCH_SORTS = ["biddable", "deadline", "updated", "relevance"] as const;

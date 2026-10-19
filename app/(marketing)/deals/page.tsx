@@ -13,7 +13,6 @@ import {
   hasActivePublicFilters,
   isPublicDealsPageOutOfRange,
   parsePublicSearchParams,
-  PUBLIC_DEALS_MAX_PAGES,
   PUBLIC_DEALS_PAGE_SIZE,
 } from "@/lib/search/params";
 import { publicDealsIndexMetadata } from "@/lib/search/metadata";
@@ -41,10 +40,6 @@ export async function generateMetadata({
 export default async function DealsIndexPage({ searchParams }: PageProps) {
   const params = await searchParams;
   const requestedPage = parsePublicSearchParams(params).page;
-  // Past the pager's reach: a real 404, without running the deep (slow) query.
-  if (requestedPage > PUBLIC_DEALS_MAX_PAGES) {
-    notFound();
-  }
   const client = await createSupabaseServerClient();
   const user = await getAuthUser();
   const { filters, result, companyProfileId } = await searchDealPreviewsForUser({
@@ -76,7 +71,6 @@ export default async function DealsIndexPage({ searchParams }: PageProps) {
         filters={filters}
         publicSearch
         signedIn={Boolean(user)}
-        maxPages={PUBLIC_DEALS_MAX_PAGES}
         sort={<DealSortForm filters={filters} showRelevance={showRelevance} />}
       />
     </Main>
