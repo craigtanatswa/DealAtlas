@@ -63,6 +63,8 @@ describe("ingest-open workflow", () => {
     expect(publishStep).toContain("steps.ingest.outcome == 'success' && steps.build.outcome == 'success'");
     expect(publishStep).not.toContain("steps.contracts_finder.outcome");
     expect(publishStep).not.toContain("procontract");
+    const buildStep = ingestJob.slice(ingestJob.indexOf("id: build"), ingestJob.indexOf("id: unpublish"));
+    expect(buildStep).not.toContain("steps.contracts_finder.outcome");
     expect(ingestJob).not.toContain("continue-on-error");
     expect(ingestJob.indexOf("id: ingest")).toBeLessThan(ingestJob.indexOf("id: contracts_finder"));
     expect(ingestJob.indexOf("id: contracts_finder")).toBeLessThan(ingestJob.indexOf("id: build"));

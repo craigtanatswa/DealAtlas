@@ -30,6 +30,7 @@ describe("analytics cleanPath (shared client/server path cleaner)", () => {
     ["/categories/not-a-category", "/categories/[category]"],
     ["/guides", "/guides"],
     ["/guides/how-to-win-council-contracts", "/guides/how-to-win-council-contracts"],
+    ["/guides/how-to-find-public-sector-tenders", "/guides/how-to-find-public-sector-tenders"],
     ["/guides/council-it-support-a1b2c3", "/guides/[guide]"],
     ["/checkout/success?subscription_id=sub_1&payment_id=pay_1&email=a%40b.com", "/checkout/success"],
     ["/checkout/abc", "/checkout/[other]"],

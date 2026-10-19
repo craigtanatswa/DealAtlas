@@ -30,6 +30,61 @@ export function buildPreviewSlug(title: string, hex = randomBytes(4).toString("h
  * characters. A suffix equal to the first 8 hex of the deal id is a PR1 slug and
  * is never kept, even when the fragment matches.
  */
+/** `/deals/:slug`, excluding the sitemap index. Empty string means the segment cannot be decoded. */
+export function dealPreviewPathSlug(pathname: string): string | null {
+  const match = /^\/deals\/([^/]+)$/.exec(pathname);
+  if (!match || match[1] === "sitemap.xml") return null;
+  try {
+    return decodeURIComponent(match[1]);
+  } catch {
+    return "";
+  }
+}
+
+/**
+ * A deal-id 8-hex suffix, or an older title slug with no 8-hex suffix.
+ * The current published slug is still legacy when it has one of those shapes.
+ */
+export function isLegacyPublicSlug(slug: string, dealId: string): boolean {
+  const hex = /-([0-9a-fA-F]{8})$/.exec(slug)?.[1]?.toLowerCase();
+  if (!hex) return true;
+  return hex === dealId.replace(/-/g, "").slice(0, 8).toLowerCase();
+}
+
+export type PublishedSlugRow = {
+  slug: string;
+  dealId: string;
+  isPublished: boolean;
+  leakageRisk: string;
+  unpublishedByAdmin: boolean;
+};
+
+export type DealPathGate = "next" | "gone" | "missing";
+
+export function dealPathGate(input: {
+  pathname: string;
+  retired: boolean;
+  match: PublishedSlugRow | null;
+}): DealPathGate {
+  const slug = dealPreviewPathSlug(input.pathname);
+  if (slug === null) return "next";
+  if (slug === "") return "missing";
+  if (input.retired) return "gone";
+  const row = input.match;
+  if (
+    row &&
+    row.slug === slug &&
+    row.isPublished &&
+    !row.unpublishedByAdmin &&
+    row.leakageRisk === "LOW" &&
+    !isLegacyPublicSlug(row.slug, row.dealId)
+  ) {
+    return "next";
+  }
+  if (row && row.slug === slug && isLegacyPublicSlug(row.slug, row.dealId)) return "gone";
+  return "missing";
+}
+
 export function isTemplatePreviewSlug(slug: string, title: string, dealId: string): boolean {
   const hex = /-([0-9a-fA-F]{8})$/.exec(slug)?.[1]?.toLowerCase();
   if (!hex) {

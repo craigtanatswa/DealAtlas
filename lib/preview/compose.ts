@@ -3,6 +3,7 @@ import type { IntelligenceContext } from "@/ingestion/intelligence/types";
 import { cpvGoodsLabel } from "@/lib/preview/cpv-label";
 import { isFreeTextRisky } from "@/lib/preview/risk";
 import { REQUIREMENT_PREVIEW_LABELS } from "@/lib/preview/labels";
+import { templatedScope } from "@/lib/preview/scope";
 import {
   breakSourceRuns,
   quantityPhrases,
@@ -215,7 +216,7 @@ function commercialLines(
 }
 
 /** Quantity units only. Exact amounts are a quasi-identifier and never ship. */
-function quantityUnits(phrases: string[]): string[] {
+function quantityUnitNames(phrases: string[]): string[] {
   const units = new Set<string>();
   for (const phrase of phrases) {
     const unit = phrase.split(" ").slice(1).join(" ").trim();
@@ -223,7 +224,7 @@ function quantityUnits(phrases: string[]): string[] {
       units.add(unit.replace(/s$/, "") + "s");
     }
   }
-  return [...units].slice(0, 4).map((unit) => `Quantities specified (${unit})`);
+  return [...units].slice(0, 4);
 }
 
 function safeProse(
@@ -301,16 +302,30 @@ export function composeFreePreview(
     ...context.requirements.flatMap((item) => [item.name, item.description]),
     deal.sourceDescription,
   ]);
-  const quantities = aggressive
+  const units = aggressive
     ? []
-    : quantityUnits(
+    : quantityUnitNames(
         quantityPhrases([
           deal.sourceDescription,
           ...lots.map((lot) => lot.sourceDescription),
           ...context.requirements.map((item) => item.description),
         ]),
       );
-  const scope = aggressive ? null : safeProse(deal.sourceDescription, corpus, protectedTerms);
+  const quantities = units.map((unit) => `Quantities specified (${unit})`);
+  // Scope is templated from structured fields only. The source description
+  // never feeds it, so no raw notice prose can reach a free channel here.
+  const scope = aggressive
+    ? null
+    : templatedScope({
+        goods,
+        standards,
+        quantityUnits: units,
+        region,
+        durationBand: duration,
+        valueBand: value,
+        sectorNoun,
+        smeSuitable: deal.smeSuitable,
+      });
   const technical = aggressive
     ? []
     : unique(
@@ -346,7 +361,9 @@ export function composeFreePreview(
   const typeNoun = DEAL_TYPE_LABELS[deal.dealType].toLowerCase();
   const goodsClause = goods.length > 0 ? goods.join("; ") : subject.toLowerCase();
   const regionSentence = region ? ` Coverage is ${region}.` : "";
-  const valueSentence = ` Estimated value ${value}${currency ? ` (${currency})` : ""}.`;
+  const valueSentence = value === "Undisclosed"
+    ? ""
+    : ` Estimated value ${value}${currency ? ` (${currency})` : ""}.`;
   const dateSentence = details.keyDates ? ` ${details.keyDates}.` : "";
   const standardSentence = standards.length > 0 ? ` Standards include ${standards.join("; ")}.` : "";
   const smeSentence = deal.smeSuitable === true

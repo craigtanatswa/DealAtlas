@@ -222,7 +222,7 @@ insert into public.deal_previews (
 ) values
 (
   '22222222-2222-4222-8222-222222222222',
-  'published-low-risk-preview',
+  'published-low-risk-preview-a1b2c3d4',
   'Managed IT support for a public organisation',
   'A public organisation needs ongoing technology support from an experienced provider.',
   'PUBLIC_TENDER',
@@ -330,7 +330,7 @@ insert into public.deal_previews (
 );
 
 select is(
-  (select is_published from public.deal_previews where slug = 'published-low-risk-preview'),
+  (select is_published from public.deal_previews where slug = 'published-low-risk-preview-a1b2c3d4'),
   true,
   'safe preview remains published'
 );
@@ -365,7 +365,7 @@ select throws_ok(
 
 select is(
   (select array_agg(slug order by slug) from public.search_preview_dtos()),
-  array['published-low-risk-preview'],
+  array['published-low-risk-preview-a1b2c3d4'],
   'anon DTO search returns only the published LOW-risk fixture preview'
 );
 
@@ -401,7 +401,7 @@ select is(
 );
 
 select is(
-  (select preview_title from public.get_preview_dto_by_slug('published-low-risk-preview')),
+  (select preview_title from public.get_preview_dto_by_slug('published-low-risk-preview-a1b2c3d4')),
   'Managed IT support for a public organisation',
   'anon can load the published preview DTO by slug'
 );
@@ -418,7 +418,7 @@ select ok(
 select is(public.count_preview_sitemap_entries(), 1::bigint, 'sitemap count only covers published LOW-risk previews');
 
 select throws_ok(
-  $$ select public.resolve_preview_deal_id('published-low-risk-preview') $$,
+  $$ select public.resolve_preview_deal_id('published-low-risk-preview-a1b2c3d4') $$,
   '42501',
   NULL,
   'anon cannot resolve a deal id'
@@ -496,6 +496,29 @@ select throws_ok(
 
 reset role;
 
+-- The legacy slug helper is private, so check it as the test owner.
+select ok(
+  private.preview_slug_is_legacy(
+    'published-low-risk-preview',
+    '22222222-2222-4222-8222-222222222222'
+  )
+  and private.preview_slug_is_legacy(
+    'published-low-risk-preview-22222222',
+    '22222222-2222-4222-8222-222222222222'
+  )
+  and not private.preview_slug_is_legacy(
+    'published-low-risk-preview-a1b2c3d4',
+    '22222222-2222-4222-8222-222222222222'
+  ),
+  'title-only and deal-id suffixes are legacy; a random hex suffix is not'
+);
+
+select ok(
+  not has_function_privilege('anon', 'private.preview_slug_is_legacy(text, uuid)', 'execute')
+  and not has_function_privilege('authenticated', 'private.preview_slug_is_legacy(text, uuid)', 'execute'),
+  'client roles cannot execute the legacy slug helper'
+);
+
 -- ---------------------------------------------------------------------------
 -- Authenticated role still has no canonical table grants.
 -- ---------------------------------------------------------------------------
@@ -523,19 +546,19 @@ select throws_ok(
 );
 
 select is(
-  (select relevance_score from public.search_preview_dtos() where slug = 'published-low-risk-preview'),
+  (select relevance_score from public.search_preview_dtos() where slug = 'published-low-risk-preview-a1b2c3d4'),
   72::numeric,
   'signed-in DTO search carries only the caller''s own relevance score'
 );
 
 select is(
-  (select preview_reasons from public.search_preview_dtos() where slug = 'published-low-risk-preview'),
+  (select preview_reasons from public.search_preview_dtos() where slug = 'published-low-risk-preview-a1b2c3d4'),
   '[{"code":"KEYWORD_OVERLAP","kind":"match","label":"Keyword overlap with the opportunity preview"}]'::jsonb,
   'search DTO reasons carry the canned label for the code; stored labels and unknown codes are dropped'
 );
 
 select is(
-  (select preview_reasons from public.get_preview_dto_by_slug('published-low-risk-preview')),
+  (select preview_reasons from public.get_preview_dto_by_slug('published-low-risk-preview-a1b2c3d4')),
   '[{"code":"KEYWORD_OVERLAP","kind":"match","label":"Keyword overlap with the opportunity preview"}]'::jsonb,
   'slug DTO reasons are canned only'
 );
@@ -567,7 +590,7 @@ select is(
 );
 
 select is(
-  public.resolve_preview_deal_id('published-low-risk-preview'),
+  public.resolve_preview_deal_id('published-low-risk-preview-a1b2c3d4'),
   '22222222-2222-4222-8222-222222222222'::uuid,
   'signed-in users can resolve a published slug for save/reveal'
 );
@@ -580,7 +603,7 @@ select is(
 
 select is(
   (select slug from public.get_preview_dto_by_deal_id('22222222-2222-4222-8222-222222222222')),
-  'published-low-risk-preview',
+  'published-low-risk-preview-a1b2c3d4',
   'signed-in users can load a published DTO by deal id'
 );
 
@@ -592,7 +615,7 @@ select is(
 
 select is(
   (select array_agg(coalesce(slug, '<hidden>') order by slug nulls last) from public.list_saved_deal_previews()),
-  array['published-low-risk-preview'],
+  array['published-low-risk-preview-a1b2c3d4'],
   'a free user''s saved deals list drops deals that are not published (no row, no count)'
 );
 
@@ -680,7 +703,7 @@ select set_config('request.jwt.claims', '{"sub":"77777777-7777-4777-8777-7777777
 
 select is(
   (select array_agg(coalesce(slug, '<hidden>') order by slug nulls last) from public.list_saved_deal_previews()),
-  array['published-low-risk-preview', '<hidden>'],
+  array['published-low-risk-preview-a1b2c3d4', '<hidden>'],
   'a Pro user''s saved deals list keeps unpublished deals without preview fields'
 );
 
