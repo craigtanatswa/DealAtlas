@@ -40,7 +40,7 @@ These keys are present on Vercel Production as **live_mode** credentials and the
 - [x] `DODO_PAYMENTS_ENVIRONMENT=live_mode`
 - [x] `DODO_PAYMENTS_RETURN_URL` (`https://www.dealatlas.uk/checkout/success`)
 - [x] `DODO_PRO_MONTHLY_PRODUCT_ID` (`pdt_0Nnp8ZnCM98P6NiDSCtYn`; £39/month, VAT-inclusive)
-- [x] `DODO_PRO_ANNUAL_PRODUCT_ID` (`pdt_0Nnp8Zck9m8BRHsg2JaHm`; £390/year, VAT-inclusive)
+- [x] `DODO_PRO_ANNUAL_PRODUCT_ID` (`pdt_0Nnp8Zck9m8BRHsg2JaHm`; £350/year, VAT-inclusive)
 - [ ] `DODO_FOUNDING_PRODUCT_ID` (`pdt_0Npk9UeAQUpFBQDttq6lS`; £290/year, VAT-inclusive). Required in `live_mode`. The server still caps this at 25 lifetime places.
 
 Required before DealAtlas can send alert/transactional email (a Resend key with a localhost/`example.com` from-address is treated as unconfigured and will not send):
@@ -96,10 +96,10 @@ where email = 'YOUR_OPERATOR_EMAIL';
 
 Code reads product IDs and keys only from the environment. Checkout, `/api/webhooks/dodo`, and `/api/billing/portal` are ready for live keys. A checkout redirect is still not entitlement.
 
-**Live catalogue:** webhook `ep_3JTPyp2kdKIwRxBwOhSrb1XCPa7` posts to `https://www.dealatlas.uk/api/webhooks/dodo` with the subscription lifecycle events plus `payment.succeeded` / `payment.failed`. Products are in collection `pdc_0NnpDoWju38skQPknYs1f`. Monthly is **£39** VAT-inclusive (`pdt_0Nnp8ZnCM98P6NiDSCtYn`). Annual is **£390** VAT-inclusive (`pdt_0Nnp8Zck9m8BRHsg2JaHm`). Founding Pro annual is **£290** VAT-inclusive (`pdt_0Npk9UeAQUpFBQDttq6lS`), capped at 25 lifetime places. Test-mode remains a separate catalogue and webhook.
+**Live catalogue:** webhook `ep_3JTPyp2kdKIwRxBwOhSrb1XCPa7` posts to `https://www.dealatlas.uk/api/webhooks/dodo` with the subscription lifecycle events plus `payment.succeeded` / `payment.failed`. Products are in collection `pdc_0NnpDoWju38skQPknYs1f`. Monthly is **£39** VAT-inclusive (`pdt_0Nnp8ZnCM98P6NiDSCtYn`). Annual is **£350** VAT-inclusive (`pdt_0Nnp8Zck9m8BRHsg2JaHm`). Founding Pro annual is **£290** VAT-inclusive (`pdt_0Npk9UeAQUpFBQDttq6lS`), capped at 25 lifetime places. Test-mode remains a separate catalogue and webhook.
 
 - [x] Complete Dodo merchant / KYC / live-mode approval. (live GBP products and live API access are active)
-- [x] Create live GBP products: DealAtlas Pro Monthly (£39 VAT-inclusive) and DealAtlas Pro Annual (£390 VAT-inclusive).
+- [x] Create live GBP products: DealAtlas Pro Monthly (£39 VAT-inclusive) and DealAtlas Pro Annual (£350 VAT-inclusive).
 - [x] Put both products in the same Product Collection (`pdc_0NnpDoWju38skQPknYs1f`).
 - [x] Copy **live** product IDs into Vercel (not `pdt_dealatlas_pro_*` fixtures).
 - [x] Copy the **live** API key and webhook signing secret.

@@ -2,10 +2,13 @@ import Link from "next/link";
 import { LockIcon } from "lucide-react";
 
 import { CheckoutPlanForm } from "@/components/billing/checkout-plan-form";
+import { FoundingButtonLabel } from "@/components/billing/founding-price";
+import { FoundingCheckoutButton } from "@/components/billing/founding-checkout-button";
 import { Button } from "@/components/ui/button";
 import { signupPathForPlan } from "@/lib/auth/redirect";
 import {
   FOUNDING_COPY,
+  foundingSignupPath,
   foundingPaywallPlaces,
   foundingUiState,
   type FoundingPublicCount,
@@ -131,19 +134,14 @@ export function DealProCard({
         {foundingActive && founding ? (
           <>
             {mode === "free" ? (
-              <CheckoutPlanForm
-                planKey="PRO_ANNUAL"
-                label={FOUNDING_COPY.paywallCta}
-                analyticsPlan="founding"
-                showPrice={false}
+              <FoundingCheckoutButton
+                label={<FoundingButtonLabel text={FOUNDING_COPY.cta} />}
                 returnTo={returnTo}
-                className="w-full"
-                buttonClassName="h-11 w-full"
               />
             ) : (
-              <Button asChild className="h-11 w-full">
-                <Link href={signupPathForPlan("PRO_ANNUAL")}>
-                  {FOUNDING_COPY.paywallCta}
+              <Button asChild className="h-auto min-h-11 w-full whitespace-normal py-2">
+                <Link href={foundingSignupPath()}>
+                  <FoundingButtonLabel text={FOUNDING_COPY.cta} />
                 </Link>
               </Button>
             )}

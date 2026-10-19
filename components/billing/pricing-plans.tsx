@@ -3,13 +3,15 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { CheckoutPlanForm } from "@/components/billing/checkout-plan-form";
+import { FoundingCheckoutButton } from "@/components/billing/founding-checkout-button";
+import { FoundingButtonLabel, FoundingPriceLead } from "@/components/billing/founding-price";
 import { Heading, Text } from "@/components/layout/heading";
 import { Button } from "@/components/ui/button";
 import { signupPathForPlan, signupPathWithNext } from "@/lib/auth/redirect";
 import {
   FOUNDING_COPY,
+  foundingSignupPath,
   foundingPlacesLabel,
-  foundingSoldOutNote,
   type FoundingPublicCount,
   type FoundingUiState,
 } from "@/lib/billing/founding-ui";
@@ -26,7 +28,6 @@ const FREE_FEATURES = [
 const PRO_FEATURES = [
   "Buyer, reference number and original source",
   "Tender documents and named contacts",
-  "Buyer and competitor intelligence",
   "Full details on every deal",
   "Saved searches and alerts",
 ] as const;
@@ -53,16 +54,13 @@ function FeatureList({ items }: { items: readonly string[] }) {
   );
 }
 
-function Price({ label, includeVat }: { label: string; includeVat?: boolean }) {
+function Price({ label }: { label: string }) {
   const price = splitPrice(label);
   return (
     <p className="mt-4 text-4xl font-semibold tracking-tight text-foreground tabular-nums">
       {price.amount}
       {price.period ? (
         <span className="text-base font-medium text-muted-foreground">{price.period}</span>
-      ) : null}
-      {includeVat ? (
-        <span className="text-base font-medium text-muted-foreground"> (incl. VAT)</span>
       ) : null}
     </p>
   );
@@ -84,30 +82,6 @@ function PlanCard({
     >
       {children}
     </section>
-  );
-}
-
-function PlacesMeter({ remaining, cap }: { remaining: number; cap: number }) {
-  const taken = Math.min(cap, Math.max(0, cap - remaining));
-  const percent = cap > 0 ? Math.round((taken / cap) * 100) : 0;
-  const label = foundingPlacesLabel(remaining, cap);
-  return (
-    <div className="mt-5">
-      <p className="text-sm font-medium text-foreground tabular-nums">{label}</p>
-      <div
-        className="mt-2 h-1.5 overflow-hidden rounded-full bg-dealatlas-teal/15"
-        role="progressbar"
-        aria-valuemin={0}
-        aria-valuemax={cap}
-        aria-valuenow={taken}
-        aria-valuetext={label}
-      >
-        <div className="h-full rounded-full bg-dealatlas-teal" style={{ width: `${percent}%` }} />
-      </div>
-      <p className="mt-2 text-[0.8125rem] leading-5 text-muted-foreground">
-        {FOUNDING_COPY.rechecked}
-      </p>
-    </div>
   );
 }
 
@@ -154,9 +128,10 @@ export function PricingPlans({
 }: {
   signedIn: boolean;
   count: FoundingPublicCount;
-  state: Exclude<FoundingUiState, "hidden">;
+  state: FoundingUiState;
 }) {
-  const soldOut = state === "sold_out";
+  // Founding full or not offered: the card disappears and the grid reflows to three plans.
+  const soldOut = state !== "available" && state !== "last";
   const annualVariant = soldOut ? "default" : "outline";
 
   return (
@@ -194,24 +169,26 @@ export function PricingPlans({
               {FOUNDING_COPY.badge}
             </p>
             <h2 className="font-heading text-xl font-semibold text-balance">{FOUNDING_COPY.title}</h2>
-            <p className="mt-1 text-sm text-muted-foreground">{FOUNDING_COPY.firstMembers}</p>
-            <Price label={DISPLAY_PRICING.foundingAnnual} includeVat />
-            <p className="mt-1 text-sm font-medium text-[#00806A]">{FOUNDING_COPY.lessThanAnnual}</p>
+            <FoundingPriceLead className="mt-4" />
             <p className="mt-4 flex items-start gap-2 text-sm font-medium text-foreground">
               <LockIcon className="mt-0.5 size-4 shrink-0 text-[#00806A]" aria-hidden="true" />
               <span>{FOUNDING_COPY.priceLocked}</span>
             </p>
-            <PlacesMeter remaining={count.remaining} cap={count.cap} />
+            <p className="mt-4 text-sm font-semibold text-emerald-700 tabular-nums">{foundingPlacesLabel(count.remaining, count.cap)}</p>
+            <p className="mt-1 text-[0.8125rem] leading-5 text-muted-foreground">{FOUNDING_COPY.rechecked}</p>
             <FeatureList items={PRO_FEATURES} />
             <div className="mt-auto flex flex-col gap-3 pt-6">
-              <PlanCta
-                signedIn={signedIn}
-                planKey="PRO_ANNUAL"
-                label={FOUNDING_COPY.cta}
-                analyticsPlan="founding"
-                variant="default"
-                buttonClassName={FOUNDING_BUTTON}
-              />
+              {signedIn ? (
+                <FoundingCheckoutButton
+                  label={<FoundingButtonLabel text={FOUNDING_COPY.cta} />}
+                  returnTo="/pricing"
+                  buttonClassName={FOUNDING_BUTTON}
+                />
+              ) : (
+                <Button asChild className={cn("h-auto min-h-11 w-full whitespace-normal py-2", FOUNDING_BUTTON)}>
+                  <Link href={foundingSignupPath()}><FoundingButtonLabel text={FOUNDING_COPY.cta} /></Link>
+                </Button>
+              )}
               <p className="text-center text-[0.8125rem] leading-5 text-pretty text-muted-foreground">
                 {FOUNDING_COPY.cancelTerms}
               </p>
@@ -255,11 +232,6 @@ export function PricingPlans({
           </div>
         </PlanCard>
       </div>
-      {soldOut ? (
-        <p className="mx-auto max-w-xl rounded-lg bg-muted px-4 py-3 text-center text-sm text-pretty text-muted-foreground">
-          {foundingSoldOutNote(count.cap)}
-        </p>
-      ) : null}
     </>
   );
 }

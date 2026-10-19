@@ -19,7 +19,6 @@ export const LOCKED_INTELLIGENCE_FIELDS = [
   { label: "Official notice", benefit: "Subscription required" },
   { label: "Reference number", benefit: "Unlock full details" },
   { label: "Documents and requirements", benefit: "Documents and requirements" },
-  { label: "Buyer and competitor intelligence", benefit: "Buyer/competitor intelligence" },
 ] as const;
 
 export type UnlockCtaMode = "anonymous" | "free" | "pro";

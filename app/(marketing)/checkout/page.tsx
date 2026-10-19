@@ -2,6 +2,10 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { CheckoutPlanForm } from "@/components/billing/checkout-plan-form";
+import {
+  FoundingCheckoutSummary,
+  FoundingFullCheckout,
+} from "@/components/billing/founding-checkout-summary";
 import { Main } from "@/components/layout/container";
 import { Heading } from "@/components/layout/heading";
 import {
@@ -14,6 +18,12 @@ import {
 import { parseCheckoutPlan, signupPathForPlan } from "@/lib/auth/redirect";
 import { getCurrentAccount } from "@/lib/auth/session";
 import { priceLabel } from "@/lib/billing/display";
+import {
+  FOUNDING_PLAN_KEY,
+  foundingSignupPath,
+  foundingUiState,
+} from "@/lib/billing/founding-ui";
+import { readFoundingPublicCount } from "@/lib/billing/founding-public";
 
 export const dynamic = "force-dynamic";
 
@@ -34,34 +44,50 @@ export default async function CheckoutPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const params = await searchParams;
-  const plan = parseCheckoutPlan(firstParam(params.plan));
-  if (!plan) {
+  const rawPlan = firstParam(params.plan);
+  const founding = rawPlan === FOUNDING_PLAN_KEY;
+  const plan = founding ? null : parseCheckoutPlan(rawPlan);
+  if (!founding && !plan) {
     redirect("/pricing");
   }
 
   const account = await getCurrentAccount();
   if (!account) {
-    redirect(signupPathForPlan(plan));
+    redirect(founding || !plan ? foundingSignupPath() : signupPathForPlan(plan));
   }
+
+  const count = founding ? await readFoundingPublicCount() : null;
+  const foundingState = count ? foundingUiState(count) : "hidden";
+  const foundingOpen = foundingState === "available" || foundingState === "last";
 
   return (
     <Main width="narrow" className="gap-6">
-      <Heading>Confirm your plan</Heading>
-      <Card>
-        <CardHeader>
-          <CardTitle>{priceLabel(plan)}</CardTitle>
-          <CardDescription>
-            Continue to secure checkout to confirm this plan.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <CheckoutPlanForm
-            planKey={plan}
-            label="Continue to secure checkout"
-            returnTo="/pricing"
-          />
-        </CardContent>
-      </Card>
+      {founding || !plan ? (
+        foundingOpen && count ? (
+          <FoundingCheckoutSummary remaining={count.remaining} cap={count.cap} />
+        ) : (
+          <FoundingFullCheckout />
+        )
+      ) : (
+        <>
+          <Heading>Confirm your plan</Heading>
+          <Card>
+            <CardHeader>
+              <CardTitle>{priceLabel(plan)}</CardTitle>
+              <CardDescription>
+                Continue to secure checkout to confirm this plan.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <CheckoutPlanForm
+                planKey={plan}
+                label="Continue to secure checkout"
+                returnTo="/pricing"
+              />
+            </CardContent>
+          </Card>
+        </>
+      )}
     </Main>
   );
 }
