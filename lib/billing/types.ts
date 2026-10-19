@@ -10,6 +10,7 @@ export type CheckoutPlanKey = (typeof CHECKOUT_PLAN_KEYS)[number];
 export type PlanProductMap = {
   PRO_MONTHLY: string;
   PRO_ANNUAL: string;
+  PRO_ANNUAL_LEGACY: string[];
   FOUNDING_ANNUAL?: string;
 };
 

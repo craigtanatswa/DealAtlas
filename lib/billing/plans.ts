@@ -85,6 +85,9 @@ export function mapProductId(
   if (productId === products.PRO_ANNUAL) {
     return mapPlanKey("PRO_ANNUAL", products);
   }
+  if (products.PRO_ANNUAL_LEGACY.includes(productId)) {
+    return mapPlanKey("PRO_ANNUAL", products);
+  }
   if (products.FOUNDING_ANNUAL && productId === products.FOUNDING_ANNUAL) {
     return mapPlanKey("PRO_ANNUAL", products);
   }
@@ -98,10 +101,20 @@ export function isFoundingProduct(
   return Boolean(productId && products.FOUNDING_ANNUAL && productId === products.FOUNDING_ANNUAL);
 }
 
-export function allowlistedProductIds(products: PlanProductMap): string[] {
+/** Products a user may start checkout with. Legacy annual is never offered. */
+export function checkoutProductIds(products: PlanProductMap): string[] {
   return [products.PRO_MONTHLY, products.PRO_ANNUAL, products.FOUNDING_ANNUAL].filter(
     (id): id is string => Boolean(id),
   );
+}
+
+/** Products accepted from the provider webhook, including legacy annual plans. */
+export function webhookAcceptedProductIds(products: PlanProductMap): string[] {
+  return [...checkoutProductIds(products), ...products.PRO_ANNUAL_LEGACY];
+}
+
+export function allowlistedProductIds(products: PlanProductMap): string[] {
+  return webhookAcceptedProductIds(products);
 }
 
 /** The browser sends a plan key. The server picks the Dodo product. */

@@ -6,6 +6,8 @@ export {
   CHECKOUT_PLAN_KEYS,
   allowlistedProductIds,
   billingIntervalForPlan,
+  checkoutProductIds,
+  webhookAcceptedProductIds,
   isCheckoutPlanKey,
   isFoundingProduct,
   mapPlanKey,
@@ -30,6 +32,7 @@ export {
 export { applyBillingEvent } from "@/lib/billing/apply";
 export {
   BILLING_FIXTURE_CUSTOMER_ID,
+  BILLING_FIXTURE_LEGACY_PRODUCT_ID,
   BILLING_FIXTURE_PRODUCTS,
   BILLING_FIXTURE_SUBSCRIPTION_ID,
   BILLING_FIXTURE_USER_ID,

@@ -120,7 +120,11 @@ describe("founding member checkout", () => {
     expect(
       selectCheckoutProduct({
         planKey: "PRO_ANNUAL",
-        products: { PRO_MONTHLY: products.PRO_MONTHLY, PRO_ANNUAL: products.PRO_ANNUAL },
+        products: {
+          PRO_MONTHLY: products.PRO_MONTHLY,
+          PRO_ANNUAL: products.PRO_ANNUAL,
+          PRO_ANNUAL_LEGACY: [],
+        },
         reservation: "reserved",
         testMode: false,
       }).productId,
@@ -148,7 +152,7 @@ describe("founding member checkout", () => {
       "Founding membership is full. Thanks to our first 25 customers.",
     );
     expect(FOUNDING_COPY.paywallCta).toContain("£290/yr");
-    expect(FOUNDING_COPY.lessThanAnnual).toBe("£100 less than standard annual");
+    expect(FOUNDING_COPY.lessThanAnnual).toBe("£60 less than standard annual");
     expect(FOUNDING_COPY.priceLocked).toBe("Locked for life");
     expect(FOUNDING_COPY.firstMembers).toBe(`First ${FOUNDING_CAP} members only`);
   });

@@ -27,7 +27,7 @@ describe("founding pricing cards", () => {
     expect(screen.getByText("17 of 25 founding places left")).toBeTruthy();
     expect(screen.getByText("First 25 members only")).toBeTruthy();
     expect(screen.getByText("Locked for life")).toBeTruthy();
-    expect(screen.getByText("£100 less than standard annual")).toBeTruthy();
+    expect(screen.getByText("£60 less than standard annual")).toBeTruthy();
     expect(screen.getByText("(incl. VAT)")).toBeTruthy();
     expect(container.textContent).not.toMatch(/Example value/i);
     expect(container.textContent).not.toMatch(/only today|testimonial|#1/i);
@@ -90,7 +90,7 @@ describe("founding deal paywall", () => {
   it("falls back to standard prices when founding is sold out", () => {
     const { container } = render(<UnlockPanel mode="free" founding={soldOutCount} />);
     expect(screen.getByRole("button", { name: "Start Pro – £39/mo" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "or £390/yr (save £78)" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "or £350/yr (save £118)" })).toBeTruthy();
     expect(container.querySelector("input[name='offer']")).toBeNull();
     expect(
       container.querySelector("input[name='planKey'][value='PRO_ANNUAL']"),
@@ -117,7 +117,7 @@ describe("founding checkout race", () => {
     expect(
       screen.getByText("Founding places just filled up. You haven't been charged."),
     ).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Continue with annual – £390/yr" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Continue with annual – £350/yr" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Choose monthly – £39/mo" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "Grounds maintenance for community sites" })).toBeTruthy();
     expect(container.querySelector("input[name='offer']")).toBeNull();

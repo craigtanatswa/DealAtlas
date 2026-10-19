@@ -170,6 +170,7 @@ DODO_PAYMENTS_ENVIRONMENT=test_mode
 DODO_PAYMENTS_RETURN_URL=
 DODO_PRO_MONTHLY_PRODUCT_ID=
 DODO_PRO_ANNUAL_PRODUCT_ID=
+DODO_PRO_ANNUAL_LEGACY_PRODUCT_IDS=
 DODO_FOUNDING_PRODUCT_ID=
 ```
 
@@ -357,7 +358,7 @@ Never reuse production secret keys in local fixtures or committed files.
 
 Production fail-safes:
 - `getPublicEnv()` requires `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_SUPABASE_URL`, and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`. On `VERCEL_ENV=production` the app origin must be HTTPS and not loopback.
-- `getServerEnv()` requires `SUPABASE_SECRET_KEY`. Dodo keys are optional in `test_mode` (checkout/webhook/portal then return HTTP 503). Checkout also requires the webhook signing key so a card cannot succeed without a way to grant Pro. `live_mode` requires live API/webhook keys, HTTPS return URL, live Pro product IDs, and `DODO_FOUNDING_PRODUCT_ID` in `pdt_` plus 21 letters or digits. It rejects test/placeholder credentials and local fixture product IDs.
+- `getServerEnv()` requires `SUPABASE_SECRET_KEY`. Dodo keys are optional in `test_mode` (checkout/webhook/portal then return HTTP 503). Checkout also requires the webhook signing key so a card cannot succeed without a way to grant Pro. `live_mode` requires live API/webhook keys, HTTPS return URL, live Pro product IDs, and `DODO_FOUNDING_PRODUCT_ID` in `pdt_` plus 21 letters or digits. Optional `DODO_PRO_ANNUAL_LEGACY_PRODUCT_IDS` entries must follow the same live ID format and must not reuse a current plan ID. It rejects test/placeholder credentials and local fixture product IDs.
 - Node instrumentation (`instrumentation.node.ts`) validates public and server env when a Node server starts, and `onRequestError` reports request failures.
 - Transactional email will not send from localhost or `@example.com` from-addresses even if a Resend key is present.
 - Live scheduled ingest defaults to 500 records per source and resumes the last stored cursor until the discovery window is drained.

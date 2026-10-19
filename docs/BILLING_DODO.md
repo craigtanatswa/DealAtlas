@@ -5,9 +5,10 @@ Dodo Payments is the Merchant of Record for DealAtlas digital subscriptions.
 
 Launch products:
 - DealAtlas Pro Monthly — recommended test price £39/month
-- DealAtlas Pro Annual — recommended test price £390/year
-- DealAtlas Founding Member annual — £290/year. Live product id `pdt_0Npk9UeAQUpFBQDttq6lS`. `DODO_FOUNDING_PRODUCT_ID` is optional in `test_mode` and required in `live_mode`, where it must match `pdt_` plus 21 letters or digits. The server reserves one of 25 lifetime slots and picks the product. A founder keeps £290/year after cancel and resubscribe, and that slot is never reissued. Sold out uses the standard annual product. The browser cannot choose the product id. `GET /api/founding` returns `{ remaining, sold_out }` only. One processed event and one Dodo subscription mark one founder.
-- Live DealAtlas Pro is £39/month and £390/year, both VAT-inclusive.
+- DealAtlas Pro Annual — recommended test price £350/year
+- DealAtlas Founding Member annual — £290/year. `DODO_FOUNDING_PRODUCT_ID` is optional in `test_mode` and required in `live_mode`, where it must match `pdt_` plus 21 letters or digits. The server reserves one of 25 lifetime slots and picks the product. A founder keeps £290/year after cancel and resubscribe, and that slot is never reissued. Sold out uses the standard annual product. The browser cannot choose the product id. `GET /api/founding` returns `{ remaining, sold_out }` only. One processed event and one Dodo subscription mark one founder.
+- Live DealAtlas Pro is £39/month and £350/year, both VAT-inclusive.
+- Optional `DODO_PRO_ANNUAL_LEGACY_PRODUCT_IDS` is a comma-separated list of old annual product IDs. Webhooks for these IDs keep existing subscribers on Pro annual, but checkout never offers them. In `live_mode` each ID must match `pdt_` plus 21 letters or digits, must not be a local fixture ID, and must not reuse a monthly, annual, or founding ID.
 
 Do not offer a free trial that reveals protected source identity. Free DealAtlas accounts exist independently of Dodo.
 
@@ -29,6 +30,7 @@ DODO_PAYMENTS_ENVIRONMENT=test_mode
 DODO_PAYMENTS_RETURN_URL=http://localhost:3000/checkout/success
 DODO_PRO_MONTHLY_PRODUCT_ID=
 DODO_PRO_ANNUAL_PRODUCT_ID=
+DODO_PRO_ANNUAL_LEGACY_PRODUCT_IDS=
 DODO_FOUNDING_PRODUCT_ID=
 ```
 
@@ -124,10 +126,11 @@ Application config:
 const DODO_PRODUCTS = {
   PRO_MONTHLY: process.env.DODO_PRO_MONTHLY_PRODUCT_ID,
   PRO_ANNUAL: process.env.DODO_PRO_ANNUAL_PRODUCT_ID,
+  PRO_ANNUAL_LEGACY: process.env.DODO_PRO_ANNUAL_LEGACY_PRODUCT_IDS,
 }
 ```
 
-Incoming webhook `product_id` is mapped back to known plan/interval. Unknown product IDs do not grant Pro automatically.
+Incoming webhook `product_id` is mapped back to known plan/interval, including legacy annual IDs. Checkout accepts only the current monthly and annual plans (plus the server-controlled founding annual flow). Unknown product IDs do not grant Pro automatically.
 
 ## 14. Taxes/invoices
 Dodo operates as Merchant of Record for customer-side transaction taxes/compliance. DealAtlas should link customers to Dodo invoices/portal and should not attempt to calculate its own VAT for the same checkout flow.
