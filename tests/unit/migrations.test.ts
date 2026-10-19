@@ -48,7 +48,7 @@ describe("supabase migrations", () => {
   const files = listMigrations();
   const sql = files.map(readMigration).join("\n");
 
-  it("are numbered 0001-0026, 0028-0030, 0040, 0041, then 0048, leaving 0027, 0031-0039 and 0042-0047 for other pull requests", () => {
+  it("are numbered 0001-0026, 0028-0030, 0040, 0041, 0046, then 0048, leaving 0027, 0031-0039, 0042-0045 and 0047 for open pull requests", () => {
     expect(files).toEqual([
       "0001_extensions_and_types.sql",
       "0002_core_schema.sql",
@@ -81,6 +81,7 @@ describe("supabase migrations", () => {
       "0030_founding_availability_and_claims.sql",
       "0040_publish_unknown_terms_sources.sql",
       "0041_preview_detail_allowlist.sql",
+      "0046_search_preview_dtos_page_first.sql",
       "0048_clear_placeholder_buyer_links.sql",
     ]);
   });
@@ -141,6 +142,26 @@ describe("supabase migrations", () => {
     expect(sql).toContain("p_sort text default 'updated'");
     expect(sql).not.toMatch(/enforce_preview_safety/);
     expect(sql).not.toMatch(/disable row level security/i);
+  });
+
+  it("0046 pages search_preview_dtos before building DTO columns, with the same sort and helpers", () => {
+    const m = readMigration("0046_search_preview_dtos_page_first.sql");
+    const page = m.indexOf("paged as (");
+    const limit = m.indexOf("limit greatest(1, least(coalesce(p_limit, 20), 50))");
+    const helpers = m.indexOf("private.preview_dto_requirements(p.requirements_preview)");
+    expect(page).toBeGreaterThan(0);
+    expect(limit).toBeGreaterThan(page);
+    expect(helpers).toBeGreaterThan(limit);
+    expect(m.slice(page, limit)).not.toMatch(/private\.preview_dto_/);
+    expect(m).toContain("private.preview_dto_reasons(p.match_reasons)");
+    expect(m).toContain("private.preview_freshness_label(p.created_at, p.updated_at)");
+    expect(m).toContain("p.relevance_tags[1:12]");
+    expect(m).toContain("count(*) over () as total_count");
+    expect(m).toContain("when lower(coalesce(p_sort, 'updated')) = 'biddable' and r.status = 'CLOSING_SOON'::public.deal_status then 0");
+    expect(m).toContain("where dp.is_published = true\n      and dp.leakage_risk = 'LOW'\n      and dp.unpublished_by_admin = false");
+    expect(m).toContain("security definer");
+    expect(m).not.toMatch(/\b(grant|revoke)\b/i);
+    expect(m).not.toMatch(/disable row level security/i);
   });
 
   it("keeps search_deal_previews on deal_previews only after filter extension", () => {
@@ -309,9 +330,8 @@ describe("supabase migrations", () => {
     expect(sql).not.toMatch(grantPattern);
   });
 
-  it("0048 clears only placeholder-only buyer links, keeps orgs and is private", () => {
+  it("0048 clears placeholder buyer links only, keeps orgs and is private", () => {
     const m = readMigration("0048_clear_placeholder_buyer_links.sql");
-    expect(m).toMatch(/having bool_and\(private\.is_placeholder_buyer_org/);
     expect(m).not.toMatch(/delete from public\.organizations/i);
     expect(m).not.toMatch(/delete from public\.organization_aliases/i);
     expect(m).not.toMatch(/is_published|deal_previews/i);

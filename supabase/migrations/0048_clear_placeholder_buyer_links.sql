@@ -4,12 +4,11 @@
 -- identifies nobody. Since #58 ingest no longer links them; this clears the
 -- links written before that.
 --
--- A deal is cleared only when EVERY buyer party it has (deals.buyer_organization_id
--- and deal_organizations rows with role BUYER) is a placeholder. For those deals
--- buyer_organization_id is set to null and the placeholder BUYER rows are removed.
--- Organisation rows are kept. Nothing else on the deal changes: the
--- updated_at touch trigger is disabled for this one statement so the deal
--- keeps its timestamp, and publish state is not touched.
+-- Every placeholder buyer link is removed: deal_organizations rows with role
+-- BUYER pointing at a placeholder org, and deals.buyer_organization_id when it
+-- points at one. Real buyer links on the same deal are kept. Organisation and
+-- alias rows are kept, publish state is not touched, and the deal keeps its
+-- updated_at (the touch trigger is off for the one UPDATE).
 -- Idempotent: a second run finds no placeholder buyer links and changes nothing.
 
 -- Mirrors PLACEHOLDER_BUYER_NAMES in lib/buyers/placeholder.ts. Keep the two
@@ -53,7 +52,7 @@ immutable
 set search_path = ''
 as $$
   select pg_catalog.btrim(
-    pg_catalog.regexp_replace(pg_catalog.lower(pg_catalog.normalize(coalesce(p, ''), NFKC)), '[^[:alnum:]]+', ' ', 'g')
+    pg_catalog.regexp_replace(pg_catalog.lower(normalize(coalesce(p, ''), NFKC)), '[^[:alnum:]]+', ' ', 'g')
   );
 $$;
 
@@ -79,31 +78,8 @@ as $$
   );
 $$;
 
--- Deals whose buyer parties are all placeholders. Read-only; the dry run in
--- the PR uses the same logic.
-create or replace function private.placeholder_only_buyer_deals()
-returns table (deal_id uuid)
-language sql
-stable
-set search_path = ''
-as $$
-  with parties as (
-    select d.id as deal_id, d.buyer_organization_id as organization_id
-    from public.deals d
-    where d.buyer_organization_id is not null
-    union
-    select dor.deal_id, dor.organization_id
-    from public.deal_organizations dor
-    where dor.role = 'BUYER'
-  )
-  select p.deal_id
-  from parties p
-  group by p.deal_id
-  having bool_and(private.is_placeholder_buyer_org(p.organization_id));
-$$;
-
--- Clears the links and returns what changed. Safe to run again: with no
--- placeholder buyer links left it changes nothing and returns zeros.
+-- Clears placeholder buyer links and returns what changed. The scope is
+-- the single WHERE predicate on private.is_placeholder_buyer_org(...).
 create or replace function private.clear_placeholder_buyer_links()
 returns jsonb
 language plpgsql
@@ -113,36 +89,26 @@ declare
   v_links integer := 0;
   v_deals integer := 0;
 begin
-  create temporary table if not exists placeholder_buyer_cleanup_targets (deal_id uuid primary key) on commit drop;
-  truncate placeholder_buyer_cleanup_targets;
-  insert into placeholder_buyer_cleanup_targets (deal_id)
-  select t.deal_id from private.placeholder_only_buyer_deals() t;
-
   delete from public.deal_organizations dor
-  using placeholder_buyer_cleanup_targets c
-  where dor.deal_id = c.deal_id
-    and dor.role = 'BUYER'
+  where dor.role = 'BUYER'
     and private.is_placeholder_buyer_org(dor.organization_id);
   get diagnostics v_links = row_count;
 
   if exists (
     select 1 from public.deals d
-    join placeholder_buyer_cleanup_targets c on c.deal_id = d.id
     where d.buyer_organization_id is not null
+      and private.is_placeholder_buyer_org(d.buyer_organization_id)
   ) then
-    -- Keep the deal's updated_at: only the buyer link changes.
+    -- Only the buyer link changes; keep the deal's updated_at.
     alter table public.deals disable trigger touch_deals_updated_at;
     update public.deals d
     set buyer_organization_id = null
-    from placeholder_buyer_cleanup_targets c
-    where d.id = c.deal_id
-      and d.buyer_organization_id is not null
+    where d.buyer_organization_id is not null
       and private.is_placeholder_buyer_org(d.buyer_organization_id);
     get diagnostics v_deals = row_count;
     alter table public.deals enable trigger touch_deals_updated_at;
   end if;
 
-  truncate placeholder_buyer_cleanup_targets;
   return jsonb_build_object('deal_organizations_removed', v_links, 'deals_cleared', v_deals);
 end;
 $$;
@@ -150,7 +116,6 @@ $$;
 revoke all on function private.placeholder_buyer_names() from public, anon, authenticated, service_role;
 revoke all on function private.normalize_placeholder_buyer_name(text) from public, anon, authenticated, service_role;
 revoke all on function private.is_placeholder_buyer_org(uuid) from public, anon, authenticated, service_role;
-revoke all on function private.placeholder_only_buyer_deals() from public, anon, authenticated, service_role;
 revoke all on function private.clear_placeholder_buyer_links() from public, anon, authenticated, service_role;
 
 select private.clear_placeholder_buyer_links();

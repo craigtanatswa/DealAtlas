@@ -20,7 +20,10 @@ export const GUIDE_CTA_TARGETS = ["deals", "signup", "pricing"] as const;
  * listed here; anything else is recorded as /guides/[guide]. Add a slug when
  * its guide is approved and published.
  */
-export const KNOWN_GUIDE_SLUGS: readonly string[] = ["how-to-win-council-contracts"];
+export const KNOWN_GUIDE_SLUGS: readonly string[] = [
+  "how-to-win-council-contracts",
+  "how-to-find-public-sector-tenders",
+];
 
 export function isKnownGuideSlug(value: unknown): value is string {
   return typeof value === "string" && KNOWN_GUIDE_SLUGS.includes(value);

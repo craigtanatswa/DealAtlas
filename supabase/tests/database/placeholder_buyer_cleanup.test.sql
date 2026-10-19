@@ -31,13 +31,16 @@ insert into public.deals (
   -- 2: real buyer.
   ('c4800000-0000-4000-8000-000000000002', 'd4800000-0000-4000-8000-000000000001', 'Street lighting renewal',
    'a4800000-0000-4000-8000-000000000002', 'PUBLIC_TENDER', 'PUBLIC', 'LIVE', 'OPEN', pg_catalog.now() + interval '40 days'),
-  -- 3: placeholder buyer id plus a real BUYER link: not placeholder-only, untouched.
+  -- 3: placeholder buyer id plus a real BUYER link: keeps only the real buyer.
   ('c4800000-0000-4000-8000-000000000003', 'd4800000-0000-4000-8000-000000000001', 'Mixed buyer parties',
    'a4800000-0000-4000-8000-000000000001', 'PUBLIC_TENDER', 'PUBLIC', 'LIVE', 'OPEN', pg_catalog.now() + interval '40 days'),
   -- 4: "Public Sector Pension Board" is a real name.
   ('c4800000-0000-4000-8000-000000000004', 'd4800000-0000-4000-8000-000000000001', 'Pension administration',
    'a4800000-0000-4000-8000-000000000003', 'PUBLIC_TENDER', 'PUBLIC', 'LIVE', 'OPEN', pg_catalog.now() + interval '40 days'),
   -- 5: buyer whose only alias is a placeholder.
+  -- 6: real buyer id plus a stray placeholder BUYER link (the prod n/a / None shape).
+  ('c4800000-0000-4000-8000-000000000006', 'd4800000-0000-4000-8000-000000000001', 'Ward refurbishment',
+   'a4800000-0000-4000-8000-000000000002', 'PUBLIC_TENDER', 'PUBLIC', 'LIVE', 'OPEN', pg_catalog.now() + interval '40 days'),
   ('c4800000-0000-4000-8000-000000000005', 'd4800000-0000-4000-8000-000000000001', 'Harbour dredging',
    'a4800000-0000-4000-8000-000000000004', 'PUBLIC_TENDER', 'PUBLIC', 'LIVE', 'OPEN', pg_catalog.now() + interval '40 days');
 
@@ -47,7 +50,9 @@ insert into public.deal_organizations (deal_id, organization_id, role) values
   ('c4800000-0000-4000-8000-000000000003', 'a4800000-0000-4000-8000-000000000001', 'BUYER'),
   ('c4800000-0000-4000-8000-000000000003', 'a4800000-0000-4000-8000-000000000002', 'BUYER'),
   ('c4800000-0000-4000-8000-000000000004', 'a4800000-0000-4000-8000-000000000003', 'BUYER'),
-  ('c4800000-0000-4000-8000-000000000005', 'a4800000-0000-4000-8000-000000000004', 'BUYER');
+  ('c4800000-0000-4000-8000-000000000005', 'a4800000-0000-4000-8000-000000000004', 'BUYER'),
+  ('c4800000-0000-4000-8000-000000000006', 'a4800000-0000-4000-8000-000000000002', 'BUYER'),
+  ('c4800000-0000-4000-8000-000000000006', 'a4800000-0000-4000-8000-000000000001', 'BUYER');
 
 -- Pin each deal's timestamp so "nothing else changes" is checkable.
 alter table public.deals disable trigger touch_deals_updated_at;
@@ -66,15 +71,9 @@ select is(
 select is(private.normalize_placeholder_buyer_name('N/A'), 'n a', 'N/A normalises to "n a"');
 
 select is(
-  (select array_agg(deal_id order by deal_id) from private.placeholder_only_buyer_deals()),
-  array['c4800000-0000-4000-8000-000000000001', 'c4800000-0000-4000-8000-000000000005']::uuid[],
-  'only placeholder-only deals are selected'
-);
-
-select is(
   private.clear_placeholder_buyer_links(),
-  '{"deals_cleared": 2, "deal_organizations_removed": 2}'::jsonb,
-  'first run clears two deals and two BUYER links'
+  '{"deals_cleared": 3, "deal_organizations_removed": 4}'::jsonb,
+  'first run clears three buyer ids and four placeholder BUYER links'
 );
 
 select is(
@@ -106,14 +105,24 @@ select is(
   'Public Sector Pension Board is not a placeholder'
 );
 select is(
-  (select count(*) from public.deal_organizations where deal_id = 'c4800000-0000-4000-8000-000000000003' and role = 'BUYER'),
-  2::bigint,
-  'mixed deal keeps both BUYER links'
+  (select array_agg(organization_id) from public.deal_organizations where deal_id = 'c4800000-0000-4000-8000-000000000003' and role = 'BUYER'),
+  array['a4800000-0000-4000-8000-000000000002']::uuid[],
+  'mixed deal keeps only its real BUYER link'
 );
 select is(
   (select buyer_organization_id from public.deals where id = 'c4800000-0000-4000-8000-000000000003'),
-  'a4800000-0000-4000-8000-000000000001'::uuid,
-  'mixed deal keeps its buyer id'
+  null,
+  'mixed deal drops its placeholder buyer id'
+);
+select is(
+  (select array_agg(organization_id) from public.deal_organizations where deal_id = 'c4800000-0000-4000-8000-000000000006' and role = 'BUYER'),
+  array['a4800000-0000-4000-8000-000000000002']::uuid[],
+  'real buyer plus stray placeholder link keeps only the real buyer link'
+);
+select is(
+  (select buyer_organization_id from public.deals where id = 'c4800000-0000-4000-8000-000000000006'),
+  'a4800000-0000-4000-8000-000000000002'::uuid,
+  'real buyer id is untouched'
 );
 
 select is(

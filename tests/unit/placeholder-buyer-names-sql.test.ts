@@ -24,7 +24,7 @@ describe("0048 placeholder buyer list", () => {
 
   it("normalises the same way as the TS helper", () => {
     const sql = readFileSync(MIGRATION, "utf8");
-    expect(sql).toMatch(/normalize\(coalesce\(p, ''\), NFKC\)/);
+    expect(sql).toMatch(/[^.]normalize\(coalesce\(p, ''\), NFKC\)/);
     expect(sql).toMatch(/pg_catalog\.lower\(/);
     expect(sql).toMatch(/'\[\^\[:alnum:\]\]\+', ' ', 'g'/);
     expect(sql).toMatch(/pg_catalog\.btrim\(/);
