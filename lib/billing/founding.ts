@@ -1,9 +1,21 @@
+import { DISPLAY_PRICING } from "@/lib/constants";
 import { isFoundingProduct } from "@/lib/billing/plans";
 import type {
   FoundingReservation,
   IncomingBillingEvent,
   PlanProductMap,
 } from "@/lib/billing/types";
+
+export const FOUNDING_UNAVAILABLE_MESSAGE = `Founding places are all taken. You can still subscribe to Pro annual at ${DISPLAY_PRICING.proAnnual}.`;
+
+export const FOUNDING_NOT_ELIGIBLE_MESSAGE = `Founding membership can't be rejoined after cancelling. You can still subscribe to Pro annual at ${DISPLAY_PRICING.proAnnual}.`;
+
+/** Stable checkout error codes. The UI (#49) matches on these. */
+export const CHECKOUT_ERROR_CODES = {
+  foundingCapFull: "FOUNDING_CAP_FULL",
+  foundingNotEligible: "FOUNDING_NOT_ELIGIBLE",
+  invalidPlan: "INVALID_PLAN",
+} as const;
 
 export type FoundingSideEffect = {
   userId: string;
@@ -33,20 +45,11 @@ export function foundingOfferCopy(band: string | null): {
   return { foundingAvailable: false, note: null };
 }
 
-/** A returning founder skips reservation. The flag is read from profiles on the server. */
-export function reservationForCheckout(
-  founder: boolean,
-  reservation: FoundingReservation,
-): FoundingReservation {
-  return founder ? "active" : reservation;
-}
-
 export function asFoundingReservation(value: unknown): FoundingReservation {
   if (
     value === "reserved" ||
-    value === "active" ||
-    value === "sold_out" ||
-    value === "closed"
+    value === "ineligible" ||
+    value === "sold_out"
   ) {
     return value;
   }

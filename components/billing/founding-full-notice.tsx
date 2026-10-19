@@ -9,11 +9,13 @@ export function FoundingFullNotice({
   loginHref,
   returnTo,
   returnTitle,
+  notEligible = false,
 }: {
   signedIn: boolean;
   loginHref: string;
   returnTo?: string;
   returnTitle?: string | null;
+  notEligible?: boolean;
 }) {
   return (
     <div className="flex flex-col gap-4">
@@ -21,7 +23,7 @@ export function FoundingFullNotice({
         className="rounded-lg border border-warning/40 bg-warning/10 px-5 py-5"
         role="status"
       >
-        <p className="font-medium text-pretty text-foreground">{FOUNDING_COPY.raceLead}</p>
+        <p className="font-medium text-pretty text-foreground">{notEligible ? FOUNDING_COPY.notEligibleLead : FOUNDING_COPY.raceLead}</p>
         <p className="mt-2 text-sm text-pretty text-muted-foreground">{FOUNDING_COPY.raceBody}</p>
         <div className="mt-4 flex flex-col gap-3 sm:flex-row">
           {signedIn ? (

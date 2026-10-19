@@ -4,9 +4,18 @@ import { Checkout } from "@dodopayments/nextjs";
 import { NextRequest, NextResponse } from "next/server";
 
 import { checkoutMetadata } from "@/lib/billing/metadata";
-import { reservationForCheckout } from "@/lib/billing/founding";
-import { mapPlanKey, parseCheckoutRequest, selectCheckoutProduct } from "@/lib/billing/plans";
-import { readFoundingMember, reserveFoundingSlot } from "@/lib/billing/founding-db";
+import {
+  CHECKOUT_ERROR_CODES,
+  FOUNDING_NOT_ELIGIBLE_MESSAGE,
+  FOUNDING_UNAVAILABLE_MESSAGE,
+} from "@/lib/billing/founding";
+import {
+  parseCheckoutRequest,
+  selectCheckoutProduct,
+  shouldReserveFoundingSlot,
+  subscriptionPlanKeyFor,
+} from "@/lib/billing/plans";
+import { reserveFoundingSlot } from "@/lib/billing/founding-db";
 import { requireDodoCheckoutConfig } from "@/lib/billing/config";
 import { BillingConfigError } from "@/lib/billing/errors";
 import { checkoutReturnUrl, parseCheckoutReturnTo } from "@/lib/deals/paths";
@@ -68,7 +77,10 @@ export async function createAuthenticatedCheckoutResponse(input: {
   const body = await readCheckoutBody(input.request);
   const parsed = parseCheckoutRequest(body);
   if (!parsed.ok) {
-    return NextResponse.json({ error: parsed.error }, { status: 400 });
+    return NextResponse.json(
+      { error: parsed.error, message: parsed.error, code: CHECKOUT_ERROR_CODES.invalidPlan },
+      { status: 400 },
+    );
   }
 
   let config;
@@ -81,25 +93,44 @@ export async function createAuthenticatedCheckoutResponse(input: {
     throw error;
   }
 
-  const foundingCheckout =
-    parsed.planKey === "PRO_ANNUAL" && Boolean(config.products.FOUNDING_ANNUAL);
-  const founder = foundingCheckout ? await readFoundingMember(input.user.id) : false;
-  const reservation = reservationForCheckout(
-    founder,
-    foundingCheckout && !founder ? await reserveFoundingSlot(input.user.id) : "unavailable",
-  );
-  const chosen = selectCheckoutProduct({
-    planKey: parsed.planKey,
-    products: config.products,
-    reservation,
-    testMode: config.environment === "test_mode" || Boolean(config.products.FOUNDING_ANNUAL),
-  });
-  const mapped = mapPlanKey(parsed.planKey, config.products);
   const returnTo = parseCheckoutReturnTo(
     body && typeof body === "object" && !Array.isArray(body)
       ? (body as Record<string, unknown>).returnTo
       : null,
   );
+
+  const reservation = shouldReserveFoundingSlot(parsed.planKey, config.products)
+    ? await reserveFoundingSlot(input.user.id)
+    : null;
+  const chosen = selectCheckoutProduct({
+    planKey: parsed.planKey,
+    products: config.products,
+    reservation,
+  });
+  if (!chosen.ok) {
+    const notEligible = chosen.reason === "founding_not_eligible";
+    const message = notEligible ? FOUNDING_NOT_ELIGIBLE_MESSAGE : FOUNDING_UNAVAILABLE_MESSAGE;
+    if (wantsJson(input.request)) {
+      return NextResponse.json(
+        {
+          error: message,
+          message,
+          code: notEligible
+            ? CHECKOUT_ERROR_CODES.foundingNotEligible
+            : CHECKOUT_ERROR_CODES.foundingCapFull,
+        },
+        { status: 409 },
+      );
+    }
+    const query = new URLSearchParams();
+    if (returnTo) query.set("next", returnTo);
+    if (notEligible) query.set("reason", "not_eligible");
+    const qs = query.toString();
+    const foundingFullPath = qs ? `/checkout/founding-full?${qs}` : "/checkout/founding-full";
+    return NextResponse.redirect(new URL(foundingFullPath, input.request.url), 303);
+  }
+
+  const subscriptionPlanKey = subscriptionPlanKeyFor(parsed.planKey);
   const returnUrl = checkoutReturnUrl(config.returnUrl, returnTo);
   const checkout = Checkout({
     bearerToken: config.bearerToken,
@@ -119,7 +150,7 @@ export async function createAuthenticatedCheckoutResponse(input: {
       },
       metadata: checkoutMetadata({
         userId: input.user.id,
-        planKey: mapped.planKey,
+        planKey: subscriptionPlanKey,
       }),
       return_url: returnUrl,
       feature_flags: {

@@ -1,4 +1,9 @@
+import { FOUNDING_NOT_ELIGIBLE_MESSAGE, FOUNDING_UNAVAILABLE_MESSAGE } from "@/lib/billing/founding";
+import type { CheckoutPlanKey } from "@/lib/billing/types";
 import { DISPLAY_PRICING } from "@/lib/constants";
+
+/** Checkout plan key for the founding offer. Shared with the #49 UI. */
+export const FOUNDING_PLAN_KEY = "FOUNDING" satisfies CheckoutPlanKey;
 
 /** Server cap. The browser never supplies this number. */
 export const FOUNDING_CAP = 25;
@@ -105,7 +110,8 @@ export const FOUNDING_COPY = {
   paywallMonthly: `or standard Pro ${DISPLAY_PRICING.proMonthly.replace("/month", "/mo")}`,
   soldOutMonthly: `Start Pro – ${DISPLAY_PRICING.proMonthly.replace("/month", "/mo")}`,
   soldOutAnnual: soldOutAnnualLink(),
-  raceLead: "Founding places just filled up. You haven't been charged.",
+  raceLead: FOUNDING_UNAVAILABLE_MESSAGE,
+  notEligibleLead: FOUNDING_NOT_ELIGIBLE_MESSAGE,
   raceBody: `Continue with standard annual at ${DISPLAY_PRICING.proAnnual.replace("/year", "/yr")}?`,
   raceAnnual: `Continue with annual – ${DISPLAY_PRICING.proAnnual.replace("/year", "/yr")}`,
   raceMonthly: `Choose monthly – ${DISPLAY_PRICING.proMonthly.replace("/month", "/mo")}`,

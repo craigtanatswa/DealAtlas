@@ -7,6 +7,7 @@ import type { CheckoutPlanKey } from "@/lib/billing/types";
 export const PLAN_KEY_LABELS: Record<CheckoutPlanKey, string> = {
   PRO_MONTHLY: "Pro monthly",
   PRO_ANNUAL: "Pro annual",
+  FOUNDING: "Founding Pro",
 };
 
 export const STATUS_LABELS: Record<string, string> = {
@@ -35,6 +36,9 @@ export function planLabel(
 }
 
 export function priceLabel(planKey: CheckoutPlanKey): string {
+  if (planKey === "FOUNDING") {
+    return DISPLAY_PRICING.foundingAnnual;
+  }
   return planKey === "PRO_ANNUAL"
     ? DISPLAY_PRICING.proAnnual
     : DISPLAY_PRICING.proMonthly;
