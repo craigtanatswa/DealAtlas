@@ -9,6 +9,7 @@ import { signupPathForPlan, signupPathWithNext } from "@/lib/auth/redirect";
 import type { CheckoutPlanKey } from "@/lib/billing/types";
 import {
   FOUNDING_COPY,
+  FOUNDING_PLAN_KEY,
   foundingPlacesLabel,
   foundingSoldOutNote,
   type FoundingPublicCount,
@@ -204,7 +205,7 @@ export function PricingPlans({
             <div className="mt-auto flex flex-col gap-3 pt-6">
               <PlanCta
                 signedIn={signedIn}
-                planKey="FOUNDING"
+                planKey={FOUNDING_PLAN_KEY}
                 label={FOUNDING_COPY.cta}
                 variant="default"
                 buttonClassName={FOUNDING_BUTTON}

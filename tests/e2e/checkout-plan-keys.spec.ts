@@ -61,6 +61,7 @@ test.describe("Checkout plan keys", () => {
         data: { planKey },
       });
       expect(tampered.status()).toBe(400);
+      expect(((await tampered.json()) as { code?: string }).code).toBe("INVALID_PLAN");
     }
 
     // The e2e server has no founding product configured, so PRO_ANNUAL must stay
@@ -76,7 +77,16 @@ test.describe("Checkout plan keys", () => {
       data: { planKey: "FOUNDING" },
     });
     expect(founding.status()).toBe(409);
-    const body = (await founding.json()) as { error?: string; checkout_url?: string };
+    const body = (await founding.json()) as {
+      error?: string;
+      message?: string;
+      code?: string;
+      checkout_url?: string;
+    };
+    expect(body.code).toBe("FOUNDING_CAP_FULL");
+    expect(body.message).toBe(
+      "Founding places are all taken. You can still subscribe to Pro annual at £350/year.",
+    );
     expect(body.checkout_url).toBeUndefined();
     expect(body.error).toContain("Founding places are all taken");
     expect(body.error).toContain("£350/year");

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { signupPathForPlan } from "@/lib/auth/redirect";
 import {
   FOUNDING_COPY,
+  FOUNDING_PLAN_KEY,
   foundingPaywallPlaces,
   type FoundingUiState,
 } from "@/lib/billing/founding-ui";
@@ -66,7 +67,7 @@ export function FoundingUnlockActions({
     <div className="flex w-full flex-col items-center gap-2">
       {mode === "free" ? (
         <CheckoutPlanForm
-          planKey="FOUNDING"
+          planKey={FOUNDING_PLAN_KEY}
           label={FOUNDING_COPY.paywallCta}
           showPrice={false}
           returnTo={returnTo}
@@ -75,7 +76,7 @@ export function FoundingUnlockActions({
         />
       ) : (
         <Button asChild className={`h-11 ${FOUNDING_BUTTON}`}>
-          <Link href={signupPathForPlan("FOUNDING")}>{FOUNDING_COPY.paywallCta}</Link>
+          <Link href={signupPathForPlan(FOUNDING_PLAN_KEY)}>{FOUNDING_COPY.paywallCta}</Link>
         </Button>
       )}
       <p className="text-center text-[0.8125rem] leading-5 text-pretty text-muted-foreground">

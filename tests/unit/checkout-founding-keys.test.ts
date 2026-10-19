@@ -7,6 +7,7 @@ import {
   selectCheckoutProduct,
 } from "@/lib/billing/plans";
 import { FOUNDING_UNAVAILABLE_MESSAGE } from "@/lib/billing/founding";
+import { FOUNDING_PLAN_KEY } from "@/lib/billing/founding-ui";
 import type {
   FoundingReservation,
   PlanProductMap,
@@ -408,5 +409,104 @@ describe("selectCheckoutProduct matrix", () => {
       "PRO_ANNUAL",
       "FOUNDING",
     ]);
+  });
+});
+
+describe("returning founders while the founding cap is full", () => {
+  const EX_FOUNDER = userFor(999);
+  const NEW_USER = userFor(998);
+
+  function capFull() {
+    // Server-side state: 25 places held by others. The reserve RPC is the
+    // DB cap check and would answer sold_out for anyone new.
+    const state = { taken: 25 };
+    mocks.reserveFoundingSlot.mockImplementation(async () => "sold_out");
+    return state;
+  }
+
+  it("gives a returning ex-founder the founding product without taking a place", async () => {
+    const state = capFull();
+    mocks.readFoundingMember.mockImplementation(async (id: string) => id === EX_FOUNDER.id);
+
+    const response = await checkout({ planKey: "FOUNDING" }, EX_FOUNDER);
+
+    expect(response.status).toBe(200);
+    expect(sessionProduct(mocks.sessions[0])).toBe(mocks.products.FOUNDING_ANNUAL);
+    expect(mocks.reserveFoundingSlot).not.toHaveBeenCalled();
+    expect(state.taken).toBe(25);
+  });
+
+  it("still fails closed for a brand-new user", async () => {
+    capFull();
+    mocks.readFoundingMember.mockImplementation(async (id: string) => id === EX_FOUNDER.id);
+
+    const response = await checkout({ planKey: "FOUNDING" }, NEW_USER);
+
+    expect(response.status).toBe(409);
+    expect((await response.json()).error).toBe(FOUNDING_UNAVAILABLE_MESSAGE);
+    expect(mocks.reserveFoundingSlot).toHaveBeenCalledTimes(1);
+    expect(mocks.checkoutHandler).not.toHaveBeenCalled();
+  });
+
+  it("uses the DB answer when the profile read misses an ex-founder", async () => {
+    // reserve_founding_slot checks profiles.founding_member before the cap and
+    // returns "active" for a founder, so a failed profile read still sells founding.
+    mocks.readFoundingMember.mockResolvedValue(false);
+    mocks.reserveFoundingSlot.mockImplementation(async (id: string) =>
+      id === EX_FOUNDER.id ? "active" : "sold_out",
+    );
+
+    const response = await checkout({ planKey: "FOUNDING" }, EX_FOUNDER);
+
+    expect(response.status).toBe(200);
+    expect(sessionProduct(mocks.sessions[0])).toBe(mocks.products.FOUNDING_ANNUAL);
+  });
+
+  it("ignores any client hint about founder status", async () => {
+    capFull();
+    mocks.readFoundingMember.mockResolvedValue(false);
+
+    const response = await checkout({ planKey: "FOUNDING", founder: true } as unknown, NEW_USER);
+
+    expect([400, 409]).toContain(response.status);
+    expect(mocks.checkoutHandler).not.toHaveBeenCalled();
+  });
+});
+
+describe("checkout error contract for the UI", () => {
+  it("returns 409 FOUNDING_CAP_FULL with the exact message when founding is full", async () => {
+    mocks.readFoundingMember.mockResolvedValue(false);
+    mocks.reserveFoundingSlot.mockResolvedValue("sold_out");
+
+    const response = await checkout({ planKey: FOUNDING_PLAN_KEY });
+
+    expect(FOUNDING_PLAN_KEY).toBe("FOUNDING");
+    expect(response.status).toBe(409);
+    const body = await response.json();
+    expect(body.code).toBe("FOUNDING_CAP_FULL");
+    expect(body.message).toBe(
+      "Founding places are all taken. You can still subscribe to Pro annual at £350/year.",
+    );
+    expect(body.checkout_url).toBeUndefined();
+  });
+
+  it("returns 400 INVALID_PLAN for tampered or unknown plan keys", async () => {
+    for (const body of [
+      { planKey: "FOUNDING_ANNUAL" },
+      { planKey: "PRO_ANNUAL_LEGACY" },
+      { planKey: "founding" },
+      { planKey: 7 },
+      {},
+      { planKey: "FOUNDING", product_id: "pdt_test_annual" },
+      { planKey: "PRO_ANNUAL", metadata: { plan_key: "FOUNDING" } },
+    ]) {
+      const response = await checkout(body);
+      expect(response.status).toBe(400);
+      const json = await response.json();
+      expect(json.code).toBe("INVALID_PLAN");
+      expect(typeof json.message).toBe("string");
+    }
+    expect(mocks.reserveFoundingSlot).not.toHaveBeenCalled();
+    expect(mocks.checkoutHandler).not.toHaveBeenCalled();
   });
 });

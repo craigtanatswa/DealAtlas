@@ -1,5 +1,9 @@
 import { FOUNDING_UNAVAILABLE_MESSAGE } from "@/lib/billing/founding";
+import type { CheckoutPlanKey } from "@/lib/billing/types";
 import { DISPLAY_PRICING } from "@/lib/constants";
+
+/** Checkout plan key for the founding offer. Shared with the #49 UI. */
+export const FOUNDING_PLAN_KEY = "FOUNDING" satisfies CheckoutPlanKey;
 
 /** Server cap. The browser never supplies this number. */
 export const FOUNDING_CAP = 25;

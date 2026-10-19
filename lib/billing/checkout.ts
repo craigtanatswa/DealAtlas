@@ -4,7 +4,7 @@ import { Checkout } from "@dodopayments/nextjs";
 import { NextRequest, NextResponse } from "next/server";
 
 import { checkoutMetadata } from "@/lib/billing/metadata";
-import { FOUNDING_UNAVAILABLE_MESSAGE } from "@/lib/billing/founding";
+import { CHECKOUT_ERROR_CODES, FOUNDING_UNAVAILABLE_MESSAGE } from "@/lib/billing/founding";
 import {
   parseCheckoutRequest,
   selectCheckoutProduct,
@@ -73,7 +73,10 @@ export async function createAuthenticatedCheckoutResponse(input: {
   const body = await readCheckoutBody(input.request);
   const parsed = parseCheckoutRequest(body);
   if (!parsed.ok) {
-    return NextResponse.json({ error: parsed.error }, { status: 400 });
+    return NextResponse.json(
+      { error: parsed.error, message: parsed.error, code: CHECKOUT_ERROR_CODES.invalidPlan },
+      { status: 400 },
+    );
   }
 
   let config;
@@ -112,7 +115,11 @@ export async function createAuthenticatedCheckoutResponse(input: {
   if (!chosen.ok) {
     if (wantsJson(input.request)) {
       return NextResponse.json(
-        { error: FOUNDING_UNAVAILABLE_MESSAGE, code: "founding_unavailable" },
+        {
+          error: FOUNDING_UNAVAILABLE_MESSAGE,
+          message: FOUNDING_UNAVAILABLE_MESSAGE,
+          code: CHECKOUT_ERROR_CODES.foundingCapFull,
+        },
         { status: 409 },
       );
     }

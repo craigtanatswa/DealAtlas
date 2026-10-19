@@ -8,6 +8,12 @@ import type {
 
 export const FOUNDING_UNAVAILABLE_MESSAGE = `Founding places are all taken. You can still subscribe to Pro annual at ${DISPLAY_PRICING.proAnnual}.`;
 
+/** Stable checkout error codes. The UI (#49) matches on these. */
+export const CHECKOUT_ERROR_CODES = {
+  foundingCapFull: "FOUNDING_CAP_FULL",
+  invalidPlan: "INVALID_PLAN",
+} as const;
+
 export type FoundingSideEffect = {
   userId: string;
   action: "activate" | "close" | "release";
