@@ -48,7 +48,7 @@ describe("supabase migrations", () => {
   const files = listMigrations();
   const sql = files.map(readMigration).join("\n");
 
-  it("are numbered 0001-0026, 0028-0030, 0040, then 0041, leaving 0027 and 0031-0039 for open pull requests", () => {
+  it("are numbered 0001-0026, 0028-0030, 0040, 0041, then 0048, leaving 0027, 0031-0039 and 0042-0047 for other pull requests", () => {
     expect(files).toEqual([
       "0001_extensions_and_types.sql",
       "0002_core_schema.sql",
@@ -81,6 +81,7 @@ describe("supabase migrations", () => {
       "0030_founding_availability_and_claims.sql",
       "0040_publish_unknown_terms_sources.sql",
       "0041_preview_detail_allowlist.sql",
+      "0048_clear_placeholder_buyer_links.sql",
     ]);
   });
 
@@ -306,6 +307,17 @@ describe("supabase migrations", () => {
       "i",
     );
     expect(sql).not.toMatch(grantPattern);
+  });
+
+  it("0048 clears only placeholder-only buyer links, keeps orgs and is private", () => {
+    const m = readMigration("0048_clear_placeholder_buyer_links.sql");
+    expect(m).toMatch(/having bool_and\(private\.is_placeholder_buyer_org/);
+    expect(m).not.toMatch(/delete from public\.organizations/i);
+    expect(m).not.toMatch(/delete from public\.organization_aliases/i);
+    expect(m).not.toMatch(/is_published|deal_previews/i);
+    expect(m).not.toMatch(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
+    expect(m).toMatch(/enable trigger touch_deals_updated_at/);
+    expect(m).toMatch(/revoke all on function private\.clear_placeholder_buyer_links\(\) from public, anon, authenticated, service_role/);
   });
 
   it("0041 keeps the rich-preview filter fail-closed and private (S&B PR42)", () => {
