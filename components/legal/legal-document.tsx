@@ -16,7 +16,7 @@ export function LegalDocument({
   children: ReactNode;
 }) {
   return (
-    <Main className="gap-8" width="narrow">
+    <Main back className="gap-8" width="narrow">
       <div className="flex flex-col gap-3">
         <Heading>{title}</Heading>
         <Text variant="muted">{intro}</Text>

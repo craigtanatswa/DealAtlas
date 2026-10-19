@@ -4,7 +4,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export default function DealPreviewLoading() {
   return (
-    <Main className="gap-8">
+    <Main back className="gap-8">
       <LoadingState label="Loading opportunity preview" />
       <Skeleton className="h-24 w-full max-w-3xl" />
       <Skeleton className="h-40 w-full" />

@@ -1,10 +1,15 @@
 import type { MetadataRoute } from "next";
 
 import { getAppOrigin } from "@/lib/auth/urls";
-import { staticSitemapEntries } from "@/lib/seo/sitemap";
+import { listPublishedGuides } from "@/lib/guides/content";
+import { guideSitemapEntries, staticSitemapEntries } from "@/lib/seo/sitemap";
 
 export const dynamic = "force-dynamic";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  return staticSitemapEntries(getAppOrigin());
+  const origin = getAppOrigin();
+  return [
+    ...staticSitemapEntries(origin),
+    ...guideSitemapEntries(origin, listPublishedGuides()),
+  ];
 }
