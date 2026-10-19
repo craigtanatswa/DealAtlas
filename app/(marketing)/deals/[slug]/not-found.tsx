@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 
 export default function DealPreviewNotFound() {
   return (
-    <Main>
+    <Main back>
       <ErrorState
         title="Opportunity preview not found"
         description="That opportunity is unpublished, was removed, or the link is incorrect."

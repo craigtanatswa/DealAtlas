@@ -1,13 +1,8 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
-import { DealKeywordForm } from "@/components/deals/deal-keyword-form";
 import { DealSortForm } from "@/components/deals/deal-sort-form";
-import {
-  DealActiveFilters,
-  DealSearchFilterDrawer,
-  DealSearchFilterRail,
-} from "@/components/deals/deal-search-filters";
+import { DealSearchPanel } from "@/components/deals/deal-search-filters";
 import { DealSearchResults } from "@/components/deals/deal-search-results";
 import { PageHeader } from "@/components/layout/page-header";
 import { Main } from "@/components/layout/container";
@@ -17,6 +12,7 @@ import { getAppOrigin } from "@/lib/auth/urls";
 import {
   hasActivePublicFilters,
   parsePublicSearchParams,
+  PUBLIC_DEALS_PAGE_SIZE,
   searchHref,
 } from "@/lib/search/params";
 import { publicDealsIndexMetadata } from "@/lib/search/metadata";
@@ -50,7 +46,9 @@ export default async function DealsIndexPage({ searchParams }: PageProps) {
     searchParams: params,
     userId: user?.id,
     defaultSort: "biddable",
+    pageSize: PUBLIC_DEALS_PAGE_SIZE,
   });
+  const showRelevance = Boolean(companyProfileId);
 
   const lastPage = Math.max(1, Math.ceil(result.total / filters.limit));
   if (result.total > 0 && filters.page > lastPage) {
@@ -58,38 +56,23 @@ export default async function DealsIndexPage({ searchParams }: PageProps) {
   }
 
   return (
-    <Main className="gap-8">
+    <Main back className="gap-8">
       <PageHeader
         title="Discover opportunities"
         description="Browse contracts, supply requests and deals. Join DealAtlas Pro to unlock buyer identity, original notices, and how to apply."
       />
-      <div className="sticky top-16 z-20 flex flex-col gap-3 border-b border-border bg-background py-3">
-        <div className="flex items-end gap-3">
-          <div className="min-w-0 flex-1">
-            <DealKeywordForm filters={filters} />
-          </div>
-          <DealSortForm filters={filters} />
-        </div>
-        <DealSearchFilterDrawer
-          filters={filters}
-          showRelevance={Boolean(companyProfileId)}
-          publicStatus
-        />
-      </div>
-      <DealActiveFilters filters={filters} />
-      <div className="grid gap-8 lg:grid-cols-[17rem_minmax(0,1fr)]">
-        <DealSearchFilterRail
-          filters={filters}
-          showRelevance={Boolean(companyProfileId)}
-          publicStatus
-        />
-        <DealSearchResults
-          result={result}
-          filters={filters}
-          publicSearch
-          signedIn={Boolean(user)}
-        />
-      </div>
+      <DealSearchPanel
+        filters={filters}
+        showRelevance={showRelevance}
+        publicStatus
+      />
+      <DealSearchResults
+        result={result}
+        filters={filters}
+        publicSearch
+        signedIn={Boolean(user)}
+        sort={<DealSortForm filters={filters} showRelevance={showRelevance} />}
+      />
     </Main>
   );
 }

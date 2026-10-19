@@ -39,11 +39,11 @@ export function PaginationNav({
       </p>
       <div className="flex flex-wrap items-center gap-2">
         {hasPrevious ? (
-          <Button asChild variant="outline" size="sm">
+          <Button asChild variant="outline" size="sm" className="h-11 min-h-11">
             <Link href={searchHref(filters, current - 1, path)}>Previous</Link>
           </Button>
         ) : (
-          <Button type="button" variant="outline" size="sm" disabled>
+          <Button type="button" variant="outline" size="sm" className="h-11 min-h-11" disabled>
             Previous
           </Button>
         )}
@@ -62,14 +62,13 @@ export function PaginationNav({
                   <Button
                     type="button"
                     size="sm"
-                    variant="secondary"
                     aria-current="page"
-                    className="tabular-nums"
+                    className="h-11 min-h-11 min-w-11 tabular-nums"
                   >
                     {item}
                   </Button>
                 ) : (
-                  <Button asChild size="sm" variant="ghost" className="tabular-nums">
+                  <Button asChild size="sm" variant="outline" className="h-11 min-h-11 min-w-11 tabular-nums">
                     <Link href={searchHref(filters, item, path)}>{item}</Link>
                   </Button>
                 )}
@@ -78,11 +77,11 @@ export function PaginationNav({
           )}
         </ul>
         {hasNext ? (
-          <Button asChild variant="outline" size="sm">
+          <Button asChild variant="outline" size="sm" className="h-11 min-h-11">
             <Link href={searchHref(filters, current + 1, path)}>Next</Link>
           </Button>
         ) : (
-          <Button type="button" variant="outline" size="sm" disabled>
+          <Button type="button" variant="outline" size="sm" className="h-11 min-h-11" disabled>
             Next
           </Button>
         )}

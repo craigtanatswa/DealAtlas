@@ -13,6 +13,12 @@ const PORT = process.env.E2E_PORT ?? "3100";
 const baseURL = process.env.E2E_BASE_URL ?? `http://127.0.0.1:${PORT}`;
 const supabase = bindLocalSupabaseEnv(fromSupabaseStatus());
 process.env.NEXT_PUBLIC_APP_URL = baseURL;
+// Analytics runs in E2E with a placeholder key so tests/e2e/analytics.spec.ts
+// can inspect the real /ingest payloads. Browser calls are answered inside
+// Playwright and DEALATLAS_ANALYTICS_UPSTREAM=off stops the server sending
+// anything to PostHog.
+const E2E_POSTHOG_KEY = "phc_ciplaceholder000000000000000000";
+process.env.NEXT_PUBLIC_POSTHOG_KEY = E2E_POSTHOG_KEY;
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -48,6 +54,8 @@ export default defineConfig({
       DODO_PRO_ANNUAL_PRODUCT_ID: BILLING_FIXTURE_PRODUCTS.PRO_ANNUAL,
       DODO_PAYMENTS_RETURN_URL: `${baseURL}/checkout/success`,
       DODO_PAYMENTS_ENVIRONMENT: "test_mode",
+      NEXT_PUBLIC_POSTHOG_KEY: E2E_POSTHOG_KEY,
+      DEALATLAS_ANALYTICS_UPSTREAM: "off",
       DODO_PAYMENTS_API_KEY:
         process.env.DODO_PAYMENTS_API_KEY || "rk_test_e2e_placeholder",
     },
