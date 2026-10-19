@@ -141,8 +141,7 @@ export async function htmlProbes(ctx: Ctx, roles: Role[] = NON_PRO_ROLES): Promi
           }),
         );
       }
-      // HTML-02: /deals and ?page=2.. until a page has no cards. A page past the
-      // pager's last page is a real 404 (still scanned), which ends the crawl.
+      // HTML-02: /deals and ?page=2.. until a page has no cards.
       jobs.push(
         (async () => {
           const union = new Set<string>();
@@ -150,7 +149,7 @@ export async function htmlProbes(ctx: Ctx, roles: Role[] = NON_PRO_ROLES): Promi
           for (let n = 1; n <= 10; n += 1) {
             const o = await page(
               ctx,
-              { id: "HTML-02", instance: `page-${n}`, role, req: { path: "/deals", query: n === 1 ? [] : [["page", String(n)]] }, status: n === 1 ? [200] : [200, 404] },
+              { id: "HTML-02", instance: `page-${n}`, role, req: { path: "/deals", query: n === 1 ? [] : [["page", String(n)]] }, status: [200] },
               { meta: { jsonLdAllowed: true }, uaMatrix: n <= 2 },
             );
             const found = cardSlugs(ctx, o.final.body);
