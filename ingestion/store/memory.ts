@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { previewSlugHash } from "@/lib/deals/public-slug";
 
-import { normalizeTitle } from "@/ingestion/normalizers/text";
+import { londonDeadlineDate, normalizeTitle } from "@/ingestion/normalizers/text";
 import type {
   AwardRecord,
   ContractRecord,
@@ -416,6 +416,41 @@ export function createMemoryIngestionStore(seed?: {
             deal.normalizedTitle === normalizedTitle,
         ) ?? null
       );
+    },
+    async findDealByReferenceAmongSources(sourceIds, reference) {
+      if (sourceIds.length === 0 || !reference.trim()) {
+        return null;
+      }
+      const allowed = new Set(sourceIds);
+      const needle = reference.trim().toLowerCase();
+      return (
+        state.deals.find(
+          (deal) =>
+            deal.primarySourceId != null &&
+            allowed.has(deal.primarySourceId) &&
+            deal.reference?.trim().toLowerCase() === needle,
+        ) ?? null
+      );
+    },
+    async findDealByTitleBuyerDeadline(input) {
+      if (input.sourceIds.length === 0 || !input.deadlineDate) {
+        return null;
+      }
+      const allowed = new Set(input.sourceIds);
+      const matches = state.deals.filter((deal) => {
+        if (deal.primarySourceId == null || !allowed.has(deal.primarySourceId)) {
+          return false;
+        }
+        if (deal.normalizedTitle !== input.normalizedTitle) {
+          return false;
+        }
+        if (londonDeadlineDate(deal.submissionDeadline) !== input.deadlineDate) {
+          return false;
+        }
+        const buyer = state.organizations.find((org) => org.id === deal.buyerOrganizationId);
+        return buyer?.normalizedName === input.normalizedBuyerName;
+      });
+      return matches.length === 1 ? matches[0] ?? null : null;
     },
     async createDeal(input) {
       const deal: DealRecord = {

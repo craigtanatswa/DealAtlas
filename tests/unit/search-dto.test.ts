@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { PUBLIC_PREVIEW_DTO_KEYS, toDealCardData, toPublicDealPreview } from "@/lib/search/dto";
+import { PUBLIC_PREVIEW_DTO_KEYS, sanitizePublicPreviewText, toDealCardData, toPublicDealPreview } from "@/lib/search/dto";
 import { publicDealPreviewMetadata } from "@/lib/search/metadata";
 import type { PreviewDtoFields } from "@/lib/search/dto";
 import {
@@ -48,6 +48,30 @@ describe("public preview DTO", () => {
     expect(json).not.toContain(sanitisedRow.deal_id);
     expect(json).not.toContain("created_at");
     expect(json).not.toContain("updated_at");
+  });
+
+  it("strips ProContract source identity before a free user sees the preview", () => {
+    const poisoned = {
+      ...sanitisedRow,
+      preview_title: "Synthetic windows via The Chest on ProContract",
+      preview_summary:
+        "Example Borough Council DN100001 https://procontract.due-north.com/Advert?advertId=11111111-1111-4111-8111-111111111111 ocds-h6vhtk-100001 Source Leicestershire Kent Business Portal",
+      source_title: "Synthetic window replacement",
+      source_url: "https://procontract.due-north.com/Advert?advertId=11111111-1111-4111-8111-111111111111",
+      sourceUrl: "https://procontract.due-north.com/Opportunities/portal/thechest",
+      ocid: "ocds-h6vhtk-100001",
+      reference: "DN100001",
+      buyer_name: "Example Borough Council",
+      canonical_name: "Example Borough Council",
+      notice_identifier: "11111111-1111-4111-8111-111111111111",
+      application_url: "https://procontract.due-north.com/Login",
+    };
+    const dto = toPublicDealPreview(poisoned);
+    const json = JSON.stringify(dto);
+    expect(findForbiddenPublicKeys(dto)).toEqual([]);
+    expect(json).not.toMatch(/procontract|due-north|the chest|source leicestershire|kent business portal|ocds-|example borough council|dn100001|advertid|\/login/i);
+    expect(dto.previewTitle.length).toBeGreaterThan(0);
+    expect(sanitizePublicPreviewText("due north portal")).not.toMatch(/due north/i);
   });
 
   it("does not copy extra protected properties from a poisoned row", () => {

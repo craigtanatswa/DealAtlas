@@ -87,6 +87,24 @@ export function normalizeTitle(value: string): string {
   return normalizeWhitespace(value.toLowerCase());
 }
 
+/** Calendar day in Europe/London, used to compare date-only portal deadlines. */
+export function londonDeadlineDate(value: string | null | undefined): string | null {
+  if (!value) {
+    return null;
+  }
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/London",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(parsed);
+  return parts;
+}
+
 export function domainFromWebsite(value: string | null | undefined): string | null {
   const url = safeHttpUrl(value ?? null);
   if (!url) {

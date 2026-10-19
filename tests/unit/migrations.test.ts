@@ -48,7 +48,7 @@ describe("supabase migrations", () => {
   const files = listMigrations();
   const sql = files.map(readMigration).join("\n");
 
-  it("are numbered 0001-0026, 0028-0030, 0040, 0041, then 0046, leaving 0027, 0031-0039 and 0042-0045 for open pull requests", () => {
+  it("are numbered 0001-0026, 0028-0030, 0040, 0041, 0044 and 0046, leaving gaps for open pull requests", () => {
     expect(files).toEqual([
       "0001_extensions_and_types.sql",
       "0002_core_schema.sql",
@@ -81,6 +81,7 @@ describe("supabase migrations", () => {
       "0030_founding_availability_and_claims.sql",
       "0040_publish_unknown_terms_sources.sql",
       "0041_preview_detail_allowlist.sql",
+      "0044_procontract_portals.sql",
       "0046_search_preview_dtos_page_first.sql",
     ]);
   });
@@ -96,6 +97,27 @@ describe("supabase migrations", () => {
     expect(sql).not.toMatch(/set founding_member = false/);
     expect(sql).toContain("interval '30 minutes'");
     expect(sql).toContain("revoke all on table private.founding_slots from public, anon, authenticated, service_role");
+    expect(sql).not.toMatch(/disable row level security/i);
+  });
+
+  it("seeds ProContract portals disabled, without a reuse licence", () => {
+    const sql = readMigration("0044_procontract_portals.sql");
+    for (const key of [
+      "the-chest",
+      "kent-business-portal",
+      "source-leicestershire",
+      "essex-procontract",
+    ]) {
+      expect(sql).toContain(`'${key}'`);
+    }
+    expect(sql.match(/'PROHIBITED'/g)).toHaveLength(3);
+    expect(sql.match(/'UNKNOWN'/g)).toHaveLength(1);
+    expect(sql).not.toMatch(/scraping_permitted,\n\s*enabled\n[\s\S]{0,80}true,\n\s*true,/);
+    expect(sql.match(/false,\n\s*false,/g)?.length).toBeGreaterThanOrEqual(4);
+    expect(sql).toContain("'kent business portal'");
+    expect(sql).toContain("'source leicestershire'");
+    expect(sql).toContain("'essex procontract'");
+    expect(sql).toContain("'east mids tenders'");
     expect(sql).not.toMatch(/disable row level security/i);
   });
 
