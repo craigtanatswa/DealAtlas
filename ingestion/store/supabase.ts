@@ -984,6 +984,22 @@ export function createSupabaseIngestionStore(
       const row = throwIfQueryError("Find deal by reference", result);
       return row ? mapDeal(row) : null;
     },
+    async findDealByNormalizedTitle(normalizedTitle) {
+      const pageSize = 1000;
+      for (let from = 0; from < 20_000; from += pageSize) {
+        const result = await client
+          .from("deals")
+          .select("*")
+          .eq("deal_type", "GRANT")
+          .order("id")
+          .range(from, from + pageSize - 1);
+        const rows = throwIfQueryError("Find grant deal by title", result) ?? [];
+        const match = rows.find((row) => normalizeTitle(row.source_title) === normalizedTitle);
+        if (match) return mapDeal(match);
+        if (rows.length < pageSize) return null;
+      }
+      return null;
+    },
     async findDealByBuyerAndNormalizedTitle(buyerOrganizationId, normalizedTitle) {
       const result = await client
         .from("deals")

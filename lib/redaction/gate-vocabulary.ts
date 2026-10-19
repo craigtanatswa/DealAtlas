@@ -129,9 +129,16 @@ export const SOURCE_PLATFORM_MARKERS = [
   "etendersni",
   "etenderwales",
   "eu-supply",
+  "apply-for-innovation-funding",
+  "find a grant",
   "find a tender",
+  "find-a-grant",
   "find-a-tender",
+  "find-government-grants",
   "find-tender",
+  "innovation funding service",
+  "innovate uk",
+  "innovate uk funding competitions",
   "hinkley point c supply chain",
   "hs2 direct contract opportunities",
   "hs2 indirect supply chain opportunities",
@@ -161,6 +168,8 @@ export const SOURCE_PLATFORM_MARKERS = [
   "tideway supply chain",
   "tideway supply chain (competefor)",
   "uk infrastructure pipeline",
+  "ukri funding finder",
+  "ukri.org",
 ] as const;
 
 export type LeakGateTermKind =
