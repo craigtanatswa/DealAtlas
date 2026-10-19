@@ -179,16 +179,27 @@ describe("adversarial source text never reaches a free channel (P1-3, P1-4)", ()
       expect(blob, marker).not.toContain(marker);
     }
     expect(blob).not.toMatch(/https?:\/\/(?!localhost|schema\.org|www\.w3\.org|www\.sitemaps\.org)/);
-    expect(blob).not.toMatch(/\b\d{8}\b/);
+    // The slug ends in a random 8-hex suffix that can be all digits; it is
+    // ours, not a source id, so drop it before the 8-digit check.
+    const slugSuffix = blob.match(/\/deals\/[a-z0-9-]+-([0-9a-f]{8})\b/)?.[1];
+    const withoutSlugSuffix = slugSuffix ? blob.replaceAll(slugSuffix, "") : blob;
+    expect(withoutSlugSuffix).not.toMatch(/\b\d{8}\b/);
   });
 
-  it("drops scope and technical specs when the source text is risky (fail-closed)", async () => {
+  it("never ships source prose as scope and drops risky technical specs (fail-closed)", async () => {
     const store = await ingest("adversarial.json");
     const preview = store.previews[0]!;
     const lines = preview.requirementsPreview.map((item) =>
       typeof item === "string" ? item : JSON.stringify(item),
     );
-    expect(lines.some((line) => line.startsWith("scope:"))).toBe(false);
+    // Scope is templated from structured fields only; the risky source
+    // description cannot reach it.
+    for (const line of lines.filter((item) => item.startsWith("scope:"))) {
+      expect(line).toMatch(/^scope: Covers /);
+      for (const marker of ADVERSARIAL_MARKERS) {
+        expect(line.toLowerCase(), marker).not.toContain(marker);
+      }
+    }
     expect(lines.some((line) => line.startsWith("technicalSpecs:"))).toBe(false);
     expect(lines.some((line) => /^quantities: .*\d/.test(line))).toBe(false);
   });
