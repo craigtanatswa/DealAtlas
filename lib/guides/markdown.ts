@@ -250,3 +250,38 @@ export function extractFaq(blocks: Block[]): FaqItem[] {
   if (current) items.push({ question: current.question, answer: current.answer.join(" ") });
   return items.filter((item) => item.question && item.answer);
 }
+
+export type BlockCtaPosition = "mid" | "after_answer" | "end";
+
+/**
+ * Where each block sits for guide CTA analytics: the "short answer" section is
+ * `after_answer`, the last section before the FAQ/Sources tail is `end`, and
+ * everything else is `mid`.
+ */
+export function blockCtaPositions(blocks: Block[]): BlockCtaPosition[] {
+  const isH2 = (block: Block) => block.type === "heading" && block.level === 2;
+  const tailStart = blocks.findIndex(
+    (block) => isH2(block) && block.type === "heading" && /^(faqs?|sources)$/i.test(block.text),
+  );
+  const tail = tailStart < 0 ? blocks.length : tailStart;
+  let endStart = -1;
+  for (let index = tail - 1; index >= 0; index -= 1) {
+    if (isH2(blocks[index])) {
+      endStart = index;
+      break;
+    }
+  }
+
+  let section: BlockCtaPosition = "mid";
+  return blocks.map((block, index) => {
+    if (block.type === "heading" && block.level === 2) {
+      section =
+        index === endStart && index < tail
+          ? "end"
+          : /short answer/i.test(block.text)
+            ? "after_answer"
+            : "mid";
+    }
+    return section;
+  });
+}
