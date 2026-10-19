@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { FIND_A_TENDER_RELEASE_API } from "@/ingestion/sources/find-a-tender/constants";
 import { createFindATenderAdapter } from "@/ingestion/sources/find-a-tender/adapter";
 import { findATenderSourceRecord } from "@/ingestion/sources/find-a-tender/seed";
+import { contractsFinderSourceRecord } from "@/ingestion/sources/contracts-finder/seed";
 import { createMemoryIngestionStore } from "@/ingestion/store/memory";
 import { asIngestionError } from "@/ingestion/core/errors";
 import { IngestionError } from "@/ingestion/core/errors";
@@ -13,6 +14,7 @@ import {
   openIngestWindows,
   publicFatalErrorLine,
   publicIngestErrorLine,
+  runOpenContractsFinderIngest,
   runOpenFindATenderIngest,
 } from "@/lib/jobs/ingest-open";
 import { isTemplatePreviewSlug } from "@/lib/deals/public-slug";
@@ -452,5 +454,98 @@ describe("open Find a Tender ingest", () => {
     expect(line).toContain("hint Your request URL is 19592 characters. Contact [email]");
     expect(line).toContain("at ");
     expect(line).not.toMatch(/sb_secret|supabase\.co|admin@example\.com|https?:/);
+  });
+
+  it("counts a Contracts Finder fetch failure and still builds Find a Tender previews", async () => {
+    const memory = createMemoryIngestionStore({
+      sources: [
+        findATenderSourceRecord({ id: "source-fat" }),
+        contractsFinderSourceRecord({ id: "source-cf" }),
+      ],
+    });
+    const ingested = await runOpenFindATenderIngest({
+      store: memory,
+      now: NOW,
+      dryRun: false,
+      backfillDays: 7,
+      phase: "ingest",
+      sleep: async () => {},
+      http: {
+        async getJson(url) {
+          return jsonResult(url, packageFromFixtures(["normal.json"]));
+        },
+      },
+    });
+    const failed = await runOpenContractsFinderIngest({
+      store: memory,
+      now: NOW,
+      dryRun: true,
+      backfillDays: 7,
+      phase: "ingest",
+      sleep: async () => {},
+      http: {
+        async getJson() {
+          throw new IngestionError({
+            message: "HTTP 503 from https://www.contractsfinder.service.gov.uk/Published/Notices/OCDS/Search?publishedFrom=secret",
+            stage: "fetch",
+            code: "HTTP_503",
+            retryable: true,
+          });
+        },
+      },
+    });
+    expect(failed.status).toBe("PARTIAL");
+    expect(failed.counts.failed).toBeGreaterThan(0);
+    expect(openIngestShouldFail(failed)).toBe(true);
+    expect(publicIngestErrorLine(failed.errors[0]!)).toBe(
+      "fetch HTTP_503 503 www.contractsfinder.service.gov.uk",
+    );
+
+    const built = await runOpenFindATenderIngest({
+      store: memory,
+      now: NOW,
+      dryRun: false,
+      backfillDays: 7,
+      phase: "previews",
+      dealIds: ingested.changedDealIds,
+      sleep: async () => {},
+    });
+    expect(memory.previews).toHaveLength(1);
+    expect(built.counts.failed).toBe(0);
+    expect(openIngestShouldFail(built)).toBe(false);
+  });
+
+  it("continues after a Contracts Finder row parse failure", async () => {
+    const good = packageFromFixtures(["normal.json"]) as {
+      releases: Array<{ ocid: string; id: string; tender: Record<string, unknown> }>;
+    };
+    const release = good.releases[0]!;
+    release.ocid = "ocds-b5fd17-fixture-row";
+    release.id = "cf-row-1";
+    release.tender.selectionCriteria = { criteria: [{ description: "Synthetic" }] };
+    const bad = {
+      releases: [{ ocid: "ocds-b5fd17-bad", id: "cf-bad", tag: ["tender"], tender: { status: "active" } }],
+    };
+    let calls = 0;
+    const result = await runOpenContractsFinderIngest({
+      store: createMemoryIngestionStore({
+        sources: [contractsFinderSourceRecord({ id: "source-cf" })],
+      }),
+      now: NOW,
+      dryRun: true,
+      backfillDays: 8,
+      sleep: async () => {},
+      http: {
+        async getJson(url) {
+          calls += 1;
+          return jsonResult(url, calls === 1 ? bad : good);
+        },
+      },
+    });
+    expect(calls).toBe(2);
+    expect(result.counts.new).toBeGreaterThan(0);
+    expect(result.counts.failed).toBeGreaterThan(0);
+    expect(result.errors.some((error) => error.stage === "parse")).toBe(true);
+    expect(openIngestShouldFail(result)).toBe(false);
   });
 });

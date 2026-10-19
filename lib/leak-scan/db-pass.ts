@@ -4,6 +4,7 @@ import { scanPreviewLeaks, type LeakScanInput } from "@/lib/redaction/scan";
 
 import { codeCounts, type LeakFindingReport } from "@/lib/leak-scan/report";
 import type { ReadonlyClient } from "@/lib/leak-scan/readonly-client";
+import { isTransientError, withTransientRetries } from "@/lib/leak-scan/retry";
 import type { DealTokenSet, LegacySlug } from "@/lib/leak-scan/state";
 import { sourceManifestTokens } from "@/lib/leak-scan/tokens";
 
@@ -77,12 +78,25 @@ function stringList(value: unknown): string[] {
   return value.filter((item): item is string => typeof item === "string");
 }
 
-async function readRows(filter: PromiseLike<{ data: unknown[] | null; error: { message: string } | null }>): Promise<unknown[]> {
-  const result = await filter;
-  if (result.error) {
-    throw new Error("leak scan read failed");
-  }
-  return result.data ?? [];
+type ReadResult = { data: unknown[] | null; error: { message: string; code?: string } | null };
+
+async function readRows(load: () => PromiseLike<ReadResult>): Promise<unknown[]> {
+  return withTransientRetries(async () => {
+    let result: ReadResult;
+    try {
+      result = await load();
+    } catch (error) {
+      if (isTransientError(error)) throw error;
+      throw new Error("leak scan read failed");
+    }
+    if (result.error) {
+      if (isTransientError(result.error)) {
+        throw Object.assign(new Error("leak scan read failed"), { name: "TransientStatus", code: result.error.code });
+      }
+      throw new Error("leak scan read failed");
+    }
+    return result.data ?? [];
+  });
 }
 
 function legacySlug(previewTitle: string, dealId: string, currentSlug: string): string | null {
@@ -174,7 +188,7 @@ async function many<T>(
   limit: number,
 ): Promise<T[]> {
   if (values.length === 0) return [];
-  return (await readRows(client.from(table).select(columns).in(column, values).limit(limit))) as T[];
+  return (await readRows(() => client.from(table).select(columns).in(column, values).limit(limit))) as T[];
 }
 
 /** Ask for 500 rows. A short page can still be the server cap, so continue until a page is empty. */
@@ -189,9 +203,12 @@ async function manyPaged<T extends { id?: string }>(
   const rows: T[] = [];
   let after: string | null = null;
   for (;;) {
-    let filter = client.from(table).select(columns).in(column, values).order("id", { ascending: true }).limit(PAGE_ROWS);
-    if (after) filter = filter.gt("id", after);
-    const page = (await readRows(filter)) as T[];
+    const cursor = after;
+    const page = (await readRows(() => {
+      let filter = client.from(table).select(columns).in(column, values).order("id", { ascending: true }).limit(PAGE_ROWS);
+      if (cursor) filter = filter.gt("id", cursor);
+      return filter;
+    })) as T[];
     if (page.length === 0) return { rows, complete: true };
     rows.push(...page);
     const last = page[page.length - 1]?.id;
@@ -393,14 +410,17 @@ export async function runDbPass(
         incomplete = true;
         return;
       }
-      let filter = client
-        .from("deal_previews")
-        .select(PREVIEW_COLUMNS)
-        .eq(column, true)
-        .order("deal_id", { ascending: true })
-        .limit(batch);
-      if (after) filter = filter.gt("deal_id", after);
-      const page = (await readRows(filter)) as PreviewRow[];
+      const cursor = after;
+      const page = (await readRows(() => {
+        let filter = client
+          .from("deal_previews")
+          .select(PREVIEW_COLUMNS)
+          .eq(column, true)
+          .order("deal_id", { ascending: true })
+          .limit(batch);
+        if (cursor) filter = filter.gt("deal_id", cursor);
+        return filter;
+      })) as PreviewRow[];
       resumed = true;
       if (page.length === 0) {
         if (!wrapped) {

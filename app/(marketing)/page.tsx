@@ -13,6 +13,7 @@ import { getAuthUser } from "@/lib/auth/session";
 import { getAppOrigin } from "@/lib/auth/urls";
 import { foundingUiState } from "@/lib/billing/founding-ui";
 import { readFoundingPublicCount } from "@/lib/billing/founding-public";
+import { getHomeSearchChips } from "@/lib/search/home-chips-server";
 import { searchLiveHomePreviews } from "@/lib/search/public";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { organizationJsonLd, webPageJsonLd } from "@/lib/seo/json-ld";
@@ -32,7 +33,12 @@ export const metadata: Metadata = marketingPageMetadata({
 });
 
 export default async function HomePage() {
-  const [user, founding] = await Promise.all([getAuthUser(), readFoundingPublicCount()]);
+  const [user, founding, searchChips] = await Promise.all([
+    getAuthUser(),
+    readFoundingPublicCount(),
+    // Cached ~1h; on failure show no "Try" chips rather than possibly empty ones.
+    getHomeSearchChips().catch(() => []),
+  ]);
   const live = await searchLiveHomePreviews(await createSupabaseServerClient());
   const foundingState = foundingUiState(founding);
 
@@ -49,7 +55,7 @@ export default async function HomePage() {
           }),
         ]}
       />
-      <HomeHero signedIn={Boolean(user)} />
+      <HomeHero signedIn={Boolean(user)} searchChips={searchChips} />
       <HomeLiveOpportunities
         items={live.items}
         total={live.total}

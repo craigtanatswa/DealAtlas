@@ -49,7 +49,8 @@ async function restRequest(
 describe.skipIf(!configured)("public discovery leak integration", () => {
   const organizationId = randomUUID();
   const dealId = randomUUID();
-  const slug = `public-discovery-${dealId.slice(0, 8)}`;
+  // Current slugs end in 8 hex characters that are not the deal id prefix.
+  const slug = "public-discovery-c0ffee42";
   let sourceId: string | undefined;
 
   beforeAll(async () => {

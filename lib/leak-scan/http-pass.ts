@@ -1,4 +1,5 @@
 import { structuredLog } from "@/lib/observability/log";
+import { isTransientError, transientStatus, withTransientRetries } from "@/lib/leak-scan/retry";
 import { codeCounts, type LeakFindingReport } from "@/lib/leak-scan/report";
 import type { DealTokenSet, LegacySlug } from "@/lib/leak-scan/state";
 import { OWN_HOSTS, unionStrongTokens } from "@/lib/leak-scan/tokens";
@@ -53,18 +54,33 @@ async function fetchPublic(
   url: string,
   headers: Record<string, string>,
   fetchImpl: typeof fetch,
+  sleep?: (ms: number) => Promise<void>,
 ): Promise<Fetched> {
-  const response = await fetchImpl(url, {
-    method: "GET",
-    redirect: "manual",
-    headers: { "accept-encoding": "identity", ...headers },
-    signal: AbortSignal.timeout(15_000),
-  });
-  return {
-    status: response.status,
-    body: await response.text(),
-    contentType: response.headers.get("content-type") ?? "",
-  };
+  return withTransientRetries(
+    async () => {
+      let response: Response;
+      try {
+        response = await fetchImpl(url, {
+          method: "GET",
+          redirect: "manual",
+          headers: { "accept-encoding": "identity", ...headers },
+          signal: AbortSignal.timeout(15_000),
+        });
+      } catch (error) {
+        if (isTransientError(error)) throw error;
+        throw new Error("leak scan fetch failed");
+      }
+      if (transientStatus(response.status)) {
+        throw Object.assign(new Error("leak scan fetch failed"), { name: "TransientStatus" });
+      }
+      return {
+        status: response.status,
+        body: await response.text(),
+        contentType: response.headers.get("content-type") ?? "",
+      };
+    },
+    { sleep },
+  );
 }
 
 function sameOrigin(origin: string, value: string): string | null {
@@ -149,6 +165,7 @@ export async function runHttpPass(options: {
   legacySlugs?: LegacySlug[] | null;
   sampleLimit?: number;
   sampleSeed?: number;
+  retrySleep?: (ms: number) => Promise<void>;
 }): Promise<HttpPassResult> {
   const origin = (options.origin ?? PUBLIC_ORIGIN).replace(/\/$/, "");
   const fetchImpl = options.fetchImpl ?? fetch;
@@ -190,7 +207,7 @@ export async function runHttpPass(options: {
   };
 
   const pull = async (path: string, headers: Record<string, string> = {}) => {
-    const page = await fetchPublic(`${origin}${path}`, headers, fetchImpl);
+    const page = await fetchPublic(`${origin}${path}`, headers, fetchImpl, options.retrySleep);
     fetched += 1;
     note(path, page);
     return page;
@@ -226,7 +243,7 @@ export async function runHttpPass(options: {
     const probes = options.legacySlugs.slice(0, LEGACY_PROBE_LIMIT);
     for (const legacy of probes) {
       const path = `/deals/${legacy.slug}`;
-      const page = await fetchPublic(`${origin}${path}`, {}, fetchImpl);
+      const page = await fetchPublic(`${origin}${path}`, {}, fetchImpl, options.retrySleep);
       fetched += 1;
       if (page.status !== 410 && page.status !== 404) {
         findings.push({ dealId: legacy.dealId, code: "OLD_SLUG", path, held: false, pass: "http" });
