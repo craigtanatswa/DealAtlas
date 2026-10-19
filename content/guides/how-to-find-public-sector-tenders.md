@@ -7,6 +7,8 @@ h1: "How to find public sector tenders in the UK"
 breadcrumb: "How to find public sector tenders in the UK"
 datePublished: 2026-10-19
 updated: 2026-10-19
+primaryKeyword: "how to find public sector tenders"
+secondaryKeywords: ["find tenders UK", "public sector tenders UK", "government tenders UK", "where to find government contracts", "public sector contract opportunities"]
 relatedGuides: ["how-to-win-council-contracts"]
 securityClearedAt: 2026-10-19
 craigApprovedAt: 2026-10-19

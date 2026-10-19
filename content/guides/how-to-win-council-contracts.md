@@ -7,6 +7,8 @@ h1: "How to win council contracts: a practical guide for SMEs"
 breadcrumb: "How to win council contracts"
 datePublished: 2026-10-19
 updated: 2026-10-19
+primaryKeyword: "how to win council contracts"
+secondaryKeywords: ["council tenders for small businesses", "how to bid for council contracts", "local authority tenders UK", "selling to local government UK"]
 relatedGuides: ["how-to-find-public-sector-tenders"]
 securityClearedAt: 2026-10-19
 craigApprovedAt: 2026-10-19
