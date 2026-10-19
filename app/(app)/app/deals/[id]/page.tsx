@@ -154,6 +154,7 @@ export default async function AppDealPage({ params, searchParams }: PageProps) {
           returnTo: appDealPath(dealId),
           revealHref: appDealPath(dealId),
           founding: founding.offered ? founding : undefined,
+          paymentPending: upgraded,
         }}
       />
     </Main>

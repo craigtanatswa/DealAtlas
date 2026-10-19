@@ -121,6 +121,7 @@ export default async function DealPreviewPage({ params, searchParams }: PageProp
           revealHref: dealId ? appDealPath(dealId) : undefined,
           returnTo: dealId ? appDealPath(dealId) : undefined,
           founding: founding?.offered ? founding : undefined,
+          paymentPending: Boolean(user) && upgraded && mode !== "pro",
         }}
       />
     </Main>
