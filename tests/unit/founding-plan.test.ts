@@ -77,18 +77,6 @@ describe("founding member checkout", () => {
     expect(
       selectCheckoutProduct({
         planKey: "PRO_ANNUAL",
-        products,
-        founder: true,
-        reservation: null,
-      }),
-    ).toEqual({
-      ok: true,
-      productId: products.FOUNDING_ANNUAL,
-      founding: true,
-    });
-    expect(
-      selectCheckoutProduct({
-        planKey: "PRO_ANNUAL",
         products: {
           PRO_MONTHLY: products.PRO_MONTHLY,
           PRO_ANNUAL: products.PRO_ANNUAL,
@@ -102,7 +90,7 @@ describe("founding member checkout", () => {
   });
 
   it("selects founding only through the founding plan key", () => {
-    for (const reservation of ["reserved", "active", "closed"] as const) {
+    for (const reservation of ["reserved"] as const) {
       expect(
         selectCheckoutProduct({
           planKey: "FOUNDING",
@@ -116,18 +104,6 @@ describe("founding member checkout", () => {
         founding: true,
       });
     }
-    expect(
-      selectCheckoutProduct({
-        planKey: "FOUNDING",
-        products,
-        founder: true,
-        reservation: null,
-      }),
-    ).toEqual({
-      ok: true,
-      productId: products.FOUNDING_ANNUAL,
-      founding: true,
-    });
     for (const reservation of ["sold_out", "unavailable", null] as const) {
       expect(
         selectCheckoutProduct({
@@ -164,7 +140,6 @@ describe("founding member checkout", () => {
     expect(shouldReserveFoundingSlot("FOUNDING", products, false)).toBe(true);
     expect(shouldReserveFoundingSlot("PRO_ANNUAL", products, false)).toBe(false);
     expect(shouldReserveFoundingSlot("PRO_MONTHLY", products, false)).toBe(false);
-    expect(shouldReserveFoundingSlot("FOUNDING", products, true)).toBe(false);
     expect(
       shouldReserveFoundingSlot(
         "FOUNDING",

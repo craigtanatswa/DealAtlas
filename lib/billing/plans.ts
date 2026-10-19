@@ -1,5 +1,10 @@
 import { z } from "zod";
 
+import {
+  returningFounderSelection,
+  skipsFoundingReservation,
+} from "@/lib/billing/returning-founder";
+
 import type { BillingInterval } from "@/lib/entitlements/types";
 import {
   CHECKOUT_PLAN_KEYS,
@@ -146,32 +151,18 @@ export function selectCheckoutProduct(input: {
     return { ok: true, productId: input.products.PRO_MONTHLY, founding: false };
   }
 
+  // Isolated returning-founder rule (lib/billing/returning-founder.ts).
+  const returning = returningFounderSelection(input);
+  if (returning) {
+    return returning;
+  }
+
   if (input.planKey === "PRO_ANNUAL") {
-    if (input.founder && input.products.FOUNDING_ANNUAL) {
-      return {
-        ok: true,
-        productId: input.products.FOUNDING_ANNUAL,
-        founding: true,
-      };
-    }
     return { ok: true, productId: input.products.PRO_ANNUAL, founding: false };
   }
 
-  if (!input.products.FOUNDING_ANNUAL) {
-    return { ok: false, reason: "founding_unavailable" };
-  }
-  if (input.founder) {
-    return {
-      ok: true,
-      productId: input.products.FOUNDING_ANNUAL,
-      founding: true,
-    };
-  }
-  if (
-    input.reservation === "reserved" ||
-    input.reservation === "active" ||
-    input.reservation === "closed"
-  ) {
+  // FOUNDING: only a live reservation made by this checkout sells founding.
+  if (input.products.FOUNDING_ANNUAL && input.reservation === "reserved") {
     return {
       ok: true,
       productId: input.products.FOUNDING_ANNUAL,
@@ -186,5 +177,9 @@ export function shouldReserveFoundingSlot(
   products: PlanProductMap,
   founder: boolean,
 ): boolean {
-  return planKey === "FOUNDING" && Boolean(products.FOUNDING_ANNUAL) && !founder;
+  return (
+    planKey === "FOUNDING" &&
+    Boolean(products.FOUNDING_ANNUAL) &&
+    !skipsFoundingReservation(founder)
+  );
 }

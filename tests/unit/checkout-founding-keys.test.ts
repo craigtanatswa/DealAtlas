@@ -266,36 +266,6 @@ describe("checkout founding plan keys", () => {
     expect(mocks.sessions).toHaveLength(0);
   });
 
-  it("keeps the founding price for returning founders without reserving", async () => {
-    mocks.readFoundingMember.mockResolvedValue(true);
-
-    const founding = await checkout({ planKey: "FOUNDING" });
-    expect(founding.status).toBe(200);
-    expect(sessionProduct(mocks.sessions[0])).toBe(
-      mocks.products.FOUNDING_ANNUAL,
-    );
-
-    const annual = await checkout({ planKey: "PRO_ANNUAL" });
-    expect(annual.status).toBe(200);
-    expect(sessionProduct(mocks.sessions[1])).toBe(
-      mocks.products.FOUNDING_ANNUAL,
-    );
-
-    expect(mocks.reserveFoundingSlot).not.toHaveBeenCalled();
-  });
-
-  it("treats an existing active founding slot as available", async () => {
-    mocks.readFoundingMember.mockResolvedValue(false);
-    mocks.reserveFoundingSlot.mockResolvedValue("closed");
-
-    const response = await checkout({ planKey: "FOUNDING" });
-
-    expect(response.status).toBe(200);
-    expect(sessionProduct(mocks.sessions[0])).toBe(
-      mocks.products.FOUNDING_ANNUAL,
-    );
-  });
-
   it("stores PRO_ANNUAL metadata for a founding checkout", async () => {
     const response = await checkout({ planKey: "FOUNDING" });
 
@@ -325,9 +295,9 @@ describe("selectCheckoutProduct matrix", () => {
     null,
   ];
 
-  it("never upgrades standard annual to founding unless the user is a founder", () => {
+  it("never upgrades standard annual to founding for a non-founder", () => {
     for (const products of [withFounding, withoutFounding]) {
-      for (const founder of [false, true]) {
+      for (const founder of [false]) {
         for (const reservation of reservations) {
           const selection = selectCheckoutProduct({
             planKey: "PRO_ANNUAL",
@@ -350,8 +320,9 @@ describe("selectCheckoutProduct matrix", () => {
 
   it("never falls back from founding to standard annual or a legacy id", () => {
     for (const products of [withFounding, withoutFounding]) {
-      for (const founder of [false, true]) {
-        for (const reservation of reservations) {
+      for (const founder of [false]) {
+        // "active" / "closed" belong to the returning-founder rule (returning-founder.test.ts).
+        for (const reservation of reservations.filter((r) => r !== "active" && r !== "closed")) {
           const selection = selectCheckoutProduct({
             planKey: "FOUNDING",
             products,
@@ -372,10 +343,7 @@ describe("selectCheckoutProduct matrix", () => {
           );
           const eligible =
             Boolean(products.FOUNDING_ANNUAL) &&
-            (founder ||
-              reservation === "reserved" ||
-              reservation === "active" ||
-              reservation === "closed");
+            (founder || reservation === "reserved");
           expect(eligible).toBe(true);
         }
       }
@@ -409,67 +377,6 @@ describe("selectCheckoutProduct matrix", () => {
       "PRO_ANNUAL",
       "FOUNDING",
     ]);
-  });
-});
-
-describe("returning founders while the founding cap is full", () => {
-  const EX_FOUNDER = userFor(999);
-  const NEW_USER = userFor(998);
-
-  function capFull() {
-    // Server-side state: 25 places held by others. The reserve RPC is the
-    // DB cap check and would answer sold_out for anyone new.
-    const state = { taken: 25 };
-    mocks.reserveFoundingSlot.mockImplementation(async () => "sold_out");
-    return state;
-  }
-
-  it("gives a returning ex-founder the founding product without taking a place", async () => {
-    const state = capFull();
-    mocks.readFoundingMember.mockImplementation(async (id: string) => id === EX_FOUNDER.id);
-
-    const response = await checkout({ planKey: "FOUNDING" }, EX_FOUNDER);
-
-    expect(response.status).toBe(200);
-    expect(sessionProduct(mocks.sessions[0])).toBe(mocks.products.FOUNDING_ANNUAL);
-    expect(mocks.reserveFoundingSlot).not.toHaveBeenCalled();
-    expect(state.taken).toBe(25);
-  });
-
-  it("still fails closed for a brand-new user", async () => {
-    capFull();
-    mocks.readFoundingMember.mockImplementation(async (id: string) => id === EX_FOUNDER.id);
-
-    const response = await checkout({ planKey: "FOUNDING" }, NEW_USER);
-
-    expect(response.status).toBe(409);
-    expect((await response.json()).error).toBe(FOUNDING_UNAVAILABLE_MESSAGE);
-    expect(mocks.reserveFoundingSlot).toHaveBeenCalledTimes(1);
-    expect(mocks.checkoutHandler).not.toHaveBeenCalled();
-  });
-
-  it("uses the DB answer when the profile read misses an ex-founder", async () => {
-    // reserve_founding_slot checks profiles.founding_member before the cap and
-    // returns "active" for a founder, so a failed profile read still sells founding.
-    mocks.readFoundingMember.mockResolvedValue(false);
-    mocks.reserveFoundingSlot.mockImplementation(async (id: string) =>
-      id === EX_FOUNDER.id ? "active" : "sold_out",
-    );
-
-    const response = await checkout({ planKey: "FOUNDING" }, EX_FOUNDER);
-
-    expect(response.status).toBe(200);
-    expect(sessionProduct(mocks.sessions[0])).toBe(mocks.products.FOUNDING_ANNUAL);
-  });
-
-  it("ignores any client hint about founder status", async () => {
-    capFull();
-    mocks.readFoundingMember.mockResolvedValue(false);
-
-    const response = await checkout({ planKey: "FOUNDING", founder: true } as unknown, NEW_USER);
-
-    expect([400, 409]).toContain(response.status);
-    expect(mocks.checkoutHandler).not.toHaveBeenCalled();
   });
 });
 
