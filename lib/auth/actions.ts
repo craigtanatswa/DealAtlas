@@ -7,7 +7,7 @@ import { redirect } from "next/navigation";
 import {
   AUTH_HOME_PATH,
   VERIFY_EMAIL_PATH,
-  sanitizeRedirectPath,
+  resolveNextPath,
 } from "@/lib/auth/redirect";
 import {
   companyProfileSchema,
@@ -53,7 +53,7 @@ export async function signInAction(
     return { error: "Enter a valid email and password.", success: null };
   }
 
-  const next = sanitizeRedirectPath(formString(formData, "next") || AUTH_HOME_PATH);
+  const next = resolveNextPath(formString(formData, "next"));
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.auth.signInWithPassword(parsed.data);
   if (error) {
@@ -72,7 +72,7 @@ export async function signInWithGoogleAction(
   _previous: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  const next = sanitizeRedirectPath(formString(formData, "next") || AUTH_HOME_PATH);
+  const next = resolveNextPath(formString(formData, "next"));
   const cookieStore = await cookies();
   cookieStore.set(OAUTH_NEXT_COOKIE, next, {
     httpOnly: true,
@@ -117,7 +117,7 @@ export async function signUpAction(
     };
   }
 
-  const next = sanitizeRedirectPath(formString(formData, "next") || AUTH_HOME_PATH);
+  const next = resolveNextPath(formString(formData, "next"));
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase.auth.signUp({
     email: parsed.data.email,

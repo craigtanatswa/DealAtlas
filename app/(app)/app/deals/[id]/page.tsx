@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 
+import { UpgradeStatusBanner } from "@/components/billing/upgrade-status-banner";
 import { SaveDealButton } from "@/components/saves/save-deal-button";
 import { ExportDealsButton } from "@/components/exports/export-deals-button";
 import { DealPaidDetail } from "@/components/deals/deal-paid-detail";
@@ -25,6 +26,7 @@ export const dynamic = "force-dynamic";
 
 type PageProps = {
   params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
 export async function generateMetadata({ params }: PageProps) {
@@ -35,8 +37,9 @@ export async function generateMetadata({ params }: PageProps) {
   };
 }
 
-export default async function AppDealPage({ params }: PageProps) {
+export default async function AppDealPage({ params, searchParams }: PageProps) {
   const { id } = await params;
+  const upgraded = (await searchParams).upgraded === "1";
   const dealId = parseDealIdParam(id);
   if (!dealId) {
     notFound();
@@ -45,6 +48,7 @@ export default async function AppDealPage({ params }: PageProps) {
   const { user } = await requireUser(appDealPath(dealId));
   const entitlement = await getCurrentEntitlement(user.id);
   const isPro = isProEntitlement(entitlement);
+  const banner = upgraded ? <UpgradeStatusBanner initialPro={isPro} /> : null;
   const exportUsage = isPro
     ? await loadExportUsageForMonth(user.id)
     : { used: 0 };
@@ -117,6 +121,7 @@ export default async function AppDealPage({ params }: PageProps) {
 
     return (
       <Main>
+        {banner}
         <DealPaidDetail
           deal={dto}
           history={history}
@@ -138,6 +143,7 @@ export default async function AppDealPage({ params }: PageProps) {
 
   return (
     <Main>
+      {banner}
       <DealPreviewDetail
         deal={previewPage.preview}
         match={previewPage.match}
