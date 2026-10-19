@@ -6,6 +6,7 @@ import { useEffect } from "react";
 import { recordLanding, recordPageView } from "@/lib/analytics/attribution";
 import { buildPostHogClientConfig } from "@/lib/analytics/config";
 import { isCheckoutAnalyticsPlan } from "@/lib/analytics/events";
+import { guideCtaClickProperties } from "@/lib/analytics/guide-cta";
 
 type PostHogClient = (typeof import("posthog-js/dist/module.slim.no-external"))["default"];
 
@@ -71,8 +72,22 @@ export function PostHogAnalytics({ apiKey }: { apiKey: string }) {
         );
       });
     };
+    const onClick = (event: MouseEvent) => {
+      const element = event.target instanceof Element ? event.target : null;
+      const properties = guideCtaClickProperties(element, window.location.pathname);
+      if (!properties) {
+        return;
+      }
+      void loadClient(apiKey).then((posthog) => {
+        posthog?.capture("guide_cta_clicked", properties, { send_instantly: true });
+      });
+    };
     document.addEventListener("submit", onSubmit, true);
-    return () => document.removeEventListener("submit", onSubmit, true);
+    document.addEventListener("click", onClick, true);
+    return () => {
+      document.removeEventListener("submit", onSubmit, true);
+      document.removeEventListener("click", onClick, true);
+    };
   }, [apiKey]);
 
   useEffect(() => {

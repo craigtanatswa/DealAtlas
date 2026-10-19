@@ -1,7 +1,12 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
-import type { Block, Inline } from "@/lib/guides/markdown";
+import {
+  GUIDE_CTA_POSITION_ATTR,
+  GUIDE_CTA_TARGET_ATTR,
+  guideCtaTarget,
+} from "@/lib/analytics/guide-cta";
+import { blockCtaPositions, type Block, type BlockCtaPosition, type Inline } from "@/lib/guides/markdown";
 import { cn } from "@/lib/utils";
 
 const LINK_CLASS =
@@ -10,6 +15,8 @@ const LINK_CLASS =
 type RenderOptions = {
   /** Same-site /guides/* paths that are live. Links to any other guide render as plain text. */
   publishedGuidePaths: ReadonlySet<string>;
+  /** Section position of the block being rendered, for guide CTA analytics. */
+  ctaPosition?: BlockCtaPosition;
 };
 
 function isUnpublishedGuideLink(href: string, options: RenderOptions): boolean {
@@ -45,8 +52,16 @@ function renderInline(nodes: Inline[], options: RenderOptions, keyPrefix = "i"):
           return <span key={key}>{children}</span>;
         }
         if (node.href.startsWith("/") || node.href.startsWith("#")) {
+          const ctaTarget = guideCtaTarget(node.href);
+          const ctaAttrs =
+            ctaTarget && options.ctaPosition
+              ? {
+                  [GUIDE_CTA_TARGET_ATTR]: ctaTarget,
+                  [GUIDE_CTA_POSITION_ATTR]: options.ctaPosition,
+                }
+              : {};
           return (
-            <Link key={key} href={node.href} className={LINK_CLASS}>
+            <Link key={key} href={node.href} className={LINK_CLASS} {...ctaAttrs}>
               {children}
             </Link>
           );
@@ -76,7 +91,7 @@ export function GuideMarkdown({
   publishedGuidePaths: ReadonlySet<string>;
   className?: string;
 }) {
-  const options: RenderOptions = { publishedGuidePaths };
+  const positions = blockCtaPositions(blocks);
 
   return (
     <div
@@ -87,6 +102,7 @@ export function GuideMarkdown({
     >
       {blocks.map((block, index) => {
         const key = `b-${index}`;
+        const options: RenderOptions = { publishedGuidePaths, ctaPosition: positions[index] };
         switch (block.type) {
           case "heading": {
             const Tag = `h${block.level}` as const;
