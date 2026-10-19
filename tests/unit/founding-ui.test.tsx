@@ -32,6 +32,7 @@ describe("founding pricing cards", () => {
     expect(container.querySelector('s[aria-label="was £39 a month"]')).toBeTruthy();
     expect(container.textContent).not.toMatch(/of 25/);
     expect(container.querySelector('[role="progressbar"]')).toBeNull();
+    expect(container.textContent).not.toMatch(/competitor/i);
     expect(container.textContent).not.toMatch(/Example value/i);
     expect(container.textContent).not.toMatch(/only today|testimonial|#1/i);
 
@@ -143,5 +144,6 @@ describe("founding checkout summary", () => {
     expect(screen.getByRole("button", { name: "Continue to payment" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Switch to Pro £39/mo instead" })).toBeTruthy();
     expect(container.textContent).not.toMatch(/of 25|25 places/);
+    expect(container.textContent).not.toMatch(/competitor/i);
   });
 });

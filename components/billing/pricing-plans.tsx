@@ -27,7 +27,6 @@ const FREE_FEATURES = [
 const PRO_FEATURES = [
   "Buyer, reference number and original source",
   "Tender documents and named contacts",
-  "Buyer and competitor intelligence",
   "Full details on every deal",
   "Saved searches and alerts",
 ] as const;
