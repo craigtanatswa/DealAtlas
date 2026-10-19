@@ -54,7 +54,7 @@ describe("deal page founding button", () => {
       <DealProCard mode="free" founding={founding} returnTo={returnTo} alertsHref="/app/alerts" />,
     );
     expect(screen.queryByText(/founding/i)).toBeNull();
-    expect(container.textContent).not.toMatch(/£290|places left|Locked for life/);
+    expect(container.textContent).not.toMatch(/£290|places left|for as long as you stay subscribed/);
     expect(planKeys(container)).not.toContain(FOUNDING_PLAN_KEY);
   });
 });

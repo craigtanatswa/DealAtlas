@@ -151,7 +151,7 @@ describe("founding member checkout", () => {
     );
     expect(FOUNDING_COPY.paywallCta).toContain("£290/yr");
     expect(FOUNDING_COPY.lessThanAnnual).toBe("£60 less than standard annual");
-    expect(FOUNDING_COPY.priceLocked).toBe("Locked for life");
+    expect(FOUNDING_COPY.priceLocked).toBe("£290/yr for as long as you stay subscribed");
     expect(FOUNDING_COPY.firstMembers).toBe("Founding places are limited");
   });
 

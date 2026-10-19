@@ -45,7 +45,7 @@ export function HomeFoundingCta({
               <ul className="mt-4 space-y-2 text-sm text-foreground/80">
                 <li className="flex gap-2">
                   <CheckIcon className="mt-0.5 size-4 shrink-0 text-dealatlas-teal" aria-hidden="true" />
-                  <span>Locked for life while you stay subscribed</span>
+                  <span>{FOUNDING_COPY.priceLocked}</span>
                 </li>
                 <li className="flex gap-2">
                   <CheckIcon className="mt-0.5 size-4 shrink-0 text-dealatlas-teal" aria-hidden="true" />

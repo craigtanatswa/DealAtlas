@@ -138,7 +138,7 @@ export const FOUNDING_COPY = {
   title: "Founding member Pro",
   firstMembers: "Founding places are limited",
   lessThanAnnual: foundingLessThanAnnual(),
-  priceLocked: "Locked for life",
+  priceLocked: `${foundingAnnualShort()} for as long as you stay subscribed`,
   rechecked: "Availability is re-checked at checkout.",
   cta: "Become a founding member",
   cancelTerms: `If you cancel, you lose founding status and the ${DISPLAY_PRICING.foundingAnnual.replace("/year", "/yr")} price.`,

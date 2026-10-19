@@ -43,7 +43,7 @@ describe("founding pricing cards", () => {
 
     expect(screen.getByRole("heading", { name: "Pricing" })).toBeTruthy();
     expect(screen.getByText("17 places left")).toBeTruthy();
-    expect(screen.getByText("Locked for life")).toBeTruthy();
+    expect(screen.getByText("£290/yr for as long as you stay subscribed")).toBeTruthy();
     expect(screen.getByText("billed £290/yr, VAT included")).toBeTruthy();
     expect(screen.getByText("£24.17")).toBeTruthy();
     expect(container.querySelector('s[aria-label="was £39 a month"]')).toBeTruthy();
@@ -77,7 +77,7 @@ describe("founding pricing cards", () => {
   ] as const)("removes the founding card completely when founding is %s", (_name, count, state) => {
     const { container } = render(<PricingPlans signedIn={false} count={count} state={state} />);
     expect(container.textContent).not.toMatch(/founding/i);
-    expect(container.textContent).not.toMatch(/£290|£24\.17|Locked for life|sold out|all taken/i);
+    expect(container.textContent).not.toMatch(/£290|£24\.17|for as long as you stay subscribed|sold out|all taken/i);
     expect(screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent)).toEqual([
       "Free",
       "Pro monthly",
@@ -103,7 +103,7 @@ describe("founding deal paywall", () => {
     );
     expect(screen.getByRole("button", { name: "Become a founding member – £290/yr" })).toBeTruthy();
     expect(screen.getByText(/17 places left/)).toBeTruthy();
-    expect(screen.getByText(/Locked for life/)).toBeTruthy();
+    expect(screen.getByText(/£290\/yr for as long as you stay subscribed/)).toBeTruthy();
     const founding = planForms(container).find(
       (form) =>
         planKeyOf(form) === FOUNDING_PLAN_KEY &&
@@ -272,7 +272,7 @@ describe("founding full error state", () => {
       "PRO_ANNUAL",
     );
     expect(container.querySelectorAll(`input[name='planKey'][value='${FOUNDING_PLAN_KEY}']`)).toHaveLength(0);
-    expect(container.textContent).not.toMatch(/£24\.17|£290|Locked for life|places left|Due today/);
+    expect(container.textContent).not.toMatch(/£24\.17|£290|for as long as you stay subscribed|places left|Due today/);
     expect(screen.queryByRole("button", { name: "Continue to payment" })).toBeNull();
   });
 });
