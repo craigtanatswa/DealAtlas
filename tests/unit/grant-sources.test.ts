@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 
-import { IngestionError } from "@/ingestion/core/errors";
 import { runIngestion } from "@/ingestion/core/pipeline";
 import { createFindAGrantAdapter } from "@/ingestion/sources/find-a-grant/adapter";
 import { FIND_A_GRANT_SOURCE_KEY } from "@/ingestion/sources/find-a-grant/constants";
@@ -182,13 +181,8 @@ describe("Find a Grant and Innovate UK ingestion", () => {
         now: () => NOW,
         http: {
           async getText(url: string) {
-            if (url.endsWith("/robots.txt")) {
-              throw new IngestionError({
-                message: "redirect",
-                stage: "fetch",
-                code: "HTTP_REDIRECT",
-              });
-            }
+            // A robots.txt redirect is disallow-all (see ingestion-robots.test.ts).
+            if (url.endsWith("/robots.txt")) return textResult(url, "missing", 404);
             return textResult(url, innovateHtml());
           },
         },

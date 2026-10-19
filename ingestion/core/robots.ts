@@ -55,13 +55,22 @@ export async function assertRobotsAllow(options: {
 }): Promise<void> {
   let body = "";
   let status = 200;
+  let finalUrl = options.robotsUrl;
   try {
     const response = await withRetry(() => options.http.getText(options.robotsUrl));
     body = response.body;
     status = response.status;
+    finalUrl = response.url || options.robotsUrl;
   } catch (error) {
-    if (!isMissingRobots(error)) throw error;
-    return;
+    if (isMissingRobots(error)) return;
+    if (isRedirectAway(error)) throw disallowAll(options, "redirects away from robots.txt");
+    throw error;
+  }
+  if (redirectedOffRobotsPath(options.robotsUrl, finalUrl)) {
+    throw disallowAll(options, "redirects away from robots.txt");
+  }
+  if (status !== 404 && status !== 410 && looksLikeLoginPage(body)) {
+    throw disallowAll(options, "is a login page");
   }
   const rules = publishedRobotsBody(body, status);
   if (!rules) return;
@@ -75,11 +84,52 @@ export async function assertRobotsAllow(options: {
   }
 }
 
+/** Only a real 404 or 410 means "no robots.txt". */
 function isMissingRobots(error: unknown): boolean {
+  if (!(error instanceof IngestionError)) return false;
+  return error.code === "HTTP_404" || error.code === "HTTP_410";
+}
+
+/**
+ * robots.txt is on the allowlist, so a path or host denial here comes from a
+ * redirect, usually to a login or auth page. That is disallow-all, not "no rules".
+ */
+function isRedirectAway(error: unknown): boolean {
   if (!(error instanceof IngestionError)) return false;
   return (
     error.code === "HTTP_REDIRECT" ||
     error.code === "URL_PATH_DENIED" ||
-    error.code === "HTTP_404"
+    error.code === "URL_HOST_DENIED"
   );
+}
+
+function redirectedOffRobotsPath(robotsUrl: string, finalUrl: string): boolean {
+  try {
+    const want = new URL(robotsUrl);
+    const got = new URL(finalUrl);
+    return got.hostname !== want.hostname || got.pathname !== want.pathname;
+  } catch {
+    return true;
+  }
+}
+
+function looksLikeLoginPage(body: string): boolean {
+  const head = body.slice(0, 20_000).toLowerCase();
+  if (!/<!doctype html|<html[\s>]/.test(head)) return false;
+  return (
+    /type=["']?password/.test(head) ||
+    /\b(sign in|log in|login|sign-in|signin)\b/.test(head)
+  );
+}
+
+function disallowAll(
+  options: { robotsUrl: string; sourceLabel: string },
+  why: string,
+): IngestionError {
+  return new IngestionError({
+    message: `${options.sourceLabel} robots.txt ${why}; treated as disallow-all.`,
+    stage: "discover",
+    code: "ROBOTS_DISALLOW",
+    retryable: false,
+  });
 }

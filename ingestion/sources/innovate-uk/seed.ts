@@ -32,7 +32,7 @@ export function innovateUkSourceRecord(
     robotsCheckedAt: "2026-10-14T00:00:00.000Z",
     termsCheckedAt: "2026-10-14T00:00:00.000Z",
     complianceNotes:
-      "Public Innovation Funding Service competition search under the Open Government Licence v3.0. robots.txt redirects to login, so no Disallow is published; /competition/search is public. Terms do not explicitly allow scraping, so scraping_permitted stays false and the source stays disabled. Preserve-only.",
+      "Public Innovation Funding Service competition search under the Open Government Licence v3.0. robots.txt redirects to login, which the adapter treats as disallow-all. Terms do not explicitly allow scraping, so scraping_permitted stays false and the source stays disabled. Preserve-only.",
     lastSuccessAt: null,
     consecutiveFailures: 0,
     ...overrides,

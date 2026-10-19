@@ -7962,7 +7962,7 @@ values
     10,
     timestamptz '2026-10-14T00:00:00Z',
     timestamptz '2026-10-14T00:00:00Z',
-    'Public Innovation Funding Service competition search under the Open Government Licence v3.0. robots.txt redirects to login, so no Disallow is published. Terms do not explicitly allow scraping, so this source stays disabled. Preserve-only. Do not send source identity to free users.'
+    'Public Innovation Funding Service competition search under the Open Government Licence v3.0. robots.txt redirects to login, which the adapter treats as disallow-all. Terms do not explicitly allow scraping, so this source stays disabled. Preserve-only. Do not send source identity to free users.'
   ),
   (
     'etendersni',
