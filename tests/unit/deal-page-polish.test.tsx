@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { DealPreviewDetail } from "@/components/deals/deal-preview-detail";
 import { DealProCard } from "@/components/deals/deal-pro-card";
 import { positiveFitLabel, readableRequirementLines } from "@/lib/preview/fit";
+import { REQUIREMENT_PREVIEW_LABELS } from "@/lib/preview/labels";
 import { toPublicDealPreview, type PreviewDtoFields } from "@/lib/search/dto";
 
 afterEach(cleanup);
@@ -69,22 +70,32 @@ describe("fit labels show positive fit only", () => {
 });
 
 describe("requirement lines", () => {
-  it("drops fragments under 3 words or with no verb", () => {
+  it("keeps real lines and drops only empty, punctuation-only, stub and duplicate lines", () => {
     expect(
       readableRequirementLines([
-        "Similar schemes delivered in the last 5 years",
-        "Night-time working with traffic management",
-        "ISO 9001",
         "financial capacity evidence",
+        "  ",
+        "",
+        "—",
+        "...",
+        "TBC",
+        "Financial capacity evidence",
+        "ISO 9001",
+        "evidence of comparable delivery",
       ]),
-    ).toEqual([
-      "Similar schemes delivered in the last 5 years",
-      "Night-time working with traffic management",
-    ]);
+    ).toEqual(["financial capacity evidence", "ISO 9001", "evidence of comparable delivery"]);
   });
 
-  it("drops the section and the 'none listed' line when nothing is left", () => {
-    const { container } = detail({ requirements_preview: ["financial capacity evidence", "evidence of comparable delivery"] });
+  it("renders the fixed free-DTO labels on a real-shaped free deal, one per line", () => {
+    const labels = [...REQUIREMENT_PREVIEW_LABELS].slice(0, 4);
+    detail({ requirements_preview: labels });
+    const heading = screen.getByText("Products and services required");
+    const items = heading.closest("section")!.querySelectorAll("li");
+    expect([...items].map((li) => li.textContent)).toEqual(labels);
+  });
+
+  it("drops the section and the 'none listed' line when the list is truly empty", () => {
+    const { container } = detail({ requirements_preview: [] });
     expect(container.textContent).not.toMatch(/No general requirements/);
     expect(screen.queryByText("Products and services required")).toBeNull();
   });

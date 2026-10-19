@@ -1,4 +1,5 @@
 import type { SuitabilityLevel } from "@/components/deals/types";
+import { REQUIREMENT_PREVIEW_LABELS } from "@/lib/preview/labels";
 
 /**
  * Fit labels show positive fit only. Low, unknown and missing values are hidden
@@ -10,29 +11,24 @@ export function positiveFitLabel(level: SuitabilityLevel | null | undefined): st
   return null;
 }
 
-const COMMON_VERBS = new Set([
-  "is", "are", "be", "been", "being", "was", "were", "will", "must", "should", "shall",
-  "can", "may", "need", "needs", "have", "has", "hold", "holds", "provide", "provides",
-  "deliver", "delivers", "supply", "supplies", "include", "includes", "meet", "meets",
-  "maintain", "maintains", "demonstrate", "demonstrates", "comply", "complies", "show",
-  "shows", "carry", "carries", "operate", "operates", "manage", "manages", "support",
-  "supports", "install", "installs", "submit", "submits", "attend", "attends", "use",
-  "uses", "work", "works", "cover", "covers", "require", "requires", "offer", "offers",
-  "ensure", "ensures", "achieve", "achieves", "complete", "completes",
-]);
+const FIXED_LABELS = new Set<string>(REQUIREMENT_PREVIEW_LABELS);
 
-function hasVerb(words: string[]): boolean {
-  return words.some((raw) => {
-    const word = raw.toLowerCase().replace(/[^a-z-]/g, "");
-    if (COMMON_VERBS.has(word)) return true;
-    return word.length > 4 && (word.endsWith("ed") || word.endsWith("ing"));
-  });
-}
-
-/** Requirement lines worth showing: at least 3 words and a verb. Fragments are dropped. */
+/**
+ * Requirement lines worth showing. The fixed free-DTO labels (e.g. "financial capacity
+ * evidence") always render. Only empty, whitespace-only, punctuation-only, single-word
+ * stubs and duplicates are dropped.
+ */
 export function readableRequirementLines(lines: readonly string[]): string[] {
-  return lines.filter((line) => {
-    const words = line.trim().split(/\s+/).filter(Boolean);
-    return words.length >= 3 && hasVerb(words);
-  });
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const raw of lines) {
+    const line = raw.trim();
+    const key = line.toLowerCase().replace(/\s+/g, " ");
+    if (!/[\p{L}\p{N}]/u.test(line) || seen.has(key)) continue;
+    const words = line.split(/\s+/).filter((word) => /[\p{L}\p{N}]/u.test(word));
+    if (!FIXED_LABELS.has(line) && words.length < 2) continue;
+    seen.add(key);
+    out.push(line);
+  }
+  return out;
 }
