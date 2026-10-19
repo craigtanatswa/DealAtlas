@@ -407,22 +407,6 @@ select is(
 );
 
 select ok(
-  private.preview_slug_is_legacy(
-    'published-low-risk-preview',
-    '22222222-2222-4222-8222-222222222222'
-  )
-  and private.preview_slug_is_legacy(
-    'published-low-risk-preview-22222222',
-    '22222222-2222-4222-8222-222222222222'
-  )
-  and not private.preview_slug_is_legacy(
-    'published-low-risk-preview-a1b2c3d4',
-    '22222222-2222-4222-8222-222222222222'
-  ),
-  'title-only and deal-id suffixes are legacy; a random hex suffix is not'
-);
-
-select ok(
   not exists (
     select 1
     from public.search_preview_dtos() as r
@@ -511,6 +495,29 @@ select throws_ok(
 );
 
 reset role;
+
+-- The legacy slug helper is private, so check it as the test owner.
+select ok(
+  private.preview_slug_is_legacy(
+    'published-low-risk-preview',
+    '22222222-2222-4222-8222-222222222222'
+  )
+  and private.preview_slug_is_legacy(
+    'published-low-risk-preview-22222222',
+    '22222222-2222-4222-8222-222222222222'
+  )
+  and not private.preview_slug_is_legacy(
+    'published-low-risk-preview-a1b2c3d4',
+    '22222222-2222-4222-8222-222222222222'
+  ),
+  'title-only and deal-id suffixes are legacy; a random hex suffix is not'
+);
+
+select ok(
+  not has_function_privilege('anon', 'private.preview_slug_is_legacy(text, uuid)', 'execute')
+  and not has_function_privilege('authenticated', 'private.preview_slug_is_legacy(text, uuid)', 'execute'),
+  'client roles cannot execute the legacy slug helper'
+);
 
 -- ---------------------------------------------------------------------------
 -- Authenticated role still has no canonical table grants.
