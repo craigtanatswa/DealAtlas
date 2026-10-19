@@ -49,6 +49,28 @@ export default function CookiesPage() {
             receive buyer names or source URLs on free pages.
           </p>
         </LegalSection>
+        <LegalSection title="Product analytics (PostHog)">
+          <p>
+            We use PostHog, hosted in the EU, to count page views, sign-ups and
+            upgrades so we can see which pages and guides help people. It
+            loads only when our PostHog project key is configured, and it sets
+            no cookies and writes nothing to local or session storage: each
+            visit is held in memory and forgotten when you close the tab.
+          </p>
+          <p>
+            PostHog never receives opportunity details. Page addresses are
+            reduced to page types (for example <code>/deals/[deal]</code>),
+            search terms and other query strings are removed except campaign
+            (utm_*) tags, and the referring site is recorded only as a broad
+            category (a major search engine or social network by name,
+            otherwise &ldquo;other&rdquo;). Location lookup from your IP
+            address is switched off.
+            Session recording, click autocapture, heatmaps, error and
+            performance capture and surveys are switched off. Signed-in
+            accounts are counted by an internal account ID only, never by
+            email or name.
+          </p>
+        </LegalSection>
         <LegalSection title="Advertising cookies">
           <p>
             DealAtlas does not set advertising or retargeting cookies as part of

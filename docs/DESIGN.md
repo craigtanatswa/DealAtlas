@@ -150,17 +150,19 @@ Authenticated `/app` leads with search and live opportunities, then quotas and a
 Do not invent live opportunity counts, users, or contract values.
 
 ## 11. Search UX
+Public `/deals` keeps the existing listing cards and colours. Filters sit in one panel above the results, not in a sidebar.
+
 Desktop:
-- large search bar as the primary CTA
-- category shortcuts into existing filters
-- left filter rail
-- active filter chips
-- results count
-- listing cards
+- search box and Search button on one row
+- category, sector, region, value, closing window, type and status on the next row
+- active filter chips and Clear all inside the same panel
+- result count and sort on one row
+- 10 opportunities per page, with Previous, page numbers and Next
 
 Mobile:
-- full-width search
-- filter drawer/sheet
+- search box and Search button on one row
+- Filters button, plus Region and Value
+- remaining filters in the existing sheet
 - listing cards
 - no permanently stacked filter column
 

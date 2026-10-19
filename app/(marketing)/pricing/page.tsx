@@ -51,7 +51,7 @@ export default async function PricingPage() {
   const state = foundingUiState(count);
 
   return (
-    <Main className="gap-10">
+    <Main back className="gap-10">
       <JsonLd
         data={webPageJsonLd({
           origin,

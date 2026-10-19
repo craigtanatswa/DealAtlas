@@ -5,11 +5,33 @@ import {
   LOGIN_PATH,
   RESET_PASSWORD_PATH,
   defaultPathForAuthType,
-  sanitizeRedirectPath,
+  resolveNextPath,
 } from "@/lib/auth/redirect";
 import { parseEmailOtpType } from "@/lib/auth/otp";
 import { OAUTH_NEXT_COOKIE, PASSWORD_RESET_COOKIE } from "@/lib/auth/cookies";
+import { captureServerEvent } from "@/lib/analytics/server";
+import { buildUserSignedUpEvent } from "@/lib/analytics/server-events";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+
+const NEW_ACCOUNT_WINDOW_MS = 60_000;
+
+/** A Google account created by this sign-in (first sign-in at creation time). */
+function isNewGoogleAccount(user: {
+  app_metadata?: { provider?: unknown };
+  created_at?: string;
+  last_sign_in_at?: string;
+} | null): boolean {
+  if (!user || user.app_metadata?.provider !== "google") {
+    return false;
+  }
+  const created = Date.parse(user.created_at ?? "");
+  const lastSignIn = Date.parse(user.last_sign_in_at ?? "");
+  return (
+    Number.isFinite(created) &&
+    Number.isFinite(lastSignIn) &&
+    Math.abs(lastSignIn - created) < NEW_ACCOUNT_WINDOW_MS
+  );
+}
 
 function errorRedirect(request: NextRequest, code: string) {
   const url = request.nextUrl.clone();
@@ -19,7 +41,7 @@ function errorRedirect(request: NextRequest, code: string) {
 }
 
 function safeNext(request: NextRequest, fallback: string) {
-  return sanitizeRedirectPath(request.nextUrl.searchParams.get("next"), fallback);
+  return resolveNextPath(request.nextUrl.searchParams.get("next"), fallback);
 }
 
 export async function GET(request: NextRequest) {
@@ -51,7 +73,7 @@ export async function GET(request: NextRequest) {
   const fallback = honorReset
     ? RESET_PASSWORD_PATH
     : pendingOAuthNext
-      ? sanitizeRedirectPath(pendingOAuthNext.value)
+      ? resolveNextPath(pendingOAuthNext.value)
       : defaultPathForAuthType(type);
   const next =
     requestedNext === RESET_PASSWORD_PATH && honorReset
@@ -77,9 +99,13 @@ export async function GET(request: NextRequest) {
   const supabase = await createSupabaseServerClient();
 
   if (code) {
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
     if (error) {
       return errorRedirect(request, "auth_callback_failed");
+    }
+    if (data.user && isNewGoogleAccount(data.user)) {
+      // OAuth sign-ups carry no first-touch fields (nothing is stored client-side).
+      await captureServerEvent(buildUserSignedUpEvent({ userId: data.user.id }));
     }
   } else if (tokenHash && type) {
     const { error } = await supabase.auth.verifyOtp({

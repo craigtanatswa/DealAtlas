@@ -79,6 +79,12 @@ export const PUBLIC_PAGE_COPY = {
       "Cookies DealAtlas uses for authentication and optional measurement. Draft wording pending legal review.",
     path: "/cookies",
   },
+  guides: {
+    title: "UK Public Sector Tender Guides for SMEs",
+    description:
+      "Plain-English guides to finding and winning UK public sector tenders: council contracts, frameworks, notice types and how bids are scored.",
+    path: "/guides",
+  },
   categories: {
     title: "Opportunity categories",
     description:

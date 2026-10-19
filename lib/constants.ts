@@ -77,6 +77,7 @@ export const FOOTER_NAV = [
   { href: "/deals", label: "Find Deals" },
   { href: "/categories", label: "Categories" },
   { href: "/how-it-works", label: "How It Works" },
+  { href: "/guides", label: "Guides" },
   { href: "/pricing", label: "Pricing" },
   { href: "/privacy", label: "Privacy" },
   { href: "/terms", label: "Terms" },

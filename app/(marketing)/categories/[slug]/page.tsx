@@ -61,7 +61,7 @@ export default async function CategoryLandingPage({ params }: PageProps) {
   const cards = rows.map((row) => toDealCardData(toPublicDealPreview(row)));
 
   return (
-    <Main className="gap-10">
+    <Main back className="gap-10">
       <JsonLd
         data={[
           webPageJsonLd({

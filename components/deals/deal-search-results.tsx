@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import Link from "next/link";
 
 import { DealList } from "@/components/deals/deal-list";
@@ -15,12 +16,14 @@ export function DealSearchResults({
   path = "/deals",
   publicSearch = false,
   signedIn = false,
+  sort,
 }: {
   result: RankedDealSearchResult;
   filters: PublicSearchFilters;
   path?: string;
   publicSearch?: boolean;
   signedIn?: boolean;
+  sort?: ReactNode;
 }) {
   if (result.total === 0) {
     if (publicSearch && filters.status === "CLOSING_SOON") {
@@ -85,9 +88,12 @@ export function DealSearchResults({
 
   return (
     <div className="flex flex-col gap-6">
-      <p className="text-sm text-muted-foreground tabular-nums" aria-live="polite">
-        {count}
-      </p>
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm text-muted-foreground tabular-nums" aria-live="polite">
+          {count}
+        </p>
+        {sort}
+      </div>
       <DealList items={result.items} signedIn={signedIn} />
       <PaginationNav
         page={result.page}
