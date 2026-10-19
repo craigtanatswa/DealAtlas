@@ -17,6 +17,7 @@ export function DealSearchResults({
   publicSearch = false,
   signedIn = false,
   sort,
+  maxPages,
 }: {
   result: RankedDealSearchResult;
   filters: PublicSearchFilters;
@@ -24,6 +25,7 @@ export function DealSearchResults({
   publicSearch?: boolean;
   signedIn?: boolean;
   sort?: ReactNode;
+  maxPages?: number;
 }) {
   if (result.total === 0) {
     if (publicSearch && filters.status === "CLOSING_SOON") {
@@ -101,6 +103,7 @@ export function DealSearchResults({
         total={result.total}
         filters={filters}
         path={path}
+        maxPages={maxPages}
       />
     </div>
   );

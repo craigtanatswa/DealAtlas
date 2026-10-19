@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 
 import { DealSortForm } from "@/components/deals/deal-sort-form";
 import { DealSearchPanel } from "@/components/deals/deal-search-filters";
@@ -11,9 +11,10 @@ import { searchDealPreviewsForUser } from "@/lib/matching/search";
 import { getAppOrigin } from "@/lib/auth/urls";
 import {
   hasActivePublicFilters,
+  isPublicDealsPageOutOfRange,
   parsePublicSearchParams,
+  PUBLIC_DEALS_MAX_PAGES,
   PUBLIC_DEALS_PAGE_SIZE,
-  searchHref,
 } from "@/lib/search/params";
 import { publicDealsIndexMetadata } from "@/lib/search/metadata";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -39,6 +40,11 @@ export async function generateMetadata({
 
 export default async function DealsIndexPage({ searchParams }: PageProps) {
   const params = await searchParams;
+  const requestedPage = parsePublicSearchParams(params).page;
+  // Past the pager's reach: a real 404, without running the deep (slow) query.
+  if (requestedPage > PUBLIC_DEALS_MAX_PAGES) {
+    notFound();
+  }
   const client = await createSupabaseServerClient();
   const user = await getAuthUser();
   const { filters, result, companyProfileId } = await searchDealPreviewsForUser({
@@ -50,9 +56,8 @@ export default async function DealsIndexPage({ searchParams }: PageProps) {
   });
   const showRelevance = Boolean(companyProfileId);
 
-  const lastPage = Math.max(1, Math.ceil(result.total / filters.limit));
-  if (result.total > 0 && filters.page > lastPage) {
-    redirect(searchHref(filters, lastPage, "/deals"));
+  if (isPublicDealsPageOutOfRange(requestedPage, result.total, filters.limit)) {
+    notFound();
   }
 
   return (
@@ -71,6 +76,7 @@ export default async function DealsIndexPage({ searchParams }: PageProps) {
         filters={filters}
         publicSearch
         signedIn={Boolean(user)}
+        maxPages={PUBLIC_DEALS_MAX_PAGES}
         sort={<DealSortForm filters={filters} showRelevance={showRelevance} />}
       />
     </Main>
