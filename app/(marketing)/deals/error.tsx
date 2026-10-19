@@ -17,7 +17,7 @@ export default function DealsError({
   }, [error]);
 
   return (
-    <Main>
+    <Main back>
       <ErrorState
         title="Opportunities could not be loaded"
         description="Opportunities could not be loaded. Try again, or come back shortly if listings are catching up."

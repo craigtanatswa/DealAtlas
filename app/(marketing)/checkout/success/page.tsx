@@ -36,7 +36,7 @@ export default async function CheckoutSuccessPage({
   const user = await getAuthUser();
   if (!user) {
     return (
-      <Main>
+      <Main back>
         <Heading>Confirming subscription</Heading>
         <p className="max-w-2xl text-[0.9375rem] leading-7 text-muted-foreground">
           Sign in to wait for verified Pro access. A checkout redirect is not
@@ -52,7 +52,7 @@ export default async function CheckoutSuccessPage({
   const entitlement = await getCurrentEntitlement(user.id);
 
   return (
-    <Main>
+    <Main back>
       <Heading>Confirming subscription</Heading>
       <ConfirmingSubscription
         initialEntitlement={entitlement ?? FREE_ENTITLEMENT}
