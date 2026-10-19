@@ -3,6 +3,8 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
+import { PORTAL_TERMS } from "@/lib/preview/risk";
+import { SOURCE_PLATFORM_MARKERS } from "@/lib/redaction/gate-vocabulary";
 import { BUYER_NAME_DENYLIST, GUIDE_PORTAL_TERMS } from "@/scripts/guide-lint/leaks";
 import {
   buildContext,
@@ -31,7 +33,6 @@ const EXPECTED: Record<string, string[]> = {
   "link-host-dealatlas": ["link-host"],
   "link-source-notice": ["link-source-path"],
   "link-source-procurement": ["link-source-path"],
-  "link-source-not-search": ["link-source-path"],
   "link-internal-relative": ["link-internal-relative"],
   "link-internal-route": ["link-internal-route"],
   "link-unpublished-guide": ["link-internal-route"],
@@ -52,7 +53,8 @@ const EXPECTED: Record<string, string[]> = {
   "fm-primary-keyword": ["fm-primary-keyword"],
   "fm-secondary-keywords": ["fm-secondary-keywords"],
   "fm-date-published": ["fm-date-published", "fm-loader"],
-  "fm-date-modified": ["fm-date-modified"],
+  "fm-updated": ["fm-loader", "fm-updated"],
+  "fm-date-modified-alias": ["fm-updated"],
   "fm-related-guides": ["fm-related-guides"],
   "fm-security-cleared": ["fm-security-cleared"],
   "fm-craig-approved": ["fm-craig-approved"],
@@ -91,6 +93,18 @@ describe("guide content lint", () => {
     expect(lintGuideFile(file, ctx).map((failure) => failure.line)).toEqual([line]);
   });
 
+  it("lets Find a Tender and Contracts Finder links through unless they point at a notice", () => {
+    const source = (href: string) =>
+      fs.readFileSync(path.join(PASS_DIR, "valid-guide.md"), "utf8").replace("](/pricing)", `](${href})`);
+    const rules = (href: string) =>
+      lintGuideSource(path.join(PASS_DIR, "valid-guide.md"), source(href), ctx).map((failure) => failure.rule);
+    expect(rules("https://www.find-tender.service.gov.uk/Home/NoticeTypes")).toEqual([]);
+    expect(rules("https://www.contractsfinder.service.gov.uk/Search/Results")).toEqual([]);
+    expect(rules("https://www.find-tender.service.gov.uk/Notice/abc")).toEqual(["link-source-path"]);
+    expect(rules("https://www.find-tender.service.gov.uk/notice/abc")).toEqual(["link-source-path"]);
+    expect(rules("https://www.contractsfinder.service.gov.uk/Procurement/abc")).toEqual(["link-source-path"]);
+  });
+
   it("builds routes from the app/ tree", () => {
     for (const route of ["/", "/deals", "/pricing", "/guides", "/how-it-works", "/categories"]) {
       expect(routeExists(ctx.routes, route)).toBe(true);
@@ -107,6 +121,10 @@ describe("guide content lint", () => {
   it("reuses the gate vocabulary for portal names and keeps the buyer hook empty", () => {
     expect(GUIDE_PORTAL_TERMS).toContain("find a tender");
     expect(GUIDE_PORTAL_TERMS).toContain("procontract");
+    expect(GUIDE_PORTAL_TERMS).not.toContain("intend");
+    expect(GUIDE_PORTAL_TERMS).not.toContain("ted");
+    expect(PORTAL_TERMS).toContain("ted");
+    expect(SOURCE_PLATFORM_MARKERS).toContain("intend");
     expect(BUYER_NAME_DENYLIST).toEqual([]);
     const defaults = buildContext({ guidesDir: PASS_DIR, appDir: APP_DIR });
     const source = fs.readFileSync(path.join(FAIL_DIR, "leak-buyer.md"), "utf8");

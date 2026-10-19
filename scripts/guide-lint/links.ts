@@ -13,19 +13,30 @@ export const ALLOWED_HOSTS = new Set([
   "www.gov.wales",
 ]);
 
-/** Source platforms: only the root page or a search page, never a notice. */
+/** Source platforms: allowed unless the path points at a notice or procurement. */
 export const SOURCE_PLATFORM_HOSTS = new Set([
   "www.find-tender.service.gov.uk",
   "www.contractsfinder.service.gov.uk",
 ]);
 
-const SOURCE_PATH_FORBIDDEN = ["/Notice/", "/notice/", "/Procurement/", "ocds-"];
+/** A source-platform link fails only when its path or query contains one of these. */
+export const SOURCE_PATH_FORBIDDEN = ["/Notice/", "/notice/", "/Procurement/", "ocds-"];
 
-function isSourceRootOrSearch(url: URL): boolean {
-  const pathname = url.pathname.replace(/\/+$/, "");
-  if (pathname === "") return true;
-  const first = pathname.split("/").filter(Boolean)[0] ?? "";
-  return first.toLowerCase() === "search";
+/** True for an https link to an allowed host (a source-platform link must also avoid notice paths). */
+export function isAllowedOutbound(href: string): boolean {
+  if (!/^https:\/\//i.test(href)) return false;
+  let url: URL;
+  try {
+    url = new URL(href);
+  } catch {
+    return false;
+  }
+  if (url.port || url.username || url.password) return false;
+  const host = url.hostname.toLowerCase();
+  if (ALLOWED_HOSTS.has(host)) return true;
+  if (!SOURCE_PLATFORM_HOSTS.has(host)) return false;
+  const full = `${url.pathname}${url.search}`;
+  return !SOURCE_PATH_FORBIDDEN.some((part) => full.includes(part));
 }
 
 function headingIds(body: SourceLine[]): Set<string> {
@@ -67,8 +78,6 @@ export function lintLinks(file: string, body: SourceLine[], ctx: GuideLintContex
         const forbidden = SOURCE_PATH_FORBIDDEN.find((part) => full.includes(part));
         if (forbidden) {
           fail(link.line, "link-source-path", `${host} link points at a notice (${forbidden}): ${href}`);
-        } else if (!isSourceRootOrSearch(url)) {
-          fail(link.line, "link-source-path", `${host} link must be the root or a search page: ${href}`);
         }
         continue;
       }

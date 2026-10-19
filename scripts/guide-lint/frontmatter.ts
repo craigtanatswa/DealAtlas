@@ -99,9 +99,18 @@ export function lintFrontmatter(
     }
   }
 
+  // `updated` is the single modified date (the loader and JSON-LD dateModified
+  // read it). `dateModified` is accepted as an alias and must agree with it.
+  const updated = data.updated ?? data.dateModified;
+  if (updated === undefined) fail("updated", "fm-updated", "updated is required");
+  else if (!isIsoDate(updated)) {
+    fail(data.updated !== undefined ? "updated" : "dateModified", "fm-updated", `updated is not an ISO 8601 date: ${String(updated)}`);
+  } else if (data.updated !== undefined && data.dateModified !== undefined && data.updated !== data.dateModified) {
+    fail("dateModified", "fm-updated", `dateModified (${String(data.dateModified)}) is an alias of updated and must equal it (${String(data.updated)})`);
+  }
+
   for (const [key, rule] of [
     ["datePublished", "fm-date-published"],
-    ["dateModified", "fm-date-modified"],
     ["securityClearedAt", "fm-security-cleared"],
     ["craigApprovedAt", "fm-craig-approved"],
   ] as const) {

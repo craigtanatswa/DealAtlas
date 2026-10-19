@@ -1,6 +1,7 @@
 import { PORTAL_TERMS } from "@/lib/preview/risk";
 import { SOURCE_PLATFORM_MARKERS } from "@/lib/redaction/gate-vocabulary";
 
+import { isAllowedOutbound } from "./links";
 import { findLinks, proseLines } from "./source";
 import type { GuideLintContext, GuideLintFailure, SourceLine } from "./types";
 
@@ -15,13 +16,22 @@ import type { GuideLintContext, GuideLintFailure, SourceLine } from "./types";
 export const BUYER_NAME_DENYLIST: readonly string[] = [];
 
 /**
+ * Shared terms the guide lint does not use: they are ordinary English words
+ * ("intend", "ted") in editorial prose. The shared lists are not changed.
+ */
+export const GUIDE_PORTAL_TERM_EXCLUSIONS: readonly string[] = ["intend", "ted"];
+
+/**
  * Portal names, reused from the gate vocabulary (SOURCE_PLATFORM_MARKERS,
  * mirrored in private.leak_gate_terms) and the free-text risk detector
- * (PORTAL_TERMS, mirrored in private.preview_detail_text_risky).
+ * (PORTAL_TERMS, mirrored in private.preview_detail_text_risky), minus
+ * GUIDE_PORTAL_TERM_EXCLUSIONS. Matched as whole words only.
  */
 export const GUIDE_PORTAL_TERMS: readonly string[] = [
   ...new Set([...SOURCE_PLATFORM_MARKERS, ...PORTAL_TERMS].map((term) => term.toLowerCase())),
-].sort();
+]
+  .filter((term) => !GUIDE_PORTAL_TERM_EXCLUSIONS.includes(term))
+  .sort();
 
 /** How close (in characters, same line) a portal name may sit to a link before it fails. */
 export const PORTAL_LINK_WINDOW = 40;
@@ -41,8 +51,9 @@ function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+/** Whole word or phrase: no letter or digit directly before or after. */
 function termPattern(term: string): RegExp {
-  return new RegExp(`(^|[^a-z0-9])${escapeRegExp(term.toLowerCase())}(?=$|[^a-z0-9])`, "gi");
+  return new RegExp(`(^|[^\\p{L}\\p{N}])${escapeRegExp(term.toLowerCase())}(?=$|[^\\p{L}\\p{N}])`, "giu");
 }
 
 function termHits(text: string, terms: readonly string[]): Array<{ term: string; start: number; end: number }> {
@@ -96,6 +107,8 @@ export function lintLeaks(
   }
   const seen = new Set<string>();
   for (const link of links) {
+    // A citation to an allowed public host may name the portal it describes.
+    if (isAllowedOutbound(link.href.trim())) continue;
     const text = textByLine.get(link.line) ?? "";
     const from = Math.max(0, link.index - PORTAL_LINK_WINDOW);
     const to = link.index + link.raw.length + PORTAL_LINK_WINDOW;

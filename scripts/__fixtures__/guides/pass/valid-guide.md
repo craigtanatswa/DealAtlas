@@ -18,7 +18,7 @@ faq: [{"q": "Is this a fixture?", "a": "Yes. It is used by the guide lint tests.
 
 This fixture links to the [Procurement Act 2023](https://www.legislation.gov.uk/ukpga/2023/54/contents) and to [supplier guidance](https://www.gov.uk/government/collections/information-and-guidance-for-suppliers). Devolved guidance lives on [gov.scot](https://www.gov.scot/policies/public-sector-procurement/), [gov.wales](https://www.gov.wales/procurement) and [finance-ni](https://www.finance-ni.gov.uk/topics/procurement).
 
-You can [search notices](https://www.find-tender.service.gov.uk/Search) or open the [search home](https://www.contractsfinder.service.gov.uk/). Thresholds are about £135,018 including VAT.
+You can [search notices](https://www.find-tender.service.gov.uk/Search) or open the [search home](https://www.contractsfinder.service.gov.uk/). See [Find a Tender notice types](https://www.find-tender.service.gov.uk/Home/NoticeTypes) and [Contracts Finder](https://www.gov.uk/contracts-finder). Buyers intend to publish more, and TED-style wording is not a portal name, see [pricing](/pricing). The intended scope is broad. Thresholds are about £135,018 including VAT.
 
 ## Next steps
 

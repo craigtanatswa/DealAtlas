@@ -1,5 +1,5 @@
 ---
-slug: link-source-not-search
+slug: fm-date-modified-alias
 published: true
 title: "A valid guide for the lint fixtures"
 description: "A short description used by the guide content lint tests."
@@ -7,7 +7,7 @@ h1: "A valid guide"
 breadcrumb: "A valid guide"
 datePublished: 2026-10-01
 updated: 2026-10-02
-dateModified: 2026-10-02
+dateModified: 2026-10-05
 primaryKeyword: "valid guide"
 secondaryKeywords: ["lint fixture", "guide test"]
 relatedGuides: ["related-guide"]
@@ -28,7 +28,7 @@ Browse [live opportunities](/deals), [compare plans](/pricing), read the [relate
 {"@context": "https://schema.org", "@type": "Thing", "url": "https://example.com/exempt"}
 ```
 
-Read [the help](https://www.find-tender.service.gov.uk/Home/About).
+
 
 ## FAQ
 

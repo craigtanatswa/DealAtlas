@@ -28,7 +28,7 @@ Browse [live opportunities](/deals), [compare plans](/pricing), read the [relate
 {"@context": "https://schema.org", "@type": "Thing", "url": "https://example.com/exempt"}
 ```
 
-Bids go through ProContract, see [the guidance](https://www.gov.uk/guidance).
+Bids go through ProContract, see [live opportunities](/deals).
 
 ## FAQ
 
