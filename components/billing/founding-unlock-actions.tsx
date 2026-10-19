@@ -68,6 +68,7 @@ export function FoundingUnlockActions({
         <CheckoutPlanForm
           planKey="PRO_ANNUAL"
           label={FOUNDING_COPY.paywallCta}
+          analyticsPlan="founding"
           showPrice={false}
           returnTo={returnTo}
           className="w-full"

@@ -21,7 +21,9 @@ import {
   takeHomeLatestItems,
 } from "@/lib/search/home-latest";
 import {
+  clampSearchPage,
   parseSignedInSearchParams,
+  PUBLIC_SEARCH_MAX_PAGE_SIZE,
   publicSearchOffset,
   type SearchParamRecord,
   type SignedInSearchFilters,
@@ -82,6 +84,8 @@ export async function searchDealPreviewsForUser(input: {
   searchParams: SearchParamRecord;
   userId?: string | null;
   defaultSort?: SignedInSearchFilters["sort"];
+  /** Forces the page size. Public /deals uses this so `?limit=` cannot raise it. */
+  pageSize?: number;
 }): Promise<{
   filters: SignedInSearchFilters;
   result: RankedDealSearchResult;
@@ -98,13 +102,17 @@ export async function searchDealPreviewsForUser(input: {
     !companyProfileId && requested.sort === "relevance"
       ? (input.defaultSort ?? "biddable")
       : requested.sort;
-  const filters: SignedInSearchFilters = {
+  const limit =
+    input.pageSize != null
+      ? Math.min(PUBLIC_SEARCH_MAX_PAGE_SIZE, Math.max(1, Math.floor(input.pageSize)))
+      : requested.limit;
+  let filters: SignedInSearchFilters = {
     ...requested,
     sort,
+    limit,
     minScore: companyProfileId ? requested.minScore : undefined,
   };
 
-  const offset = publicSearchOffset(filters);
   const searchArgs = {
     query: filters.query,
     category: filters.category,
@@ -117,19 +125,31 @@ export async function searchDealPreviewsForUser(input: {
     minScore: filters.minScore,
     sort: filters.sort,
   };
-  const rows = await searchPublishedDealPreviews(input.client, {
+  let rows = await searchPublishedDealPreviews(input.client, {
     ...searchArgs,
     limit: filters.limit,
-    offset,
+    offset: publicSearchOffset(filters),
   });
   let total = rows[0]?.total_count ?? 0;
-  if (rows.length === 0 && offset > 0) {
+  if (rows.length === 0 && filters.page > 1) {
     const countRows = await searchPublishedDealPreviews(input.client, {
       ...searchArgs,
       limit: 1,
       offset: 0,
     });
     total = countRows[0]?.total_count ?? 0;
+  }
+  const page = clampSearchPage(filters.page, Number(total), filters.limit);
+  if (page !== filters.page) {
+    filters = { ...filters, page };
+    rows =
+      Number(total) > 0
+        ? await searchPublishedDealPreviews(input.client, {
+            ...searchArgs,
+            limit: filters.limit,
+            offset: publicSearchOffset(filters),
+          })
+        : [];
   }
 
   return {
@@ -138,7 +158,7 @@ export async function searchDealPreviewsForUser(input: {
     result: {
       items: rows.map(toRankedItem),
       total: Number(total),
-      page: filters.page,
+      page,
       pageSize: filters.limit,
     },
   };

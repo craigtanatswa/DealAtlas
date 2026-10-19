@@ -51,11 +51,12 @@ test.describe("Free account journey", () => {
     await expectNoProtectedLeaks(page);
 
     await page.goto(`/app/deals/${seed.publishedDealId}`);
+    const proCard = page.getByRole("complementary", {
+      name: "Unlock this opportunity with Pro",
+    });
+    await expect(proCard).toBeVisible();
     await expect(
-      page.getByText("Join DealAtlas Pro to unlock the buyer", { exact: false }),
-    ).toBeVisible();
-    await expect(
-      page.getByRole("button", { name: "Unlock with DealAtlas Pro" }),
+      proCard.getByRole("button", { name: /Start Pro – £39\/mo|Become a founding member/ }),
     ).toBeVisible();
     await expectNoProtectedLeaks(page);
 

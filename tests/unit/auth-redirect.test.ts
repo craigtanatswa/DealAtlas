@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   AUTH_HOME_PATH,
   LOGIN_PATH,
+  NEXT_INVALID_FALLBACK_PATH,
   resolveProtectedRouteRedirect,
   sanitizeRedirectPath,
 } from "@/lib/auth/redirect";
@@ -46,8 +47,9 @@ describe("auth redirect sanitization", () => {
       "/app/profile",
     );
     expect(resolveProtectedRouteRedirect("/signup", true, "https://evil.example")).toBe(
-      AUTH_HOME_PATH,
+      NEXT_INVALID_FALLBACK_PATH,
     );
+    expect(resolveProtectedRouteRedirect("/signup", true, null)).toBe(AUTH_HOME_PATH);
     expect(resolveProtectedRouteRedirect("/reset-password", true)).toBeNull();
     expect(resolveProtectedRouteRedirect("/auth/callback", false)).toBeNull();
   });
