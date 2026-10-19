@@ -12,7 +12,6 @@ import {
   FOUNDING_COPY,
   foundingSignupPath,
   foundingPlacesLabel,
-  foundingSoldOutNote,
   type FoundingPublicCount,
   type FoundingUiState,
 } from "@/lib/billing/founding-ui";
@@ -126,9 +125,10 @@ export function PricingPlans({
 }: {
   signedIn: boolean;
   count: FoundingPublicCount;
-  state: Exclude<FoundingUiState, "hidden">;
+  state: FoundingUiState;
 }) {
-  const soldOut = state === "sold_out";
+  // Founding full or not offered: the card disappears and the grid reflows to three plans.
+  const soldOut = state !== "available" && state !== "last";
   const annualVariant = soldOut ? "default" : "outline";
 
   return (
@@ -229,11 +229,6 @@ export function PricingPlans({
           </div>
         </PlanCard>
       </div>
-      {soldOut ? (
-        <p className="mx-auto max-w-xl rounded-lg bg-muted px-4 py-3 text-center text-sm text-pretty text-muted-foreground">
-          {foundingSoldOutNote(count.cap)}
-        </p>
-      ) : null}
     </>
   );
 }

@@ -30,7 +30,6 @@ import {
   foundingMonthlyEquivalent,
   foundingPaywallPlaces,
   foundingPlacesLabel,
-  foundingSoldOutNote,
   foundingUiState,
   proMonthlyWasLabel,
 } from "@/lib/billing/founding-ui";
@@ -147,8 +146,8 @@ describe("founding member checkout", () => {
     expect(foundingPlacesLabel(1)).toBe("Last founding place · 1 place left");
     expect(foundingPaywallPlaces(17)).toBe("17 places left");
     expect(foundingPaywallPlaces(1)).toBe("Last founding place · 1 place left");
-    expect(foundingSoldOutNote()).toBe(
-      "Founding membership is full. Thanks to our founding members.",
+    expect(FOUNDING_COPY.cancelTerms).toBe(
+      "If you cancel, you lose founding status and the £290/yr price.",
     );
     expect(FOUNDING_COPY.paywallCta).toContain("£290/yr");
     expect(FOUNDING_COPY.lessThanAnnual).toBe("£60 less than standard annual");

@@ -32,18 +32,14 @@ export function FoundingCheckoutButton({
   returnTo,
   className,
   buttonClassName,
-  initialFull = false,
 }: {
   label: string;
   returnTo?: string;
   className?: string;
   buttonClassName?: string;
-  /** Server already knows founding is full (e.g. /checkout after sell-out). */
-  initialFull?: boolean;
 }) {
-  const [status, setStatus] = useState<Status>(
-    initialFull ? { kind: "full", message: FOUNDING_FULL_MESSAGE } : { kind: "idle" },
-  );
+  // The full state here only covers the race where founding fills after page load.
+  const [status, setStatus] = useState<Status>({ kind: "idle" });
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

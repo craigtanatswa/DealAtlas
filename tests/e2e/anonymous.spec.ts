@@ -47,7 +47,8 @@ test.describe("Anonymous journey", () => {
 
     await page.getByRole("link", { name: "View pricing" }).click();
     await page.waitForURL(/\/pricing/);
-    await expect(page.getByRole("heading", { name: "DealAtlas Pro" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Pricing", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Pro annual" })).toBeVisible();
     await expectNoProtectedLeaks(page);
 
     await page.getByRole("link", { name: "Get Started" }).first().click();

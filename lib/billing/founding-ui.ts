@@ -132,11 +132,6 @@ export function foundingPaywallPlaces(remaining: number, cap = FOUNDING_CAP): st
   return `${safeRemaining} places left`;
 }
 
-export function foundingSoldOutNote(_cap = FOUNDING_CAP): string {
-  void _cap;
-  return "Founding membership is full. Thanks to our founding members.";
-}
-
 function clampFoundingRemaining(remaining: number, cap: number): number {
   return Number.isInteger(remaining) ? Math.min(cap, Math.max(0, remaining)) : 0;
 }
@@ -149,7 +144,7 @@ export const FOUNDING_COPY = {
   priceLocked: "Locked for life",
   rechecked: "Availability is re-checked at checkout.",
   cta: "Become a founding member",
-  cancelTerms: `If you cancel, ${DISPLAY_PRICING.foundingAnnual} is still yours when you come back.`,
+  cancelTerms: `If you cancel, you lose founding status and the ${DISPLAY_PRICING.foundingAnnual.replace("/year", "/yr")} price.`,
   paywallCta: `Become a founding member – ${foundingAnnualShort()}`,
   paywallMonthly: `or standard Pro ${DISPLAY_PRICING.proMonthly.replace("/month", "/mo")}`,
   soldOutMonthly: `Start Pro – ${DISPLAY_PRICING.proMonthly.replace("/month", "/mo")}`,

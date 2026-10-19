@@ -4,7 +4,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { FoundingFullNotice } from "@/components/billing/founding-full-notice";
 import { PricingPlans } from "@/components/billing/pricing-plans";
-import { FoundingCheckoutSummary } from "@/components/billing/founding-checkout-summary";
+import {
+  FoundingCheckoutSummary,
+  FoundingFullCheckout,
+} from "@/components/billing/founding-checkout-summary";
 import { UnlockPanel } from "@/components/deals/unlock-panel";
 import { FoundingCheckoutButton } from "@/components/billing/founding-checkout-button";
 import { HomeFoundingCta } from "@/components/marketing/home-founding-cta";
@@ -68,13 +71,18 @@ describe("founding pricing cards", () => {
     expect(container.textContent).not.toMatch(/only today|hurry|almost gone/i);
   });
 
-  it("replaces the founding card when the count is zero", () => {
-    const { container } = render(
-      <PricingPlans signedIn={false} count={soldOutCount} state="sold_out" />,
-    );
-    expect(
-      screen.getByText("Founding membership is full. Thanks to our founding members."),
-    ).toBeTruthy();
+  it.each([
+    ["full", soldOutCount, "sold_out"],
+    ["not offered", { offered: false, remaining: 0, cap: FOUNDING_CAP }, "hidden"],
+  ] as const)("removes the founding card completely when founding is %s", (_name, count, state) => {
+    const { container } = render(<PricingPlans signedIn={false} count={count} state={state} />);
+    expect(container.textContent).not.toMatch(/founding/i);
+    expect(container.textContent).not.toMatch(/£290|£24\.17|Locked for life|sold out|all taken/i);
+    expect(screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent)).toEqual([
+      "Free",
+      "Pro monthly",
+      "Pro annual",
+    ]);
     expect(screen.getByText("Recommended")).toBeTruthy();
     expect(screen.queryByText("Become a founding member")).toBeNull();
     expect(screen.queryByRole("heading", { name: "Founding member Pro" })).toBeNull();
@@ -256,12 +264,25 @@ describe("founding full error state", () => {
     await vi.waitFor(() => expect(assign).toHaveBeenCalledWith("https://checkout.example/session"));
   });
 
-  it("renders the full state directly when the server already knows founding is full", () => {
-    render(<FoundingCheckoutSummary remaining={0} cap={FOUNDING_CAP} full />);
-    expect(screen.getByRole("alert").textContent).toContain(FOUNDING_FULL_MESSAGE);
+  it("checkout for a full founding plan shows the message and Pro annual, no founding summary", () => {
+    const { container } = render(<FoundingFullCheckout />);
+    expect(screen.getByRole("alert").textContent).toBe(FOUNDING_FULL_MESSAGE);
+    expect(screen.getByText("£350")).toBeTruthy();
     expect(planKeyOf(screen.getByRole("button", { name: "Start Pro annual" }).closest("form")!)).toBe(
       "PRO_ANNUAL",
     );
+    expect(container.querySelectorAll(`input[name='planKey'][value='${FOUNDING_PLAN_KEY}']`)).toHaveLength(0);
+    expect(container.textContent).not.toMatch(/£24\.17|£290|Locked for life|places left|Due today/);
     expect(screen.queryByRole("button", { name: "Continue to payment" })).toBeNull();
+  });
+});
+
+describe("founding cancellation line", () => {
+  it("says cancelling loses founding status and the £290/yr price", () => {
+    render(<PricingPlans signedIn={false} count={openCount} state="available" />);
+    expect(
+      screen.getByText("If you cancel, you lose founding status and the £290/yr price."),
+    ).toBeTruthy();
+    expect(document.body.textContent).not.toMatch(/still yours|come back|rejoin/i);
   });
 });

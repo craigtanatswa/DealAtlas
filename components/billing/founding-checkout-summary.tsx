@@ -6,30 +6,21 @@ import { FoundingPriceLead } from "@/components/billing/founding-price";
 import { Heading } from "@/components/layout/heading";
 import {
   FOUNDING_COPY,
+  FOUNDING_FULL_MESSAGE,
   foundingDueToday,
   foundingPlacesLabel,
   proMonthlyShort,
 } from "@/lib/billing/founding-ui";
+import { DISPLAY_PRICING } from "@/lib/constants";
 
 /** Founding plan summary on /checkout. Remaining places only; the cap is never rendered. */
 export function FoundingCheckoutSummary({
   remaining,
   cap,
-  full = false,
 }: {
   remaining: number;
   cap: number;
-  /** Founding is already full: show the server copy and the Pro annual fallback. */
-  full?: boolean;
 }) {
-  if (full) {
-    return (
-      <>
-        <Heading>Confirm your plan</Heading>
-        <FoundingCheckoutButton label="Continue to payment" returnTo="/pricing" initialFull />
-      </>
-    );
-  }
   return (
     <>
       <div>
@@ -98,6 +89,50 @@ export function FoundingCheckoutSummary({
           className="justify-center"
         />
       </div>
+    </>
+  );
+}
+
+/**
+ * /checkout?plan=FOUNDING when founding is full or not offered: no founding summary,
+ * just the FOUNDING_CAP_FULL copy and the standard Pro annual option.
+ */
+export function FoundingFullCheckout() {
+  return (
+    <>
+      <Heading>Confirm your plan</Heading>
+      <p
+        role="alert"
+        className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-pretty text-amber-900"
+      >
+        {FOUNDING_FULL_MESSAGE}
+      </p>
+      <section className="rounded-xl border-2 border-primary bg-background p-5 shadow-sm">
+        <div className="flex items-baseline justify-between gap-3">
+          <h2 className="font-heading text-base font-semibold">Pro annual</h2>
+          <p className="text-2xl font-semibold tracking-tight tabular-nums">
+            {DISPLAY_PRICING.proAnnual.replace("/year", "")}
+            <span className="text-sm font-normal text-muted-foreground">/year</span>
+          </p>
+        </div>
+        <p className="mt-1 text-sm text-muted-foreground">{FOUNDING_COPY.annualSaving} VAT included.</p>
+        <CheckoutPlanForm
+          planKey="PRO_ANNUAL"
+          label={FOUNDING_COPY.startAnnual}
+          showPrice={false}
+          returnTo="/pricing"
+          className="mt-5 w-full"
+          buttonClassName="h-11 w-full"
+        />
+      </section>
+      <CheckoutPlanForm
+        planKey="PRO_MONTHLY"
+        label={`Switch to Pro ${proMonthlyShort()} instead`}
+        showPrice={false}
+        variant="link"
+        returnTo="/pricing"
+        className="justify-center"
+      />
     </>
   );
 }

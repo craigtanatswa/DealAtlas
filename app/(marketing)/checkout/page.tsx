@@ -2,7 +2,10 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { CheckoutPlanForm } from "@/components/billing/checkout-plan-form";
-import { FoundingCheckoutSummary } from "@/components/billing/founding-checkout-summary";
+import {
+  FoundingCheckoutSummary,
+  FoundingFullCheckout,
+} from "@/components/billing/founding-checkout-summary";
 import { Main } from "@/components/layout/container";
 import { Heading } from "@/components/layout/heading";
 import {
@@ -60,11 +63,11 @@ export default async function CheckoutPage({
   return (
     <Main width="narrow" className="gap-6">
       {founding || !plan ? (
-        <FoundingCheckoutSummary
-          remaining={count?.remaining ?? 0}
-          cap={count?.cap ?? 0}
-          full={!foundingOpen}
-        />
+        foundingOpen && count ? (
+          <FoundingCheckoutSummary remaining={count.remaining} cap={count.cap} />
+        ) : (
+          <FoundingFullCheckout />
+        )
       ) : (
         <>
           <Heading>Confirm your plan</Heading>
