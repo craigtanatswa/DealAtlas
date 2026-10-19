@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 
+import { GUIDES_PATH, latestGuideUpdate, type Guide } from "@/lib/guides/content";
 import { PUBLIC_INDEXABLE_PATHS, ROBOTS_DISALLOW } from "@/lib/seo/pages";
 import { absoluteUrl } from "@/lib/seo/urls";
 import { indexableCategoryLandings } from "@/lib/seo/category-landings";
@@ -15,7 +16,6 @@ export function buildRobotsPolicy(origin: string): MetadataRoute.Robots {
       absoluteUrl("/sitemap.xml", origin),
       absoluteUrl("/deals/sitemap.xml", origin),
     ],
-    host: origin.replace(/^https?:\/\//, "").replace(/\/$/, ""),
   };
 }
 
@@ -67,4 +67,33 @@ export function staticSitemapEntries(
     changeFrequency: path === "/" || path === "/deals" ? "daily" : "weekly",
     priority: path === "/" ? 1 : path === "/deals" ? 0.9 : 0.7,
   }));
+}
+
+/**
+ * `/guides` and each published guide. `lastModified` is the guide's `updated`
+ * frontmatter date (the index uses its newest guide), never the build time.
+ */
+export function guideSitemapEntries(
+  origin: string,
+  guides: Array<Pick<Guide, "path" | "updated" | "published">>,
+): MetadataRoute.Sitemap {
+  const published = guides.filter((guide) => guide.published === true);
+  const latest = latestGuideUpdate(published);
+  if (!latest) {
+    return [];
+  }
+  return [
+    {
+      url: absoluteUrl(GUIDES_PATH, origin),
+      lastModified: latest,
+      changeFrequency: "weekly",
+      priority: 0.7,
+    },
+    ...published.map((guide) => ({
+      url: absoluteUrl(guide.path, origin),
+      lastModified: guide.updated,
+      changeFrequency: "monthly" as const,
+      priority: 0.7,
+    })),
+  ];
 }

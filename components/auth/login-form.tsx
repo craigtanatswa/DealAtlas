@@ -5,6 +5,8 @@ import Link from "next/link";
 
 import { signInAction } from "@/lib/auth/actions";
 import { INITIAL_ACTION_STATE } from "@/lib/auth/messages";
+import { signupPathForPlan, signupPathWithNext } from "@/lib/auth/redirect";
+import type { CheckoutPlanKey } from "@/lib/billing/types";
 import { FormStatus } from "@/components/auth/form-status";
 import { GoogleSignInButton } from "@/components/auth/google-sign-in-button";
 import { Button } from "@/components/ui/button";
@@ -13,9 +15,11 @@ import { Input } from "@/components/ui/input";
 
 export function LoginForm({
   nextPath,
+  plan,
   initialError,
 }: {
   nextPath: string;
+  plan: CheckoutPlanKey | null;
   initialError?: string | null;
 }) {
   const [state, action, pending] = useActionState(
@@ -58,7 +62,10 @@ export function LoginForm({
         </p>
         <p className="text-sm text-muted-foreground">
           No account yet?{" "}
-          <Link href="/signup" className="underline-offset-4 hover:underline">
+          <Link
+            href={plan ? signupPathForPlan(plan) : signupPathWithNext(nextPath)}
+            className="underline-offset-4 hover:underline"
+          >
             Get started
           </Link>
         </p>

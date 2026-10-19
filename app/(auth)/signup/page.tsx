@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 
 import { AuthCard } from "@/components/auth/auth-card";
 import { SignupForm } from "@/components/auth/signup-form";
-import { sanitizeRedirectPath } from "@/lib/auth/redirect";
+import { configuredPostHogKey } from "@/lib/analytics/config";
+import { parseCheckoutPlan, resolveNextPath } from "@/lib/auth/redirect";
 
 export const metadata: Metadata = {
   title: "Get started",
@@ -11,17 +12,22 @@ export const metadata: Metadata = {
 export default async function SignupPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string }>;
+  searchParams: Promise<{ next?: string; plan?: string }>;
 }) {
   const params = await searchParams;
-  const nextPath = sanitizeRedirectPath(params.next);
+  const nextPath = resolveNextPath(params.next);
+  const plan = parseCheckoutPlan(params.plan);
 
   return (
     <AuthCard
       title="Create your account"
       description="Sign up with Google, or with email and password. Email sign-up sends a verification link when confirmation is enabled."
     >
-      <SignupForm nextPath={nextPath} />
+      <SignupForm
+        nextPath={nextPath}
+        plan={plan}
+        analyticsEnabled={Boolean(configuredPostHogKey())}
+      />
     </AuthCard>
   );
 }

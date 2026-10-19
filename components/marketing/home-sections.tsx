@@ -11,7 +11,6 @@ import { Heading, Text } from "@/components/layout/heading";
 import { BrandLogo } from "@/components/navigation/brand-mark";
 import { SectionHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
-import { signupPathWithNext } from "@/lib/auth/redirect";
 import { APP_NAME } from "@/lib/constants";
 import { HOW_IT_WORKS_STEPS } from "@/lib/seo/pages";
 import type { PublicDealPreview, RankedDealSearchResult } from "@/lib/search/dto";
@@ -124,6 +123,7 @@ export function HomeOpportunitySections({
 
 export function HomeLiveOpportunities({
   items,
+  total,
   signedIn = false,
 }: {
   items: PublicDealPreview[];
@@ -134,13 +134,27 @@ export function HomeLiveOpportunities({
     return null;
   }
 
+  const shown = items.length;
+
   return (
     <section className="border-b border-border" aria-labelledby="latest-opportunities-heading">
       <Container className="flex flex-col gap-6 py-12 md:py-16">
         <SectionHeader
           id="latest-opportunities-heading"
           title="Latest opportunities"
-          description="Open and upcoming opportunities first. Join DealAtlas Pro to unlock buyer and source details."
+          description={
+            <div className="flex flex-col gap-2">
+              {total > 0 ? (
+                <p className="text-sm text-muted-foreground tabular-nums">
+                  Showing {shown} of {total} opportunities
+                </p>
+              ) : null}
+              <Text variant="muted">
+                Open and upcoming opportunities first. Join DealAtlas Pro to unlock buyer and
+                source details.
+              </Text>
+            </div>
+          }
           action={
             <Button asChild variant="outline" className="min-h-11">
               <Link href="/deals">View all opportunities</Link>
@@ -149,9 +163,7 @@ export function HomeLiveOpportunities({
         />
         <DealList
           items={items.map((preview) => ({ preview, match: null }))}
-          hrefForSlug={(slug) =>
-            signedIn ? `/deals/${slug}` : signupPathWithNext(`/deals/${slug}`)
-          }
+          hrefForSlug={(slug) => `/deals/${slug}`}
           signedIn={signedIn}
           proLock
         />

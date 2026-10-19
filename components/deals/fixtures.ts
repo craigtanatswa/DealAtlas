@@ -66,6 +66,16 @@ export const DEAL_PREVIEW_DETAIL_FIXTURE = {
   ],
   relevanceTags: ["cloud", "contact centre"],
   freshnessLabel: "Recently added",
+  goodsServices: ["Cloud contact centre platforms"],
+  quantities: [],
+  technicalSpecs: [],
+  standards: ["ISO 27001 information security"],
+  keyDates: "Closing window More than 30 days. Contract term 1–2 years",
+  deliveryRequirements: ["Delivery within South East England"],
+  scope: null,
+  commercialRequirements: ["Quality scored"],
+  currency: "GBP",
+  specificSector: "IT services: consulting, software development, Internet and support",
 } as const satisfies PublicDealPreview;
 
 export const PROTECTED_FIELD_NAMES = [

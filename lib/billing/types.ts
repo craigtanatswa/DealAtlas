@@ -10,7 +10,10 @@ export type CheckoutPlanKey = (typeof CHECKOUT_PLAN_KEYS)[number];
 export type PlanProductMap = {
   PRO_MONTHLY: string;
   PRO_ANNUAL: string;
+  FOUNDING_ANNUAL?: string;
 };
+
+export type FoundingReservation = "reserved" | "active" | "sold_out" | "closed" | "unavailable";
 
 export type MappedPlan = {
   planKey: CheckoutPlanKey;

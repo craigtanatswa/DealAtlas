@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 
+import { UpgradeStatusBanner } from "@/components/billing/upgrade-status-banner";
 import { SaveDealButton } from "@/components/saves/save-deal-button";
 import { ExportDealsButton } from "@/components/exports/export-deals-button";
 import { DealPaidDetail } from "@/components/deals/deal-paid-detail";
@@ -11,6 +12,7 @@ import { DatabaseQueryError } from "@/lib/db/errors";
 import { appDealPath, parseDealIdParam } from "@/lib/deals/paths";
 import { loadPaidDealDto } from "@/lib/deals/protected";
 import { loadDealHistory } from "@/lib/intelligence/protected";
+import { readFoundingPublicCount } from "@/lib/billing/founding-public";
 import { isProEntitlement } from "@/lib/entitlements/policy";
 import { getCurrentEntitlement } from "@/lib/entitlements/service";
 import { loadExportUsageForMonth } from "@/lib/exports/usage";
@@ -24,6 +26,7 @@ export const dynamic = "force-dynamic";
 
 type PageProps = {
   params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
 export async function generateMetadata({ params }: PageProps) {
@@ -34,8 +37,9 @@ export async function generateMetadata({ params }: PageProps) {
   };
 }
 
-export default async function AppDealPage({ params }: PageProps) {
+export default async function AppDealPage({ params, searchParams }: PageProps) {
   const { id } = await params;
+  const upgraded = (await searchParams).upgraded === "1";
   const dealId = parseDealIdParam(id);
   if (!dealId) {
     notFound();
@@ -44,6 +48,7 @@ export default async function AppDealPage({ params }: PageProps) {
   const { user } = await requireUser(appDealPath(dealId));
   const entitlement = await getCurrentEntitlement(user.id);
   const isPro = isProEntitlement(entitlement);
+  const banner = upgraded ? <UpgradeStatusBanner initialPro={isPro} /> : null;
   const exportUsage = isPro
     ? await loadExportUsageForMonth(user.id)
     : { used: 0 };
@@ -116,6 +121,7 @@ export default async function AppDealPage({ params }: PageProps) {
 
     return (
       <Main>
+        {banner}
         <DealPaidDetail
           deal={dto}
           history={history}
@@ -127,21 +133,27 @@ export default async function AppDealPage({ params }: PageProps) {
     );
   }
 
-  const previewPage = await getPublicDealPreviewPageByDealId(client, dealId);
+  const [previewPage, founding] = await Promise.all([
+    getPublicDealPreviewPageByDealId(client, dealId),
+    readFoundingPublicCount(),
+  ]);
   if (!previewPage) {
     notFound();
   }
 
   return (
     <Main>
+      {banner}
       <DealPreviewDetail
         deal={previewPage.preview}
         match={previewPage.match}
         save={saveControl}
+        signedIn
         unlock={{
           mode: "free",
           returnTo: appDealPath(dealId),
           revealHref: appDealPath(dealId),
+          founding: founding.offered ? founding : undefined,
         }}
       />
     </Main>

@@ -25,9 +25,11 @@ function statusVariant(status: EntitlementSnapshot["status"]) {
 export function BillingSummary({
   entitlement,
   hasCustomerPortal,
+  foundingMember = false,
 }: {
   entitlement: EntitlementSnapshot;
   hasCustomerPortal: boolean;
+  foundingMember?: boolean;
 }) {
   const periodEnd = formatBillingDate(entitlement.currentPeriodEnd);
   const accessUntil = accessUntilCopy(entitlement);
@@ -45,7 +47,7 @@ export function BillingSummary({
       <CardContent className="grid gap-4">
         <div className="flex flex-wrap items-center gap-2">
           <p className="font-heading text-xl font-semibold tracking-tight">
-            {pro ? planLabel(entitlement.planKey, entitlement.billingInterval) : "Free"}
+            {pro ? planLabel(entitlement.planKey, entitlement.billingInterval, foundingMember) : "Free"}
           </p>
           <Badge variant={statusVariant(entitlement.status)}>
             {STATUS_LABELS[entitlement.status] ?? entitlement.status}

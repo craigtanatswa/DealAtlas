@@ -1,6 +1,9 @@
+import { CHECKOUT_PLAN_KEYS, type CheckoutPlanKey } from "@/lib/billing/types";
+
 export const AUTH_HOME_PATH = "/app";
 export const LOGIN_PATH = "/login";
 export const SIGNUP_PATH = "/signup";
+export const CHECKOUT_PATH = "/checkout";
 export const FORGOT_PASSWORD_PATH = "/forgot-password";
 export const RESET_PASSWORD_PATH = "/reset-password";
 export const VERIFY_EMAIL_PATH = "/verify-email";
@@ -121,6 +124,24 @@ export function sanitizeRedirectPath(
   return `${pathname}?${query}`;
 }
 
+/** Where a rejected (supplied but unsafe) `next` value lands. */
+export const NEXT_INVALID_FALLBACK_PATH = "/deals";
+
+/**
+ * Validate a `next` value at a redirect hop. Missing values keep the normal
+ * home path; supplied values that fail validation fall back to /deals so a
+ * tampered unlock link never lands somewhere unexpected.
+ */
+export function resolveNextPath(
+  value: string | null | undefined,
+  missingFallback: string = AUTH_HOME_PATH,
+): string {
+  if (value == null || value.trim() === "") {
+    return missingFallback;
+  }
+  return sanitizeRedirectPath(value, NEXT_INVALID_FALLBACK_PATH);
+}
+
 export function loginPathWithNext(nextPath: string): string {
   const next = sanitizeRedirectPath(nextPath);
   return `${LOGIN_PATH}?next=${encodeURIComponent(next)}`;
@@ -134,6 +155,25 @@ export function signupPathWithNext(nextPath: string): string {
 export function signupPathWithAlert(nextPath: string): string {
   const next = sanitizeRedirectPath(nextPath);
   return `${SIGNUP_PATH}?intent=alert&next=${encodeURIComponent(next)}`;
+}
+
+export function checkoutPathForPlan(plan: CheckoutPlanKey): string {
+  return `${CHECKOUT_PATH}?plan=${plan}`;
+}
+
+export function signupPathForPlan(plan: CheckoutPlanKey): string {
+  return `${SIGNUP_PATH}?plan=${plan}&next=${encodeURIComponent(checkoutPathForPlan(plan))}`;
+}
+
+export function loginPathForPlan(plan: CheckoutPlanKey): string {
+  return `${LOGIN_PATH}?plan=${plan}&next=${encodeURIComponent(checkoutPathForPlan(plan))}`;
+}
+
+export function parseCheckoutPlan(
+  value: string | null | undefined,
+): CheckoutPlanKey | null {
+  const match = CHECKOUT_PLAN_KEYS.find((key) => key === value);
+  return match ?? null;
 }
 
 export function defaultPathForAuthType(type: string | null | undefined): string {
@@ -157,7 +197,7 @@ export function resolveProtectedRouteRedirect(
   }
 
   if (isAuthenticated && isAuthEntryPath(pathname)) {
-    return sanitizeRedirectPath(nextValue);
+    return resolveNextPath(nextValue);
   }
 
   return null;

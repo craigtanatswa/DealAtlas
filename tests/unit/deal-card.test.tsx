@@ -7,7 +7,20 @@ afterEach(cleanup);
 import { DealCard } from "@/components/deals/deal-card";
 import { DEAL_CARD_FIXTURES } from "@/components/deals/fixtures";
 import { LockedField } from "@/components/deals/locked-field";
+import { buyerSectorLabel } from "@/components/deals/types";
 import { UnlockPanel } from "@/components/deals/unlock-panel";
+
+describe("buyer sector label", () => {
+  it("labels the buyer sector and hides contradictory combinations", () => {
+    expect(buyerSectorLabel("PUBLIC")).toBe("Public");
+    expect(buyerSectorLabel("PRIVATE")).toBe("Private");
+    expect(buyerSectorLabel("NONPROFIT")).toBe("Non-profit");
+    expect(buyerSectorLabel("PRIVATE", "PUBLIC_TENDER")).toBeNull();
+    expect(buyerSectorLabel("PUBLIC", "PRIVATE_TENDER")).toBeNull();
+    expect(buyerSectorLabel("PRIVATE", "PRIVATE_TENDER")).toBe("Private");
+    expect(buyerSectorLabel("PUBLIC", "PUBLIC_TENDER")).toBe("Public");
+  });
+});
 
 describe("deal card fixtures", () => {
   it("renders sanitised preview fields and a view opportunity action", () => {

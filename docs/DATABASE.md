@@ -48,8 +48,12 @@ One row per Supabase Auth user.
 - email
 - display_name
 - role USER/ADMIN
+- founding_member — set only by the founding webhook path and kept after cancel or expiry
+- founding_since
 - created_at
 - updated_at
+
+`private.founding_slots` holds one row per user (`reserved`, `active`, or `released`). Service role calls the slot functions; anon and authenticated cannot read the table or execute the functions. A reserved row expires after 30 minutes. An active row stays occupied after cancel. `private.founding_event_claims` has one row per processed event and one row per Dodo subscription. `GET /api/founding` returns the remaining count and a sold-out flag only.
 
 ### subscriptions
 Local mirror of Dodo subscription entitlement state.
@@ -396,6 +400,7 @@ Included in the build pack:
 - `0017_job_runs.sql`
 - `0018_preview_gate_v2_and_dto_rpcs.sql` (additive; apply before the app release that uses the DTO RPCs)
 - `0019_revoke_client_preview_table_access.sql` (apply only after that app release is live)
+- `0041_preview_detail_allowlist.sql` (rich free previews: `private.preview_dto_requirements` keeps only allow-listed detail fields, checks structured fields against fixed vocabularies (CPV division titles, standards, commercial lines, banded key dates, broad regions, quantity units), drops any line that `private.preview_detail_text_risky` flags (emails, URLs, domains, phones, notice/reference IDs, `RM` codes, day counts, postcodes, ALL-CAPS tokens, portal and framework names), and accepts untagged lines only from the closed requirement labels. `lotCount`, `procedureType` and `framework` are not allowed. `private.detect_preview_leakage` also raises HIGH for risky detail lines and deadline day counts. `search_deal_previews_for_profile` projects through the same filter. Execute stays revoked from anon/authenticated. Apply before the app release that reads the new fields)
 
 Apply in numeric order with the Supabase CLI (`npx supabase db reset` locally, or `npx supabase db push` to a linked project). Never reset or drop a linked production database. `db push` applies every pending file, so roll out `0018` and `0019` as separate pushes (push from a checkout without `0019`, deploy the app, then push again) or apply them manually in order.
 

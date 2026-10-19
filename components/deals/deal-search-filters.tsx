@@ -174,7 +174,7 @@ const FILTER_CHIPS: Array<{
     value: (filters) =>
       filters.buyerSector ? BUYER_SECTOR_LABELS[filters.buyerSector] : undefined,
   },
-  { key: "region", label: "Location", value: (filters) => filters.region },
+  { key: "region", label: "Region", value: (filters) => filters.region },
   { key: "valueBand", label: "Value", value: (filters) => filters.valueBand },
   {
     key: "deadlineBand",
@@ -231,9 +231,96 @@ export function DealActiveFilters({
           </Link>
         );
       })}
-      <Button asChild variant="ghost" size="sm">
+      <Button asChild variant="ghost" size="sm" className="min-h-11">
         <Link href={path}>Clear all</Link>
       </Button>
     </div>
+  );
+}
+
+export function DealSearchPanel({
+  filters,
+  path = "/deals",
+  showRelevance = false,
+  publicStatus = false,
+}: {
+  filters: PublicSearchFilters;
+  path?: string;
+  showRelevance?: boolean;
+  publicStatus?: boolean;
+}) {
+  return (
+    <section className="rounded-[1.5rem] border border-border bg-background p-4">
+      <Sheet>
+        <form
+          method="get"
+          action={path}
+          className="flex flex-col gap-3"
+          onSubmit={(event) => submitWithoutEmptyFields(event, path)}
+        >
+          {filters.sort && filters.sort !== "biddable" ? (
+            <input type="hidden" name="sort" value={filters.sort} />
+          ) : null}
+          <div className="flex items-center gap-3">
+            <DealKeywordFields
+              filters={filters}
+              idPrefix="search"
+              label="Search"
+              labelClassName="sr-only"
+              placeholder="Search opportunities"
+              inputClassName="h-11 min-h-11"
+            />
+            <Button type="submit" className="h-11 min-h-11 shrink-0">
+              Search
+            </Button>
+          </div>
+          <div
+            className={
+              showRelevance
+                ? "grid grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)] items-end gap-3 lg:grid-cols-8"
+                : "grid grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)] items-end gap-3 lg:grid-cols-7"
+            }
+          >
+            <div className="lg:hidden">
+              <SheetTrigger asChild>
+                <Button type="button" variant="outline" className="h-11 min-h-11 px-2.5">
+                  <SlidersHorizontalIcon aria-hidden="true" />
+                  Filters
+                </Button>
+              </SheetTrigger>
+            </div>
+            <DealFilterSelects
+              filters={filters}
+              idPrefix="deals-filter"
+              publicStatus={publicStatus}
+              layout="bar"
+              showRelevance={showRelevance}
+            />
+          </div>
+        </form>
+        <SheetContent side="left" className="w-full overflow-y-auto sm:max-w-md">
+          <SheetHeader>
+            <SheetTitle>Filters</SheetTitle>
+            <SheetDescription>
+              Narrow results by category, region, value and closing window.
+            </SheetDescription>
+          </SheetHeader>
+          <FilterForm
+            filters={filters}
+            idPrefix="mobile-filter"
+            includeKeyword
+            className="px-4 pb-6"
+            path={path}
+            showRelevance={showRelevance}
+            publicStatus={publicStatus}
+          />
+        </SheetContent>
+      </Sheet>
+      {hasActivePublicFilters(filters) ? (
+        <div className="mt-4 border-t border-border pt-4">
+          <DealActiveFilters filters={filters} path={path} />
+        </div>
+      ) : null}
+    </section>
   );
 }
