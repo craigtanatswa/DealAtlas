@@ -68,6 +68,13 @@ async function waitForPathnames(captured: CapturedIngest[], expected: string[]) 
 }
 
 test.describe("Analytics payloads carry no deal data", () => {
+  // posthog-js drops events from a "HeadlessChrome" user agent (CI runs the
+  // headless shell). Present a regular Chrome UA so real payloads are produced.
+  test.use({
+    userAgent:
+      "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36",
+  });
+
   test("free user: public and workspace deal pages", async ({ page }) => {
     const seed = readSeed();
     const captured = await captureIngest(page);
@@ -77,7 +84,9 @@ test.describe("Analytics payloads carry no deal data", () => {
       `/deals/${seed.publishedSlug}?q=${encodeURIComponent(seed.previewTitle)}&utm_source=e2e&utm_medium=test#apply`,
     );
     await expect(page.getByRole("heading", { name: seed.previewTitle })).toBeVisible();
+    await waitForPathnames(captured, ["/deals/[deal]"]);
     await page.goto(`/deals?q=${encodeURIComponent("CANARY BUYER NEVER FREE")}`);
+    await waitForPathnames(captured, ["/deals"]);
     await page.goto(`/app/deals/${seed.publishedDealId}`);
     await expect(
       page.getByRole("complementary", { name: "Unlock this opportunity with Pro" }),
@@ -111,7 +120,9 @@ test.describe("Analytics payloads carry no deal data", () => {
 
     await page.goto(`/app/deals/${seed.publishedDealId}?tab=buyer#contacts`);
     await expect(page.getByText("CANARY BUYER NEVER FREE").first()).toBeVisible();
+    await waitForPathnames(captured, ["/app/deals/[deal]"]);
     await page.goto(`/deals/${seed.publishedSlug}`);
+    await waitForPathnames(captured, ["/deals/[deal]"]);
     await page.goto("/app/buyers");
     await expect(page.getByText("CANARY BUYER NEVER FREE").first()).toBeVisible();
 
