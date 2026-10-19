@@ -1,6 +1,8 @@
 /** HTML, RSC, META and SEO probes (spec 5.2-5.5). */
 import * as cheerio from "cheerio";
 
+import { PUBLIC_DEALS_PAGE_SIZE } from "@/lib/search/params";
+
 import type { Assertion, Ctx, ProbeDef, ProbeOutcome } from "../lib/probe";
 import { UA_MATRIX, eq, ok, slugsIn, sorted } from "../lib/probe";
 import type { Role } from "../lib/scan";
@@ -27,6 +29,15 @@ function heldIn(ctx: Ctx, text: string): string[] {
 function cardSlugs(ctx: Ctx, text: string): Set<string> {
   const known = new Set([...pubSlugs(ctx), ...heldSlugs(ctx)]);
   return new Set([...slugsIn(text)].filter((s) => known.has(s)));
+}
+
+/** /deals last page from the pager's "Showing a–b of N" line; unknown keeps crawling. */
+function dealsLastPage(html: string): number {
+  const text = cheerio.load(html)("nav[aria-label='Pagination'] p").first().text();
+  const total = Number(text.match(/\bof\s+(\d+)\b/)?.[1]);
+  return Number.isFinite(total) && total > 0
+    ? Math.ceil(total / PUBLIC_DEALS_PAGE_SIZE)
+    : Number.POSITIVE_INFINITY;
 }
 
 function homeCardAssertions(ctx: Ctx, body: string, pub: Set<string>): Assertion[] {
@@ -141,20 +152,25 @@ export async function htmlProbes(ctx: Ctx, roles: Role[] = NON_PRO_ROLES): Promi
           }),
         );
       }
-      // HTML-02: /deals and ?page=2.. until a page has no cards.
+      // HTML-02: /deals and ?page=2.. until a page has no cards. Every page up to the
+      // pager's last page (from page 1's "of N" total) must be a 200; the page after it
+      // is past the real last page and must be a real 404 (still scanned).
       jobs.push(
         (async () => {
           const union = new Set<string>();
           const held = new Set<string>();
+          let lastPage = Number.POSITIVE_INFINITY;
           for (let n = 1; n <= 10; n += 1) {
+            const pastEnd = n > lastPage;
             const o = await page(
               ctx,
-              { id: "HTML-02", instance: `page-${n}`, role, req: { path: "/deals", query: n === 1 ? [] : [["page", String(n)]] }, status: [200] },
+              { id: "HTML-02", instance: `page-${n}`, role, req: { path: "/deals", query: n === 1 ? [] : [["page", String(n)]] }, status: pastEnd ? [404] : [200] },
               { meta: { jsonLdAllowed: true }, uaMatrix: n <= 2 },
             );
+            if (n === 1) lastPage = dealsLastPage(o.final.body);
             const found = cardSlugs(ctx, o.final.body);
             heldIn(ctx, o.final.body).forEach((s) => held.add(s));
-            if ([...found].filter((s) => pub.has(s)).length === 0) break;
+            if (pastEnd || [...found].filter((s) => pub.has(s)).length === 0) break;
             found.forEach((s) => pub.has(s) && union.add(s));
           }
           ctx.derive({

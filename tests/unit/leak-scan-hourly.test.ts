@@ -6,6 +6,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { alertDepsFromEnv, deliverCrash, deliverFindings, deliverIncomplete } from "@/lib/leak-scan/alert";
+import { withTransientRetries } from "@/lib/leak-scan/retry";
 import { rotateFloor, runDbPass } from "@/lib/leak-scan/db-pass";
 import { rotatingSample, runHttpPass } from "@/lib/leak-scan/http-pass";
 import { createReadonlyClient, type ReadonlyFilter } from "@/lib/leak-scan/readonly-client";
@@ -823,6 +824,90 @@ describe("hourly leak scan", () => {
   it("rotates the public sample and still skips old slugs without a database pass", () => {
     expect(rotatingSample(["a", "b", "c", "d"], 2, 1)).toEqual({ picked: ["b", "c"], offset: 1 });
     expect(rotatingSample(["a", "b"], 15, 3).offset).toBe(0);
+  });
+
+  it("retries a timed-out public fetch and still fails a persistent fetch", async () => {
+    const calls = new Map<string, number>();
+    const fetchImpl = (async (url: string) => {
+      const key = String(url);
+      const count = (calls.get(key) ?? 0) + 1;
+      calls.set(key, count);
+      if (key.endsWith("/sitemap.xml") && count < 3) {
+        const error = new Error("timeout");
+        error.name = "TimeoutError";
+        throw error;
+      }
+      return new Response("<urlset></urlset>", { status: 200, headers: { "content-type": "application/xml" } });
+    }) as typeof fetch;
+    const result = await runHttpPass({
+      origin: "https://example.test",
+      fetchImpl,
+      dealTokens: [],
+      legacySlugs: [],
+      retrySleep: async () => {},
+    });
+    expect(calls.get("https://example.test/sitemap.xml")).toBe(3);
+    expect(result.fetched).toBeGreaterThan(0);
+    let attempts = 0;
+    await expect(
+      runHttpPass({
+        origin: "https://example.test",
+        fetchImpl: (async () => {
+          attempts += 1;
+          throw new Error("nope");
+        }) as typeof fetch,
+        dealTokens: [],
+        legacySlugs: [],
+        retrySleep: async () => {},
+      }),
+    ).rejects.toThrow("leak scan fetch failed");
+    expect(attempts).toBe(1);
+  });
+
+  it("retries a transient database read and does not retry a permanent one", async () => {
+    let attempts = 0;
+    await expect(
+      withTransientRetries(
+        async () => {
+          attempts += 1;
+          if (attempts < 3) {
+            const error = new Error("statement timeout");
+            Object.assign(error, { code: "57014" });
+            throw error;
+          }
+          return "ok";
+        },
+        { sleep: async () => {} },
+      ),
+    ).resolves.toBe("ok");
+    expect(attempts).toBe(3);
+    let permanent = 0;
+    await expect(
+      withTransientRetries(
+        async () => {
+          permanent += 1;
+          throw new Error("leak scan read failed");
+        },
+        { sleep: async () => {} },
+      ),
+    ).rejects.toThrow("leak scan read failed");
+    expect(permanent).toBe(1);
+  });
+
+  it("fails before scanning when the alert recipient is missing", () => {
+    const result = spawnSync(
+      "npx",
+      ["tsx", "--import", "./scripts/allow-server-only.mjs", "scripts/leak-scan.ts", "--pass", "db"],
+      {
+        cwd: ROOT,
+        encoding: "utf8",
+        env: { ...process.env, LEAK_ALERT_EMAIL_TO: "  " },
+      },
+    );
+    const output = `${result.stdout}\n${result.stderr}`;
+    expect(result.status).not.toBe(0);
+    expect(output).toContain("LEAK_ALERT_EMAIL_TO");
+    expect(output).not.toContain("leak_scan_db");
   });
 
   it("flags an old slug that is still served", async () => {

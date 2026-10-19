@@ -10,6 +10,12 @@ import { Button } from "@/components/ui/button";
 import type { FoundingPublicCount } from "@/lib/billing/founding-ui";
 import { signupPathWithAlert } from "@/lib/auth/redirect";
 import { DISPLAY_PRICING } from "@/lib/constants";
+import {
+  categoryLabel,
+  disclosed,
+  distinctSpecificSector,
+  keyDatesRemainder,
+} from "@/lib/preview/display";
 import type { PublicDealPreview } from "@/lib/search/dto";
 import type { SafeMatchView } from "@/lib/matching/types";
 import {
@@ -121,7 +127,16 @@ export function DealPreviewDetail({
     DEAL_TYPE_LABELS[deal.dealType],
     deal.freshnessLabel,
   ].filter((part): part is string => Boolean(part));
-  const sectorChip = deal.specificSector ?? deal.mainCategory;
+  const category = categoryLabel(deal.mainCategory);
+  const valueBand = disclosed(deal.valueBand);
+  const durationBand = disclosed(deal.durationBand);
+  const specificSector = distinctSpecificSector(
+    deal.specificSector,
+    deal.goodsServices,
+    category,
+  );
+  // Placeholders (UNKNOWN, Not disclosed) and duplicates are not rendered.
+  const sectorChip = disclosed(deal.specificSector) ?? category;
   const isPro = unlock?.mode === "pro";
   const cardProps = {
     mode: unlock?.mode,
@@ -192,21 +207,21 @@ export function DealPreviewDetail({
         <Section id="facts-heading" title="Key facts">
           <FactGrid
             cells={[
-              { label: "Category", value: deal.mainCategory },
-              { label: "Region", value: deal.broadRegion },
+              { label: "Category", value: category },
+              { label: "Region", value: disclosed(deal.broadRegion) },
               {
                 label: "Value band",
                 value:
-                  deal.currency && deal.valueBand
-                    ? `${deal.valueBand} (${deal.currency})`
-                    : deal.valueBand,
+                  deal.currency && valueBand
+                    ? `${valueBand} (${deal.currency})`
+                    : valueBand,
               },
-              { label: "Duration", value: deal.durationBand },
+              { label: "Duration", value: durationBand },
               {
                 label: "SME suitability",
-                value: levelLabel(deal.smeSuitability, "Not stated"),
+                value: disclosed(levelLabel(deal.smeSuitability, "")),
               },
-              { label: "Sector", value: deal.specificSector },
+              { label: "Sector", value: specificSector },
             ]}
           />
         </Section>
@@ -258,11 +273,11 @@ export function DealPreviewDetail({
             cells={[
               {
                 label: "Bid complexity",
-                value: levelLabel(deal.bidComplexity, "Not stated"),
+                value: disclosed(levelLabel(deal.bidComplexity, "")),
               },
               {
                 label: "Competition",
-                value: levelLabel(deal.competitionLevel, "Not stated"),
+                value: disclosed(levelLabel(deal.competitionLevel, "")),
               },
             ]}
           />
@@ -297,9 +312,15 @@ export function DealPreviewDetail({
             cells={[
               {
                 label: keyFact?.label ?? "Tender deadline",
-                value: keyFact?.value ?? deal.deadlineBand,
+                value: disclosed(keyFact?.value ?? deal.deadlineBand),
               },
-              { label: "Key dates", value: deal.keyDates },
+              {
+                label: "Key dates",
+                value: keyDatesRemainder(deal.keyDates, {
+                  deadlineBand: deal.deadlineBand,
+                  durationBand: deal.durationBand,
+                }),
+              },
               { label: "Stage", value: DEAL_STAGE_LABELS[deal.stage] },
             ]}
           />

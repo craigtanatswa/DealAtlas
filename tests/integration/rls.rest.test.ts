@@ -70,8 +70,8 @@ describe.skipIf(!configured)("PostgREST RLS smoke tests", () => {
   const organizationId = randomUUID();
   const publishedDealId = randomUUID();
   const unpublishedDealId = randomUUID();
-  const publishedSlug = `rls-published-${publishedDealId.slice(0, 8)}`;
-  const unpublishedSlug = `rls-unpublished-${unpublishedDealId.slice(0, 8)}`;
+  const publishedSlug = "rls-published-c0ffee42";
+  const unpublishedSlug = "rls-unpublished-c0ffee43";
   const testEmail = `rls-${publishedDealId.slice(0, 8)}@example.com`;
   const testPassword = "DealAtlas-rls-test-123";
   let userId: string | undefined;

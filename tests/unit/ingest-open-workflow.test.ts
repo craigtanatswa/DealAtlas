@@ -64,6 +64,12 @@ describe("ingest-open workflow", () => {
     expect(publishStep).not.toContain("steps.contracts_finder.outcome");
     expect(publishStep).not.toContain("gca_agreements");
     expect(publishStep).not.toContain("gca_pipeline");
+    const buildStep = ingestJob.slice(ingestJob.indexOf("id: build"), ingestJob.indexOf("id: unpublish"));
+    expect(buildStep).not.toContain("steps.contracts_finder.outcome");
+    expect(buildStep).not.toContain("steps.gca_agreements.outcome");
+    expect(buildStep).not.toContain("steps.gca_pipeline.outcome");
+    const contractsFinderStep = ingestJob.slice(ingestJob.indexOf("id: contracts_finder"), ingestJob.indexOf("id: gca_agreements"));
+    expect(contractsFinderStep).not.toContain("continue-on-error");
     expect(ingestJob.match(/continue-on-error: true/g)).toHaveLength(2);
     expect(ingestJob.indexOf("id: ingest")).toBeLessThan(ingestJob.indexOf("id: contracts_finder"));
     expect(ingestJob.indexOf("id: contracts_finder")).toBeLessThan(ingestJob.indexOf("id: gca_agreements"));

@@ -13,6 +13,7 @@ import { SectionHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { APP_NAME } from "@/lib/constants";
 import { HOW_IT_WORKS_STEPS } from "@/lib/seo/pages";
+import type { HomeSearchChip } from "@/lib/search/home-chips";
 import type { PublicDealPreview, RankedDealSearchResult } from "@/lib/search/dto";
 
 const VALUE_PROPS = [
@@ -34,7 +35,13 @@ const VALUE_PROPS = [
   },
 ] as const;
 
-export function HomeHero({ signedIn = false }: { signedIn?: boolean }) {
+export function HomeHero({
+  signedIn = false,
+  searchChips,
+}: {
+  signedIn?: boolean;
+  searchChips?: HomeSearchChip[];
+}) {
   return (
     <section className="surface-hero relative overflow-hidden border-b border-border">
       <HeroCategoryCloud />
@@ -53,7 +60,7 @@ export function HomeHero({ signedIn = false }: { signedIn?: boolean }) {
           )}
         </div>
         <div className="w-full max-w-3xl text-left">
-          <HeroSearchForm />
+          <HeroSearchForm examples={searchChips} />
         </div>
         <div className="w-full max-w-5xl text-left">
           <CategoryShortcuts />
