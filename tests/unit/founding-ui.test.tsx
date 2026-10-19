@@ -201,7 +201,7 @@ describe("founding full error state", () => {
     ["homepage band", () => <HomeFoundingCta signedIn remaining={17} cap={FOUNDING_CAP} />, /founding member/i],
     ["checkout", () => <FoundingCheckoutSummary remaining={3} cap={FOUNDING_CAP} />, /Continue to payment/],
   ])("shows the server message with a Pro annual fallback on %s", async (_where, ui, buttonName) => {
-    const fetchMock = stubCheckoutResponse(409, { error: FOUNDING_FULL_MESSAGE });
+    const fetchMock = stubCheckoutResponse(409, { code: "FOUNDING_CAP_FULL", message: FOUNDING_FULL_MESSAGE });
     const { container } = render(ui());
     fireEvent.click(screen.getByRole("button", { name: buttonName }));
 
@@ -217,11 +217,33 @@ describe("founding full error state", () => {
     expect(container.textContent).not.toMatch(/of 25|25 places/);
   });
 
-  it("shows other checkout errors inline without the Pro annual fallback", async () => {
-    stubCheckoutResponse(400, { error: "Choose a plan to continue." });
+  it("shows the server message for FOUNDING_CAP_FULL, not the local copy", async () => {
+    stubCheckoutResponse(409, { code: "FOUNDING_CAP_FULL", message: "Server copy wins." });
     render(<FoundingCheckoutButton label="Become a founding member" returnTo="/pricing" />);
     fireEvent.click(screen.getByRole("button", { name: "Become a founding member" }));
-    expect((await screen.findByRole("alert")).textContent).toBe("Choose a plan to continue.");
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain("Server copy wins.");
+    expect(alert.textContent).not.toContain(FOUNDING_FULL_MESSAGE);
+    expect(within(alert).getByRole("button", { name: "Start Pro annual" })).toBeTruthy();
+  });
+
+  it("falls back to the local copy when FOUNDING_CAP_FULL has no message", async () => {
+    stubCheckoutResponse(409, { code: "FOUNDING_CAP_FULL" });
+    render(<FoundingCheckoutButton label="Become a founding member" returnTo="/pricing" />);
+    fireEvent.click(screen.getByRole("button", { name: "Become a founding member" }));
+    expect((await screen.findByRole("alert")).textContent).toContain(FOUNDING_FULL_MESSAGE);
+  });
+
+  it.each([
+    ["INVALID_PLAN", 400, { code: "INVALID_PLAN" }],
+    ["full text without the code", 409, { message: FOUNDING_FULL_MESSAGE }],
+    ["unknown error", 500, { code: "SOMETHING_ELSE", message: "Internal detail" }],
+  ])("shows a generic error with no annual fallback for %s", async (_name, status, body) => {
+    stubCheckoutResponse(status, body);
+    render(<FoundingCheckoutButton label="Become a founding member" returnTo="/pricing" />);
+    fireEvent.click(screen.getByRole("button", { name: "Become a founding member" }));
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toBe("Checkout could not be started. Try again.");
     expect(screen.queryByRole("button", { name: "Start Pro annual" })).toBeNull();
   });
 

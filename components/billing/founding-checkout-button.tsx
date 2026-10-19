@@ -14,8 +14,13 @@ import { cn } from "@/lib/utils";
 type Status =
   | { kind: "idle" }
   | { kind: "pending" }
-  | { kind: "full" }
-  | { kind: "error"; message: string };
+  | { kind: "full"; message: string }
+  | { kind: "error" };
+
+/** Server error code for a full founding cap (HTTP 409). Contract owned by S&B. */
+export const FOUNDING_CAP_FULL_CODE = "FOUNDING_CAP_FULL";
+
+const GENERIC_ERROR = "Checkout could not be started. Try again.";
 
 /**
  * Founding checkout (planKey FOUNDING). Posts like CheckoutPlanForm, but reads the
@@ -37,7 +42,7 @@ export function FoundingCheckoutButton({
   initialFull?: boolean;
 }) {
   const [status, setStatus] = useState<Status>(
-    initialFull ? { kind: "full" } : { kind: "idle" },
+    initialFull ? { kind: "full", message: FOUNDING_FULL_MESSAGE } : { kind: "idle" },
   );
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
@@ -50,22 +55,24 @@ export function FoundingCheckoutButton({
         body: JSON.stringify({ planKey: FOUNDING_PLAN_KEY, returnTo }),
       });
       const body = (await response.json().catch(() => null)) as
-        | { checkout_url?: string; error?: string }
+        | { checkout_url?: string; code?: string; message?: string }
         | null;
       if (response.ok && body?.checkout_url) {
         window.location.assign(body.checkout_url);
         return;
       }
-      if (body?.error === FOUNDING_FULL_MESSAGE) {
-        setStatus({ kind: "full" });
+      // Match on the error code, never the text. INVALID_PLAN and anything else is generic.
+      if (response.status === 409 && body?.code === FOUNDING_CAP_FULL_CODE) {
+        const message =
+          typeof body.message === "string" && body.message.trim()
+            ? body.message
+            : FOUNDING_FULL_MESSAGE;
+        setStatus({ kind: "full", message });
         return;
       }
-      setStatus({
-        kind: "error",
-        message: body?.error ?? "Checkout could not be started. Try again.",
-      });
+      setStatus({ kind: "error" });
     } catch {
-      setStatus({ kind: "error", message: "Checkout could not be started. Try again." });
+      setStatus({ kind: "error" });
     }
   }
 
@@ -78,7 +85,7 @@ export function FoundingCheckoutButton({
           className,
         )}
       >
-        <p className="text-pretty">{FOUNDING_FULL_MESSAGE}</p>
+        <p className="text-pretty">{status.message}</p>
         <CheckoutPlanForm
           planKey="PRO_ANNUAL"
           label={FOUNDING_COPY.startAnnual}
@@ -109,7 +116,7 @@ export function FoundingCheckoutButton({
       </Button>
       {status.kind === "error" ? (
         <p role="alert" className="mt-2 text-center text-[0.8125rem] leading-5 text-destructive">
-          {status.message}
+          {GENERIC_ERROR}
         </p>
       ) : null}
     </form>

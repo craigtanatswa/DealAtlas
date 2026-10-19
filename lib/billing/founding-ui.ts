@@ -8,7 +8,7 @@ import { DISPLAY_PRICING } from "@/lib/constants";
 export const FOUNDING_PLAN_KEY = "FOUNDING" as const;
 export type FoundingPlanKey = typeof FOUNDING_PLAN_KEY;
 
-/** Exact server copy when founding is full (matched to show the inline fallback). */
+/** Fallback copy for a FOUNDING_CAP_FULL error when the server sends no message. */
 export const FOUNDING_FULL_MESSAGE = `Founding places are all taken. You can still subscribe to Pro annual at ${DISPLAY_PRICING.proAnnual}.`;
 
 /** /checkout for the founding plan. */
