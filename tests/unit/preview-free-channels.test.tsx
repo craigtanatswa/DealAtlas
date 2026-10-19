@@ -102,6 +102,18 @@ function freeChannelBlob(store: Awaited<ReturnType<typeof ingest>>): string {
   return [JSON.stringify(dto), card, detail, metadata, jsonLd, sitemap, analytics].join("\n");
 }
 
+/**
+ * The preview slug ends in 8 random hex characters, which are all digits about
+ * 2.3% of the time. Check the slug shape, then mask only that suffix so the
+ * 8-digit check still catches any notice-like ID anywhere else in the blob.
+ */
+function blobWithoutSlugSuffix(store: Awaited<ReturnType<typeof ingest>>, blob: string): string {
+  const slug = store.previews[0]!.slug;
+  expect(slug).toMatch(/^[a-z0-9]+(?:-[a-z0-9]+)*-[0-9a-f]{8}$/);
+  const suffix = slug.slice(-8);
+  return blob.split(`-${suffix}`).join("-slughex");
+}
+
 describe("free channels stay high information and low identifiability", () => {
   it("hides buyer, reference, URL, 7-word source runs and 8-digit CPV codes", async () => {
     for (const fixture of ["normal.json", "multi-lot.json"]) {
@@ -122,11 +134,21 @@ describe("free channels stay high information and low identifiability", () => {
       for (const phrase of wordWindows(deal.sourceDescription ?? "", 7)) {
         expect(blob, phrase).not.toContain(phrase);
       }
-      expect(blob).not.toMatch(/\b\d{8}\b/);
+      expect(blobWithoutSlugSuffix(store, blob)).not.toMatch(/\b\d{8}\b/);
       expect(blob).not.toContain("72000000");
       expect(blob).not.toContain("45233100");
       expect(blob).not.toMatch(/£\d{1,3}(?:,\d{3})+/);
     }
+  });
+
+  it("masks only the slug suffix, even when the random hex is all digits", () => {
+    const store = { previews: [{ slug: "it-services-for-a-public-organisation-12345678" }] } as unknown as Awaited<
+      ReturnType<typeof ingest>
+    >;
+    const blob = "/deals/it-services-for-a-public-organisation-12345678 ref 87654321";
+    const masked = blobWithoutSlugSuffix(store, blob);
+    expect(masked).not.toContain("12345678");
+    expect(masked).toMatch(/\b\d{8}\b/);
   });
 
   it("shows the CPV division, banded dates and value, and no day count or month", async () => {
@@ -179,7 +201,7 @@ describe("adversarial source text never reaches a free channel (P1-3, P1-4)", ()
       expect(blob, marker).not.toContain(marker);
     }
     expect(blob).not.toMatch(/https?:\/\/(?!localhost|schema\.org|www\.w3\.org|www\.sitemaps\.org)/);
-    expect(blob).not.toMatch(/\b\d{8}\b/);
+    expect(blobWithoutSlugSuffix(store, blob)).not.toMatch(/\b\d{8}\b/);
   });
 
   it("never ships source prose as scope and drops risky technical specs (fail-closed)", async () => {
