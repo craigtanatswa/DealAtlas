@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 import { AuthCard } from "@/components/auth/auth-card";
 import { SignupForm } from "@/components/auth/signup-form";
-import { parseCheckoutPlan, sanitizeRedirectPath } from "@/lib/auth/redirect";
+import { parseCheckoutPlan, resolveNextPath } from "@/lib/auth/redirect";
 
 export const metadata: Metadata = {
   title: "Get started",
@@ -14,7 +14,7 @@ export default async function SignupPage({
   searchParams: Promise<{ next?: string; plan?: string }>;
 }) {
   const params = await searchParams;
-  const nextPath = sanitizeRedirectPath(params.next);
+  const nextPath = resolveNextPath(params.next);
   const plan = parseCheckoutPlan(params.plan);
 
   return (

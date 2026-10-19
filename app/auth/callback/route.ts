@@ -5,7 +5,7 @@ import {
   LOGIN_PATH,
   RESET_PASSWORD_PATH,
   defaultPathForAuthType,
-  sanitizeRedirectPath,
+  resolveNextPath,
 } from "@/lib/auth/redirect";
 import { parseEmailOtpType } from "@/lib/auth/otp";
 import { OAUTH_NEXT_COOKIE, PASSWORD_RESET_COOKIE } from "@/lib/auth/cookies";
@@ -19,7 +19,7 @@ function errorRedirect(request: NextRequest, code: string) {
 }
 
 function safeNext(request: NextRequest, fallback: string) {
-  return sanitizeRedirectPath(request.nextUrl.searchParams.get("next"), fallback);
+  return resolveNextPath(request.nextUrl.searchParams.get("next"), fallback);
 }
 
 export async function GET(request: NextRequest) {
@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
   const fallback = honorReset
     ? RESET_PASSWORD_PATH
     : pendingOAuthNext
-      ? sanitizeRedirectPath(pendingOAuthNext.value)
+      ? resolveNextPath(pendingOAuthNext.value)
       : defaultPathForAuthType(type);
   const next =
     requestedNext === RESET_PASSWORD_PATH && honorReset
