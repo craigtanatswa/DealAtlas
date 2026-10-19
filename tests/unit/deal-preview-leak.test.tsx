@@ -30,7 +30,7 @@ describe("free discovery HTML and protected paths", () => {
     expect(html).not.toMatch(/\b\d{8}\b/);
     expect(html).not.toMatch(/blur/);
     expect(html).toContain(DEAL_PREVIEW_DETAIL_FIXTURE.previewTitle);
-    expect(html).toContain("Unlock the buyer and pursue this opportunity");
+    expect(html).toContain("Unlock this opportunity with Pro");
     expect(html).toContain("1 opportunity");
   });
 

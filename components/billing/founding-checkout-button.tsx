@@ -98,6 +98,7 @@ export function FoundingCheckoutButton({
     <form
       action="/api/billing/checkout"
       method="post"
+      data-analytics-plan="founding"
       onSubmit={onSubmit}
       className={cn("flex w-full flex-col", className)}
     >

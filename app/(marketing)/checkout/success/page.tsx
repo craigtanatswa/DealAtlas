@@ -1,15 +1,18 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import { ConfirmingSubscription } from "@/components/billing/confirming-subscription";
 import { Heading } from "@/components/layout/heading";
 import { Main } from "@/components/layout/container";
 import { Button } from "@/components/ui/button";
 import { getAuthUser } from "@/lib/auth/session";
-import { loginPathWithNext } from "@/lib/auth/redirect";
-import { parseCheckoutReturnTo } from "@/lib/deals/paths";
+import { loginPathWithNext, NEXT_INVALID_FALLBACK_PATH } from "@/lib/auth/redirect";
+import { isAppDealPath, parseCheckoutReturnTo } from "@/lib/deals/paths";
 import { getCurrentEntitlement } from "@/lib/entitlements/service";
 import { FREE_ENTITLEMENT } from "@/lib/entitlements/policy";
+
+const PUBLIC_DEAL_PATH = /^\/deals\/[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 export const metadata: Metadata = {
   title: "Confirming subscription",
@@ -25,13 +28,15 @@ export default async function CheckoutSuccessPage({
   void params.success;
   void params.status;
   void params.session_id;
-  const afterConfirmHref = parseCheckoutReturnTo(
+  const rawNext =
     typeof params.next === "string"
       ? params.next
       : Array.isArray(params.next)
         ? params.next[0]
-        : null,
-  ) ?? "/app";
+        : null;
+  const afterConfirmHref =
+    parseCheckoutReturnTo(rawNext) ??
+    (rawNext ? NEXT_INVALID_FALLBACK_PATH : "/app");
 
   const user = await getAuthUser();
   if (!user) {
@@ -47,6 +52,11 @@ export default async function CheckoutSuccessPage({
         </Button>
       </Main>
     );
+  }
+
+  const afterConfirmPath = afterConfirmHref.split("?")[0] ?? afterConfirmHref;
+  if (isAppDealPath(afterConfirmPath) || PUBLIC_DEAL_PATH.test(afterConfirmPath)) {
+    redirect(`${afterConfirmPath}?upgraded=1`);
   }
 
   const entitlement = await getCurrentEntitlement(user.id);
