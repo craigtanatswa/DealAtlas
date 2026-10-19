@@ -1,14 +1,28 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { FoundingFullNotice } from "@/components/billing/founding-full-notice";
 import { PricingPlans } from "@/components/billing/pricing-plans";
 import { FoundingCheckoutSummary } from "@/components/billing/founding-checkout-summary";
 import { UnlockPanel } from "@/components/deals/unlock-panel";
-import { FOUNDING_CAP } from "@/lib/billing/founding-ui";
+import { FoundingCheckoutButton } from "@/components/billing/founding-checkout-button";
+import { HomeFoundingCta } from "@/components/marketing/home-founding-cta";
+import {
+  FOUNDING_CAP,
+  FOUNDING_FULL_MESSAGE,
+  FOUNDING_PLAN_KEY,
+  foundingSignupPath,
+} from "@/lib/billing/founding-ui";
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
+
+function planKeyOf(form: Element): string | null | undefined {
+  return form.querySelector("input[name='planKey']")?.getAttribute("value");
+}
 
 const openCount = { offered: true, remaining: 17, cap: FOUNDING_CAP };
 const lastCount = { offered: true, remaining: 1, cap: FOUNDING_CAP };
@@ -37,11 +51,13 @@ describe("founding pricing cards", () => {
     expect(container.textContent).not.toMatch(/only today|testimonial|#1/i);
 
     const forms = planForms(container);
-    const annualForms = forms.filter(
-      (form) => form.querySelector("input[name='planKey']")?.getAttribute("value") === "PRO_ANNUAL",
-    );
-    expect(annualForms).toHaveLength(2);
-    expect(annualForms.every((form) => !form.querySelector("input[name='product_id']"))).toBe(true);
+    const foundingForms = forms.filter((form) => planKeyOf(form) === FOUNDING_PLAN_KEY);
+    const annualForms = forms.filter((form) => planKeyOf(form) === "PRO_ANNUAL");
+    expect(foundingForms).toHaveLength(1);
+    expect(foundingForms[0]?.textContent).toMatch(/founding member/i);
+    expect(annualForms).toHaveLength(1);
+    expect(annualForms[0]?.textContent).toMatch(/Start Pro annual/);
+    expect(forms.every((form) => !form.querySelector("input[name='product_id']"))).toBe(true);
   });
 
   it("uses the last-place sentence and no extra urgency", () => {
@@ -82,7 +98,7 @@ describe("founding deal paywall", () => {
     expect(screen.getByText(/Locked for life/)).toBeTruthy();
     const founding = planForms(container).find(
       (form) =>
-        form.querySelector("input[name='planKey']")?.getAttribute("value") === "PRO_ANNUAL" &&
+        planKeyOf(form) === FOUNDING_PLAN_KEY &&
         form.querySelector("button")?.textContent?.includes("founding member"),
     );
     expect(founding?.querySelector("input[name='returnTo']")?.getAttribute("value")).toBe(
@@ -141,9 +157,89 @@ describe("founding checkout summary", () => {
     expect(screen.getByText("Due today")).toBeTruthy();
     expect(screen.getByText("£290.00")).toBeTruthy();
     expect(container.querySelector('s[aria-label="was £39 a month"]')?.textContent).toBe("£39/mo");
-    expect(screen.getByRole("button", { name: "Continue to payment" })).toBeTruthy();
+    const pay = screen.getByRole("button", { name: "Continue to payment" });
+    expect(planKeyOf(pay.closest("form")!)).toBe(FOUNDING_PLAN_KEY);
     expect(screen.getByRole("button", { name: "Switch to Pro £39/mo instead" })).toBeTruthy();
     expect(container.textContent).not.toMatch(/of 25|25 places/);
     expect(container.textContent).not.toMatch(/competitor/i);
+  });
+});
+
+describe("founding plan key", () => {
+  it("is FOUNDING and the full-founding copy matches the server", () => {
+    expect(FOUNDING_PLAN_KEY).toBe("FOUNDING");
+    expect(FOUNDING_FULL_MESSAGE).toBe(
+      "Founding places are all taken. You can still subscribe to Pro annual at £350/year.",
+    );
+  });
+
+  it("sends signed-out founding CTAs to signup then the founding checkout", () => {
+    render(<PricingPlans signedIn={false} count={openCount} state="available" />);
+    const link = screen.getByRole("link", { name: /founding member/i });
+    expect(link.getAttribute("href")).toBe(foundingSignupPath());
+    expect(decodeURIComponent(foundingSignupPath())).toContain("/checkout?plan=FOUNDING");
+  });
+
+  it("posts FOUNDING from the homepage band", () => {
+    const { container } = render(<HomeFoundingCta signedIn remaining={17} cap={FOUNDING_CAP} />);
+    expect(planForms(container).map(planKeyOf)).toContain(FOUNDING_PLAN_KEY);
+  });
+});
+
+function stubCheckoutResponse(status: number, body: unknown) {
+  const fetchMock = vi.fn(async () => new Response(JSON.stringify(body), {
+    status,
+    headers: { "content-type": "application/json" },
+  }));
+  vi.stubGlobal("fetch", fetchMock);
+  return fetchMock;
+}
+
+describe("founding full error state", () => {
+  it.each([
+    ["pricing", () => <PricingPlans signedIn count={openCount} state="available" />, /founding member/i],
+    ["homepage band", () => <HomeFoundingCta signedIn remaining={17} cap={FOUNDING_CAP} />, /founding member/i],
+    ["checkout", () => <FoundingCheckoutSummary remaining={3} cap={FOUNDING_CAP} />, /Continue to payment/],
+  ])("shows the server message with a Pro annual fallback on %s", async (_where, ui, buttonName) => {
+    const fetchMock = stubCheckoutResponse(409, { error: FOUNDING_FULL_MESSAGE });
+    const { container } = render(ui());
+    fireEvent.click(screen.getByRole("button", { name: buttonName }));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain(FOUNDING_FULL_MESSAGE);
+    const fallback = within(alert).getByRole("button", { name: "Start Pro annual" });
+    expect(planKeyOf(fallback.closest("form")!)).toBe("PRO_ANNUAL");
+
+    const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toBe("/api/billing/checkout");
+    expect(JSON.parse(String(init.body)).planKey).toBe(FOUNDING_PLAN_KEY);
+    expect(new Headers(init.headers).get("accept")).toContain("application/json");
+    expect(container.textContent).not.toMatch(/of 25|25 places/);
+  });
+
+  it("shows other checkout errors inline without the Pro annual fallback", async () => {
+    stubCheckoutResponse(400, { error: "Choose a plan to continue." });
+    render(<FoundingCheckoutButton label="Become a founding member" returnTo="/pricing" />);
+    fireEvent.click(screen.getByRole("button", { name: "Become a founding member" }));
+    expect((await screen.findByRole("alert")).textContent).toBe("Choose a plan to continue.");
+    expect(screen.queryByRole("button", { name: "Start Pro annual" })).toBeNull();
+  });
+
+  it("redirects to the checkout url on success", async () => {
+    const assign = vi.fn();
+    vi.stubGlobal("location", { ...window.location, assign });
+    stubCheckoutResponse(200, { checkout_url: "https://checkout.example/session" });
+    render(<FoundingCheckoutButton label="Become a founding member" returnTo="/pricing" />);
+    fireEvent.click(screen.getByRole("button", { name: "Become a founding member" }));
+    await vi.waitFor(() => expect(assign).toHaveBeenCalledWith("https://checkout.example/session"));
+  });
+
+  it("renders the full state directly when the server already knows founding is full", () => {
+    render(<FoundingCheckoutSummary remaining={0} cap={FOUNDING_CAP} full />);
+    expect(screen.getByRole("alert").textContent).toContain(FOUNDING_FULL_MESSAGE);
+    expect(planKeyOf(screen.getByRole("button", { name: "Start Pro annual" }).closest("form")!)).toBe(
+      "PRO_ANNUAL",
+    );
+    expect(screen.queryByRole("button", { name: "Continue to payment" })).toBeNull();
   });
 });

@@ -2,12 +2,14 @@ import { CheckIcon, LockIcon } from "lucide-react";
 import Link from "next/link";
 
 import { CheckoutPlanForm } from "@/components/billing/checkout-plan-form";
+import { FoundingCheckoutButton } from "@/components/billing/founding-checkout-button";
 import { FoundingPriceLead } from "@/components/billing/founding-price";
 import { Container } from "@/components/layout/container";
 import { Button } from "@/components/ui/button";
 import { signupPathForPlan } from "@/lib/auth/redirect";
 import {
   FOUNDING_COPY,
+  foundingSignupPath,
   foundingPlacesLabel,
   proMonthlyShort,
 } from "@/lib/billing/founding-ui";
@@ -64,17 +66,15 @@ export function HomeFoundingCta({
                 {FOUNDING_COPY.priceLocked}
               </p>
               {signedIn ? (
-                <CheckoutPlanForm
-                  planKey="PRO_ANNUAL"
+                <FoundingCheckoutButton
                   label={FOUNDING_COPY.cta}
-                  showPrice={false}
                   returnTo="/pricing"
-                  className="mt-5 w-full"
-                  buttonClassName="h-11 w-full bg-[#00806A] text-white hover:bg-[#006b56]"
+                  className="mt-5"
+                  buttonClassName="bg-[#00806A] text-white hover:bg-[#006b56]"
                 />
               ) : (
                 <Button asChild className="mt-5 h-11 w-full bg-[#00806A] text-white hover:bg-[#006b56]">
-                  <Link href={signupPathForPlan("PRO_ANNUAL")}>{FOUNDING_COPY.cta}</Link>
+                  <Link href={foundingSignupPath()}>{FOUNDING_COPY.cta}</Link>
                 </Button>
               )}
               {signedIn ? (

@@ -1,6 +1,7 @@
 import { LockIcon } from "lucide-react";
 
 import { CheckoutPlanForm } from "@/components/billing/checkout-plan-form";
+import { FoundingCheckoutButton } from "@/components/billing/founding-checkout-button";
 import { FoundingPriceLead } from "@/components/billing/founding-price";
 import { Heading } from "@/components/layout/heading";
 import {
@@ -14,10 +15,21 @@ import {
 export function FoundingCheckoutSummary({
   remaining,
   cap,
+  full = false,
 }: {
   remaining: number;
   cap: number;
+  /** Founding is already full: show the server copy and the Pro annual fallback. */
+  full?: boolean;
 }) {
+  if (full) {
+    return (
+      <>
+        <Heading>Confirm your plan</Heading>
+        <FoundingCheckoutButton label="Continue to payment" returnTo="/pricing" initialFull />
+      </>
+    );
+  }
   return (
     <>
       <div>
@@ -72,13 +84,10 @@ export function FoundingCheckoutSummary({
         won’t be charged and can choose a standard plan.
       </p>
       <div className="flex flex-col gap-2">
-        <CheckoutPlanForm
-          planKey="PRO_ANNUAL"
+        <FoundingCheckoutButton
           label="Continue to payment"
-          showPrice={false}
           returnTo="/pricing"
-          className="w-full"
-          buttonClassName="h-11 w-full bg-[#00806A] text-white hover:bg-[#006b56]"
+          buttonClassName="bg-[#00806A] text-white hover:bg-[#006b56]"
         />
         <CheckoutPlanForm
           planKey="PRO_MONTHLY"

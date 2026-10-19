@@ -1,4 +1,25 @@
+import { SIGNUP_PATH } from "@/lib/auth/redirect";
 import { DISPLAY_PRICING } from "@/lib/constants";
+
+/**
+ * Checkout plan key for the founding offer (separate from PRO_ANNUAL).
+ * Owned by Security & Billing; keep this the only place the string appears.
+ */
+export const FOUNDING_PLAN_KEY = "FOUNDING" as const;
+export type FoundingPlanKey = typeof FOUNDING_PLAN_KEY;
+
+/** Exact server copy when founding is full (matched to show the inline fallback). */
+export const FOUNDING_FULL_MESSAGE = `Founding places are all taken. You can still subscribe to Pro annual at ${DISPLAY_PRICING.proAnnual}.`;
+
+/** /checkout for the founding plan. */
+export function foundingCheckoutPath(): string {
+  return `/checkout?plan=${FOUNDING_PLAN_KEY}`;
+}
+
+/** Signed-out founding CTA: create an account, then return to the founding checkout. */
+export function foundingSignupPath(): string {
+  return `${SIGNUP_PATH}?next=${encodeURIComponent(foundingCheckoutPath())}`;
+}
 
 /** Server cap. The browser never supplies this number. */
 export const FOUNDING_CAP = 25;

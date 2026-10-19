@@ -3,12 +3,14 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { CheckoutPlanForm } from "@/components/billing/checkout-plan-form";
+import { FoundingCheckoutButton } from "@/components/billing/founding-checkout-button";
 import { FoundingPriceLead } from "@/components/billing/founding-price";
 import { Heading, Text } from "@/components/layout/heading";
 import { Button } from "@/components/ui/button";
 import { signupPathForPlan, signupPathWithNext } from "@/lib/auth/redirect";
 import {
   FOUNDING_COPY,
+  foundingSignupPath,
   foundingPlacesLabel,
   foundingSoldOutNote,
   type FoundingPublicCount,
@@ -173,13 +175,17 @@ export function PricingPlans({
             <p className="mt-1 text-[0.8125rem] leading-5 text-muted-foreground">{FOUNDING_COPY.rechecked}</p>
             <FeatureList items={PRO_FEATURES} />
             <div className="mt-auto flex flex-col gap-3 pt-6">
-              <PlanCta
-                signedIn={signedIn}
-                planKey="PRO_ANNUAL"
-                label={FOUNDING_COPY.cta}
-                variant="default"
-                buttonClassName={FOUNDING_BUTTON}
-              />
+              {signedIn ? (
+                <FoundingCheckoutButton
+                  label={FOUNDING_COPY.cta}
+                  returnTo="/pricing"
+                  buttonClassName={FOUNDING_BUTTON}
+                />
+              ) : (
+                <Button asChild className={cn("h-11 w-full", FOUNDING_BUTTON)}>
+                  <Link href={foundingSignupPath()}>{FOUNDING_COPY.cta}</Link>
+                </Button>
+              )}
               <p className="text-center text-[0.8125rem] leading-5 text-pretty text-muted-foreground">
                 {FOUNDING_COPY.cancelTerms}
               </p>
