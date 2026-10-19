@@ -2,7 +2,7 @@ import { LockIcon } from "lucide-react";
 
 import { CheckoutPlanForm } from "@/components/billing/checkout-plan-form";
 import { FoundingCheckoutButton } from "@/components/billing/founding-checkout-button";
-import { FoundingPriceLead } from "@/components/billing/founding-price";
+import { FoundingButtonLabel, FoundingPriceLead } from "@/components/billing/founding-price";
 import { Heading } from "@/components/layout/heading";
 import {
   FOUNDING_COPY,
@@ -76,7 +76,7 @@ export function FoundingCheckoutSummary({
       </p>
       <div className="flex flex-col gap-2">
         <FoundingCheckoutButton
-          label="Continue to payment"
+          label={<FoundingButtonLabel text="Continue to payment" />}
           returnTo="/pricing"
           buttonClassName="bg-[#00806A] text-white hover:bg-[#006b56]"
         />

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useState, type FormEvent, type ReactNode } from "react";
 
 import { CheckoutPlanForm } from "@/components/billing/checkout-plan-form";
 import { Button } from "@/components/ui/button";
@@ -33,7 +33,7 @@ export function FoundingCheckoutButton({
   className,
   buttonClassName,
 }: {
-  label: string;
+  label: ReactNode;
   returnTo?: string;
   className?: string;
   buttonClassName?: string;
@@ -107,7 +107,7 @@ export function FoundingCheckoutButton({
       <Button
         type="submit"
         disabled={status.kind === "pending"}
-        className={cn("h-11 min-h-11 w-full whitespace-normal", buttonClassName)}
+        className={cn("h-auto min-h-11 w-full whitespace-normal py-2", buttonClassName)}
       >
         {status.kind === "pending" ? "Starting checkout…" : label}
       </Button>

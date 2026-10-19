@@ -2,6 +2,7 @@ import Link from "next/link";
 import { LockIcon } from "lucide-react";
 
 import { CheckoutPlanForm } from "@/components/billing/checkout-plan-form";
+import { FoundingButtonLabel } from "@/components/billing/founding-price";
 import { FoundingCheckoutButton } from "@/components/billing/founding-checkout-button";
 import { Button } from "@/components/ui/button";
 import { signupPathForPlan } from "@/lib/auth/redirect";
@@ -134,13 +135,13 @@ export function DealProCard({
           <>
             {mode === "free" ? (
               <FoundingCheckoutButton
-                label={FOUNDING_COPY.paywallCta}
+                label={<FoundingButtonLabel text={FOUNDING_COPY.cta} />}
                 returnTo={returnTo}
               />
             ) : (
-              <Button asChild className="h-11 w-full">
+              <Button asChild className="h-auto min-h-11 w-full whitespace-normal py-2">
                 <Link href={foundingSignupPath()}>
-                  {FOUNDING_COPY.paywallCta}
+                  <FoundingButtonLabel text={FOUNDING_COPY.cta} />
                 </Link>
               </Button>
             )}

@@ -3,7 +3,7 @@ import Link from "next/link";
 
 import { CheckoutPlanForm } from "@/components/billing/checkout-plan-form";
 import { FoundingCheckoutButton } from "@/components/billing/founding-checkout-button";
-import { FoundingPriceLead } from "@/components/billing/founding-price";
+import { FoundingButtonLabel, FoundingPriceLead } from "@/components/billing/founding-price";
 import { Container } from "@/components/layout/container";
 import { Button } from "@/components/ui/button";
 import { signupPathForPlan } from "@/lib/auth/redirect";
@@ -67,14 +67,14 @@ export function HomeFoundingCta({
               </p>
               {signedIn ? (
                 <FoundingCheckoutButton
-                  label={FOUNDING_COPY.cta}
+                  label={<FoundingButtonLabel text={FOUNDING_COPY.cta} />}
                   returnTo="/pricing"
                   className="mt-5"
                   buttonClassName="bg-[#00806A] text-white hover:bg-[#006b56]"
                 />
               ) : (
-                <Button asChild className="mt-5 h-11 w-full bg-[#00806A] text-white hover:bg-[#006b56]">
-                  <Link href={foundingSignupPath()}>{FOUNDING_COPY.cta}</Link>
+                <Button asChild className="mt-5 h-auto min-h-11 w-full whitespace-normal py-2 bg-[#00806A] text-white hover:bg-[#006b56]">
+                  <Link href={foundingSignupPath()}><FoundingButtonLabel text={FOUNDING_COPY.cta} /></Link>
                 </Button>
               )}
               {signedIn ? (

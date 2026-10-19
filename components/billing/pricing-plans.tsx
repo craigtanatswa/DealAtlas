@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 
 import { CheckoutPlanForm } from "@/components/billing/checkout-plan-form";
 import { FoundingCheckoutButton } from "@/components/billing/founding-checkout-button";
-import { FoundingPriceLead } from "@/components/billing/founding-price";
+import { FoundingButtonLabel, FoundingPriceLead } from "@/components/billing/founding-price";
 import { Heading, Text } from "@/components/layout/heading";
 import { Button } from "@/components/ui/button";
 import { signupPathForPlan, signupPathWithNext } from "@/lib/auth/redirect";
@@ -180,13 +180,13 @@ export function PricingPlans({
             <div className="mt-auto flex flex-col gap-3 pt-6">
               {signedIn ? (
                 <FoundingCheckoutButton
-                  label={FOUNDING_COPY.cta}
+                  label={<FoundingButtonLabel text={FOUNDING_COPY.cta} />}
                   returnTo="/pricing"
                   buttonClassName={FOUNDING_BUTTON}
                 />
               ) : (
-                <Button asChild className={cn("h-11 w-full", FOUNDING_BUTTON)}>
-                  <Link href={foundingSignupPath()}>{FOUNDING_COPY.cta}</Link>
+                <Button asChild className={cn("h-auto min-h-11 w-full whitespace-normal py-2", FOUNDING_BUTTON)}>
+                  <Link href={foundingSignupPath()}><FoundingButtonLabel text={FOUNDING_COPY.cta} /></Link>
                 </Button>
               )}
               <p className="text-center text-[0.8125rem] leading-5 text-pretty text-muted-foreground">

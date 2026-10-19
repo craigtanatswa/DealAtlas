@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { CheckoutPlanForm } from "@/components/billing/checkout-plan-form";
+import { FoundingButtonLabel } from "@/components/billing/founding-price";
 import { FoundingCheckoutButton } from "@/components/billing/founding-checkout-button";
 import { Button } from "@/components/ui/button";
 import { signupPathForPlan } from "@/lib/auth/redirect";
@@ -68,13 +69,13 @@ export function FoundingUnlockActions({
     <div className="flex w-full flex-col items-center gap-2">
       {mode === "free" ? (
         <FoundingCheckoutButton
-          label={FOUNDING_COPY.paywallCta}
+          label={<FoundingButtonLabel text={FOUNDING_COPY.cta} />}
           returnTo={returnTo}
           buttonClassName={FOUNDING_BUTTON}
         />
       ) : (
-        <Button asChild className={`h-11 ${FOUNDING_BUTTON}`}>
-          <Link href={foundingSignupPath()}>{FOUNDING_COPY.paywallCta}</Link>
+        <Button asChild className={`h-auto min-h-11 whitespace-normal py-2 ${FOUNDING_BUTTON}`}>
+          <Link href={foundingSignupPath()}><FoundingButtonLabel text={FOUNDING_COPY.cta} /></Link>
         </Button>
       )}
       <p className="text-center text-[0.8125rem] leading-5 text-pretty text-muted-foreground">

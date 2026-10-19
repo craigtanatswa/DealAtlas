@@ -17,3 +17,25 @@ export function FoundingPriceLead({ size = "lg", className }: { size?: "lg" | "m
     </div>
   );
 }
+
+/**
+ * Founding button text: the action, then the usual monthly price struck through and the
+ * founding monthly price in bold, e.g. "Become a founding member ~~£39/mo~~ **£24.17/mo**".
+ * Prices come from DISPLAY_PRICING. The billed-yearly line stays outside the button.
+ */
+export function FoundingButtonLabel({ text }: { text: string }) {
+  const monthly = foundingMonthlyEquivalent();
+  return (
+    <span className="flex flex-wrap items-baseline justify-center gap-x-2 gap-y-0.5 text-center">
+      <span>{text}</span>
+      <span className="inline-flex items-baseline gap-1.5 whitespace-nowrap tabular-nums">
+        <s aria-label={proMonthlyWasLabel()} className="font-normal opacity-75 decoration-1">
+          {proMonthlyShort()}
+        </s>
+        <strong className="font-bold">
+          {monthly ? `${monthly}/mo` : DISPLAY_PRICING.foundingAnnual.replace("/year", "/yr")}
+        </strong>
+      </span>
+    </span>
+  );
+}

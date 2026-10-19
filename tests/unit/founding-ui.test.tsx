@@ -8,6 +8,7 @@ import {
   FoundingCheckoutSummary,
   FoundingFullCheckout,
 } from "@/components/billing/founding-checkout-summary";
+import { DealProCard } from "@/components/deals/deal-pro-card";
 import { UnlockPanel } from "@/components/deals/unlock-panel";
 import { FoundingCheckoutButton } from "@/components/billing/founding-checkout-button";
 import { HomeFoundingCta } from "@/components/marketing/home-founding-cta";
@@ -28,6 +29,14 @@ function planKeyOf(form: Element): string | null | undefined {
 }
 
 const openCount = { offered: true, remaining: 17, cap: FOUNDING_CAP };
+
+/** Usual price struck through and the founding monthly price in bold, inside the button. */
+function expectFoundingPriceInside(button: HTMLElement) {
+  const was = button.querySelector("s");
+  expect(was?.textContent).toBe("£39/mo");
+  expect(was?.getAttribute("aria-label")).toBe("was £39 a month");
+  expect(button.querySelector("strong")?.textContent).toBe("£24.17/mo");
+}
 const lastCount = { offered: true, remaining: 1, cap: FOUNDING_CAP };
 const soldOutCount = { offered: true, remaining: 0, cap: FOUNDING_CAP };
 
@@ -101,7 +110,8 @@ describe("founding deal paywall", () => {
         returnTo="/app/deals/22222222-2222-4222-8222-222222222222"
       />,
     );
-    expect(screen.getByRole("button", { name: "Become a founding member – £290/yr" })).toBeTruthy();
+    const cta = screen.getByRole("button", { name: /^Become a founding member/ });
+    expectFoundingPriceInside(cta);
     expect(screen.getByText(/17 places left/)).toBeTruthy();
     expect(screen.getByText(/£290\/yr for as long as you stay subscribed/)).toBeTruthy();
     const founding = planForms(container).find(
@@ -157,6 +167,22 @@ describe("founding checkout race", () => {
 });
 
 describe("founding checkout summary", () => {
+  it("puts the struck-through and founding price inside every founding button", () => {
+    for (const ui of [
+      <PricingPlans key="p" signedIn count={openCount} state="available" />,
+      <HomeFoundingCta key="h" signedIn remaining={17} cap={FOUNDING_CAP} />,
+      <DealProCard key="d" mode="free" founding={openCount} alertsHref="/app/alerts" />,
+      <DealProCard key="a" mode="anonymous" founding={openCount} alertsHref="/signup" />,
+    ]) {
+      const { unmount } = render(ui);
+      const node =
+        screen.queryByRole("button", { name: /^Become a founding member/ }) ??
+        screen.getByRole("link", { name: /^Become a founding member/ });
+      expectFoundingPriceInside(node);
+      unmount();
+    }
+  });
+
   it("shows the monthly-equivalent price, due today and remaining places only", () => {
     const { container } = render(<FoundingCheckoutSummary remaining={24} cap={25} />);
     expect(screen.getByText("24 places left")).toBeTruthy();
@@ -165,7 +191,8 @@ describe("founding checkout summary", () => {
     expect(screen.getByText("Due today")).toBeTruthy();
     expect(screen.getByText("£290.00")).toBeTruthy();
     expect(container.querySelector('s[aria-label="was £39 a month"]')?.textContent).toBe("£39/mo");
-    const pay = screen.getByRole("button", { name: "Continue to payment" });
+    const pay = screen.getByRole("button", { name: /^Continue to payment/ });
+    expectFoundingPriceInside(pay);
     expect(planKeyOf(pay.closest("form")!)).toBe(FOUNDING_PLAN_KEY);
     expect(screen.getByRole("button", { name: "Switch to Pro £39/mo instead" })).toBeTruthy();
     expect(container.textContent).not.toMatch(/of 25|25 places/);
