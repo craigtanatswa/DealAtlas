@@ -142,6 +142,7 @@ export default async function AppDealPage({ params }: PageProps) {
         deal={previewPage.preview}
         match={previewPage.match}
         save={saveControl}
+        signedIn
         unlock={{
           mode: "free",
           returnTo: appDealPath(dealId),
