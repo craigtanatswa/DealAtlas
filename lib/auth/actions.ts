@@ -22,6 +22,8 @@ import {
   signupFormSchema,
 } from "@/lib/auth/schemas";
 import { getProfileForUser } from "@/lib/auth/profile";
+import { captureServerEvent } from "@/lib/analytics/server";
+import { buildUserSignedUpEvent } from "@/lib/analytics/server-events";
 import { getAuthUser } from "@/lib/auth/session";
 import { mapAuthError, type ActionState } from "@/lib/auth/messages";
 import {
@@ -133,6 +135,17 @@ export async function signUpAction(
   if (error) {
     console.error("DealAtlas sign-up failed", error.code ?? "", error.message);
     return { error: mapAuthError(error), success: null };
+  }
+
+  // A repeat sign-up for an existing email returns a user with no identities;
+  // only a newly created account is counted.
+  if (data.user && (data.user.identities?.length ?? 0) > 0) {
+    await captureServerEvent(
+      buildUserSignedUpEvent({
+        userId: data.user.id,
+        read: (name) => formData.get(name),
+      }),
+    );
   }
 
   if (data.user && data.session) {
