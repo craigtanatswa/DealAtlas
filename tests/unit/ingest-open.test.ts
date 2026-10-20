@@ -215,7 +215,7 @@ describe("open Find a Tender ingest", () => {
 
     expect(urls).toHaveLength(1);
     expect(urls[0]).toContain("/api/1.0/ocdsReleasePackages");
-    expect(urls[0]).toContain("stages=tender");
+    expect(urls[0]).not.toContain("stages=");
     expect(urls[0]).not.toContain("/Notice/");
     expect(result.status).toBe("SUCCEEDED");
     expect(result.counts).toMatchObject({ fetched: 2, new: 2, updated: 0, failed: 0 });
