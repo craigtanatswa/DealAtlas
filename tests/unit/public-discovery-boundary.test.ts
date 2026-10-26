@@ -67,13 +67,13 @@ describe("public discovery data boundary", () => {
   it("only resolves internal deal ids for signed-in viewers", () => {
     const publicSearch = fs.readFileSync(path.join(ROOT, "lib/search/public.ts"), "utf8");
     expect(publicSearch).toMatch(
-      /options\.signedIn\s*\?\s*await resolvePublishedPreviewDealId\(/,
+      /options\.userId\s*\?\s*await resolvePublishedPreviewDealId\(/,
     );
     const slugPage = fs.readFileSync(
       path.join(ROOT, "app/(marketing)/deals/[slug]/page.tsx"),
       "utf8",
     );
-    expect(slugPage).toContain("signedIn: Boolean(user)");
+    expect(slugPage).toContain("userId: user?.id ?? null");
     expect(slugPage).toContain("const dealId = user ? page.dealId : null;");
   });
 

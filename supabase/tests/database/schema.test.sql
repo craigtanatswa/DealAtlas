@@ -90,12 +90,13 @@ select has_column(
 );
 
 select ok(
-  has_column_privilege('authenticated', 'public.deal_matches', 'relevance_score', 'SELECT')
+  not has_column_privilege('authenticated', 'public.deal_matches', 'relevance_score', 'SELECT')
+  and not has_table_privilege('authenticated', 'public.deal_matches', 'SELECT')
   and not has_column_privilege('authenticated', 'public.deal_matches', 'preview_reasons', 'SELECT')
   and not has_column_privilege('authenticated', 'public.deal_matches', 'detail_reasons', 'SELECT')
   and not has_table_privilege('anon', 'public.deal_matches', 'SELECT')
   and not has_table_privilege('authenticated', 'public.match_jobs', 'SELECT'),
-  'match scores are readable; preview_reasons, detail_reasons and match_jobs are not (stored reason text only via canned DTO labels)'
+  'match scores are not directly readable (0051); preview_reasons, detail_reasons and match_jobs are not (stored reason text only via canned DTO labels)'
 );
 
 select ok(

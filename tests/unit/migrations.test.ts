@@ -48,7 +48,7 @@ describe("supabase migrations", () => {
   const files = listMigrations();
   const sql = files.map(readMigration).join("\n");
 
-  it("are numbered 0001-0026, 0028-0030, 0040-0042, then 0046, leaving 0027, 0031-0039 and 0043-0045 for open pull requests", () => {
+  it("are numbered 0001-0026, 0028-0030, 0040-0042, 0046, then 0051, leaving 0027, 0031-0039, 0043-0045 and 0047-0050 for open pull requests", () => {
     expect(files).toEqual([
       "0001_extensions_and_types.sql",
       "0002_core_schema.sql",
@@ -83,6 +83,7 @@ describe("supabase migrations", () => {
       "0041_preview_detail_allowlist.sql",
       "0042_gca_and_nhs_sources.sql",
       "0046_search_preview_dtos_page_first.sql",
+      "0051_match_data_pro_only.sql",
     ]);
   });
 
@@ -373,4 +374,17 @@ describe("supabase migrations", () => {
     );
     expect(bundled).toBe(expectedBundle(files));
   });
+
+  it("returns match data from the preview DTOs only to Pro viewers", () => {
+    const body = readMigration("0051_match_data_pro_only.sql");
+    expect(body).toContain("create or replace function public.search_preview_dtos(");
+    expect(body).toContain("create or replace function public.get_preview_dto_by_slug(");
+    expect(body).toContain("create or replace function public.get_preview_dto_by_deal_id(");
+    expect(body.match(/coalesce\(private\.is_user_pro\(auth\.uid\(\)\), false\)/g)).toHaveLength(3);
+    expect(body).toContain("when o.requested_sort = 'relevance' and not o.pro then 'biddable'");
+    expect(body).toContain("case when o.pro then p_min_score end as min_score");
+    expect(body).not.toContain("p_min_score is null or");
+    expect(body).not.toMatch(/lower\(coalesce\(p_sort, 'updated'\)\) = 'relevance'/);
+  });
 });
+

@@ -11,8 +11,7 @@ import {
   type DealPreviewSitemapRow,
   type PublicSupabaseClient,
 } from "@/lib/db/previews";
-import { toSafeMatchView } from "@/lib/matching/load";
-import { parseStoredReasons } from "@/lib/matching/reasons";
+import { gatedRowMatch, resolveMatchAccess } from "@/lib/matching/entitlement";
 import type { SafeMatchView } from "@/lib/matching/types";
 import { DEAL_PREVIEW_SITEMAP_PAGE_SIZE } from "@/lib/db/preview-columns";
 import {
@@ -123,37 +122,52 @@ export type PublicDealPreviewPage = {
   match: SafeMatchView | null;
 };
 
-function viewerMatch(row: DealPreviewDtoRow): SafeMatchView | null {
-  return row.relevance_score == null
-    ? null
-    : toSafeMatchView(Number(row.relevance_score), parseStoredReasons(row.preview_reasons));
+/** Match data only through the Pro gate; null for free and anonymous viewers. */
+async function viewerMatch(
+  client: PublicSupabaseClient,
+  userId: string | null | undefined,
+  row: DealPreviewDtoRow,
+): Promise<SafeMatchView | null> {
+  if (!userId || row.relevance_score == null) {
+    return null;
+  }
+  return gatedRowMatch(await resolveMatchAccess(client, userId), row);
 }
 
 export async function getPublicDealPreviewPageBySlug(
   client: PublicSupabaseClient,
   slug: string,
-  options: { signedIn: boolean },
+  options: { userId: string | null | undefined },
 ): Promise<PublicDealPreviewPage | null> {
   const parsedSlug = parseInput(slugSchema, slug, "Preview slug");
   const row = await getPublishedDealPreviewBySlug(client, parsedSlug);
   if (!row) {
     return null;
   }
-  const dealId = options.signedIn
+  const dealId = options.userId
     ? await resolvePublishedPreviewDealId(client, parsedSlug)
     : null;
-  return { preview: toPublicDealPreview(row), dealId, match: viewerMatch(row) };
+  return {
+    preview: toPublicDealPreview(row),
+    dealId,
+    match: await viewerMatch(client, options.userId, row),
+  };
 }
 
 export async function getPublicDealPreviewPageByDealId(
   client: PublicSupabaseClient,
   dealId: string,
+  options: { userId: string | null | undefined },
 ): Promise<PublicDealPreviewPage | null> {
   const row = await getPublishedDealPreviewByDealId(client, dealId);
   if (!row) {
     return null;
   }
-  return { preview: toPublicDealPreview(row), dealId, match: viewerMatch(row) };
+  return {
+    preview: toPublicDealPreview(row),
+    dealId,
+    match: await viewerMatch(client, options.userId, row),
+  };
 }
 
 function sitemapRowSignals(row: DealPreviewSitemapRow): PreviewIndexSignals {
