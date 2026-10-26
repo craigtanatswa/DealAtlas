@@ -63,20 +63,33 @@ returns void language sql as $$
 $$;
 grant execute on function pg_temp.p0ms_capture(text, text, text, numeric) to authenticated;
 
+-- pgTAP functions are not resolvable under the client role here, so the
+-- client-side reads are captured into temp tables and asserted after reset.
+create temporary table p0ms_dto (who text, label text, score numeric, reasons jsonb, denied text);
+grant all on p0ms_dto to authenticated;
+create function pg_temp.p0ms_direct_read(p_who text) returns void language plpgsql as $$
+begin
+  begin
+    perform relevance_score from public.deal_matches limit 1;
+    insert into p0ms_dto (who, label, denied) values (p_who, 'direct', 'allowed');
+  exception when others then
+    insert into p0ms_dto (who, label, denied) values (p_who, 'direct', sqlstate);
+  end;
+end;
+$$;
+grant execute on function pg_temp.p0ms_direct_read(text) to authenticated;
+
 set local role authenticated;
 
 select set_config('request.jwt.claims', '{"sub":"a0510000-0000-4000-8000-0000000000f1","role":"authenticated"}', true);
 select pg_temp.p0ms_capture('f1', 'biddable', 'biddable', null);
 select pg_temp.p0ms_capture('f1', 'relevance', 'relevance', null);
 select pg_temp.p0ms_capture('f1', 'relevance90', 'relevance', 90);
-select is(
-  (select relevance_score from public.get_preview_dto_by_slug('p0ms-deal-a-0a0a0a0a')),
-  null::numeric, 'free slug DTO carries no score');
-select is(
-  (select preview_reasons from public.get_preview_dto_by_deal_id('a0510000-0000-4000-8000-00000000000a')),
-  null::jsonb, 'free deal-id DTO carries no reasons');
-select throws_ok('select relevance_score from public.deal_matches limit 1', '42501', NULL,
-  'free user cannot read deal_matches directly');
+insert into p0ms_dto (who, label, score, reasons)
+  select 'f1', 'slug', relevance_score, preview_reasons from public.get_preview_dto_by_slug('p0ms-deal-a-0a0a0a0a');
+insert into p0ms_dto (who, label, score, reasons)
+  select 'f1', 'dealid', relevance_score, preview_reasons from public.get_preview_dto_by_deal_id('a0510000-0000-4000-8000-00000000000a');
+select pg_temp.p0ms_direct_read('f1');
 
 select set_config('request.jwt.claims', '{"sub":"a0510000-0000-4000-8000-0000000000f2","role":"authenticated"}', true);
 select pg_temp.p0ms_capture('f2', 'relevance', 'relevance', null);
@@ -85,15 +98,24 @@ select pg_temp.p0ms_capture('f2', 'relevance90', 'relevance', 90);
 select set_config('request.jwt.claims', '{"sub":"a0510000-0000-4000-8000-0000000000a1","role":"authenticated"}', true);
 select pg_temp.p0ms_capture('pro', 'relevance', 'relevance', null);
 select pg_temp.p0ms_capture('pro', 'relevance50', 'relevance', 50);
-select is(
-  (select relevance_score from public.get_preview_dto_by_slug('p0ms-deal-a-0a0a0a0a')),
-  95::numeric, 'Pro slug DTO keeps the score');
-select is(
-  (select relevance_score from public.get_preview_dto_by_deal_id('a0510000-0000-4000-8000-00000000000a')),
-  95::numeric, 'Pro deal-id DTO keeps the score');
+insert into p0ms_dto (who, label, score, reasons)
+  select 'pro', 'slug', relevance_score, preview_reasons from public.get_preview_dto_by_slug('p0ms-deal-a-0a0a0a0a');
+insert into p0ms_dto (who, label, score, reasons)
+  select 'pro', 'dealid', relevance_score, preview_reasons from public.get_preview_dto_by_deal_id('a0510000-0000-4000-8000-00000000000a');
 
 select set_config('request.jwt.claims', '', true);
 reset role;
+
+select is((select count(*)::integer from p0ms_dto where who = 'f1' and label in ('slug', 'dealid')), 2,
+  'free DTO reads returned rows');
+select is((select count(*)::integer from p0ms_dto where who = 'f1' and label in ('slug', 'dealid')
+  and (score is not null or reasons is not null)), 0, 'free slug and deal-id DTOs carry no score or reasons');
+select is((select denied from p0ms_dto where who = 'f1' and label = 'direct'), '42501',
+  'free user cannot read deal_matches directly');
+select is((select score from p0ms_dto where who = 'pro' and label = 'slug'), 95::numeric,
+  'Pro slug DTO keeps the score');
+select is((select score from p0ms_dto where who = 'pro' and label = 'dealid'), 95::numeric,
+  'Pro deal-id DTO keeps the score');
 
 select is((select slugs from p0ms_results where who = 'f1' and label = 'biddable'),
   array['p0ms-deal-b-0b0b0b0b', 'p0ms-deal-a-0a0a0a0a'], 'biddable order puts CLOSING_SOON first');
