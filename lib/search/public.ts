@@ -101,7 +101,11 @@ export async function searchPublicDealPreviewsFromParams(
   client: PublicSupabaseClient,
   searchParams: SearchParamRecord,
 ): Promise<{ filters: PublicSearchFilters; result: PublicDealSearchResult }> {
-  const filters = parsePublicSearchParams(searchParams);
+  const parsed = parsePublicSearchParams(searchParams);
+  // The public API never ranks by match: sort=relevance is profile-derived,
+  // so it falls back to the default order for every caller.
+  const filters: PublicSearchFilters =
+    parsed.sort === "relevance" ? { ...parsed, sort: undefined } : parsed;
   const result = await searchPublicDealPreviews(client, filters);
   return { filters, result };
 }
