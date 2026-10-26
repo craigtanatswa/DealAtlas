@@ -53,7 +53,7 @@ returns void language sql as $$
   select p_who, p_label,
     array_agg(s.slug order by s.n),
     count(*) filter (where s.relevance_score is not null)::integer,
-    count(*) filter (where s.preview_reasons is not null)::integer,
+    count(*) filter (where s.preview_reasons is distinct from '[]'::jsonb)::integer,
     count(*)::integer
   from (
     select d.slug, d.relevance_score, d.preview_reasons, row_number() over () as n
@@ -109,7 +109,7 @@ reset role;
 select is((select count(*)::integer from p0ms_dto where who = 'f1' and label in ('slug', 'dealid')), 2,
   'free DTO reads returned rows');
 select is((select count(*)::integer from p0ms_dto where who = 'f1' and label in ('slug', 'dealid')
-  and (score is not null or reasons is not null)), 0, 'free slug and deal-id DTOs carry no score or reasons');
+  and (score is not null or reasons is distinct from '[]'::jsonb)), 0, 'free slug and deal-id DTOs carry no score or reasons');
 select is((select denied from p0ms_dto where who = 'f1' and label = 'direct'), '42501',
   'free user cannot read deal_matches directly');
 select is((select score from p0ms_dto where who = 'pro' and label = 'slug'), 95::numeric,

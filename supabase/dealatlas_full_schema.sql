@@ -8317,7 +8317,7 @@ $$;
 -- in lib/matching/entitlement.ts; this migration is defence in depth.
 --
 -- For any viewer where private.is_user_pro(auth.uid()) is not true:
---   * relevance_score and preview_reasons are null;
+--   * relevance_score is null and preview_reasons is [] (the anon contract);
 --   * search_preview_dtos ignores p_min_score and treats sort 'relevance'
 --     as 'biddable', so ordering never depends on the company profile.
 -- Pro behaviour is unchanged. Same signatures and result columns; CREATE OR
@@ -8478,7 +8478,7 @@ as $$
     p.relevance_tags[1:12],
     private.preview_freshness_label(p.created_at, p.updated_at),
     p.match_score,
-    case when p.match_score is null then null else private.preview_dto_reasons(p.match_reasons) end,
+    private.preview_dto_reasons(p.match_reasons),
     p.total_count
   from paged p
   order by p.sort_score desc, p.sort_status asc, p.sort_deadline asc nulls last, p.sort_rank desc, p.updated_at desc, p.slug;
@@ -8532,7 +8532,7 @@ as $$
     dp.relevance_tags[1:12],
     private.preview_freshness_label(dp.created_at, dp.updated_at),
     dm.relevance_score,
-    case when dm.relevance_score is null then null else private.preview_dto_reasons(dm.preview_reasons) end
+    private.preview_dto_reasons(dm.preview_reasons)
   from public.deal_previews dp
   left join public.company_profiles cp
     on cp.user_id = auth.uid()
@@ -8597,7 +8597,7 @@ as $$
     dp.relevance_tags[1:12],
     private.preview_freshness_label(dp.created_at, dp.updated_at),
     dm.relevance_score,
-    case when dm.relevance_score is null then null else private.preview_dto_reasons(dm.preview_reasons) end
+    private.preview_dto_reasons(dm.preview_reasons)
   from public.deal_previews dp
   left join public.company_profiles cp
     on cp.user_id = auth.uid()

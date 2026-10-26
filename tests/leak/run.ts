@@ -67,7 +67,72 @@ function deterministicSnapshots(ctx: Ctx): Record<string, unknown> {
   return out;
 }
 
-function crossPhase(ctx: Ctx, phaseA: Record<string, unknown>, snapshots: Record<string, unknown>): void {
+/** Roles that are not Pro in the seed; 0051 strips match data for them. */
+const NON_PRO_ROLES = new Set(["anon", "free", "free_lapsed", "free_expired"]);
+const MATCH_FIELDS: Record<string, unknown> = { relevance_score: null, preview_reasons: [] };
+
+/** Apply fn to every object reachable in v, including rows stored as JSON strings. */
+function mapRows(v: unknown, fn: (row: Record<string, unknown>) => Record<string, unknown>): unknown {
+  if (typeof v === "string" && v.startsWith("{")) {
+    try {
+      return JSON.stringify(mapRows(JSON.parse(v), fn));
+    } catch {
+      return v;
+    }
+  }
+  if (Array.isArray(v)) return v.map((x) => mapRows(x, fn));
+  if (v && typeof v === "object") {
+    const mapped = Object.fromEntries(Object.entries(v).map(([k, x]) => [k, mapRows(x, fn)]));
+    return fn(mapped);
+  }
+  return v;
+}
+
+/**
+ * 0051 (P0): phase A (0018) still serves match data to free roles. The only
+ * intended phase-B change is that non-Pro snapshots carry relevance_score null
+ * and preview_reasons []; everything else (row sets, other fields, Pro) must
+ * stay byte-identical. MATCH-05 proves phase B really has no match data.
+ */
+function expectedPhaseB(phaseA: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(phaseA).map(([key, v]) => {
+      if (!NON_PRO_ROLES.has(key.split("|")[1] ?? "")) return [key, v];
+      return [key, mapRows(v, (row) => {
+        const out = { ...row };
+        for (const [field, value] of Object.entries(MATCH_FIELDS)) if (field in out) out[field] = value;
+        return out;
+      })];
+    }),
+  );
+}
+
+function nonProMatchData(snapshots: Record<string, unknown>): { rows: number; leaking: number } {
+  let rows = 0;
+  let leaking = 0;
+  for (const [key, v] of Object.entries(snapshots)) {
+    if (!NON_PRO_ROLES.has(key.split("|")[1] ?? "")) continue;
+    mapRows(v, (row) => {
+      if ("relevance_score" in row || "preview_reasons" in row) {
+        rows += 1;
+        const reasons = row.preview_reasons;
+        if (row.relevance_score != null || (reasons != null && JSON.stringify(reasons) !== "[]")) leaking += 1;
+      }
+      return row;
+    });
+  }
+  return { rows, leaking };
+}
+
+function crossPhase(ctx: Ctx, phaseARaw: Record<string, unknown>, snapshots: Record<string, unknown>): void {
+  const match = nonProMatchData(snapshots);
+  ctx.derive({
+    id: "MATCH-05",
+    instance: "non-pro-snapshots",
+    role: "free",
+    assertions: [ok("rows_checked", match.rows > 0, match.rows), eq("rows_with_match_data", 0, match.leaking)],
+  });
+  const phaseA = expectedPhaseB(phaseARaw);
   lockCompare(ctx, phaseA, snapshots);
   const keys = Object.keys(phaseA).filter((k) => DETERMINISTIC.test(k) && !k.startsWith("REST-08") && !k.startsWith("REST-09"));
   const diffs = keys.filter((k) => JSON.stringify(phaseA[k]) !== JSON.stringify(snapshots[k]));

@@ -12,8 +12,11 @@ import { heldSlugs, pubSlugs } from "./common";
 export const MATCH_KEYS = ["score", "reasons", "matchScore", "matchReasons", "relevance_score", "preview_reasons"];
 const MATCH_KEY_RE = new RegExp(`\\\\*"(${MATCH_KEYS.join("|")})\\\\*"\\s*:`, "g");
 
+/** Rendered score badges: server components emit only the aria-label. */
+const MATCH_LABEL_RE = /Match score \d+ out of 100/g;
+
 export function matchKeyCount(text: string): number {
-  return [...text.matchAll(MATCH_KEY_RE)].length;
+  return [...text.matchAll(MATCH_KEY_RE)].length + [...text.matchAll(MATCH_LABEL_RE)].length;
 }
 
 const FREE_MATCH_ROLES: Role[] = ["free", "free_lapsed"];
@@ -104,18 +107,27 @@ export async function matchProbes(ctx: Ctx): Promise<void> {
 
   await Promise.all([...freeJobs, ...proJobs]);
 
-  // MATCH-03: free ordering never depends on the profile or on sort/minScore.
+  // MATCH-03: free ordering never depends on the profile or on sort=relevance
+  // / minScore. Two checks per surface: (1) the two free users (opposite top
+  // matches) get the same order for every variant; (2) relevance + minScore
+  // gives the default order. sort=biddable is a legitimate non-match sort, so
+  // it is only compared across users. Labels name surfaces, never deals.
   let compared = 0;
   let nonEmpty = 0;
-  let mismatches = 0;
+  const mismatched: string[] = [];
+  const same = (a?: string[], b?: string[]) => JSON.stringify(a ?? []) === JSON.stringify(b ?? []);
   for (const s of surfaces()) {
-    const base = orders.get(`free|${s.name}|`) ?? [];
-    if (base.length > 0) nonEmpty += 1;
+    if ((orders.get(`free|${s.name}|`) ?? []).length > 0) nonEmpty += 1;
+    for (const variant of VARIANTS) {
+      compared += 1;
+      if (!same(orders.get(`free|${s.name}|${variant}`), orders.get(`free_lapsed|${s.name}|${variant}`))) {
+        mismatched.push(`${s.name}|${variant || "default"}|cross-user`);
+      }
+    }
     for (const role of FREE_MATCH_ROLES) {
-      for (const variant of VARIANTS) {
-        const got = orders.get(`${role}|${s.name}|${variant}`) ?? [];
-        compared += 1;
-        if (JSON.stringify(got) !== JSON.stringify(base)) mismatches += 1;
+      compared += 1;
+      if (!same(orders.get(`${role}|${s.name}|sort=relevance&minScore=90`), orders.get(`${role}|${s.name}|`))) {
+        mismatched.push(`${s.name}|relevance-vs-default|${role}`);
       }
     }
   }
@@ -126,7 +138,7 @@ export async function matchProbes(ctx: Ctx): Promise<void> {
     assertions: [
       ok("compared_any", compared > 0, compared),
       ok("surfaces_with_cards", nonEmpty >= 3, nonEmpty),
-      eq("ordering_mismatches", 0, mismatches),
+      eq("ordering_mismatches", [], mismatched),
     ],
   });
   ctx.derive({

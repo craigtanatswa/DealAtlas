@@ -556,7 +556,7 @@ select is(
 
 select is(
   (select preview_reasons from public.search_preview_dtos() where slug = 'published-low-risk-preview-a1b2c3d4'),
-  null::jsonb,
+  '[]'::jsonb,
   'free DTO search carries no preview reasons'
 );
 
@@ -568,7 +568,7 @@ select is(
 
 select is(
   (select preview_reasons from public.get_preview_dto_by_slug('published-low-risk-preview-a1b2c3d4')),
-  null::jsonb,
+  '[]'::jsonb,
   'free slug DTO carries no preview reasons'
 );
 
@@ -580,7 +580,7 @@ select is(
 
 select is(
   (select preview_reasons from public.get_preview_dto_by_deal_id('22222222-2222-4222-8222-222222222222')),
-  null::jsonb,
+  '[]'::jsonb,
   'free deal-id DTO carries no preview reasons'
 );
 
