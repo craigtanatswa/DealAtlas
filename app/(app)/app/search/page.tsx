@@ -104,6 +104,7 @@ export default async function AppSearchPage({ searchParams }: PageProps) {
           result={result}
           filters={filters}
           path="/app/search"
+          signedIn
         />
       </div>
     </Main>
