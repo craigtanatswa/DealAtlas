@@ -27,6 +27,8 @@ export type DiscoverOptions = {
 export type DiscoverResult = {
   items: DiscoveredItem[];
   nextCursor?: string;
+  /** The official feed stopped before its reported total. Further pages are not requested. */
+  truncated?: boolean;
 };
 
 export type RawSourceRecord = {
@@ -224,6 +226,7 @@ export type IngestionRunResult = {
   reason?: string;
   cursor?: string | null;
   counters: IngestionCounters;
+  truncated?: boolean;
   errors: Array<{
     externalRecordId?: string;
     stage: string;

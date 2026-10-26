@@ -249,7 +249,7 @@ and `scraping_permitted = true` for scrape-based sources.
 
 API/open-data sources still retain licence/attribution metadata.
 
-UNKNOWN and PROHIBITED sources are blocked from production automation.
+UNKNOWN and PROHIBITED sources are blocked from production automation. Government Commercial Agency ingest is preserve-only and the source rows stay disabled. NHS Supply Chain and NHS Shared Business Services are PROHIBITED, disabled, and have no fetcher.
 
 ## 12. Ingestion pipeline
 ```text

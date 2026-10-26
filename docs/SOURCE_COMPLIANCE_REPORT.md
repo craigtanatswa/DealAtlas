@@ -288,6 +288,73 @@ Private/supply-chain sources are onboarded through a **reusable** config + `crea
 
 HTML helpers exist for future `TERMS_REVIEWED` + `scraping_permitted = true` sources. They are not used for UNKNOWN/PROHIBITED rows.
 
+## Central purchasing bodies — 14 October 2026
+
+Checked: **14 October 2026**. Crown Commercial Service became the Government Commercial Agency on 1 April 2026. `crowncommercial.gov.uk` redirects to `www.gca.gov.uk`. A source whose terms or robots.txt explicitly ban scraping or commercial reuse is `PROHIBITED` and disabled, with no fetcher. Silence on reuse is `UNKNOWN`. New rows stay disabled.
+
+| Source key | Reuse status | Scraping permitted | Enabled | Decision |
+| --- | --- | --- | --- | --- |
+| `gca-agreements` | OPEN_LICENSE | false | no | Official JSON feed, no query string. First page only. |
+| `gca-procurement-pipeline` | OPEN_LICENSE | false | no | One official ODS download. |
+| `nhs-supply-chain` | PROHIBITED | false | no | Terms ban reuse without a written licence. No fetcher. |
+| `nhs-sbs` | PROHIBITED | false | no | Terms ban commercial reuse. Catalogue requires registration. No fetcher. |
+
+### Government Commercial Agency agreements
+
+| Field | Evidence |
+| --- | --- |
+| Official source URL | [Agreements](https://www.gca.gov.uk/agreements) via `GET https://www.gca.gov.uk/api/frameworks` |
+| Opportunity type | Live and future commercial agreements (frameworks and dynamic markets) |
+| Access method | `JSON_API`. No query string. `page`, `limit`, `status` and `search` are disallowed, so the adapter does not paginate. |
+| Terms / licence evidence | [Terms](https://www.gca.gov.uk/terms-and-conditions), “Using our content”: “Most content on our website is subject to Crown copyright protection and is published under the Open Government Licence (OGL).” “You can reproduce content published on our website under the OGL as long as you follow the licence conditions.” “We make most of the content on our website available through feeds for other websites and applications to use.” Licence: [Open Government Licence v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/) (“You are free to: copy, publish, distribute and transmit the Information; adapt the Information; exploit the Information commercially and non-commercially”). |
+| Robots / access notes | [robots.txt](https://www.gca.gov.uk/robots.txt): “Allow crawling of all content”, then `Disallow: *page=*`, `*limit=*`, `*status=*`, `*search=*`, `*keyword=*`, and `Disallow: /agreements/*/suppliers/*`. No login or CAPTCHA on the unfiltered feed. On 14 October 2026 the unfiltered feed returned `meta.total_results` 99 and `limit` 20 (`results` 20, `page` 1). |
+| Reuse status | **OPEN_LICENSE** |
+| Automated scraping permitted? | **No** (`scraping_permitted = false`) |
+| Date checked | 14 October 2026 |
+| Implementation decision | **Adapter, disabled.** `gca-agreements` reads that one URL, at most 6 requests per minute, and records truncation instead of requesting another page. Preserve-only. An RM number already on Find a Tender or Contracts Finder is linked and does not create a second deal. |
+
+### Government Commercial Agency procurement pipeline
+
+| Field | Evidence |
+| --- | --- |
+| Official source URL | [Upcoming agreements](https://www.gca.gov.uk/agreements/upcoming) linking to `https://assets.gca.gov.uk/wp-content/uploads/Government-Commercial-Agency-Pipeline-10.08.2026.ods.xlsx.ods` |
+| Opportunity type | Upcoming and in-flight commercial agreements |
+| Access method | Official ODS download, recorded as `CSV` (the tabular access method). One request. The filename is pinned; a replaced file fails this source on its own. |
+| Terms / licence evidence | Same OGL statement and feed invitation as the agreements feed, at [terms](https://www.gca.gov.uk/terms-and-conditions) and [OGL v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/). |
+| Robots / access notes | Same [robots.txt](https://www.gca.gov.uk/robots.txt). The file URL has no disallowed query. Checked 14 October 2026: HTTP 200, `application/vnd.oasis.opendocument.spreadsheet`. |
+| Reuse status | **OPEN_LICENSE** |
+| Automated scraping permitted? | **No** |
+| Date checked | 14 October 2026 |
+| Implementation decision | **Adapter, disabled.** `gca-procurement-pipeline`. A future procurement start is `UPCOMING`; a start date already past is `OPEN`. Value is stored as the spreadsheet’s inc-VAT text, not as an ex-VAT amount. Preserve-only. Same RM dedupe as the agreements feed. |
+
+### NHS Supply Chain
+
+| Field | Evidence |
+| --- | --- |
+| Official source URL | [supplychain.nhs.uk](https://www.supplychain.nhs.uk/) (Supply Chain Coordination Limited) |
+| Opportunity type | NHS framework and procurement calendar listings |
+| Access method | HTML pages. No official open feed. `MANUAL`. |
+| Terms / licence evidence | [Terms of use](https://www.supplychain.nhs.uk/legal-information/terms-of-use/): “No licence to use any of Our intellectual property rights is given or implied”. “you must not use any part of the materials on Our Site without first obtaining a written licence to do so from us or our licensors.” Acceptable use: “make, transmit or store electronic copies of materials protected by copyright without the permission of the owner or holder of such rights”. |
+| Robots / access notes | [robots.txt](https://www.supplychain.nhs.uk/robots.txt): `Disallow: /wp-json/` and `Disallow: /?rest_route=`. Supplier portal is login. |
+| Reuse status | **PROHIBITED** |
+| Automated scraping permitted? | **No** |
+| Date checked | 14 October 2026 |
+| Implementation decision | **Do not automate.** Seed row only, `enabled = false`. No fetcher and no workflow step. |
+
+### NHS Shared Business Services
+
+| Field | Evidence |
+| --- | --- |
+| Official source URL | [sbs.nhs.uk](https://www.sbs.nhs.uk/) (NHS Shared Business Services Limited) |
+| Opportunity type | Framework agreements and supplier opportunities |
+| Access method | The customer framework portal requires registration (`https://one.sbs.nhs.uk/FrameworkAgreements/s/registration`). Opportunities are also on Find a Tender and SAP Ariba. `MANUAL`. |
+| Terms / licence evidence | [Website terms](https://www.sbs.nhs.uk/website-terms-and-conditions/) (copyright 23 March 2021): “you may under no circumstances copy, represent, modify, transmit, publish, adapt, on whatever medium or by whatever means, or exploit in any way all or part of the Site without prior written consent from the Site Publisher.” “You must not use any part of the content on our site for commercial purposes without obtaining a licence to do so from us or our licensors.” Downloads are “for informational purposes only and for personal use.” |
+| Robots / access notes | [robots.txt](https://www.sbs.nhs.uk/robots.txt) disallows `/wp/wp-admin/admin-ajax.php`. The framework catalogue itself is behind registration. |
+| Reuse status | **PROHIBITED** |
+| Automated scraping permitted? | **No** |
+| Date checked | 14 October 2026 |
+| Implementation decision | **Do not automate.** Seed row only, `enabled = false`. No fetcher and no workflow step. Above-threshold notices remain on Find a Tender. NHSBSA open data is a different body and is not used here. |
+
 ## Attribution
 
 Where OPEN_LICENSE government information is reused:
