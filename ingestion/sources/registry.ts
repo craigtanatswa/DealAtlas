@@ -8,6 +8,12 @@ import { createPublicContractsScotlandAdapter } from "@/ingestion/sources/public
 import { PUBLIC_CONTRACTS_SCOTLAND_SOURCE_KEY } from "@/ingestion/sources/public-contracts-scotland/constants";
 import { createSell2WalesAdapter } from "@/ingestion/sources/sell2wales/adapter";
 import { SELL2WALES_SOURCE_KEY } from "@/ingestion/sources/sell2wales/constants";
+import { createGcaAgreementsAdapter } from "@/ingestion/sources/gca/agreements";
+import { createGcaPipelineAdapter } from "@/ingestion/sources/gca/pipeline";
+import {
+  GCA_AGREEMENTS_SOURCE_KEY,
+  GCA_PIPELINE_SOURCE_KEY,
+} from "@/ingestion/sources/gca/constants";
 import { createUkInfrastructurePipelineAdapter } from "@/ingestion/sources/uk-infrastructure-pipeline/adapter";
 import { UK_INFRASTRUCTURE_PIPELINE_SOURCE_KEY } from "@/ingestion/sources/uk-infrastructure-pipeline/constants";
 
@@ -20,6 +26,8 @@ const adapters = new Map<string, () => SourceAdapter>([
     UK_INFRASTRUCTURE_PIPELINE_SOURCE_KEY,
     () => createUkInfrastructurePipelineAdapter(),
   ],
+  [GCA_AGREEMENTS_SOURCE_KEY, () => createGcaAgreementsAdapter()],
+  [GCA_PIPELINE_SOURCE_KEY, () => createGcaPipelineAdapter()],
 ]);
 
 export function listRegisteredSourceKeys(): string[] {
@@ -50,5 +58,7 @@ export {
   FIND_A_TENDER_SOURCE_KEY,
   PUBLIC_CONTRACTS_SCOTLAND_SOURCE_KEY,
   SELL2WALES_SOURCE_KEY,
+  GCA_AGREEMENTS_SOURCE_KEY,
+  GCA_PIPELINE_SOURCE_KEY,
   UK_INFRASTRUCTURE_PIPELINE_SOURCE_KEY,
 };
