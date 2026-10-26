@@ -1,11 +1,19 @@
 import { createClient } from "@supabase/supabase-js";
 
 import type { Database } from "@/lib/db/database.types";
+import { structuredLog } from "@/lib/observability/log";
+
 import { alertDepsFromEnv, deliverCrash, deliverFindings, deliverIncomplete } from "@/lib/leak-scan/alert";
 import { runDbPass } from "@/lib/leak-scan/db-pass";
 import { runHttpPass } from "@/lib/leak-scan/http-pass";
 import { createReadonlyClient } from "@/lib/leak-scan/readonly-client";
 import { emptyState, readState, writeState } from "@/lib/leak-scan/state";
+
+function requireAlertRecipient(): void {
+  if (!process.env.LEAK_ALERT_EMAIL_TO?.trim()) {
+    throw new Error("LEAK_ALERT_EMAIL_TO is missing");
+  }
+}
 
 function passName(): string {
   const index = process.argv.indexOf("--pass");
@@ -15,6 +23,7 @@ function passName(): string {
 async function main(): Promise<void> {
   const pass = passName();
   if (pass === "db") {
+    requireAlertRecipient();
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const key = process.env.SUPABASE_SECRET_KEY;
     if (!url || !key) {
@@ -47,6 +56,7 @@ async function main(): Promise<void> {
     return;
   }
   if (pass === "http") {
+    requireAlertRecipient();
     const state = readState();
     const result = await runHttpPass({
       dealTokens: state?.dealTokens ?? [],
@@ -73,12 +83,19 @@ async function main(): Promise<void> {
   }
   if (pass === "crash") {
     if (readState()?.incompleteAlerted) return;
+    requireAlertRecipient();
     await deliverCrash(alertDepsFromEnv(process.env));
     return;
   }
   throw new Error("pass must be db, http, notify or crash");
 }
 
-main().catch(() => {
+main().catch((error: unknown) => {
+  const missing = error instanceof Error && error.message === "LEAK_ALERT_EMAIL_TO is missing";
+  structuredLog(
+    missing
+      ? { msg: "leak_scan_config", missing: "LEAK_ALERT_EMAIL_TO" }
+      : { msg: "leak_scan_failed", code: "SCAN_FAILED" },
+  );
   process.exitCode = 1;
 });

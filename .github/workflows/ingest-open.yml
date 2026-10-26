@@ -112,6 +112,40 @@ jobs:
           fi
           npm run ingest-open
 
+      - name: Ingest Government Commercial Agency agreements
+        id: gca_agreements
+        if: always() && steps.ingest.outcome != 'cancelled'
+        continue-on-error: true
+        env:
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'false' }}
+          OPEN_INGEST_PHASE: ingest
+          OPEN_INGEST_SOURCE: gca-agreements
+          OPEN_INGEST_STATE: ${{ runner.temp }}/open-ingest-changed.json
+        run: |
+          set -euo pipefail
+          case "$DRY_RUN" in
+            true|false) ;;
+            *) echo "dry_run must be true or false" >&2; exit 1 ;;
+          esac
+          npm run ingest-open
+
+      - name: Ingest Government Commercial Agency pipeline
+        id: gca_pipeline
+        if: always() && steps.ingest.outcome != 'cancelled'
+        continue-on-error: true
+        env:
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'false' }}
+          OPEN_INGEST_PHASE: ingest
+          OPEN_INGEST_SOURCE: gca-procurement-pipeline
+          OPEN_INGEST_STATE: ${{ runner.temp }}/open-ingest-changed.json
+        run: |
+          set -euo pipefail
+          case "$DRY_RUN" in
+            true|false) ;;
+            *) echo "dry_run must be true or false" >&2; exit 1 ;;
+          esac
+          npm run ingest-open
+
       - name: Ingest Find a Grant
         id: find_a_grant
         if: always() && steps.ingest.outcome != 'cancelled'
@@ -168,6 +202,7 @@ jobs:
         # A Find a Tender fetch failure or a failed preview build skips publish.
         # A Contracts Finder, Find a Grant, or Innovate UK failure does not skip publish.
         # Those steps still fail the job.
+        # A Government Commercial Agency failure is continue-on-error and does not skip publish.
         if: always() && steps.ingest.outcome == 'success' && steps.build.outcome == 'success' && (github.event_name != 'workflow_dispatch' || inputs.dry_run == false)
         env:
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
@@ -192,6 +227,8 @@ jobs:
           CONTRACTS_FINDER_OK: ${{ steps.contracts_finder.outcome == 'success' && '1' || '0' }}
           FIND_A_GRANT_OK: ${{ steps.find_a_grant.outcome == 'success' && '1' || '0' }}
           INNOVATE_UK_OK: ${{ steps.innovate_uk.outcome == 'success' && '1' || '0' }}
+          GCA_AGREEMENTS_OK: ${{ steps.gca_agreements.outcome == 'success' && '1' || '0' }}
+          GCA_PIPELINE_OK: ${{ steps.gca_pipeline.outcome == 'success' && '1' || '0' }}
           BUILD_OK: ${{ steps.build.outcome == 'success' && '1' || '0' }}
           UNPUBLISH_OK: ${{ steps.unpublish.outcome == 'success' && '1' || '0' }}
           PUBLISH_OK: ${{ steps.publish.outcome == 'success' && '1' || '0' }}

@@ -28,6 +28,12 @@ import {
   INNOVATE_UK_SOURCE_KEY,
 } from "@/ingestion/sources/innovate-uk/constants";
 import { createRequestPacer } from "@/ingestion/sources/find-a-tender/pace";
+import { createGcaAgreementsAdapter } from "@/ingestion/sources/gca/agreements";
+import {
+  GCA_AGREEMENTS_SOURCE_KEY,
+  GCA_PIPELINE_SOURCE_KEY,
+} from "@/ingestion/sources/gca/constants";
+import { createGcaPipelineAdapter } from "@/ingestion/sources/gca/pipeline";
 import type { SourceAdapter } from "@/ingestion/core/types";
 import type { IngestionStore } from "@/ingestion/store/types";
 import { rebuildChangedPreviews } from "@/lib/jobs/previews";
@@ -454,7 +460,11 @@ function pacedTextClient(
 }
 
 export async function runOpenCatalogueIngest(options: {
-  sourceKey: typeof FIND_A_GRANT_SOURCE_KEY | typeof INNOVATE_UK_SOURCE_KEY;
+  sourceKey:
+    | typeof FIND_A_GRANT_SOURCE_KEY
+    | typeof INNOVATE_UK_SOURCE_KEY
+    | typeof GCA_AGREEMENTS_SOURCE_KEY
+    | typeof GCA_PIPELINE_SOURCE_KEY;
   store: IngestionStore;
   now?: Date;
   dryRun: boolean;
@@ -467,19 +477,31 @@ export async function runOpenCatalogueIngest(options: {
 }): Promise<OpenIngestResult> {
   const now = options.now ?? new Date();
   const sleep = options.sleep ?? defaultSleep;
-  const http =
-    options.http ??
-    createAllowlistedTextClient(
-      options.sourceKey === INNOVATE_UK_SOURCE_KEY
-        ? INNOVATE_UK_FETCH_POLICY
-        : FIND_A_GRANT_FETCH_POLICY,
-    );
-  const paced = pacedTextClient(http, sleep);
-  const adapter =
-    options.adapter ??
-    (options.sourceKey === INNOVATE_UK_SOURCE_KEY
-      ? createInnovateUkAdapter({ http: paced, now: () => now })
-      : createFindAGrantAdapter({ http: paced, now: () => now }));
+  const sourceKey = options.sourceKey;
+  const isGca =
+    sourceKey === GCA_AGREEMENTS_SOURCE_KEY || sourceKey === GCA_PIPELINE_SOURCE_KEY;
+  let adapter = options.adapter;
+  if (!adapter) {
+    if (isGca) {
+      adapter =
+        sourceKey === GCA_PIPELINE_SOURCE_KEY
+          ? createGcaPipelineAdapter({ now: () => now, sleep })
+          : createGcaAgreementsAdapter({ now: () => now, sleep });
+    } else {
+      const http =
+        options.http ??
+        createAllowlistedTextClient(
+          sourceKey === INNOVATE_UK_SOURCE_KEY
+            ? INNOVATE_UK_FETCH_POLICY
+            : FIND_A_GRANT_FETCH_POLICY,
+        );
+      const paced = pacedTextClient(http, sleep);
+      adapter =
+        sourceKey === INNOVATE_UK_SOURCE_KEY
+          ? createInnovateUkAdapter({ http: paced, now: () => now })
+          : createFindAGrantAdapter({ http: paced, now: () => now });
+    }
+  }
   const counts = emptyCounts();
   const errors: OpenIngestError[] = [];
   const changed = new Set<string>(options.dealIds ?? []);
@@ -488,7 +510,7 @@ export async function runOpenCatalogueIngest(options: {
 
   if (phase !== "previews") {
     const result = await runIngestion({
-      sourceKey: options.sourceKey,
+      sourceKey,
       store: options.store,
       adapter,
       triggerType: options.dryRun ? "DRY_RUN" : "SCHEDULED",
@@ -512,6 +534,9 @@ export async function runOpenCatalogueIngest(options: {
     counts.updated += result.counters.updated;
     counts.unchanged += result.counters.unchanged;
     counts.failed += result.counters.errorCount;
+    if (result.truncated) {
+      counts.capped = 1;
+    }
     for (const error of result.errors) {
       errors.push({
         stage: error.stage,
@@ -529,7 +554,7 @@ export async function runOpenCatalogueIngest(options: {
         errors,
       };
     }
-    if (result.status === "FAILED" || result.status === "PARTIAL") {
+    if (result.status === "FAILED" || result.status === "PARTIAL" || result.truncated) {
       status = result.status === "FAILED" ? "FAILED" : "PARTIAL";
     }
   }
@@ -561,7 +586,13 @@ export async function runOpenCatalogueIngest(options: {
       counts.unchanged = previews.blocked;
     }
     counts.failed += previews.failures;
-    if (previews.failures > 0) status = "PARTIAL";
+    if (previews.failures > 0) {
+      status = "PARTIAL";
+    }
+  }
+
+  if (counts.failed === 0 && status !== "PARTIAL" && status !== "FAILED") {
+    status = "SUCCEEDED";
   }
 
   return {

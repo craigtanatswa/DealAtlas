@@ -39,6 +39,8 @@ export function ingestAlertBody(input: {
   contractsFinderOk?: string;
   findAGrantOk?: string;
   innovateUkOk?: string;
+  gcaAgreementsOk?: string;
+  gcaPipelineOk?: string;
   buildOk?: string;
   unpublishOk?: string;
   publishOk?: string;
@@ -50,6 +52,8 @@ export function ingestAlertBody(input: {
     contracts_finder_ok: numericFlag(input.contractsFinderOk),
     find_a_grant_ok: numericFlag(input.findAGrantOk),
     innovate_uk_ok: numericFlag(input.innovateUkOk),
+    gca_agreements_ok: numericFlag(input.gcaAgreementsOk),
+    gca_pipeline_ok: numericFlag(input.gcaPipelineOk),
     build_ok: numericFlag(input.buildOk),
     unpublish_ok: numericFlag(input.unpublishOk),
     publish_ok: numericFlag(input.publishOk),
@@ -66,6 +70,8 @@ export async function sendIngestAlert(options: {
   contractsFinderOk?: string;
   findAGrantOk?: string;
   innovateUkOk?: string;
+  gcaAgreementsOk?: string;
+  gcaPipelineOk?: string;
   buildOk?: string;
   unpublishOk?: string;
   publishOk?: string;

@@ -48,7 +48,7 @@ describe("supabase migrations", () => {
   const files = listMigrations();
   const sql = files.map(readMigration).join("\n");
 
-  it("are numbered 0001-0025, 0028-0030, 0040, 0041 and 0043, leaving gaps for open pull requests", () => {
+  it("are numbered 0001-0026, 0028-0030, 0040-0043, then 0046, leaving 0027, 0031-0039 and 0044-0045 for open pull requests", () => {
     expect(files).toEqual([
       "0001_extensions_and_types.sql",
       "0002_core_schema.sql",
@@ -75,12 +75,15 @@ describe("supabase migrations", () => {
       "0023_contracts_finder_ocds.sql",
       "0024_service_role_statement_timeout.sql",
       "0025_publish_upcoming_and_biddable_sort.sql",
+      "0026_legacy_public_slugs.sql",
       "0028_publish_all_compliant_sources.sql",
       "0029_founding_member_slots.sql",
       "0030_founding_availability_and_claims.sql",
       "0040_publish_unknown_terms_sources.sql",
       "0041_preview_detail_allowlist.sql",
+      "0042_gca_and_nhs_sources.sql",
       "0043_grant_sources.sql",
+      "0046_search_preview_dtos_page_first.sql",
     ]);
   });
 
@@ -126,6 +129,13 @@ describe("supabase migrations", () => {
     expect(sql).not.toMatch(/disable row level security/i);
   });
 
+  it("refuses legacy public slugs from the preview DTO", () => {
+    const sql = readMigration("0026_legacy_public_slugs.sql");
+    expect(sql).toContain("private.preview_slug_is_legacy");
+    expect(sql).toContain("and not private.preview_slug_is_legacy(dp.slug, dp.deal_id)");
+    expect(sql).toContain("revoke all on function private.preview_slug_is_legacy(text, uuid)");
+  });
+
   it("publishes undated upcoming notices and sorts biddable deals first", () => {
     const sql = readMigration("0025_publish_upcoming_and_biddable_sort.sql");
     expect(sql).toContain("UPCOMING with a null deadline stays published");
@@ -133,6 +143,26 @@ describe("supabase migrations", () => {
     expect(sql).toContain("p_sort text default 'updated'");
     expect(sql).not.toMatch(/enforce_preview_safety/);
     expect(sql).not.toMatch(/disable row level security/i);
+  });
+
+  it("0046 pages search_preview_dtos before building DTO columns, with the same sort and helpers", () => {
+    const m = readMigration("0046_search_preview_dtos_page_first.sql");
+    const page = m.indexOf("paged as (");
+    const limit = m.indexOf("limit greatest(1, least(coalesce(p_limit, 20), 50))");
+    const helpers = m.indexOf("private.preview_dto_requirements(p.requirements_preview)");
+    expect(page).toBeGreaterThan(0);
+    expect(limit).toBeGreaterThan(page);
+    expect(helpers).toBeGreaterThan(limit);
+    expect(m.slice(page, limit)).not.toMatch(/private\.preview_dto_/);
+    expect(m).toContain("private.preview_dto_reasons(p.match_reasons)");
+    expect(m).toContain("private.preview_freshness_label(p.created_at, p.updated_at)");
+    expect(m).toContain("p.relevance_tags[1:12]");
+    expect(m).toContain("count(*) over () as total_count");
+    expect(m).toContain("when lower(coalesce(p_sort, 'updated')) = 'biddable' and r.status = 'CLOSING_SOON'::public.deal_status then 0");
+    expect(m).toContain("where dp.is_published = true\n      and dp.leakage_risk = 'LOW'\n      and dp.unpublished_by_admin = false");
+    expect(m).toContain("security definer");
+    expect(m).not.toMatch(/\b(grant|revoke)\b/i);
+    expect(m).not.toMatch(/disable row level security/i);
   });
 
   it("keeps search_deal_previews on deal_previews only after filter extension", () => {

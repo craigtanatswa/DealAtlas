@@ -3,6 +3,7 @@ import { writeInBatches } from "@/ingestion/store/write-batch";
 import type { Database, Json } from "@/lib/db/database.types";
 
 import { normalizeTitle } from "@/ingestion/normalizers/text";
+import { textHasReferenceToken } from "@/ingestion/sources/gca/link";
 import type {
   AwardRecord,
   ContractRecord,
@@ -973,6 +974,43 @@ export function createSupabaseIngestionStore(
       const result = await client.from("deals").select("*").eq("ocid", ocid).maybeSingle();
       const row = throwIfQueryError("Find deal by OCID", result);
       return row ? mapDeal(row) : null;
+    },
+    async findDealByPortalReference(sourceKeys, reference) {
+      const token = reference.trim();
+      if (!token || sourceKeys.length === 0) {
+        return null;
+      }
+      const sources = await client
+        .from("data_sources")
+        .select("id")
+        .in("source_key", sourceKeys);
+      const sourceRows = throwIfQueryError("Find portal sources", sources) ?? [];
+      const ids = sourceRows.map((row) => row.id);
+      if (ids.length === 0) {
+        return null;
+      }
+      const exact = await client
+        .from("deals")
+        .select("*")
+        .in("primary_source_id", ids)
+        .ilike("reference", token)
+        .limit(1);
+      const exactRows = throwIfQueryError("Find portal deal by reference", exact) ?? [];
+      if (exactRows[0]) {
+        return mapDeal(exactRows[0]);
+      }
+      if (!textHasReferenceToken(token, token)) {
+        return null;
+      }
+      const titled = await client
+        .from("deals")
+        .select("*")
+        .in("primary_source_id", ids)
+        .ilike("source_title", `%${token}%`)
+        .limit(25);
+      const titleRows = throwIfQueryError("Find portal deal by title", titled) ?? [];
+      const match = titleRows.find((row) => textHasReferenceToken(token, row.source_title));
+      return match ? mapDeal(match) : null;
     },
     async findDealBySourceReference(sourceId, reference) {
       const result = await client

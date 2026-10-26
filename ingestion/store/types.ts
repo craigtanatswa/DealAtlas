@@ -409,6 +409,11 @@ export type IngestionStore = {
     externalPrimaryId: string,
   ): Promise<DealRecord | null>;
   findDealByOcid(ocid: string): Promise<DealRecord | null>;
+  /** Exact reference, or an RM token in the title, on the named sources. */
+  findDealByPortalReference(
+    sourceKeys: string[],
+    reference: string,
+  ): Promise<DealRecord | null>;
   findDealBySourceReference(
     sourceId: string,
     reference: string,
