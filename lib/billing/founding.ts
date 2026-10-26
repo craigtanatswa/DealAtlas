@@ -11,10 +11,14 @@ export const FOUNDING_UNAVAILABLE_MESSAGE = `Founding places are all taken. You 
 export const FOUNDING_NOT_ELIGIBLE_MESSAGE = `Founding membership can't be rejoined after cancelling. You can still subscribe to Pro annual at ${DISPLAY_PRICING.proAnnual}.`;
 
 /** Stable checkout error codes. The UI (#49) matches on these. */
+export const ALREADY_SUBSCRIBED_MESSAGE =
+  "You already have an active DealAtlas Pro subscription. Manage or change it from the billing portal at /app/billing.";
+
 export const CHECKOUT_ERROR_CODES = {
   foundingCapFull: "FOUNDING_CAP_FULL",
   foundingNotEligible: "FOUNDING_NOT_ELIGIBLE",
   invalidPlan: "INVALID_PLAN",
+  alreadySubscribed: "ALREADY_SUBSCRIBED",
 } as const;
 
 export type FoundingSideEffect = {

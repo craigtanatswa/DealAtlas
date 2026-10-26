@@ -6,7 +6,10 @@ import {
   CHECKOUT_PLAN_KEYS,
   selectCheckoutProduct,
 } from "@/lib/billing/plans";
-import { FOUNDING_UNAVAILABLE_MESSAGE } from "@/lib/billing/founding";
+import {
+  ALREADY_SUBSCRIBED_MESSAGE,
+  FOUNDING_UNAVAILABLE_MESSAGE,
+} from "@/lib/billing/founding";
 import { FOUNDING_PLAN_KEY } from "@/lib/billing/founding-ui";
 import type {
   FoundingReservation,
@@ -16,6 +19,7 @@ import type {
 const mocks = vi.hoisted(() => ({
   readFoundingMember: vi.fn(),
   reserveFoundingSlot: vi.fn(),
+  hasLiveSubscription: vi.fn(),
   checkoutHandler: vi.fn(),
   products: {
     PRO_MONTHLY: "pdt_test_monthly",
@@ -31,6 +35,10 @@ vi.mock("server-only", () => ({}));
 vi.mock("@/lib/billing/founding-db", () => ({
   readFoundingMember: mocks.readFoundingMember,
   reserveFoundingSlot: mocks.reserveFoundingSlot,
+}));
+
+vi.mock("@/lib/billing/live-subscription", () => ({
+  hasLiveSubscription: mocks.hasLiveSubscription,
 }));
 
 vi.mock("@/lib/billing/config", () => ({
@@ -110,6 +118,7 @@ beforeEach(() => {
   };
   mocks.readFoundingMember.mockResolvedValue(false);
   mocks.reserveFoundingSlot.mockResolvedValue("reserved");
+  mocks.hasLiveSubscription.mockResolvedValue(false);
   mocks.checkoutHandler.mockImplementation(async (request: Request) => {
     mocks.sessions.push(
       (await request.json()) as Record<string, unknown>,
@@ -455,6 +464,65 @@ describe("checkout error contract for the UI", () => {
       expect(json.code).toBe("INVALID_PLAN");
       expect(typeof json.message).toBe("string");
     }
+    expect(mocks.reserveFoundingSlot).not.toHaveBeenCalled();
+    expect(mocks.checkoutHandler).not.toHaveBeenCalled();
+  });
+});
+
+describe("checkout duplicate-subscription guard", () => {
+  it.each(CHECKOUT_PLAN_KEYS)(
+    "returns 409 ALREADY_SUBSCRIBED for %s when the user has a live subscription",
+    async (planKey) => {
+      mocks.hasLiveSubscription.mockResolvedValue(true);
+      const response = await createAuthenticatedCheckoutResponse({
+        request: jsonRequest({ planKey }),
+        user: USER,
+        profile: PROFILE,
+      });
+      expect(response.status).toBe(409);
+      expect(await response.json()).toEqual({
+        error: ALREADY_SUBSCRIBED_MESSAGE,
+        message: ALREADY_SUBSCRIBED_MESSAGE,
+        code: "ALREADY_SUBSCRIBED",
+      });
+      expect(mocks.hasLiveSubscription).toHaveBeenCalledWith(USER.id);
+      expect(mocks.reserveFoundingSlot).not.toHaveBeenCalled();
+      expect(mocks.checkoutHandler).not.toHaveBeenCalled();
+      expect(mocks.sessions).toHaveLength(0);
+    },
+  );
+
+  it("asks Dodo to charge in GBP", async () => {
+    await createAuthenticatedCheckoutResponse({
+      request: jsonRequest({ planKey: "PRO_ANNUAL" }),
+      user: USER,
+      profile: PROFILE,
+    });
+    expect(mocks.sessions[0]?.billing_currency).toBe("GBP");
+  });
+
+  it("redirects a form post from a subscribed user to the billing page notice", async () => {
+    mocks.hasLiveSubscription.mockResolvedValue(true);
+    const response = await createAuthenticatedCheckoutResponse({
+      request: formRequest({ planKey: "PRO_ANNUAL" }),
+      user: USER,
+      profile: PROFILE,
+    });
+    expect(response.status).toBe(303);
+    expect(response.headers.get("location")).toBe(
+      "https://www.dealatlas.example/app/billing?notice=already_subscribed",
+    );
+    expect(mocks.checkoutHandler).not.toHaveBeenCalled();
+  });
+
+  it("fails closed with 503 and no session when the subscription check errors", async () => {
+    mocks.hasLiveSubscription.mockRejectedValue(new Error("db down"));
+    const response = await createAuthenticatedCheckoutResponse({
+      request: jsonRequest({ planKey: "FOUNDING" }),
+      user: USER,
+      profile: PROFILE,
+    });
+    expect(response.status).toBe(503);
     expect(mocks.reserveFoundingSlot).not.toHaveBeenCalled();
     expect(mocks.checkoutHandler).not.toHaveBeenCalled();
   });

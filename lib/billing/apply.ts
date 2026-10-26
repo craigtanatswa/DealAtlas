@@ -1,5 +1,5 @@
 import { isNewerProviderEvent } from "@/lib/billing/event-id";
-import { snapshotWouldGrantPro } from "@/lib/billing/status";
+import { isLiveSubscriptionStatus, snapshotWouldGrantPro } from "@/lib/billing/status";
 import type {
   ApplyResult,
   BillingStore,
@@ -8,6 +8,9 @@ import type {
   StoredSubscription,
   SubscriptionSnapshot,
 } from "@/lib/billing/types";
+
+export const DUPLICATE_SUBSCRIPTION_FLAG =
+  "duplicate_subscription: user already has a live current subscription; flag for refund review.";
 
 const TERMINAL_EVENT_STATUSES = new Set(["PROCESSED", "IGNORED"]);
 
@@ -113,10 +116,24 @@ async function applySnapshot(
     }
   }
 
+  // Duplicate guard (flag only): a second live subscription for the same user
+  // means double billing. Plan changes keep latest-wins for is_current, so the
+  // entitlement stays Pro either way; the event is flagged for follow-up.
+  const current = await store.getCurrentSubscription(userId);
+  const duplicate =
+    wouldGrantPro(nextSnapshot) &&
+    current !== null &&
+    current.dodoSubscriptionId !== nextSnapshot.dodoSubscriptionId &&
+    isLiveSubscriptionStatus(current.status);
+
   await store.upsertCurrentSubscription(
     toStored(userId, nextSnapshot, incomingTime ?? storedTime, existing ?? null),
   );
-  await store.markEvent(event.providerEventId, "PROCESSED");
+  await store.markEvent(
+    event.providerEventId,
+    "PROCESSED",
+    duplicate ? DUPLICATE_SUBSCRIPTION_FLAG : null,
+  );
   return { outcome: "applied" };
 }
 

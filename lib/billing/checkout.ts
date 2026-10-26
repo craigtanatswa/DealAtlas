@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { checkoutMetadata } from "@/lib/billing/metadata";
 import {
+  ALREADY_SUBSCRIBED_MESSAGE,
   CHECKOUT_ERROR_CODES,
   FOUNDING_NOT_ELIGIBLE_MESSAGE,
   FOUNDING_UNAVAILABLE_MESSAGE,
@@ -15,6 +16,7 @@ import {
   shouldReserveFoundingSlot,
   subscriptionPlanKeyFor,
 } from "@/lib/billing/plans";
+import { hasLiveSubscription } from "@/lib/billing/live-subscription";
 import { reserveFoundingSlot } from "@/lib/billing/founding-db";
 import { requireDodoCheckoutConfig } from "@/lib/billing/config";
 import { BillingConfigError } from "@/lib/billing/errors";
@@ -99,6 +101,34 @@ export async function createAuthenticatedCheckoutResponse(input: {
       : null,
   );
 
+  // One live subscription per user: a second checkout would double-bill.
+  // Fail closed if the check itself fails.
+  let alreadySubscribed: boolean;
+  try {
+    alreadySubscribed = await hasLiveSubscription(input.user.id);
+  } catch {
+    return NextResponse.json(
+      { error: "Checkout is temporarily unavailable. Try again shortly." },
+      { status: 503 },
+    );
+  }
+  if (alreadySubscribed) {
+    if (wantsJson(input.request)) {
+      return NextResponse.json(
+        {
+          error: ALREADY_SUBSCRIBED_MESSAGE,
+          message: ALREADY_SUBSCRIBED_MESSAGE,
+          code: CHECKOUT_ERROR_CODES.alreadySubscribed,
+        },
+        { status: 409 },
+      );
+    }
+    return NextResponse.redirect(
+      new URL("/app/billing?notice=already_subscribed", input.request.url),
+      303,
+    );
+  }
+
   const reservation = shouldReserveFoundingSlot(parsed.planKey, config.products)
     ? await reserveFoundingSlot(input.user.id)
     : null;
@@ -153,6 +183,7 @@ export async function createAuthenticatedCheckoutResponse(input: {
         planKey: subscriptionPlanKey,
       }),
       return_url: returnUrl,
+      billing_currency: "GBP",
       feature_flags: {
         allow_customer_editing_email: false,
       },
