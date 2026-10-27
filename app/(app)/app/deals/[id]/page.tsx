@@ -134,7 +134,7 @@ export default async function AppDealPage({ params, searchParams }: PageProps) {
   }
 
   const [previewPage, founding] = await Promise.all([
-    getPublicDealPreviewPageByDealId(client, dealId),
+    getPublicDealPreviewPageByDealId(client, dealId, { userId: user.id }),
     readFoundingPublicCount(),
   ]);
   if (!previewPage) {

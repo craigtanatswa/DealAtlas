@@ -38,12 +38,14 @@ async function previewTitleForReturn(next: string | null): Promise<string | null
     const client = await createSupabaseServerClient();
     if (publicDeal?.[1]) {
       const page = await getPublicDealPreviewPageBySlug(client, publicDeal[1], {
-        signedIn: false,
+        userId: null,
       });
       return page?.preview.previewTitle ?? null;
     }
     if (appDeal?.[1]) {
-      const page = await getPublicDealPreviewPageByDealId(client, appDeal[1]);
+      const page = await getPublicDealPreviewPageByDealId(client, appDeal[1], {
+        userId: null,
+      });
       return page?.preview.previewTitle ?? null;
     }
   } catch {

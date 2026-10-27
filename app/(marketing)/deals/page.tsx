@@ -42,14 +42,14 @@ export default async function DealsIndexPage({ searchParams }: PageProps) {
   const requestedPage = parsePublicSearchParams(params).page;
   const client = await createSupabaseServerClient();
   const user = await getAuthUser();
-  const { filters, result, companyProfileId } = await searchDealPreviewsForUser({
+  const { filters, result, matchEnabled } = await searchDealPreviewsForUser({
     client,
     searchParams: params,
     userId: user?.id,
     defaultSort: "biddable",
     pageSize: PUBLIC_DEALS_PAGE_SIZE,
   });
-  const showRelevance = Boolean(companyProfileId);
+  const showRelevance = matchEnabled;
 
   if (isPublicDealsPageOutOfRange(requestedPage, result.total, filters.limit)) {
     notFound();
