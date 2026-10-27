@@ -19,16 +19,11 @@ export function foundingSignupPath(): string {
   return `${SIGNUP_PATH}?next=${encodeURIComponent(foundingCheckoutPath())}`;
 }
 
-/** Server cap. The browser never supplies this number. */
-export const FOUNDING_CAP = 25;
-
-export type FoundingPublicCount = {
-  offered: boolean;
-  remaining: number;
-  cap: number;
+export type FoundingAvailability = {
+  available: boolean;
 };
 
-export type FoundingUiState = "hidden" | "available" | "last" | "sold_out";
+export type FoundingUiState = "hidden" | "available" | "sold_out";
 
 function parseGbpYear(value: string): number | null {
   const match = value.match(/£(\d+)\/year/);
@@ -115,33 +110,23 @@ export function foundingDueToday(): string {
   return founding ? `£${founding.toFixed(2)}` : DISPLAY_PRICING.foundingAnnual;
 }
 
-export function foundingUiState(count: {
-  offered: boolean;
-  remaining: number;
-}): FoundingUiState {
-  if (!count.offered) return "hidden";
-  if (count.remaining <= 0) return "sold_out";
-  if (count.remaining === 1) return "last";
-  return "available";
+export function foundingUiState(
+  availability?: FoundingAvailability | null,
+): FoundingUiState {
+  if (!availability) return "hidden";
+  return availability.available ? "available" : "sold_out";
 }
 
-/** Limited-places copy. The exact remaining count is never rendered. */
+/** Limited-places copy. No count, cap or other number is ever rendered. */
 export const FOUNDING_LIMITED_PLACES = "Limited places";
 
-export function foundingPlacesLabel(remaining: number, cap = FOUNDING_CAP): string {
-  const safeCap = Number.isInteger(cap) && cap > 0 ? cap : FOUNDING_CAP;
-  const safeRemaining = clampFoundingRemaining(remaining, safeCap);
-  if (safeRemaining <= 0) return "Founding places are all taken";
+export function foundingPlacesLabel(): string {
   return FOUNDING_LIMITED_PLACES;
 }
 
 /** Paywall helper. Uses the same limited-places copy as the pricing card. */
-export function foundingPaywallPlaces(remaining: number, cap = FOUNDING_CAP): string {
-  return foundingPlacesLabel(remaining, cap);
-}
-
-function clampFoundingRemaining(remaining: number, cap: number): number {
-  return Number.isInteger(remaining) ? Math.min(cap, Math.max(0, remaining)) : 0;
+export function foundingPaywallPlaces(): string {
+  return foundingPlacesLabel();
 }
 
 export const FOUNDING_COPY = {

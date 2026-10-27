@@ -11,15 +11,20 @@ import {
   FOUNDING_COPY,
   foundingSignupPath,
   proMonthlyShort,
+  type FoundingAvailability,
 } from "@/lib/billing/founding-ui";
 
 export function HomeFoundingCta({
   signedIn,
+  available = true,
+  founding,
 }: {
   signedIn: boolean;
-  remaining: number;
-  cap: number;
+  available?: boolean;
+  founding?: FoundingAvailability;
 }) {
+  if (!(founding?.available ?? available)) return null;
+
   return (
     <section aria-labelledby="home-founding-heading" className="border-b border-border">
       <Container className="py-12 md:py-16">

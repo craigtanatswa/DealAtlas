@@ -39,15 +39,14 @@ import { FoundingFullCheckout } from "@/components/billing/founding-checkout-sum
 import { PricingPlans } from "@/components/billing/pricing-plans";
 import { DealProCard } from "@/components/deals/deal-pro-card";
 import {
-  FOUNDING_CAP,
   proAnnualBilledLine,
   proAnnualMonthlyEquivalent,
 } from "@/lib/billing/founding-ui";
 
 afterEach(cleanup);
 
-const openCount = { offered: true, remaining: 17, cap: FOUNDING_CAP };
-const soldOutCount = { offered: true, remaining: 0, cap: FOUNDING_CAP };
+const openCount = { available: true };
+const soldOutCount = { available: false };
 const billedLine = "billed £350/yr, VAT included";
 
 function expectProAnnualPrice(node: ParentNode) {
@@ -90,7 +89,7 @@ describe("pro annual price components", () => {
 describe("pro annual surfaces", () => {
   it("shows the annual price lead and button on the pricing card", () => {
     const { container } = render(
-      <PricingPlans signedIn count={openCount} state="available" />,
+      <PricingPlans signedIn founding={openCount} />,
     );
     expect(screen.getByText(billedLine)).toBeTruthy();
     expectProAnnualPrice(container);
@@ -122,8 +121,6 @@ describe("pro annual surfaces", () => {
     render(
       <FoundingUnlockActions
         state="sold_out"
-        remaining={0}
-        cap={FOUNDING_CAP}
         mode="anonymous"
       />,
     );

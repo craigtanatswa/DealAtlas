@@ -9,6 +9,7 @@ import {
   FOUNDING_COPY,
   foundingSignupPath,
   foundingPaywallPlaces,
+  type FoundingAvailability,
   type FoundingUiState,
 } from "@/lib/billing/founding-ui";
 
@@ -17,19 +18,25 @@ const FOUNDING_BUTTON =
 
 export function FoundingUnlockActions({
   state,
-  remaining,
-  cap,
+  available,
+  founding,
   mode,
   returnTo,
 }: {
-  state: Exclude<FoundingUiState, "hidden">;
-  remaining: number;
-  cap: number;
+  state?: Exclude<FoundingUiState, "hidden">;
+  available?: boolean;
+  founding?: FoundingAvailability;
   mode: "anonymous" | "free";
   loginHref?: string;
   returnTo?: string;
 }) {
-  if (state === "sold_out") {
+  const isAvailable = founding
+    ? founding.available
+    : available !== undefined
+      ? available
+      : state !== "sold_out";
+
+  if (!isAvailable) {
     return (
       <div className="flex w-full flex-col items-center gap-2">
         {mode === "free" ? (
@@ -81,7 +88,7 @@ export function FoundingUnlockActions({
         </Button>
       )}
       <p className="text-center text-[0.8125rem] leading-5 text-pretty text-muted-foreground">
-        <span>{foundingPaywallPlaces(remaining, cap)}</span>
+        <span>{foundingPaywallPlaces()}</span>
         {" · "}
         <span>{FOUNDING_COPY.priceLocked}</span>
       </p>

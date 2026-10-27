@@ -8,7 +8,7 @@ import { deadlineKeyFact, DealStatusBadge } from "@/components/deals/deal-status
 import { OpeningAlertButton } from "@/components/deals/opening-alert";
 import { buyerSectorLabel, levelLabel } from "@/components/deals/types";
 import { Button } from "@/components/ui/button";
-import type { FoundingPublicCount } from "@/lib/billing/founding-ui";
+import type { FoundingAvailability } from "@/lib/billing/founding-ui";
 import { signupPathWithAlert } from "@/lib/auth/redirect";
 import { DISPLAY_PRICING } from "@/lib/constants";
 import {
@@ -114,7 +114,8 @@ export function DealPreviewDetail({
     loginHref?: string;
     revealHref?: string;
     returnTo?: string;
-    founding?: FoundingPublicCount;
+    founding?: FoundingAvailability;
+    available?: boolean;
   };
   signedIn?: boolean;
 }) {
@@ -139,18 +140,21 @@ export function DealPreviewDetail({
   // Placeholders (UNKNOWN, Not disclosed) and duplicates are not rendered.
   const sectorChip = disclosed(deal.specificSector) ?? category;
   const isPro = unlock?.mode === "pro";
+  const founding =
+    unlock?.founding ??
+    (unlock?.available === undefined ? undefined : { available: unlock.available });
   const cardProps = {
     mode: unlock?.mode,
     loginHref: unlock?.loginHref,
     revealHref: unlock?.revealHref,
     returnTo: unlock?.returnTo,
-    founding: unlock?.founding,
+    founding,
     alertsHref: signedIn
       ? "/app/alerts"
       : signupPathWithAlert(`/deals/${deal.slug}`),
   };
   const barLabel =
-    unlock?.founding?.offered && unlock.founding.remaining > 0 ? (
+    founding?.available ? (
       <>
         Unlock with Pro · <FoundingPriceInline />
       </>

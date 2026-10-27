@@ -12,17 +12,18 @@ import {
   FOUNDING_FULL_MESSAGE,
   foundingDueToday,
   proMonthlyShort,
+  type FoundingAvailability,
 } from "@/lib/billing/founding-ui";
 
-/** Founding plan summary on /checkout. Remaining places only; the cap is never rendered. */
+/** Founding plan summary on /checkout. Renders only while the offer is available. */
 export function FoundingCheckoutSummary({
-  remaining,
-  cap,
+  available,
+  founding,
 }: {
-  remaining: number;
-  cap: number;
+  available?: boolean;
+  founding?: FoundingAvailability;
 }) {
-  if (remaining <= 0 || cap <= 0) return null;
+  if (!(founding?.available ?? available)) return null;
 
   return (
     <>

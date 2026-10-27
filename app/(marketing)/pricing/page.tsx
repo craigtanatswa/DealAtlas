@@ -5,8 +5,7 @@ import { Main } from "@/components/layout/container";
 import { JsonLd } from "@/components/seo/json-ld";
 import { getAuthUser } from "@/lib/auth/session";
 import { getAppOrigin } from "@/lib/auth/urls";
-import { readFoundingPublicCount } from "@/lib/billing/founding-public";
-import { foundingUiState } from "@/lib/billing/founding-ui";
+import { readFoundingAvailability } from "@/lib/billing/founding-public";
 import { webPageJsonLd } from "@/lib/seo/json-ld";
 import { marketingPageMetadata } from "@/lib/seo/metadata";
 import { PUBLIC_PAGE_COPY } from "@/lib/seo/pages";
@@ -21,8 +20,10 @@ export const metadata: Metadata = marketingPageMetadata({
 });
 
 export default async function PricingPage() {
-  const [user, count] = await Promise.all([getAuthUser(), readFoundingPublicCount()]);
-  const state = foundingUiState(count);
+  const [user, founding] = await Promise.all([
+    getAuthUser(),
+    readFoundingAvailability(),
+  ]);
 
   return (
     <Main back className="gap-10">
@@ -35,7 +36,7 @@ export default async function PricingPage() {
         })}
       />
       {/* Founding full or not offered: PricingPlans drops the founding card entirely. */}
-      <PricingPlans signedIn={Boolean(user)} count={count} state={state} />
+      <PricingPlans signedIn={Boolean(user)} founding={founding ?? undefined} />
       <p className="text-center text-sm text-muted-foreground">
         All prices include VAT.
       </p>

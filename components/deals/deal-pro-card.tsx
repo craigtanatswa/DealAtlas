@@ -11,7 +11,7 @@ import {
   foundingSignupPath,
   foundingPaywallPlaces,
   foundingUiState,
-  type FoundingPublicCount,
+  type FoundingAvailability,
 } from "@/lib/billing/founding-ui";
 import { DISPLAY_PRICING } from "@/lib/constants";
 
@@ -39,6 +39,7 @@ export function DealProCard({
   revealHref,
   returnTo,
   founding,
+  available,
   alertsHref,
   idSuffix = "default",
 }: {
@@ -46,7 +47,8 @@ export function DealProCard({
   loginHref?: string;
   revealHref?: string;
   returnTo?: string;
-  founding?: FoundingPublicCount;
+  founding?: FoundingAvailability;
+  available?: boolean;
   alertsHref: string;
   idSuffix?: string;
 }) {
@@ -85,8 +87,10 @@ export function DealProCard({
     );
   }
 
-  const state = founding ? foundingUiState(founding) : "hidden";
-  const foundingActive = state === "available" || state === "last";
+  const availability =
+    founding ?? (available === undefined ? undefined : { available });
+  const state = foundingUiState(availability);
+  const foundingActive = state === "available";
   const monthlyShort = DISPLAY_PRICING.proMonthly.replace("/month", "/mo");
 
   return (
@@ -147,7 +151,7 @@ export function DealProCard({
             )}
             <p className="mt-2 text-center text-xs font-medium text-foreground/80">
               <span className="text-emerald-700">
-                {foundingPaywallPlaces(founding.remaining, founding.cap)}
+                {foundingPaywallPlaces()}
               </span>
               {" · "}
               <span>{FOUNDING_COPY.priceLocked}</span>

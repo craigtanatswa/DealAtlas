@@ -4,16 +4,15 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { DealProCard } from "@/components/deals/deal-pro-card";
 import {
-  FOUNDING_CAP,
   FOUNDING_PLAN_KEY,
   foundingSignupPath,
 } from "@/lib/billing/founding-ui";
 
 afterEach(cleanup);
 
-const open = { offered: true, remaining: 18, cap: FOUNDING_CAP };
-const full = { offered: true, remaining: 0, cap: FOUNDING_CAP };
-const notOffered = { offered: false, remaining: 0, cap: FOUNDING_CAP };
+const open = { available: true };
+const full = { available: false };
+const notOffered = { available: false };
 const returnTo = "/deals/example-slug";
 
 function planKeys(container: HTMLElement): (string | null)[] {

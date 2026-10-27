@@ -17,7 +17,8 @@ import type { CheckoutPlanKey } from "@/lib/billing/types";
 import {
   FOUNDING_COPY,
   foundingSignupPath,
-  type FoundingPublicCount,
+  foundingUiState,
+  type FoundingAvailability,
   type FoundingUiState,
 } from "@/lib/billing/founding-ui";
 import { DISPLAY_PRICING, FEATURE_LIMITS } from "@/lib/constants";
@@ -128,14 +129,19 @@ function PlanCta({
 
 export function PricingPlans({
   signedIn,
+  founding,
+  available,
   state,
 }: {
   signedIn: boolean;
-  count: FoundingPublicCount;
-  state: FoundingUiState;
+  founding?: FoundingAvailability;
+  available?: boolean;
+  state?: FoundingUiState;
 }) {
   // Founding full or not offered: the card disappears and the grid reflows to three plans.
-  const soldOut = state !== "available" && state !== "last";
+  const availability =
+    founding ?? (available === undefined ? undefined : { available });
+  const soldOut = (availability ? foundingUiState(availability) : state) !== "available";
   const annualVariant = soldOut ? "default" : "outline";
 
   return (

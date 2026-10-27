@@ -11,7 +11,7 @@ import { getAuthUser } from "@/lib/auth/session";
 import { loginPathWithNext } from "@/lib/auth/redirect";
 import { getAppOrigin } from "@/lib/auth/urls";
 import { appDealPath } from "@/lib/deals/paths";
-import { readFoundingPublicCount } from "@/lib/billing/founding-public";
+import { readFoundingAvailability } from "@/lib/billing/founding-public";
 import { isProEntitlement } from "@/lib/entitlements/policy";
 import { getCurrentEntitlement } from "@/lib/entitlements/service";
 import { featureLimit } from "@/lib/quotas";
@@ -69,9 +69,9 @@ export default async function DealPreviewPage({ params, searchParams }: PageProp
     notFound();
   }
 
-  const [user, foundingCount] = await Promise.all([
+  const [user, foundingAvailability] = await Promise.all([
     getAuthUser(),
-    readFoundingPublicCount(),
+    readFoundingAvailability(),
   ]);
   const entitlement = user ? await getCurrentEntitlement(user.id) : null;
   const mode = !user
@@ -84,7 +84,7 @@ export default async function DealPreviewPage({ params, searchParams }: PageProp
     ? await loadDealSaveState(await createSupabaseServerClient(), user.id, dealId)
     : { saved: false, used: 0 };
 
-  const founding = mode === "pro" ? null : foundingCount;
+  const founding = mode === "pro" ? null : foundingAvailability;
   const origin = getAppOrigin();
   const indexable = isIndexablePublicPreview(page.preview);
 
@@ -120,7 +120,7 @@ export default async function DealPreviewPage({ params, searchParams }: PageProp
           loginHref: loginPathWithNext(`/deals/${page.preview.slug}`),
           revealHref: dealId ? appDealPath(dealId) : undefined,
           returnTo: dealId ? appDealPath(dealId) : undefined,
-          founding: founding?.offered ? founding : undefined,
+          founding: founding ?? undefined,
         }}
       />
     </Main>

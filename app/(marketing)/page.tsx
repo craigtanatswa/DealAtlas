@@ -12,7 +12,7 @@ import { JsonLd } from "@/components/seo/json-ld";
 import { getAuthUser } from "@/lib/auth/session";
 import { getAppOrigin } from "@/lib/auth/urls";
 import { foundingUiState } from "@/lib/billing/founding-ui";
-import { readFoundingPublicCount } from "@/lib/billing/founding-public";
+import { readFoundingAvailability } from "@/lib/billing/founding-public";
 import { getHomeSearchChips } from "@/lib/search/home-chips-server";
 import { searchLiveHomePreviews } from "@/lib/search/public";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -35,7 +35,7 @@ export const metadata: Metadata = marketingPageMetadata({
 export default async function HomePage() {
   const [user, founding, searchChips] = await Promise.all([
     getAuthUser(),
-    readFoundingPublicCount(),
+    readFoundingAvailability(),
     // Cached ~1h; on failure show no "Try" chips rather than possibly empty ones.
     getHomeSearchChips().catch(() => []),
   ]);
@@ -61,12 +61,8 @@ export default async function HomePage() {
         total={live.total}
         signedIn={Boolean(user)}
       />
-      {foundingState === "available" || foundingState === "last" ? (
-        <HomeFoundingCta
-          signedIn={Boolean(user)}
-          remaining={founding.remaining}
-          cap={founding.cap}
-        />
+      {foundingState === "available" ? (
+        <HomeFoundingCta signedIn={Boolean(user)} available />
       ) : null}
       <HomeTestimonialsSection />
       <Container className="flex flex-col gap-16 py-12 md:py-16">

@@ -165,23 +165,13 @@ describe("founding member checkout", () => {
   });
 
   it("shows a limited-places label when founding is offered in the UI", () => {
-    expect(foundingUiState({ offered: false, remaining: 25 })).toBe("hidden");
-    expect(foundingUiState({ offered: true, remaining: 17 })).toBe("available");
-    expect(foundingUiState({ offered: true, remaining: 1 })).toBe("last");
-    expect(foundingUiState({ offered: true, remaining: 0 })).toBe("sold_out");
+    expect(foundingUiState(undefined)).toBe("hidden");
+    expect(foundingUiState({ available: true })).toBe("available");
+    expect(foundingUiState({ available: false })).toBe("sold_out");
     expect(FOUNDING_LIMITED_PLACES).toBe("Limited places");
-    expect(foundingPlacesLabel(17)).toBe(FOUNDING_LIMITED_PLACES);
-    expect(foundingPlacesLabel(1)).toBe(FOUNDING_LIMITED_PLACES);
-    expect(foundingPlacesLabel(24, 25)).toBe(FOUNDING_LIMITED_PLACES);
-    expect(foundingPaywallPlaces(17)).toBe(FOUNDING_LIMITED_PLACES);
-    expect(foundingPaywallPlaces(1)).toBe(FOUNDING_LIMITED_PLACES);
-    expect(foundingPaywallPlaces(24, 25)).toBe(FOUNDING_LIMITED_PLACES);
-    for (const label of [
-      foundingPlacesLabel(17),
-      foundingPlacesLabel(1),
-      foundingPaywallPlaces(17),
-      foundingPaywallPlaces(1),
-    ]) {
+    expect(foundingPlacesLabel()).toBe(FOUNDING_LIMITED_PLACES);
+    expect(foundingPaywallPlaces()).toBe(FOUNDING_LIMITED_PLACES);
+    for (const label of [foundingPlacesLabel(), foundingPaywallPlaces()]) {
       expect(label).not.toMatch(/\d+\s+places?\s+left/i);
     }
     expect(FOUNDING_COPY.cancelTerms).toBe(
