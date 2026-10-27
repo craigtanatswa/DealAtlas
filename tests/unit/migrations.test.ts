@@ -48,7 +48,7 @@ describe("supabase migrations", () => {
   const files = listMigrations();
   const sql = files.map(readMigration).join("\n");
 
-  it("are numbered 0001-0026, 0028-0030, 0040-0042, 0045 and 0046, leaving 0027, 0031-0039 and 0043-0044 for open pull requests", () => {
+  it("are numbered 0001-0026, 0028-0030, 0040-0043, 0045-0047, 0051 and 0053, leaving 0027, 0031-0039, 0044, 0048-0050 and 0052 for open pull requests", () => {
     expect(files).toEqual([
       "0001_extensions_and_types.sql",
       "0002_core_schema.sql",
@@ -82,9 +82,89 @@ describe("supabase migrations", () => {
       "0040_publish_unknown_terms_sources.sql",
       "0041_preview_detail_allowlist.sql",
       "0042_gca_and_nhs_sources.sql",
+      "0043_grant_sources.sql",
       "0045_devolved_ocds_portals.sql",
       "0046_search_preview_dtos_page_first.sql",
+      "0047_founding_cancel_ends_membership.sql",
+      "0051_match_data_pro_only.sql",
+      "0053_search_preview_dtos_categories.sql",
     ]);
+  });
+
+  it("0053 adds a multi-raw category filter to search_preview_dtos without changing its contract", () => {
+    const m = readMigration("0053_search_preview_dtos_categories.sql");
+    expect(m).toContain("drop function if exists public.search_preview_dtos(");
+    expect(m).toContain("create function public.search_preview_dtos(");
+    expect(m).toContain("p_categories text[] default null");
+    expect(m).toContain("dp.main_category = any(p_categories)");
+    expect(m).toContain("coalesce(private.is_user_pro(auth.uid()), false)");
+    expect(m).toContain("private.preview_dto_requirements(p.requirements_preview)");
+    expect(m).toContain("private.preview_dto_reasons(p.match_reasons)");
+    expect(m).toContain("p.total_count");
+
+    const returns = m.slice(
+      m.indexOf("returns table (", m.indexOf("create function public.search_preview_dtos(")),
+      m.indexOf("language sql", m.indexOf("create function public.search_preview_dtos(")),
+    );
+    for (const column of [
+      "slug",
+      "preview_title",
+      "preview_summary",
+      "deal_type",
+      "buyer_sector",
+      "stage",
+      "status",
+      "main_category",
+      "broad_region",
+      "value_band",
+      "deadline_band",
+      "duration_band",
+      "sme_suitability",
+      "bid_complexity",
+      "competition_level",
+      "requirements_preview",
+      "relevance_tags",
+      "freshness_label",
+      "relevance_score",
+      "preview_reasons",
+      "total_count",
+    ]) {
+      expect(returns, column).toMatch(new RegExp(String.raw`\b${column}\b`));
+    }
+    expect(returns).not.toMatch(/\bdeal_id\b/);
+
+    expect(m).toMatch(
+      /grant execute on function public\.search_preview_dtos\([\s\S]*?text\[\][\s\S]*?\) to anon, authenticated, service_role;/,
+    );
+  });
+
+  it("0053 gives the export RPCs p_categories and keeps them service-role only", () => {
+    const m = readMigration("0053_search_preview_dtos_categories.sql");
+    for (const fn of ["search_deal_previews", "search_deal_previews_for_profile"]) {
+      expect(m).toContain(`drop function if exists public.${fn}(`);
+      expect(m).toContain(`create function public.${fn}(`);
+      expect(m).toMatch(
+        new RegExp(String.raw`create function public\.${fn}\([\s\S]*?p_categories text\[\] default null[\s\S]*?\)`, "i"),
+      );
+      expect(m).toMatch(
+        new RegExp(String.raw`revoke all on function public\.${fn}\([\s\S]*?\) from public, anon, authenticated;`),
+      );
+      expect(m).toMatch(
+        new RegExp(String.raw`grant execute on function public\.${fn}\([\s\S]*?\) to service_role;`),
+      );
+      expect(m).not.toMatch(
+        new RegExp(String.raw`grant execute on function public\.${fn}\([\s\S]*?\) to [^;]*\b(anon|authenticated)\b`),
+      );
+    }
+  });
+
+  it("0047 ends founding on cancel, keeps the place used, and refuses rejoin", () => {
+    const m = readMigration("0047_founding_cancel_ends_membership.sql");
+    expect(m).toContain("status in ('active', 'ended')");
+    expect(m).toContain("set founding_member = false");
+    expect(m).toContain("return 'ineligible';");
+    expect(m).not.toContain("return 'active';");
+    expect(m).not.toMatch(/delete\s+from\s+private\.founding_slots/i);
   });
 
   it("keeps founding slots private and capped", () => {
@@ -367,6 +447,18 @@ describe("supabase migrations", () => {
     }
   });
 
+  it("seeds blocked grant portals as prohibited and disabled", () => {
+    const sql = readMigration("0043_grant_sources.sql");
+    for (const key of ["etendersni", "ukri-funding-finder"]) {
+      const row = sql.slice(sql.indexOf(`'${key}'`));
+      expect(row).toContain("'PROHIBITED'");
+      expect(row.slice(0, 700)).toContain("false");
+    }
+    expect(sql).toContain("Cloudflare/WAF");
+    expect(sql).toContain("electronic reproduction");
+    expect(sql).not.toMatch(/disable row level security/i);
+  });
+
   it("keep the combined schema file in sync with migrations", () => {
     const bundled = fs.readFileSync(
       path.join(ROOT, "supabase", "dealatlas_full_schema.sql"),
@@ -374,4 +466,17 @@ describe("supabase migrations", () => {
     );
     expect(bundled).toBe(expectedBundle(files));
   });
+
+  it("returns match data from the preview DTOs only to Pro viewers", () => {
+    const body = readMigration("0051_match_data_pro_only.sql");
+    expect(body).toContain("create or replace function public.search_preview_dtos(");
+    expect(body).toContain("create or replace function public.get_preview_dto_by_slug(");
+    expect(body).toContain("create or replace function public.get_preview_dto_by_deal_id(");
+    expect(body.match(/coalesce\(private\.is_user_pro\(auth\.uid\(\)\), false\)/g)).toHaveLength(3);
+    expect(body).toContain("when o.requested_sort = 'relevance' and not o.pro then 'biddable'");
+    expect(body).toContain("case when o.pro then p_min_score end as min_score");
+    expect(body).not.toContain("p_min_score is null or");
+    expect(body).not.toMatch(/lower\(coalesce\(p_sort, 'updated'\)\) = 'relevance'/);
+  });
 });
+

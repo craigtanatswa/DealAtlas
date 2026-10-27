@@ -39,7 +39,7 @@ const loadPreviewPage = cache(async (slug: string) => {
   const user = await getAuthUser();
   const client = await createSupabaseServerClient();
   return getPublicDealPreviewPageBySlug(client, parsed.data, {
-    signedIn: Boolean(user),
+    userId: user?.id ?? null,
   });
 });
 
@@ -120,7 +120,7 @@ export default async function DealPreviewPage({ params, searchParams }: PageProp
           loginHref: loginPathWithNext(`/deals/${page.preview.slug}`),
           revealHref: dealId ? appDealPath(dealId) : undefined,
           returnTo: dealId ? appDealPath(dealId) : undefined,
-          founding: founding?.offered ? founding : undefined,
+          founding: founding ?? undefined,
         }}
       />
     </Main>

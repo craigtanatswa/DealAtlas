@@ -39,9 +39,9 @@ These keys are present on Vercel Production as **live_mode** credentials and the
 - [x] `DODO_PAYMENTS_WEBHOOK_KEY` (live signing secret for `ep_3JTPyp2kdKIwRxBwOhSrb1XCPa7`)
 - [x] `DODO_PAYMENTS_ENVIRONMENT=live_mode`
 - [x] `DODO_PAYMENTS_RETURN_URL` (`https://www.dealatlas.uk/checkout/success`)
-- [x] `DODO_PRO_MONTHLY_PRODUCT_ID` (`pdt_0Nnp8ZnCM98P6NiDSCtYn`; £39/month, VAT-inclusive)
-- [x] `DODO_PRO_ANNUAL_PRODUCT_ID` (`pdt_0Nnp8Zck9m8BRHsg2JaHm`; £390/year, VAT-inclusive)
-- [ ] `DODO_FOUNDING_PRODUCT_ID` (`pdt_0Npk9UeAQUpFBQDttq6lS`; £290/year, VAT-inclusive). Required in `live_mode`. The server still caps this at 25 lifetime places.
+- [x] `DODO_PRO_MONTHLY_PRODUCT_ID` (live monthly product; £39/month, VAT-inclusive)
+- [x] `DODO_PRO_ANNUAL_PRODUCT_ID` (live annual product; £350/year, VAT-inclusive)
+- [ ] `DODO_FOUNDING_PRODUCT_ID` (live founding annual product; £290/year, VAT-inclusive). Required in `live_mode`. The server still caps this at 25 lifetime places.
 
 Required before DealAtlas can send alert/transactional email (a Resend key with a localhost/`example.com` from-address is treated as unconfigured and will not send):
 
@@ -96,17 +96,17 @@ where email = 'YOUR_OPERATOR_EMAIL';
 
 Code reads product IDs and keys only from the environment. Checkout, `/api/webhooks/dodo`, and `/api/billing/portal` are ready for live keys. A checkout redirect is still not entitlement.
 
-**Live catalogue:** webhook `ep_3JTPyp2kdKIwRxBwOhSrb1XCPa7` posts to `https://www.dealatlas.uk/api/webhooks/dodo` with the subscription lifecycle events plus `payment.succeeded` / `payment.failed`. Products are in collection `pdc_0NnpDoWju38skQPknYs1f`. Monthly is **£39** VAT-inclusive (`pdt_0Nnp8ZnCM98P6NiDSCtYn`). Annual is **£390** VAT-inclusive (`pdt_0Nnp8Zck9m8BRHsg2JaHm`). Founding Pro annual is **£290** VAT-inclusive (`pdt_0Npk9UeAQUpFBQDttq6lS`), capped at 25 lifetime places. Test-mode remains a separate catalogue and webhook.
+**Live catalogue:** webhook `ep_3JTPyp2kdKIwRxBwOhSrb1XCPa7` posts to `https://www.dealatlas.uk/api/webhooks/dodo` with the subscription lifecycle events plus `payment.succeeded` / `payment.failed`. Products are in collection `pdc_0NnpDoWju38skQPknYs1f`. Monthly is **£39** VAT-inclusive. Annual is **£350** VAT-inclusive. Founding Pro annual is **£290** VAT-inclusive, capped at 25 lifetime places. Existing legacy annual subscribers remain entitled through `DODO_PRO_ANNUAL_LEGACY_PRODUCT_IDS`; checkout never offers the legacy product. Test-mode remains a separate catalogue and webhook.
 
 - [x] Complete Dodo merchant / KYC / live-mode approval. (live GBP products and live API access are active)
-- [x] Create live GBP products: DealAtlas Pro Monthly (£39 VAT-inclusive) and DealAtlas Pro Annual (£390 VAT-inclusive).
+- [x] Create live GBP products: DealAtlas Pro Monthly (£39 VAT-inclusive) and DealAtlas Pro Annual (£350 VAT-inclusive).
 - [x] Put both products in the same Product Collection (`pdc_0NnpDoWju38skQPknYs1f`).
 - [x] Copy **live** product IDs into Vercel (not `pdt_dealatlas_pro_*` fixtures).
 - [x] Copy the **live** API key and webhook signing secret.
 - [x] Point the live webhook at `https://www.dealatlas.uk/api/webhooks/dodo` and subscribe to the same subscription lifecycle events (`ep_3JTPyp2kdKIwRxBwOhSrb1XCPa7`).
 - [x] Set `DODO_PAYMENTS_ENVIRONMENT=live_mode` and redeploy. The app refuses live_mode with test/placeholder keys.
 - [ ] One controlled live purchase: checkout → signed webhook → local `subscriptions` row → Pro source reveal on a real Deal.
-- [ ] Set `DODO_FOUNDING_PRODUCT_ID=pdt_0Npk9UeAQUpFBQDttq6lS` on Vercel Production and redeploy. Founding checkout still reserves a slot server-side and falls back to standard annual when the 25 places are full.
+- [ ] Set `DODO_FOUNDING_PRODUCT_ID` to the live founding product id on Vercel Production and redeploy. Founding checkout still reserves a slot server-side and falls back to standard annual when the 25 places are full.
 - [x] Confirm a forged/unsigned webhook is rejected. (`POST /api/webhooks/dodo` without Standard Webhooks headers returns HTTP 401 `Missing required headers`)
 - [ ] Open **Manage billing** and confirm the Dodo customer portal (payment method / cancel) for that customer.
 - [ ] Confirm cancellation UX shows access-until the paid-through date and that protected reveal stops when entitlement ends.

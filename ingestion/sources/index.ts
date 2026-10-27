@@ -13,10 +13,18 @@ export {
   UK_INFRASTRUCTURE_PIPELINE_SOURCE_KEY,
 } from "@/ingestion/sources/uk-infrastructure-pipeline";
 export {
+  createFindAGrantAdapter,
+  FIND_A_GRANT_SOURCE_KEY,
+} from "@/ingestion/sources/find-a-grant";
+export {
   createGcaAgreementsAdapter,
   createGcaPipelineAdapter,
   GCA_AGREEMENTS_SOURCE_KEY,
   GCA_PIPELINE_SOURCE_KEY,
 } from "@/ingestion/sources/gca";
+export {
+  createInnovateUkAdapter,
+  INNOVATE_UK_SOURCE_KEY,
+} from "@/ingestion/sources/innovate-uk";
 export { createPrivateSourceAdapter } from "@/ingestion/sources/private";
 export { getSourceAdapter, listRegisteredSourceKeys } from "@/ingestion/sources/registry";

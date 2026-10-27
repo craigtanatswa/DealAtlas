@@ -1,13 +1,14 @@
 import type { ReactNode } from "react";
 import { LockIcon } from "lucide-react";
 
+import { FoundingPriceInline } from "@/components/billing/founding-price";
 import { DealProCard } from "@/components/deals/deal-pro-card";
 import { MatchReasons } from "@/components/deals/match-reasons";
 import { deadlineKeyFact, DealStatusBadge } from "@/components/deals/deal-status";
 import { OpeningAlertButton } from "@/components/deals/opening-alert";
 import { buyerSectorLabel, levelLabel } from "@/components/deals/types";
 import { Button } from "@/components/ui/button";
-import type { FoundingPublicCount } from "@/lib/billing/founding-ui";
+import { foundingUiState, type FoundingPublicCount } from "@/lib/billing/founding-ui";
 import { signupPathWithAlert } from "@/lib/auth/redirect";
 import { DISPLAY_PRICING } from "@/lib/constants";
 import {
@@ -138,20 +139,25 @@ export function DealPreviewDetail({
   // Placeholders (UNKNOWN, Not disclosed) and duplicates are not rendered.
   const sectorChip = disclosed(deal.specificSector) ?? category;
   const isPro = unlock?.mode === "pro";
+  const founding = unlock?.founding;
   const cardProps = {
     mode: unlock?.mode,
     loginHref: unlock?.loginHref,
     revealHref: unlock?.revealHref,
     returnTo: unlock?.returnTo,
-    founding: unlock?.founding,
+    founding,
     alertsHref: signedIn
       ? "/app/alerts"
       : signupPathWithAlert(`/deals/${deal.slug}`),
   };
   const barLabel =
-    unlock?.founding?.offered && unlock.founding.remaining > 0
-      ? `Unlock with Pro · from ${DISPLAY_PRICING.foundingAnnual.replace("/year", "/yr")}`
-      : `Unlock with Pro · from ${DISPLAY_PRICING.proMonthly.replace("/month", "/mo")}`;
+    foundingUiState(founding) === "available" ? (
+      <>
+        Unlock with Pro · <FoundingPriceInline />
+      </>
+    ) : (
+      `Unlock with Pro · from ${DISPLAY_PRICING.proMonthly.replace("/month", "/mo")}`
+    );
   const specs = [
     ...deal.quantities,
     ...deal.technicalSpecs,
@@ -303,6 +309,10 @@ export function DealPreviewDetail({
                 reasons={match.reasons}
                 caption="Relevance based on your company profile."
               />
+            </div>
+          ) : signedIn ? (
+            <div className="mt-4">
+              <MatchReasons score={null} reasons={[]} />
             </div>
           ) : null}
         </Section>

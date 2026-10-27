@@ -8,9 +8,13 @@ export type WebhookFixtureEnvelope = {
   data: Record<string, unknown>;
 };
 
+export const BILLING_FIXTURE_LEGACY_PRODUCT_ID =
+  "pdt_dealatlas_pro_annual_legacy";
+
 export const BILLING_FIXTURE_PRODUCTS: PlanProductMap = {
   PRO_MONTHLY: "pdt_dealatlas_pro_monthly",
   PRO_ANNUAL: "pdt_dealatlas_pro_annual",
+  PRO_ANNUAL_LEGACY: [BILLING_FIXTURE_LEGACY_PRODUCT_ID],
 };
 
 export const BILLING_FIXTURE_USER_ID = ENTITLEMENT_FIXTURE_USER_ID;
@@ -145,6 +149,18 @@ export const billingWebhookFixtures = {
   annualActive: () =>
     subscriptionWebhookFixture("subscription.active", {
       product_id: BILLING_FIXTURE_PRODUCTS.PRO_ANNUAL,
+      metadata: {
+        user_id: BILLING_FIXTURE_USER_ID,
+        plan_key: "PRO_ANNUAL" satisfies CheckoutPlanKey,
+      },
+      payment_frequency_interval: "Year",
+      subscription_period_interval: "Year",
+      next_billing_date: "2027-06-01T00:00:00.000Z",
+      recurring_pre_tax_amount: 35000,
+    }),
+  annualLegacyActive: () =>
+    subscriptionWebhookFixture("subscription.active", {
+      product_id: BILLING_FIXTURE_LEGACY_PRODUCT_ID,
       metadata: {
         user_id: BILLING_FIXTURE_USER_ID,
         plan_key: "PRO_ANNUAL" satisfies CheckoutPlanKey,

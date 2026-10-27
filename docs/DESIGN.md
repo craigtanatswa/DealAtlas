@@ -138,8 +138,8 @@ View pricing
 
 While the founding offer is on sale, the same panel uses the server place count (never a customer list):
 
-- Places left: **Become a founding member – £290/yr**, helper `{remaining} of 25 places left · Locked for life`, secondary **or standard Pro £39/mo**. One place left uses **Last founding place · 1 of 25 places left** and no other urgency line.
-- Sold out: **Start Pro – £39/mo** and **or £390/yr (save £78)**. The founding card is gone; annual is marked Recommended.
+- Places left: **Become a founding member – £290/yr**, helper `£290/yr for as long as you stay subscribed · {remaining} places left` (remaining only, never the total), secondary **or standard Pro £39/mo**. One place left uses **Last founding place · 1 place left** and no other urgency line.
+- Sold out: **Start Pro – £39/mo** and **or £350/yr (save 25%)** (percentage derived from `DISPLAY_PRICING`). The founding card is gone; annual is marked Recommended.
 - The last place taken during checkout shows **Founding places just filled up. You haven't been charged.** with standard annual and monthly buttons. The deal return path is kept. A checkout redirect still does not grant Pro.
 
 ## 10. Homepage and workspace

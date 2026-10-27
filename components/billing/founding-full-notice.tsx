@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { CheckoutPlanForm } from "@/components/billing/checkout-plan-form";
+import { ProAnnualButtonLabel } from "@/components/billing/founding-price";
 import { Button } from "@/components/ui/button";
 import { FOUNDING_COPY } from "@/lib/billing/founding-ui";
 
@@ -9,11 +10,13 @@ export function FoundingFullNotice({
   loginHref,
   returnTo,
   returnTitle,
+  notEligible = false,
 }: {
   signedIn: boolean;
   loginHref: string;
   returnTo?: string;
   returnTitle?: string | null;
+  notEligible?: boolean;
 }) {
   return (
     <div className="flex flex-col gap-4">
@@ -21,14 +24,14 @@ export function FoundingFullNotice({
         className="rounded-lg border border-warning/40 bg-warning/10 px-5 py-5"
         role="status"
       >
-        <p className="font-medium text-pretty text-foreground">{FOUNDING_COPY.raceLead}</p>
+        <p className="font-medium text-pretty text-foreground">{notEligible ? FOUNDING_COPY.notEligibleLead : FOUNDING_COPY.raceLead}</p>
         <p className="mt-2 text-sm text-pretty text-muted-foreground">{FOUNDING_COPY.raceBody}</p>
         <div className="mt-4 flex flex-col gap-3 sm:flex-row">
           {signedIn ? (
             <>
               <CheckoutPlanForm
                 planKey="PRO_ANNUAL"
-                label={FOUNDING_COPY.raceAnnual}
+                label={<ProAnnualButtonLabel text={FOUNDING_COPY.raceAnnual} />}
                 showPrice={false}
                 returnTo={returnTo}
                 className="sm:flex-1"
@@ -47,7 +50,9 @@ export function FoundingFullNotice({
           ) : (
             <>
               <Button asChild className="h-11 sm:flex-1">
-                <Link href={loginHref}>{FOUNDING_COPY.raceAnnual}</Link>
+                <Link href={loginHref}>
+                  <ProAnnualButtonLabel text={FOUNDING_COPY.raceAnnual} />
+                </Link>
               </Button>
               <Button asChild variant="outline" className="h-11 sm:flex-1">
                 <Link href={loginHref}>{FOUNDING_COPY.raceMonthly}</Link>

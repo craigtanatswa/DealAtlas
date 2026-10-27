@@ -59,9 +59,11 @@ async function main() {
     publicIngestErrorLine,
     runOpenCatalogueIngest,
     runOpenContractsFinderIngest,
+    runOpenFindAGrantIngest,
     runOpenFindATenderIngest,
     runOpenPublicContractsScotlandIngest,
     runOpenSell2WalesIngest,
+    runOpenInnovateUkIngest,
   } = await import("@/lib/jobs/ingest-open");
   const { createSupabaseIngestionStore } = await import("@/ingestion/store/supabase");
   const { createIngestionSupabaseClient } = await import(
@@ -72,34 +74,52 @@ async function main() {
   const store = createSupabaseIngestionStore(createIngestionSupabaseClient());
   const statePath = process.env.OPEN_INGEST_STATE;
   const source = (process.env.OPEN_INGEST_SOURCE ?? "find-a-tender").trim();
-  const runners = {
-    "find-a-tender": runOpenFindATenderIngest,
-    "contracts-finder": runOpenContractsFinderIngest,
-    "public-contracts-scotland": runOpenPublicContractsScotlandIngest,
-    sell2wales: runOpenSell2WalesIngest,
-  } as const;
-  const isCatalogue =
-    source === "gca-agreements" || source === "gca-procurement-pipeline";
-  if (!isCatalogue && !Object.hasOwn(runners, source)) {
+  if (
+    source !== "find-a-tender" &&
+    source !== "contracts-finder" &&
+    source !== "public-contracts-scotland" &&
+    source !== "sell2wales" &&
+    source !== "find-a-grant" &&
+    source !== "innovate-uk" &&
+    source !== "gca-agreements" &&
+    source !== "gca-procurement-pipeline"
+  ) {
     throw new Error(
-      "OPEN_INGEST_SOURCE must be find-a-tender, contracts-finder, public-contracts-scotland, sell2wales, gca-agreements, or gca-procurement-pipeline",
+      "OPEN_INGEST_SOURCE must be find-a-tender, contracts-finder, public-contracts-scotland, sell2wales, find-a-grant, innovate-uk, gca-agreements, or gca-procurement-pipeline",
     );
   }
-  const result = isCatalogue
-    ? await runOpenCatalogueIngest({
-        store,
-        dryRun: phase === "previews" ? false : dryRun,
-        phase,
-        sourceKey: source as "gca-agreements" | "gca-procurement-pipeline",
-        dealIds: phase === "previews" ? readChangedDealIds(statePath) : undefined,
-      })
-    : await runners[source as keyof typeof runners]({
-        store,
-        dryRun: phase === "previews" ? false : dryRun,
-        backfillDays,
-        phase,
-        dealIds: phase === "previews" ? readChangedDealIds(statePath) : undefined,
-      });
+  const dealIds = phase === "previews" ? readChangedDealIds(statePath) : undefined;
+  const result =
+    source === "gca-agreements" || source === "gca-procurement-pipeline"
+      ? await runOpenCatalogueIngest({
+          store,
+          dryRun: phase === "previews" ? false : dryRun,
+          phase,
+          sourceKey: source,
+          dealIds,
+        })
+      : source === "find-a-grant" || source === "innovate-uk"
+        ? await (source === "find-a-grant"
+            ? runOpenFindAGrantIngest
+            : runOpenInnovateUkIngest)({
+            store,
+            dryRun: phase === "previews" ? false : dryRun,
+            phase,
+            dealIds,
+          })
+        : await (source === "contracts-finder"
+            ? runOpenContractsFinderIngest
+            : source === "public-contracts-scotland"
+              ? runOpenPublicContractsScotlandIngest
+              : source === "sell2wales"
+                ? runOpenSell2WalesIngest
+                : runOpenFindATenderIngest)({
+            store,
+            dryRun: phase === "previews" ? false : dryRun,
+            backfillDays,
+            phase,
+            dealIds,
+          });
   if (phase === "ingest" && statePath && !dryRun) {
     const ids = mergeOpenIngestChangedIds(
       source,

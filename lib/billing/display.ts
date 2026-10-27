@@ -7,6 +7,7 @@ import type { CheckoutPlanKey } from "@/lib/billing/types";
 export const PLAN_KEY_LABELS: Record<CheckoutPlanKey, string> = {
   PRO_MONTHLY: "Pro monthly",
   PRO_ANNUAL: "Pro annual",
+  FOUNDING: "Founding Pro",
 };
 
 export const STATUS_LABELS: Record<string, string> = {
@@ -29,12 +30,15 @@ export function planLabel(
     return PLAN_KEY_LABELS.PRO_MONTHLY;
   }
   if (planKey === "PRO_ANNUAL" || billingInterval === "ANNUAL") {
-    return foundingMember ? "Founding Pro — Locked for life" : PLAN_KEY_LABELS.PRO_ANNUAL;
+    return foundingMember ? `Founding Pro — ${DISPLAY_PRICING.foundingAnnual.replace("/year", "/yr")} for as long as you stay subscribed` : PLAN_KEY_LABELS.PRO_ANNUAL;
   }
   return "Free";
 }
 
 export function priceLabel(planKey: CheckoutPlanKey): string {
+  if (planKey === "FOUNDING") {
+    return DISPLAY_PRICING.foundingAnnual;
+  }
   return planKey === "PRO_ANNUAL"
     ? DISPLAY_PRICING.proAnnual
     : DISPLAY_PRICING.proMonthly;
