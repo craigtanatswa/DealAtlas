@@ -11,6 +11,7 @@ dateModified: 2026-10-02
 primaryKeyword: "valid guide"
 secondaryKeywords: ["lint fixture", "guide test"]
 relatedGuides: ["related-guide"]
+securityClearedAt: not-a-date
 craigApprovedAt: 2026-10-03
 faq: [{"q": "Is this a fixture?", "a": "Yes. It is used by the guide lint tests."}]
 ---

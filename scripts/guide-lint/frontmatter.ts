@@ -111,11 +111,16 @@ export function lintFrontmatter(
 
   for (const [key, rule] of [
     ["datePublished", "fm-date-published"],
-    ["securityClearedAt", "fm-security-cleared"],
     ["craigApprovedAt", "fm-craig-approved"],
   ] as const) {
     if (data[key] === undefined) fail(key, rule, `${key} is required`);
     else if (!isIsoDate(data[key])) fail(key, rule, `${key} is not an ISO 8601 date: ${String(data[key])}`);
+  }
+
+  // Optional: guides may ship before a security clearance date exists, but a
+  // value that is present must still be an ISO 8601 date.
+  if (data.securityClearedAt !== undefined && !isIsoDate(data.securityClearedAt)) {
+    fail("securityClearedAt", "fm-security-cleared", `securityClearedAt is not an ISO 8601 date: ${String(data.securityClearedAt)}`);
   }
 
   if (data.relatedGuides === undefined) {

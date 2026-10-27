@@ -3,7 +3,26 @@ import os from "node:os";
 import path from "node:path";
 
 import { renderToStaticMarkup } from "react-dom/server";
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it, vi } from "vitest";
+
+const liveCountMocks = vi.hoisted(() => ({
+  countPublishedDealsForGuides: vi.fn(async () => 1234),
+  createSupabaseServerClient: vi.fn(async () => ({})),
+  getAppOrigin: vi.fn(() => "https://www.dealatlas.uk"),
+}));
+
+vi.mock("server-only", () => ({}));
+vi.mock("@/lib/search/public", () => ({
+  countPublishedDealsForGuides: liveCountMocks.countPublishedDealsForGuides,
+}));
+vi.mock("@/lib/supabase/server", () => ({
+  createSupabaseServerClient: liveCountMocks.createSupabaseServerClient,
+}));
+vi.mock("@/lib/auth/urls", () => ({ getAppOrigin: liveCountMocks.getAppOrigin }));
+vi.mock("next/navigation", async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  usePathname: () => "/guides/uk-tender-search",
+}));
 
 import { GuideMarkdown } from "@/components/guides/guide-markdown";
 import {
@@ -14,7 +33,16 @@ import {
   publishedGuidePaths,
 } from "@/lib/guides/content";
 import { guideJsonLd, guidesIndexJsonLd } from "@/lib/guides/json-ld";
-import { blockCtaPositions, inlineText, parseInline, parseMarkdown, safeHref } from "@/lib/guides/markdown";
+import { blockCtaPositions, extractFaq, inlineText, parseInline, parseMarkdown, safeHref } from "@/lib/guides/markdown";
+import {
+  applyLiveCount,
+  guideNeedsLiveCount,
+  LIVE_COUNT_TOKEN,
+  LIVE_COUNT_UNAVAILABLE_WARN,
+  resolveGuideWithLiveCount,
+  stripLiveCountFromGuide,
+  substituteLiveCountInGuide,
+} from "@/lib/guides/live-count";
 import { isKnownGuideSlug } from "@/lib/analytics/events";
 import {
   GUIDE_CTA_POSITION_ATTR,
@@ -24,6 +52,7 @@ import {
 } from "@/lib/analytics/guide-cta";
 import { sanitizeClientEvent } from "@/lib/analytics/sanitize";
 import { serializeJsonLd } from "@/lib/seo/json-ld";
+import { marketingPageMetadata } from "@/lib/seo/metadata";
 import { buildRobotsPolicy, guideSitemapEntries } from "@/lib/seo/sitemap";
 
 import { findProtectedMarkerLeaks } from "../helpers/protected-leak";
@@ -32,7 +61,8 @@ const ORIGIN = "https://www.dealatlas.uk";
 const ROOT = path.resolve(__dirname, "../..");
 const SLUG = "how-to-win-council-contracts";
 const SLUG_2 = "how-to-find-public-sector-tenders";
-const PUBLISHED = [SLUG, SLUG_2];
+const SLUG_3 = "uk-tender-search";
+const PUBLISHED = [SLUG, SLUG_2, SLUG_3];
 const UNPUBLISHED_SLUG = "frameworks-and-dynamic-markets";
 
 function frontmatter(slug: string, published: boolean, updated: string) {
@@ -81,7 +111,7 @@ function visibleText(html: string): string {
 }
 
 describe("guide content", () => {
-  it("publishes guides #1 and #2 from the repo", () => {
+  it("publishes guides #1, #2 and #3 from the repo", () => {
     const guides = listPublishedGuides();
     expect(guides.map((guide) => guide.slug).sort()).toEqual([...PUBLISHED].sort());
     const guide = getPublishedGuide(SLUG)!;
@@ -99,6 +129,12 @@ describe("guide content", () => {
     );
     expect(second.h1).toBe("How to find public sector tenders in the UK");
     expect(second.updated).toBe("2026-10-19");
+    const third = getPublishedGuide(SLUG_3)!;
+    expect(third.published).toBe(true);
+    expect(third.path).toBe(`/guides/${SLUG_3}`);
+    expect(third.title).toBe("Why one hub beats checking scattered UK tender sources");
+    expect(third.h1).toBe("Why one searchable hub beats checking scattered UK tender sources");
+    expect(third.updated).toBe("2026-10-27");
   });
 
   it("drops unpublished guides from lists and lookups (404)", () => {
@@ -140,10 +176,10 @@ describe("guide content", () => {
     expect(one).toContain(`[how to find public sector tenders](/guides/${SLUG_2})`);
     expect(two).toContain(`[how to win council contracts](/guides/${SLUG})`);
     for (const source of [one, two]) {
-      expect(source).not.toMatch(/\]\(\/guides\/(find-a-tender-vs-contracts-finder|procurement-notice-types|frameworks-and-dynamic-markets)/);
+      expect(source).not.toMatch(/\]\(\/guides\/(compare-uk-tender-portals|find-a-tender-vs-contracts-finder|procurement-notice-types|frameworks-and-dynamic-markets)/);
     }
     expect(two).toContain("The procurement notice types guide explains");
-    expect(two).toContain("The frameworks and dynamic markets guide explains");
+    expect(one).toContain("Our guide to frameworks and dynamic markets covers");
   });
 });
 
@@ -201,6 +237,49 @@ describe("guide markdown sanitising", () => {
     expect(draft).toContain("guide five");
   });
 
+  it("substitutes the live count token and leaves other text alone", () => {
+    const blocks = parseMarkdown(
+      `${LIVE_COUNT_TOKEN} live UK opportunities on DealAtlas today.\n\nA paragraph without the token.`,
+    );
+    const [first, second] = applyLiveCount(blocks, 1234);
+    const textOf = (block: (typeof blocks)[number]) =>
+      block.type === "paragraph" ? inlineText(block.children) : "";
+    expect(textOf(first)).toBe("1234 live UK opportunities on DealAtlas today.");
+    expect(textOf(second)).toBe("A paragraph without the token.");
+  });
+
+  it("throws when a guide body contains an unknown token", () => {
+    const guide = getPublishedGuide(SLUG)!;
+    const unresolved: typeof guide = {
+      ...guide,
+      blocks: parseMarkdown("An unknown {{OTHER_TOKEN}} remains."),
+    };
+    expect(() => substituteLiveCountInGuide(unresolved, 1234)).toThrow(/\{\{OTHER_TOKEN\}\}/);
+  });
+
+  it.each(PUBLISHED)("renders no raw placeholder in HTML, JSON-LD or metadata for %s", (slug) => {
+    const source = fs.readFileSync(path.join(GUIDES_DIR, `${slug}.md`), "utf8");
+    const resolved = substituteLiveCountInGuide(getPublishedGuide(slug)!, 1234);
+    const html = renderToStaticMarkup(
+      <GuideMarkdown blocks={resolved.blocks} publishedGuidePaths={publishedGuidePaths()} />,
+    );
+    const jsonLd = JSON.stringify(guideJsonLd(ORIGIN, resolved));
+    const metadata = marketingPageMetadata({
+      title: resolved.title,
+      description: resolved.description,
+      path: resolved.path,
+      origin: ORIGIN,
+      absoluteTitle: true,
+    });
+    const metadataText = JSON.stringify({ title: metadata.title, description: metadata.description });
+    for (const output of [html, jsonLd, metadataText]) {
+      expect(output).not.toMatch(/\{\{[^}]+\}\}/);
+    }
+    if (source.includes(LIVE_COUNT_TOKEN)) {
+      expect(html).toContain("1234");
+    }
+  });
+
   it("keeps the thresholds table as an HTML table and body headings below H1", () => {
     const guide = getPublishedGuide(SLUG)!;
     const html = renderToStaticMarkup(
@@ -210,6 +289,89 @@ describe("guide markdown sanitising", () => {
     expect(html).toContain("£5,193,000");
     expect(html).not.toContain("<h1");
     expect(html).not.toContain('href="/deals/');
+  });
+});
+
+describe("live count fallback", () => {
+  it("strips the live count clause without inventing a figure", () => {
+    const guide = getPublishedGuide(SLUG_3)!;
+    const stripped = stripLiveCountFromGuide(guide);
+    expect(JSON.stringify(guide)).toContain(LIVE_COUNT_TOKEN);
+    const text = JSON.stringify(stripped);
+    expect(text).not.toMatch(/\{\{[^}]+\}\}/);
+    expect(text).not.toMatch(/\d+\s+live\s+UK\s+opportunities/);
+    expect(text).toContain("Browse live UK opportunities on DealAtlas today.");
+    expect(guideNeedsLiveCount(stripped)).toBe(false);
+    expect(stripped.faq).toEqual(extractFaq(stripped.blocks));
+  });
+
+  it("resolves with the count on success and strips without one on failure", async () => {
+    const guide = getPublishedGuide(SLUG_3)!;
+    const success = await resolveGuideWithLiveCount(guide, async () => 1234);
+    expect(JSON.stringify(success)).toContain("1234 live UK opportunities on DealAtlas today.");
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      const failure = await resolveGuideWithLiveCount(guide, async () => {
+        throw new Error("count down");
+      });
+      expect(JSON.stringify(failure)).not.toMatch(/\{\{[^}]+\}\}/);
+      expect(JSON.stringify(failure)).not.toMatch(/\d+\s+live\s+UK\s+opportunities/);
+      expect(JSON.stringify(failure)).toContain("Browse live UK opportunities on DealAtlas today.");
+      expect(warn).toHaveBeenCalledWith(LIVE_COUNT_UNAVAILABLE_WARN);
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it("does not swallow unknown-token throws when the count succeeds", async () => {
+    const guide = getPublishedGuide(SLUG)!;
+    const unresolved: typeof guide = {
+      ...guide,
+      blocks: parseMarkdown("An unknown {{OTHER_TOKEN}} remains."),
+    };
+    await expect(
+      resolveGuideWithLiveCount(unresolved, async () => 1234),
+    ).rejects.toThrow(/\{\{OTHER_TOKEN\}\}/);
+  });
+
+  it("renders the page without a count when the count query fails", async () => {
+    liveCountMocks.countPublishedDealsForGuides.mockRejectedValue(new Error("count unavailable"));
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      const { default: GuidePage } = await import("@/app/(marketing)/guides/[slug]/page");
+      const element = await GuidePage({ params: Promise.resolve({ slug: SLUG_3 }) });
+      const html = renderToStaticMarkup(element);
+      expect(html).not.toMatch(/\{\{[^}]+\}\}/);
+      expect(html).not.toMatch(/\d+\s+live\s+UK\s+opportunities/);
+      expect(html).toContain("Browse live UK opportunities on DealAtlas today.");
+      expect(
+        warn.mock.calls.filter(([message]) => message === LIVE_COUNT_UNAVAILABLE_WARN),
+      ).toHaveLength(1);
+    } finally {
+      liveCountMocks.countPublishedDealsForGuides.mockResolvedValue(1234);
+      warn.mockRestore();
+    }
+  });
+
+  it("builds metadata without a count when the count query fails", async () => {
+    liveCountMocks.countPublishedDealsForGuides.mockRejectedValue(new Error("count unavailable"));
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      const { generateMetadata } = await import("@/app/(marketing)/guides/[slug]/page");
+      const metadata = await generateMetadata({ params: Promise.resolve({ slug: SLUG_3 }) });
+      const metadataText = JSON.stringify({
+        title: metadata.title,
+        description: metadata.description,
+      });
+      expect(metadataText).not.toMatch(/\{\{[^}]+\}\}/);
+      expect(metadataText).not.toMatch(/\d+\s+live\s+UK\s+opportunities/);
+      expect(
+        warn.mock.calls.filter(([message]) => message === LIVE_COUNT_UNAVAILABLE_WARN),
+      ).toHaveLength(1);
+    } finally {
+      liveCountMocks.countPublishedDealsForGuides.mockResolvedValue(1234);
+      warn.mockRestore();
+    }
   });
 });
 
@@ -254,14 +416,16 @@ describe("guide JSON-LD", () => {
       <GuideMarkdown blocks={guide.blocks} publishedGuidePaths={publishedGuidePaths()} />,
     );
     const visible = visibleText(html);
-    const source = fs.readFileSync(path.join(GUIDES_DIR, `${SLUG}.md`), "utf8");
+    const source = fs
+      .readFileSync(path.join(GUIDES_DIR, `${SLUG}.md`), "utf8")
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1");
     for (const item of faq) {
       expect(item.acceptedAnswer["@type"]).toBe("Answer");
       expect(visible).toContain(item.name);
       expect(visible).toContain(item.acceptedAnswer.text);
       expect(source).toContain(`### ${item.name}\n\n${item.acceptedAnswer.text}\n`);
     }
-    expect(faq[0].name).toBe("Do I need to register on Find a Tender to bid for council contracts?");
+    expect(faq[0].name).toBe("Do I need to register on the central digital platform to bid for council contracts?");
   });
 
   it("lists published guides on the index", () => {
@@ -299,15 +463,17 @@ describe("guide #2 JSON-LD", () => {
     const faq = byType("FAQPage").mainEntity as Array<{ name: string; acceptedAnswer: { text: string } }>;
     expect(faq.map((item) => item.name)).toEqual([
       "Where are UK public sector tenders published?",
-      "Is Find a Tender free to use?",
-      "Is Contracts Finder still used?",
+      "How do I search UK public sector tenders in one place?",
+      "Are older-regime notices still published after the Procurement Act 2023?",
       "What is the threshold for advertising a public contract in 2026?",
       "How can I find out about tenders before they are published?",
     ]);
     const visible = visibleText(
       renderToStaticMarkup(<GuideMarkdown blocks={guide.blocks} publishedGuidePaths={publishedGuidePaths()} />),
     );
-    const source = fs.readFileSync(path.join(GUIDES_DIR, `${SLUG_2}.md`), "utf8");
+    const source = fs
+      .readFileSync(path.join(GUIDES_DIR, `${SLUG_2}.md`), "utf8")
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1");
     for (const item of faq) {
       expect(visible).toContain(item.name);
       expect(visible).toContain(item.acceptedAnswer.text);
@@ -411,22 +577,23 @@ describe("guide sitemap and robots", () => {
     const entry = entries.find((item) => item.url === `${ORIGIN}/guides/${SLUG}`);
     expect(entry?.lastModified).toBe(guide.updated);
     const today = new Date().toISOString().slice(0, 10);
-    if (guide.updated !== today) {
-      expect(entries.every((item) => item.lastModified !== today)).toBe(true);
-    }
+    const dates = new Set(listPublishedGuides().map((item) => item.updated));
+    expect(entries.every((item) => dates.has(String(item.lastModified)))).toBe(true);
+    expect(entries.some((item) => item.lastModified !== today)).toBe(true);
     expect(fs.readFileSync(path.join(ROOT, "app/sitemap.ts"), "utf8")).toContain("guideSitemapEntries");
   });
 
-  it("lists both live guides with their content dates", () => {
+  it("lists all live guides with their content dates", () => {
     const entries = guideSitemapEntries(ORIGIN, listPublishedGuides());
     expect(entries.map((entry) => [entry.url, entry.lastModified])).toEqual(
       expect.arrayContaining([
-        [`${ORIGIN}/guides`, "2026-10-19"],
+        [`${ORIGIN}/guides`, "2026-10-27"],
         [`${ORIGIN}/guides/${SLUG}`, "2026-10-19"],
         [`${ORIGIN}/guides/${SLUG_2}`, "2026-10-19"],
+        [`${ORIGIN}/guides/${SLUG_3}`, "2026-10-27"],
       ]),
     );
-    expect(entries).toHaveLength(3);
+    expect(entries).toHaveLength(4);
   });
 
   it("emits no sitemap entries when nothing is published", () => {
