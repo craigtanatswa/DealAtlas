@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { cache } from "react";
 
 import { SaveDealButton } from "@/components/saves/save-deal-button";
+import { UpgradeStatusBanner } from "@/components/billing/upgrade-status-banner";
 import { DealPreviewDetail } from "@/components/deals/deal-preview-detail";
 import { Main } from "@/components/layout/container";
 import { JsonLd } from "@/components/seo/json-ld";
@@ -10,6 +11,7 @@ import { getAuthUser } from "@/lib/auth/session";
 import { loginPathWithNext } from "@/lib/auth/redirect";
 import { getAppOrigin } from "@/lib/auth/urls";
 import { appDealPath } from "@/lib/deals/paths";
+import { readFoundingPublicCount } from "@/lib/billing/founding-public";
 import { isProEntitlement } from "@/lib/entitlements/policy";
 import { getCurrentEntitlement } from "@/lib/entitlements/service";
 import { featureLimit } from "@/lib/quotas";
@@ -25,6 +27,7 @@ export const dynamic = "force-dynamic";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
 const loadPreviewPage = cache(async (slug: string) => {
@@ -36,7 +39,7 @@ const loadPreviewPage = cache(async (slug: string) => {
   const user = await getAuthUser();
   const client = await createSupabaseServerClient();
   return getPublicDealPreviewPageBySlug(client, parsed.data, {
-    signedIn: Boolean(user),
+    userId: user?.id ?? null,
   });
 });
 
@@ -57,15 +60,19 @@ export async function generateMetadata({
   );
 }
 
-export default async function DealPreviewPage({ params }: PageProps) {
+export default async function DealPreviewPage({ params, searchParams }: PageProps) {
   const { slug } = await params;
+  const upgraded = (await searchParams).upgraded === "1";
   const page = await loadPreviewPage(slug);
 
   if (!page) {
     notFound();
   }
 
-  const user = await getAuthUser();
+  const [user, foundingCount] = await Promise.all([
+    getAuthUser(),
+    readFoundingPublicCount(),
+  ]);
   const entitlement = user ? await getCurrentEntitlement(user.id) : null;
   const mode = !user
     ? "anonymous"
@@ -77,11 +84,13 @@ export default async function DealPreviewPage({ params }: PageProps) {
     ? await loadDealSaveState(await createSupabaseServerClient(), user.id, dealId)
     : { saved: false, used: 0 };
 
+  const founding = mode === "pro" ? null : foundingCount;
   const origin = getAppOrigin();
   const indexable = isIndexablePublicPreview(page.preview);
 
   return (
-    <Main>
+    <Main back>
+      {user && upgraded ? <UpgradeStatusBanner initialPro={mode === "pro"} /> : null}
       {indexable ? (
         <JsonLd
           data={webPageJsonLd({
@@ -111,6 +120,7 @@ export default async function DealPreviewPage({ params }: PageProps) {
           loginHref: loginPathWithNext(`/deals/${page.preview.slug}`),
           revealHref: dealId ? appDealPath(dealId) : undefined,
           returnTo: dealId ? appDealPath(dealId) : undefined,
+          founding: founding ?? undefined,
         }}
       />
     </Main>

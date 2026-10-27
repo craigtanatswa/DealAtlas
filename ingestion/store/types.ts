@@ -328,7 +328,10 @@ export type IngestionStore = {
   >;
   listAwardCriteriaForDeal(
     dealId: string,
-  ): Promise<Array<{ name: string; description: string | null }>>;
+  ): Promise<Array<{ name: string; description: string | null; weightPercent?: number | null }>>;
+  listClassificationsForDeal(
+    dealId: string,
+  ): Promise<Array<{ code: string | null; description: string | null; isPrimary: boolean }>>;
   countDocumentsForDeal(dealId: string): Promise<number>;
   updateSource(
     id: string,
@@ -406,6 +409,11 @@ export type IngestionStore = {
     externalPrimaryId: string,
   ): Promise<DealRecord | null>;
   findDealByOcid(ocid: string): Promise<DealRecord | null>;
+  /** Exact reference, or an RM token in the title, on the named sources. */
+  findDealByPortalReference(
+    sourceKeys: string[],
+    reference: string,
+  ): Promise<DealRecord | null>;
   findDealBySourceReference(
     sourceId: string,
     reference: string,
@@ -414,6 +422,7 @@ export type IngestionStore = {
     buyerOrganizationId: string,
     normalizedTitle: string,
   ): Promise<DealRecord | null>;
+  findDealByNormalizedTitle(normalizedTitle: string): Promise<DealRecord | null>;
   createDeal(input: CreateDealInput): Promise<DealRecord>;
   updateDeal(id: string, patch: Partial<DealRecord>): Promise<DealRecord>;
 

@@ -288,8 +288,130 @@ Private/supply-chain sources are onboarded through a **reusable** config + `crea
 
 HTML helpers exist for future `TERMS_REVIEWED` + `scraping_permitted = true` sources. They are not used for UNKNOWN/PROHIBITED rows.
 
+## Central purchasing bodies — 14 October 2026
+
+Checked: **14 October 2026**. Crown Commercial Service became the Government Commercial Agency on 1 April 2026. `crowncommercial.gov.uk` redirects to `www.gca.gov.uk`. A source whose terms or robots.txt explicitly ban scraping or commercial reuse is `PROHIBITED` and disabled, with no fetcher. Silence on reuse is `UNKNOWN`. New rows stay disabled.
+
+| Source key | Reuse status | Scraping permitted | Enabled | Decision |
+| --- | --- | --- | --- | --- |
+| `gca-agreements` | OPEN_LICENSE | false | no | Official JSON feed, no query string. First page only. |
+| `gca-procurement-pipeline` | OPEN_LICENSE | false | no | One official ODS download. |
+| `nhs-supply-chain` | PROHIBITED | false | no | Terms ban reuse without a written licence. No fetcher. |
+| `nhs-sbs` | PROHIBITED | false | no | Terms ban commercial reuse. Catalogue requires registration. No fetcher. |
+
+### Government Commercial Agency agreements
+
+| Field | Evidence |
+| --- | --- |
+| Official source URL | [Agreements](https://www.gca.gov.uk/agreements) via `GET https://www.gca.gov.uk/api/frameworks` |
+| Opportunity type | Live and future commercial agreements (frameworks and dynamic markets) |
+| Access method | `JSON_API`. No query string. `page`, `limit`, `status` and `search` are disallowed, so the adapter does not paginate. |
+| Terms / licence evidence | [Terms](https://www.gca.gov.uk/terms-and-conditions), “Using our content”: “Most content on our website is subject to Crown copyright protection and is published under the Open Government Licence (OGL).” “You can reproduce content published on our website under the OGL as long as you follow the licence conditions.” “We make most of the content on our website available through feeds for other websites and applications to use.” Licence: [Open Government Licence v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/) (“You are free to: copy, publish, distribute and transmit the Information; adapt the Information; exploit the Information commercially and non-commercially”). |
+| Robots / access notes | [robots.txt](https://www.gca.gov.uk/robots.txt): “Allow crawling of all content”, then `Disallow: *page=*`, `*limit=*`, `*status=*`, `*search=*`, `*keyword=*`, and `Disallow: /agreements/*/suppliers/*`. No login or CAPTCHA on the unfiltered feed. On 14 October 2026 the unfiltered feed returned `meta.total_results` 99 and `limit` 20 (`results` 20, `page` 1). |
+| Reuse status | **OPEN_LICENSE** |
+| Automated scraping permitted? | **No** (`scraping_permitted = false`) |
+| Date checked | 14 October 2026 |
+| Implementation decision | **Adapter, disabled.** `gca-agreements` reads that one URL, at most 6 requests per minute, and records truncation instead of requesting another page. Preserve-only. An RM number already on Find a Tender or Contracts Finder is linked and does not create a second deal. |
+
+### Government Commercial Agency procurement pipeline
+
+| Field | Evidence |
+| --- | --- |
+| Official source URL | [Upcoming agreements](https://www.gca.gov.uk/agreements/upcoming) linking to `https://assets.gca.gov.uk/wp-content/uploads/Government-Commercial-Agency-Pipeline-10.08.2026.ods.xlsx.ods` |
+| Opportunity type | Upcoming and in-flight commercial agreements |
+| Access method | Official ODS download, recorded as `CSV` (the tabular access method). One request. The filename is pinned; a replaced file fails this source on its own. |
+| Terms / licence evidence | Same OGL statement and feed invitation as the agreements feed, at [terms](https://www.gca.gov.uk/terms-and-conditions) and [OGL v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/). |
+| Robots / access notes | Same [robots.txt](https://www.gca.gov.uk/robots.txt). The file URL has no disallowed query. Checked 14 October 2026: HTTP 200, `application/vnd.oasis.opendocument.spreadsheet`. |
+| Reuse status | **OPEN_LICENSE** |
+| Automated scraping permitted? | **No** |
+| Date checked | 14 October 2026 |
+| Implementation decision | **Adapter, disabled.** `gca-procurement-pipeline`. A future procurement start is `UPCOMING`; a start date already past is `OPEN`. Value is stored as the spreadsheet’s inc-VAT text, not as an ex-VAT amount. Preserve-only. Same RM dedupe as the agreements feed. |
+
+### NHS Supply Chain
+
+| Field | Evidence |
+| --- | --- |
+| Official source URL | [supplychain.nhs.uk](https://www.supplychain.nhs.uk/) (Supply Chain Coordination Limited) |
+| Opportunity type | NHS framework and procurement calendar listings |
+| Access method | HTML pages. No official open feed. `MANUAL`. |
+| Terms / licence evidence | [Terms of use](https://www.supplychain.nhs.uk/legal-information/terms-of-use/): “No licence to use any of Our intellectual property rights is given or implied”. “you must not use any part of the materials on Our Site without first obtaining a written licence to do so from us or our licensors.” Acceptable use: “make, transmit or store electronic copies of materials protected by copyright without the permission of the owner or holder of such rights”. |
+| Robots / access notes | [robots.txt](https://www.supplychain.nhs.uk/robots.txt): `Disallow: /wp-json/` and `Disallow: /?rest_route=`. Supplier portal is login. |
+| Reuse status | **PROHIBITED** |
+| Automated scraping permitted? | **No** |
+| Date checked | 14 October 2026 |
+| Implementation decision | **Do not automate.** Seed row only, `enabled = false`. No fetcher and no workflow step. |
+
+### NHS Shared Business Services
+
+| Field | Evidence |
+| --- | --- |
+| Official source URL | [sbs.nhs.uk](https://www.sbs.nhs.uk/) (NHS Shared Business Services Limited) |
+| Opportunity type | Framework agreements and supplier opportunities |
+| Access method | The customer framework portal requires registration (`https://one.sbs.nhs.uk/FrameworkAgreements/s/registration`). Opportunities are also on Find a Tender and SAP Ariba. `MANUAL`. |
+| Terms / licence evidence | [Website terms](https://www.sbs.nhs.uk/website-terms-and-conditions/) (copyright 23 March 2021): “you may under no circumstances copy, represent, modify, transmit, publish, adapt, on whatever medium or by whatever means, or exploit in any way all or part of the Site without prior written consent from the Site Publisher.” “You must not use any part of the content on our site for commercial purposes without obtaining a licence to do so from us or our licensors.” Downloads are “for informational purposes only and for personal use.” |
+| Robots / access notes | [robots.txt](https://www.sbs.nhs.uk/robots.txt) disallows `/wp/wp-admin/admin-ajax.php`. The framework catalogue itself is behind registration. |
+| Reuse status | **PROHIBITED** |
+| Automated scraping permitted? | **No** |
+| Date checked | 14 October 2026 |
+| Implementation decision | **Do not automate.** Seed row only, `enabled = false`. No fetcher and no workflow step. Above-threshold notices remain on Find a Tender. NHSBSA open data is a different body and is not used here. |
+
 ## Attribution
 
 Where OPEN_LICENSE government information is reused:
 
 Contains public sector information licensed under the [Open Government Licence v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/).
+
+---
+
+# Public procurement and grant sources — 14 October 2026
+
+Checked: **14 October 2026**.
+
+A source is buildable when there is a public machine route, or plain public pages that need no login or CAPTCHA, robots.txt allows the paths that would be fetched, and the terms do not explicitly forbid automated access or commercial reuse. `OPEN_LICENSE` is used only where a licence such as the Open Government Licence is documented. `scraping_permitted` stays false unless the terms explicitly allow scraping. New sources stay disabled.
+
+| Source key | Reuse status | Scraping permitted | Enabled | Decision |
+| --- | --- | --- | --- | --- |
+| `etendersni` | PROHIBITED | false | no | **BLOCKED.** Seeded disabled. Cloudflare/WAF challenge and no API. No fetcher. |
+| `ukri-funding-finder` | PROHIBITED | false | no | Seeded disabled. Terms forbid commercial electronic reproduction without permission. No fetcher. |
+| `find-a-grant` | OPEN_LICENSE | false | no | Build the public page adapter. Keep it disabled. |
+| `innovate-uk` | OPEN_LICENSE | false | no | Build the public competition-search adapter. Keep it disabled. |
+
+## eTendersNI — BLOCKED
+
+| Field | Evidence |
+| --- | --- |
+| Official source URL | [eTendersNI](https://etendersni.gov.uk/epps/home.do) |
+| Machine route | None. Prior research found the portal behind a Cloudflare/WAF challenge and no API. No OCDS, RSS or CSV notice feed was found. |
+| Public pages | Not fetched past the challenge. A separate check of the [opportunity list](https://etendersni.gov.uk/epps/prepareCurrentOpportunities.do?currentType=cft) found a search form that says “Please type the code shown below” and loads `/epps/genCaptcha/captcha….jpg`. `https://etendersni.gov.uk/robots.txt` returns **302** to `https://etendersni.gov.uk/epps/home.do`, the HTML homepage, not a robots file. |
+| Terms | Footer: “Copyright © European Dynamics”. About page: “e-Sourcing Platform © 2022 European Dynamics - The Information Society Integrator”. No Open Government Licence on the portal. |
+| Other data | Open Data NI has historical Construction & Procurement Delivery award CSVs under the UK Open Government Licence, for example the [2016/2017 supplies and services file](https://admin.opendatani.gov.uk/en_GB/dataset/contracts-awarded-by-central-procurement-directorate-in-the-2016-2017-year/resource/d5b993f2-4f6f-4e94-9f45-c77b98201438) (metadata last updated 19 July 2017). That is a past award snapshot, not a live notice feed, so it is not used as an eTendersNI adapter. |
+| Decision | **BLOCKED.** Seed `reuse_status = PROHIBITED`, `enabled = false`. Do not build a fetcher. Do not attempt to get past the Cloudflare/WAF challenge, the CAPTCHA, or a login. |
+
+## UKRI Funding Finder — excluded
+
+| Field | Evidence |
+| --- | --- |
+| Official source URL | [Funding finder](https://www.ukri.org/opportunity/) |
+| Machine route | Not used. The catalogue is not ingested. |
+| Terms | [UKRI terms of use](https://www.ukri.org/who-we-are/terms-of-use/): “Except as permitted for academic, personal or other non-commercial purposes, users must not reprint or electronically reproduce from the UKRI website any document, graphic or image in whole or in part without the prior written permission of UKRI, or in accordance with the Copyright, Designs and Patents Act 1988.” That forbids commercial electronic reproduction without permission. |
+| Decision | **Excluded.** Seed `reuse_status = PROHIBITED`, `enabled = false`. Do not build a fetcher. |
+
+## Find a Grant — build, disabled
+
+| Field | Evidence |
+| --- | --- |
+| Official source URL | [Find a grant](https://find-government-grants.service.gov.uk/) and the public list [https://find-government-grants.service.gov.uk/grants](https://find-government-grants.service.gov.uk/grants) |
+| Machine route | No separate catalogue API. `https://www.gov.uk/api/search.json?filter_format=grant&count=1` returned `total: 0` on the check date, so the GOV.UK Search API does not carry this catalogue. The public list is server-rendered and needs no login or CAPTCHA. `?page=2` returns the next page. |
+| Terms | [Terms and conditions](https://find-government-grants.service.gov.uk/info/terms-and-conditions): “Most content on Find a grant is subject to Crown copyright protection and is published under the Open Government Licence (OGL).” Footer: “All content is available under the Open Government Licence v3.0, except where otherwise stated.” The same page says “You must not try to gain unauthorised access to Find a grant” and “You must not attack Find a grant in any way. This includes denial-of-service attacks.” It does not forbid automated reading of the public pages or commercial reuse. The GOV.UK sentence “You can scrape GOV.UK as long as you respect our robots.txt policy” is on [Reuse GOV.UK content](https://www.gov.uk/help/reuse-govuk-content) and applies to GOV.UK, not this host, so `scraping_permitted` stays false. |
+| Robots | `https://find-government-grants.service.gov.uk/robots.txt` is **HTTP 404** HTML (“Page not found”) with `x-robots-tag: index`. No `Disallow` rules are published. The adapter fetches `/robots.txt` and `/grants` only, at most 10 requests per minute. |
+| Decision | **Build** `find-a-grant`. `OPEN_LICENSE`, `scraping_permitted = false`, `enabled = false`. Preserve-only. |
+
+## Innovate UK funding competitions — build, disabled
+
+| Field | Evidence |
+| --- | --- |
+| Official source URL | [Innovation competitions](https://apply-for-innovation-funding.service.gov.uk/competition/search) |
+| Machine route | No public JSON or RSS catalogue was found. The search page is public HTML. It returned **HTTP 200** with competition titles, summaries and dates, and no login or CAPTCHA. |
+| Terms | [Terms and conditions](https://apply-for-innovation-funding.service.gov.uk/info/terms-and-conditions), section 5: “You can reproduce content published on the Innovate UK website under the Open Government Licence (OGL) as long as you follow the licence conditions.” The same section says “You should contact us if you want to reproduce a piece of content.” Section 2.1 forbids reproducing the site “in contravention of the provisions of the terms” and forbids access “without authority”. It does not forbid automated access to the public competition list. Footer: content is available under the Open Government Licence v3.0 except where otherwise stated. `scraping_permitted` stays false because the terms do not explicitly allow scraping. |
+| Robots | `GET https://apply-for-innovation-funding.service.gov.uk/robots.txt` returns **302** to `https://apply-for-innovation-funding.service.gov.uk/login`. No robots file is published. The adapter does not follow that redirect. `/competition/search` is allowed because no `Disallow` exists and the path itself is public. At most 10 requests per minute. |
+| Decision | **Build** `innovate-uk`. `OPEN_LICENSE`, `scraping_permitted = false`, `enabled = false`. Preserve-only. A grant whose normalised title matches an existing grant deal is linked onto that deal. |

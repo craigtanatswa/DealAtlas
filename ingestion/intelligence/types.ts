@@ -72,6 +72,13 @@ export type PreviewRequirement = {
 export type PreviewAwardCriterion = {
   name: string;
   description?: string | null;
+  weightPercent?: number | null;
+};
+
+export type PreviewClassification = {
+  code: string | null;
+  description: string | null;
+  isPrimary?: boolean;
 };
 
 export type IntelligenceContext = {
@@ -82,6 +89,8 @@ export type IntelligenceContext = {
   lots: LotRecord[];
   requirements: PreviewRequirement[];
   awardCriteria: PreviewAwardCriterion[];
+  /** CPV rows. Descriptions only are copied into free previews. */
+  classifications?: PreviewClassification[];
   awards: Array<Pick<AwardCandidate, "numberOfTenders" | "numberOfSmeTenders">>;
   documentsCount: number;
   now: Date;
@@ -112,6 +121,12 @@ export function contextFromCandidate(input: {
     awardCriteria: input.candidate.awardCriteria.map((item) => ({
       name: item.name,
       description: item.description ?? null,
+      weightPercent: item.weightPercent ?? null,
+    })),
+    classifications: input.candidate.classifications.map((item) => ({
+      code: item.code ?? null,
+      description: item.description ?? null,
+      isPrimary: item.isPrimary ?? false,
     })),
     awards: input.candidate.awards.map((item) => ({
       numberOfTenders: item.numberOfTenders,
@@ -173,6 +188,7 @@ export async function contextFromPersisted(input: {
     | "listLotsForDeal"
     | "listRequirementsForDeal"
     | "listAwardCriteriaForDeal"
+    | "listClassificationsForDeal"
     | "countDocumentsForDeal"
     | "getSourceById"
   >;
@@ -192,10 +208,11 @@ export async function contextFromPersisted(input: {
   const buyerAliases = input.deal.buyerOrganizationId
     ? await input.store.listOrganizationAliases(input.deal.buyerOrganizationId)
     : [];
-  const [lots, requirements, awardCriteria, documentsCount] = await Promise.all([
+  const [lots, requirements, awardCriteria, classifications, documentsCount] = await Promise.all([
     input.store.listLotsForDeal(input.deal.id),
     input.store.listRequirementsForDeal(input.deal.id),
     input.store.listAwardCriteriaForDeal(input.deal.id),
+    input.store.listClassificationsForDeal(input.deal.id),
     input.store.countDocumentsForDeal(input.deal.id),
   ]);
   return {
@@ -206,6 +223,7 @@ export async function contextFromPersisted(input: {
     lots,
     requirements,
     awardCriteria,
+    classifications,
     awards: [],
     documentsCount,
     now: input.now,

@@ -10,7 +10,25 @@ import { BUYER_SECTORS, type BuyerSector } from "@/lib/constants";
 import { parseInputSafe } from "@/lib/validation";
 
 export const PUBLIC_SEARCH_PAGE_SIZE = 20;
+export const PUBLIC_DEALS_PAGE_SIZE = 10;
 export const PUBLIC_SEARCH_MAX_PAGE_SIZE = 50;
+export const PUBLIC_SEARCH_MAX_PAGE = 500;
+/** /deals pager page count: every result page, at least 1. */
+export function publicDealsPageCount(total: number, pageSize: number): number {
+  if (!Number.isFinite(total) || total <= 0) return 1;
+  const size = Number.isFinite(pageSize) && pageSize > 0 ? Math.floor(pageSize) : 1;
+  return Math.max(1, Math.ceil(total / size));
+}
+
+/** True only past the real last /deals page (render a 404). Page 1 always renders. */
+export function isPublicDealsPageOutOfRange(
+  requestedPage: number,
+  total: number,
+  pageSize: number,
+): boolean {
+  if (requestedPage <= 1) return false;
+  return requestedPage > publicDealsPageCount(total, pageSize);
+}
 export const SEARCH_SORTS = ["biddable", "deadline", "updated", "relevance"] as const;
 export type SearchSort = (typeof SEARCH_SORTS)[number];
 
@@ -36,7 +54,7 @@ export const publicSearchInputSchema = z.object({
   dealType: z.enum(DEAL_TYPES).optional(),
   status: z.enum(DEAL_STATUSES).optional(),
   sort: z.enum(SEARCH_SORTS).optional(),
-  page: z.coerce.number().int().min(1).max(500).default(1),
+  page: z.coerce.number().int().min(1).max(PUBLIC_SEARCH_MAX_PAGE).default(1),
   limit: z.coerce
     .number()
     .int()
@@ -70,6 +88,36 @@ export type SearchParamRecord = Record<
   string,
   string | string[] | undefined
 >;
+
+/**
+ * Page must be a positive integer. Anything else becomes page 1 so a bad
+ * `page` value cannot fail the rest of the filter parse.
+ */
+export function parseSearchPage(value: string | undefined): number {
+  if (!value) {
+    return 1;
+  }
+  const trimmed = value.trim();
+  if (!/^\d+$/.test(trimmed)) {
+    return 1;
+  }
+  const page = Number(trimmed);
+  if (!Number.isSafeInteger(page) || page < 1) {
+    return 1;
+  }
+  return Math.min(page, PUBLIC_SEARCH_MAX_PAGE);
+}
+
+/** Clamp a requested page onto 1..pageCount. An empty result set is page 1. */
+export function clampSearchPage(page: number, total: number, pageSize: number): number {
+  if (!Number.isFinite(total) || total <= 0) {
+    return 1;
+  }
+  const size = Number.isFinite(pageSize) && pageSize > 0 ? Math.floor(pageSize) : 1;
+  const pageCount = Math.max(1, Math.ceil(total / size));
+  const current = Number.isFinite(page) && page >= 1 ? Math.floor(page) : 1;
+  return Math.min(current, pageCount);
+}
 
 function firstParam(value: string | string[] | undefined): string | undefined {
   if (Array.isArray(value)) {
@@ -107,7 +155,7 @@ export function parsePublicSearchParams(
     dealType: optionalEnum(firstParam(searchParams.dealType), DEAL_TYPES),
     status: optionalEnum(firstParam(searchParams.status), DEAL_STATUSES),
     sort: optionalEnum(firstParam(searchParams.sort), SEARCH_SORTS),
-    page: firstParam(searchParams.page),
+    page: parseSearchPage(firstParam(searchParams.page)),
     limit: firstParam(searchParams.limit),
   };
 

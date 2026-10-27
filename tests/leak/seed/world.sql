@@ -360,30 +360,30 @@ $$;
 select pg_temp.preview('b1', 'grounds-maintenance-services-4c1e9a07',
   'Grounds maintenance services for a public organisation',
   'A public sector organisation is seeking a contractor for grounds maintenance, including grass cutting, hedge work and seasonal planting across several sites. qelvantor',
-  '["Grounds maintenance experience", "Public liability insurance"]', array['grounds maintenance', 'facilities'], 'South East England');
+  '["evidence of comparable delivery", "appropriate insurance cover"]', array['grounds maintenance', 'facilities'], 'South East England');
 select pg_temp.preview('b2', 'facilities-management-contract-award-9b2f61d4',
   'Facilities management contract award',
   'A public sector organisation has made a contract award for facilities management across several sites.',
-  '["Facilities management experience"]', array['facilities management'], 'South East England');
+  '["evidence of comparable delivery"]', array['facilities management'], 'South East England');
 select pg_temp.preview('b3', 'highway-resurfacing-works-0e7d5c22',
   'Highway resurfacing works',
   'A public sector organisation is seeking a contractor for highway resurfacing works across several sites.',
-  '["Highway resurfacing experience"]', array['highway resurfacing'], 'South East England');
+  '["evidence of comparable delivery"]', array['highway resurfacing'], 'South East England');
 select pg_temp.preview('b4', 'managed-it-support-services-6a3c0f18',
   'Managed IT support for a private organisation',
   'A private organisation is seeking a supplier for managed IT support, including service desk and device management.',
-  '["Service desk capability"]', array['managed it support'], 'London');
+  '["ongoing support capability"]', array['managed it support'], 'London');
 select pg_temp.preview('b5', 'fleet-maintenance-contract-renewal-3d8e4b90',
   'Fleet maintenance contract renewal',
   'A public sector organisation expects to renew the contract for fleet maintenance across several sites.',
-  '["Fleet maintenance experience"]', array['fleet maintenance'], 'South East England');
+  '["evidence of comparable delivery"]', array['fleet maintenance'], 'South East England');
 select pg_temp.preview('b6', 'school-catering-services-7f1a2e5c',
   'Catering services for schools',
   'A public sector organisation is seeking a contractor for catering services for schools across several sites.',
-  '["Catering experience"]', array['catering services'], 'Scotland');
+  '["evidence of comparable delivery"]', array['catering services'], 'Scotland');
 
 select pg_temp.preview(r, s, t, 'A public body needs a supplier for routine upkeep work at its premises.',
-  '["Maintenance experience"]', array['maintenance'], 'East of England', '£100k–£250k')
+  '["evidence of comparable delivery"]', array['maintenance'], 'East of England', '£100k–£250k')
 from (values
   ('f1', 'grounds-and-site-services-1f0a0001', 'Grounds and site services for a public organisation'),
   ('f2', 'facilities-and-fleet-services-1f0a0002', 'Facilities and fleet maintenance services'),
@@ -396,23 +396,23 @@ from (values
 -- (a) held or unpublished; each carries a held marker (T30) found in no source field
 select pg_temp.preview('a1', 'grounds-care-services-a1c0ffee', 'Grounds care services for a public organisation',
   'A public sector organisation is seeking a contractor for grounds maintenance across several sites. brevantile',
-  '["Grounds maintenance experience"]', array['grounds maintenance'], 'South East England', p_admin_hold => true);
+  '["evidence of comparable delivery"]', array['grounds maintenance'], 'South East England', p_admin_hold => true);
 select pg_temp.preview('a2', 'grounds-upkeep-services-a2c0ffee', 'Grounds upkeep services for a public organisation',
   'A public sector organisation is seeking a contractor for grounds maintenance across several sites. cordumyre',
-  '["Grounds maintenance experience"]', array['grounds maintenance'], 'South East England', p_published => false);
+  '["evidence of comparable delivery"]', array['grounds maintenance'], 'South East England', p_published => false);
 select pg_temp.preview('a3', 'grounds-works-services-a3c0ffee', 'Grounds works services for a public organisation',
   'A public sector organisation is seeking a contractor for grounds maintenance across several sites. fenstrovic',
-  '["Grounds maintenance experience"]', array['grounds maintenance'], 'South East England', p_risk => 'REVIEW');
+  '["evidence of comparable delivery"]', array['grounds maintenance'], 'South East England', p_risk => 'REVIEW');
 select pg_temp.preview('a4', 'grounds-support-services-a4c0ffee', 'Grounds support services for a public organisation',
   'A public sector organisation is seeking a contractor for grounds maintenance across several sites. galtreyne',
-  '["Grounds maintenance experience"]', array['grounds maintenance'], 'South East England', p_risk => 'HIGH');
+  '["evidence of comparable delivery"]', array['grounds maintenance'], 'South East England', p_risk => 'HIGH');
 select pg_temp.preview('e1', 'grounds-programme-services-e1c0ffee', 'Grounds programme services for a public organisation',
   'A public sector organisation is seeking a contractor for grounds maintenance across several sites. hollowvane',
-  '["Grounds maintenance experience"]', array['grounds maintenance'], 'South East England');
+  '["evidence of comparable delivery"]', array['grounds maintenance'], 'South East England');
 
 -- (c) adversarial: the token is in the preview itself
 create function pg_temp.adversarial(p_row text, p_title text, p_summary text,
-  p_requirements jsonb default '["Grounds maintenance experience"]', p_tags text[] default array['grounds maintenance'],
+  p_requirements jsonb default '["evidence of comparable delivery"]', p_tags text[] default array['grounds maintenance'],
   p_region text default 'South East England') returns void
 language sql as $$
   select pg_temp.preview(p_row, 'adversarial-preview-5eedc' || lpad(substr(p_row, 2), 3, '0'),
@@ -459,39 +459,39 @@ select pg_temp.adversarial('c17', 'Grounds maintenance services for a public org
   p_region => 'Zarqwellshire');
 select pg_temp.adversarial('c18', 'Highway resurfacing works',
   'The brindlewick yard compound will support highway resurfacing works.',
-  '["Highway resurfacing experience"]', array['highway resurfacing']);
+  '["evidence of comparable delivery"]', array['highway resurfacing']);
 select pg_temp.adversarial('c19', 'OSTRAVEL riverside resurfacing',
   'A public sector organisation is seeking a contractor for highway resurfacing works across several sites.',
-  '["Highway resurfacing experience"]', array['highway resurfacing']);
+  '["evidence of comparable delivery"]', array['highway resurfacing']);
 select pg_temp.adversarial('c20', 'Managed IT support for a private organisation',
   'A private organisation is seeking a supplier for managed IT support for Project Kestrovane (RFQ-ZQ-3391).',
-  '["Service desk capability"]', array['managed it support'], 'London');
+  '["ongoing support capability"]', array['managed it support'], 'London');
 
 -- (d) token-bearing slugs; title and summary are clean
 select pg_temp.preview(r, s, t, u, q::jsonb, array[g], 'South East England')
 from (values
   ('d1', 'zarqwell-grounds-maintenance-3f9a1c2e', 'Grounds maintenance services for a public organisation',
-   'A public sector organisation is seeking a contractor for grounds maintenance across several sites.', '["Grounds maintenance experience"]', 'grounds maintenance'),
+   'A public sector organisation is seeking a contractor for grounds maintenance across several sites.', '["evidence of comparable delivery"]', 'grounds maintenance'),
   ('d2', 'quellmoor-depot-gritting-fleet-7b2d4e10', 'Grounds maintenance services for a public organisation',
-   'A public sector organisation is seeking a contractor for grounds maintenance across several sites.', '["Grounds maintenance experience"]', 'grounds maintenance'),
+   'A public sector organisation is seeking a contractor for grounds maintenance across several sites.', '["evidence of comparable delivery"]', 'grounds maintenance'),
   ('d3', 'qmrp-resurfacing-works-0c4e8a19', 'Grounds maintenance services for a public organisation',
-   'A public sector organisation is seeking a contractor for grounds maintenance across several sites.', '["Grounds maintenance experience"]', 'grounds maintenance'),
+   'A public sector organisation is seeking a contractor for grounds maintenance across several sites.', '["evidence of comparable delivery"]', 'grounds maintenance'),
   ('d4', 'vantrexo-fm-renewal-5d1f3b7a', 'Fleet maintenance contract renewal',
-   'A public sector organisation expects to renew the contract for fleet maintenance across several sites.', '["Fleet maintenance experience"]', 'fleet maintenance'),
+   'A public sector organisation expects to renew the contract for fleet maintenance across several sites.', '["evidence of comparable delivery"]', 'fleet maintenance'),
   ('d5', 'zq-proc-8812-grounds-1a6b9c3d', 'Grounds maintenance services for a public organisation',
-   'A public sector organisation is seeking a contractor for grounds maintenance across several sites.', '["Grounds maintenance experience"]', 'grounds maintenance'),
+   'A public sector organisation is seeking a contractor for grounds maintenance across several sites.', '["evidence of comparable delivery"]', 'grounds maintenance'),
   ('d6', 'brindlewick-yard-compound-8e2a4f61', 'Highway resurfacing works',
-   'A public sector organisation is seeking a contractor for highway resurfacing works across several sites.', '["Highway resurfacing experience"]', 'highway resurfacing')
+   'A public sector organisation is seeking a contractor for highway resurfacing works across several sites.', '["evidence of comparable delivery"]', 'highway resurfacing')
 ) as x(r, s, t, u, q, g);
 
 -- (r) residual rows (non-blocking, LEAK_INCLUDE_RESIDUALS=1 only)
 select pg_temp.preview('ee01', 'residual-spelled-date-ee000001', 'Grounds maintenance services for a public organisation',
   'A public sector organisation is seeking a contractor for grounds maintenance; the tender closes on the seventeenth of November.',
-  '["Grounds maintenance experience"]', array['grounds maintenance'], 'South East England')
+  '["evidence of comparable delivery"]', array['grounds maintenance'], 'South East England')
 where current_setting('leak.include_residuals') = '1';
 select pg_temp.preview('ee02', 'residual-zero-width-ee000002', 'Grounds maintenance services for a public organisation',
   E'A public sector organisation is seeking a contractor for grounds maintenance for Zarq\u200bwell across several sites.',
-  '["Grounds maintenance experience"]', array['grounds maintenance'], 'South East England')
+  '["evidence of comparable delivery"]', array['grounds maintenance'], 'South East England')
 where current_setting('leak.include_residuals') = '1';
 
 -- 6-8. User-owned rows. They carry no tokens, except where a row exists to prove
@@ -525,6 +525,14 @@ select cp.id, pg_temp.deal_id('b3'), 64,
        '[{"code":"KEYWORD_OVERLAP","kind":"match","surface":"preview","label":"Matches Zarqwell Borough Council history"}]'::jsonb,
        '[{"code":"KEYWORD_OVERLAP","kind":"match","surface":"detail","label":"trevossian detail Quellmoor"}]'::jsonb
 from public.company_profiles cp where cp.company_name = 'Leakprobe Test Supplier';
+
+-- MATCH-01 (0051): the two free users get opposite top matches, so any
+-- profile-driven ordering would differ between them. Free must not see it.
+insert into public.deal_matches (company_profile_id, deal_id, relevance_score, preview_reasons)
+select cp.id, pg_temp.deal_id(v.deal), 99,
+       '[{"code":"KEYWORD_OVERLAP","kind":"match","surface":"preview","label":"Keyword overlap with your profile"}]'::jsonb
+from (values ('free', 'b6'), ('free_lapsed', 'b2')) as v(role, deal)
+join public.company_profiles cp on cp.user_id = pg_temp.user_id(v.role);
 
 insert into public.saved_deals (user_id, deal_id)
 values (pg_temp.user_id('free'), pg_temp.deal_id('b1')),

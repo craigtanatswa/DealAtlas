@@ -9,11 +9,14 @@ export function createMemoryBillingStore(seed?: {
   profileIds?: string[];
   subscriptions?: StoredSubscription[];
 }): BillingStore & {
-  events: Map<string, BillingEventRecord & { payload?: unknown }>;
+  events: Map<string, BillingEventRecord & { payload?: unknown; processingError?: string | null }>;
   subscriptions: StoredSubscription[];
 } {
   const profileIds = new Set(seed?.profileIds ?? []);
-  const events = new Map<string, BillingEventRecord & { payload?: unknown }>();
+  const events = new Map<
+    string,
+    BillingEventRecord & { payload?: unknown; processingError?: string | null }
+  >();
   const subscriptions = [...(seed?.subscriptions ?? [])];
 
   return {
@@ -36,10 +39,11 @@ export function createMemoryBillingStore(seed?: {
       events.set(event.providerEventId, { ...record, payload: event.payload });
       return { inserted: true, record };
     },
-    async markEvent(providerEventId, status, _processingError) {
+    async markEvent(providerEventId, status, processingError) {
       const existing = events.get(providerEventId);
       if (existing) {
         existing.status = status;
+        existing.processingError = processingError ?? null;
       }
     },
     async profileExists(userId) {

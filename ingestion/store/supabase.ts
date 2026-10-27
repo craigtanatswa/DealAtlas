@@ -3,6 +3,7 @@ import { writeInBatches } from "@/ingestion/store/write-batch";
 import type { Database, Json } from "@/lib/db/database.types";
 
 import { normalizeTitle } from "@/ingestion/normalizers/text";
+import { textHasReferenceToken } from "@/ingestion/sources/gca/link";
 import type {
   AwardRecord,
   ContractRecord,
@@ -597,12 +598,25 @@ export function createSupabaseIngestionStore(
     async listAwardCriteriaForDeal(dealId) {
       const result = await client
         .from("award_criteria")
-        .select("criterion_name, criterion_description")
+        .select("criterion_name, criterion_description, weight_percent")
         .eq("deal_id", dealId);
       const rows = throwIfQueryError("List award criteria", result) ?? [];
       return rows.map((row) => ({
         name: row.criterion_name,
         description: row.criterion_description,
+        weightPercent: row.weight_percent,
+      }));
+    },
+    async listClassificationsForDeal(dealId) {
+      const result = await client
+        .from("deal_classifications")
+        .select("cpv_code, source_description, is_primary")
+        .eq("deal_id", dealId);
+      const rows = throwIfQueryError("List classifications", result) ?? [];
+      return rows.map((row) => ({
+        code: row.cpv_code,
+        description: row.source_description,
+        isPrimary: row.is_primary,
       }));
     },
     async countDocumentsForDeal(dealId) {
@@ -961,6 +975,43 @@ export function createSupabaseIngestionStore(
       const row = throwIfQueryError("Find deal by OCID", result);
       return row ? mapDeal(row) : null;
     },
+    async findDealByPortalReference(sourceKeys, reference) {
+      const token = reference.trim();
+      if (!token || sourceKeys.length === 0) {
+        return null;
+      }
+      const sources = await client
+        .from("data_sources")
+        .select("id")
+        .in("source_key", sourceKeys);
+      const sourceRows = throwIfQueryError("Find portal sources", sources) ?? [];
+      const ids = sourceRows.map((row) => row.id);
+      if (ids.length === 0) {
+        return null;
+      }
+      const exact = await client
+        .from("deals")
+        .select("*")
+        .in("primary_source_id", ids)
+        .ilike("reference", token)
+        .limit(1);
+      const exactRows = throwIfQueryError("Find portal deal by reference", exact) ?? [];
+      if (exactRows[0]) {
+        return mapDeal(exactRows[0]);
+      }
+      if (!textHasReferenceToken(token, token)) {
+        return null;
+      }
+      const titled = await client
+        .from("deals")
+        .select("*")
+        .in("primary_source_id", ids)
+        .ilike("source_title", `%${token}%`)
+        .limit(25);
+      const titleRows = throwIfQueryError("Find portal deal by title", titled) ?? [];
+      const match = titleRows.find((row) => textHasReferenceToken(token, row.source_title));
+      return match ? mapDeal(match) : null;
+    },
     async findDealBySourceReference(sourceId, reference) {
       const result = await client
         .from("deals")
@@ -970,6 +1021,22 @@ export function createSupabaseIngestionStore(
         .maybeSingle();
       const row = throwIfQueryError("Find deal by reference", result);
       return row ? mapDeal(row) : null;
+    },
+    async findDealByNormalizedTitle(normalizedTitle) {
+      const pageSize = 1000;
+      for (let from = 0; from < 20_000; from += pageSize) {
+        const result = await client
+          .from("deals")
+          .select("*")
+          .eq("deal_type", "GRANT")
+          .order("id")
+          .range(from, from + pageSize - 1);
+        const rows = throwIfQueryError("Find grant deal by title", result) ?? [];
+        const match = rows.find((row) => normalizeTitle(row.source_title) === normalizedTitle);
+        if (match) return mapDeal(match);
+        if (rows.length < pageSize) return null;
+      }
+      return null;
     },
     async findDealByBuyerAndNormalizedTitle(buyerOrganizationId, normalizedTitle) {
       const result = await client

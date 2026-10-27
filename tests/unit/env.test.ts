@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 
 import { PUBLIC_ENV_KEYS, publicEnvSchema } from "@/lib/env/public-schema";
 import { SERVER_ENV_KEYS, serverEnvSchema } from "@/lib/env/server-schema";
+import { BILLING_FIXTURE_LEGACY_PRODUCT_ID } from "@/lib/billing/fixtures";
 import { getPublicEnv } from "@/lib/env/public";
 import {
   liveDodoConfigErrors,
@@ -172,8 +173,57 @@ describe("production environment fail-safes", () => {
         DODO_PAYMENTS_RETURN_URL: "https://www.dealatlas.example/checkout/success",
         DODO_PRO_MONTHLY_PRODUCT_ID: "pdt_live_monthly",
         DODO_PRO_ANNUAL_PRODUCT_ID: "pdt_live_annual",
+        DODO_FOUNDING_PRODUCT_ID: "pdt_0Npk9UeAQUpFBQDttq6lS",
       }),
     ).toEqual([]);
+  });
+
+  it("validates live_mode legacy annual product id lists", () => {
+    const liveBase = {
+      DODO_PAYMENTS_ENVIRONMENT: "live_mode" as const,
+      DODO_PAYMENTS_API_KEY: "dodo_live_prod_key",
+      DODO_PAYMENTS_WEBHOOK_KEY: "whsec_live_example_secret",
+      DODO_PAYMENTS_RETURN_URL:
+        "https://www.dealatlas.example/checkout/success",
+      DODO_PRO_MONTHLY_PRODUCT_ID: `pdt_${"M".repeat(21)}`,
+      DODO_PRO_ANNUAL_PRODUCT_ID: `pdt_${"N".repeat(21)}`,
+      DODO_FOUNDING_PRODUCT_ID: `pdt_${"F".repeat(21)}`,
+    };
+    const first = `pdt_${"A".repeat(21)}`;
+    const second = `pdt_${"B".repeat(21)}`;
+
+    expect(liveDodoConfigErrors(liveBase)).toEqual([]);
+    expect(
+      liveDodoConfigErrors({
+        ...liveBase,
+        DODO_PRO_ANNUAL_LEGACY_PRODUCT_IDS: `  ${first} , ,${second}  ,`,
+      }),
+    ).toEqual([]);
+    expect(
+      liveDodoConfigErrors({
+        ...liveBase,
+        DODO_PRO_ANNUAL_LEGACY_PRODUCT_IDS: "pdt_short",
+      }).join("\n"),
+    ).toMatch(/DODO_PRO_ANNUAL_LEGACY_PRODUCT_IDS/);
+    expect(
+      liveDodoConfigErrors({
+        ...liveBase,
+        DODO_PRO_ANNUAL_LEGACY_PRODUCT_IDS: BILLING_FIXTURE_LEGACY_PRODUCT_ID,
+      }).join("\n"),
+    ).toMatch(/DODO_PRO_ANNUAL_LEGACY_PRODUCT_IDS/);
+
+    for (const duplicate of [
+      liveBase.DODO_PRO_MONTHLY_PRODUCT_ID,
+      liveBase.DODO_PRO_ANNUAL_PRODUCT_ID,
+      liveBase.DODO_FOUNDING_PRODUCT_ID,
+    ]) {
+      expect(
+        liveDodoConfigErrors({
+          ...liveBase,
+          DODO_PRO_ANNUAL_LEGACY_PRODUCT_IDS: duplicate,
+        }).join("\n"),
+      ).toMatch(/must not reuse/);
+    }
   });
 
   it("applies live_mode checks when loading server env", () => {

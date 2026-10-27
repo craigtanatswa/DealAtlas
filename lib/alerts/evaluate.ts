@@ -254,6 +254,20 @@ async function loadCanonicalContext(
   return contexts;
 }
 
+async function loadProUserIds(userIds: string[], now: Date): Promise<Set<string>> {
+  const pro = new Set<string>();
+  for (const userId of userIds) {
+    try {
+      if (isProEntitlement(await getCurrentEntitlement(userId, now))) {
+        pro.add(userId);
+      }
+    } catch {
+      // Fail closed: an unreadable entitlement is not Pro.
+    }
+  }
+  return pro;
+}
+
 export async function evaluateAlerts(options?: {
   admin?: AdminClient;
   now?: Date;
@@ -318,9 +332,17 @@ export async function evaluateAlerts(options?: {
     error: searchError,
   });
 
+  // Match scores are derived from protected deal fields, so profile-match
+  // alerts and saved-search minScore run for Pro users only (fail closed).
+  const proUserIds = await loadProUserIds(
+    [...new Set(profiles.map((profile) => profile.user_id))],
+    now,
+  );
   const profileIdToUser = new Map<string, string>();
   for (const profile of profiles) {
-    profileIdToUser.set(profile.id, profile.user_id);
+    if (proUserIds.has(profile.user_id)) {
+      profileIdToUser.set(profile.id, profile.user_id);
+    }
   }
 
   const matchesByUser = new Map<string, MatchCandidate[]>();
@@ -395,7 +417,7 @@ export async function evaluateAlerts(options?: {
       if (preview.updated_at < since || !previewMatchesFilters(preview, filters)) {
         return false;
       }
-      if (filters.minScore == null) {
+      if (filters.minScore == null || !proUserIds.has(search.user_id)) {
         return true;
       }
       const scored = (matchesByUser.get(search.user_id) ?? []).find(

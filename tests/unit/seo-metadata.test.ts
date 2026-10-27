@@ -236,7 +236,8 @@ describe("sitemaps, robots and category architecture", () => {
         `${ORIGIN}/deals/sitemap.xml`,
       ]),
     );
-    expect(robots.host).toBe("localhost:3000");
+    expect(robots.host).toBeUndefined();
+    expect(disallow).not.toEqual(expect.arrayContaining(["/guides", "/guides/"]));
   });
 
   it("serves /deals/sitemap.xml as an XML sitemap index, not an HTML page", () => {

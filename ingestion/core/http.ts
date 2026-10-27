@@ -32,6 +32,17 @@ export type JsonHttpClient = {
   postJson?: (url: string, body: unknown) => Promise<JsonGetResult>;
 };
 
+export type BinaryGetResult = {
+  url: string;
+  status: number;
+  contentType: string | null;
+  body: Uint8Array;
+};
+
+export type BinaryHttpClient = {
+  getBytes: (url: string) => Promise<BinaryGetResult>;
+};
+
 const DEFAULT_TIMEOUT_MS = 30_000;
 const MAX_REDIRECTS = 3;
 const DEFAULT_USER_AGENT = "DealAtlas-ingest/1.0 (+https://www.dealatlas.uk)";
@@ -108,7 +119,7 @@ export function createAllowlistedTextClient(
 
   return {
     async getText(url: string) {
-      return requestText(url, policy, fetchImpl, timeoutMs, accept, 0, { method: "GET" });
+      return getTextFollowingRedirects(url, policy, fetchImpl, timeoutMs, accept, 0);
     },
   };
 }
@@ -121,34 +132,31 @@ export function createAllowlistedJsonClient(
     accept?: string;
   },
 ): JsonHttpClient {
+  const textClient = createAllowlistedTextClient(policy, {
+    fetchImpl: options?.fetchImpl,
+    timeoutMs: options?.timeoutMs,
+    accept: options?.accept ?? "application/json",
+  });
   const fetchImpl = options?.fetchImpl ?? fetch;
   const timeoutMs = options?.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const accept = options?.accept ?? "application/json";
 
   return {
     async getJson(url: string) {
-      const response = await requestText(
-        url,
-        policy,
-        fetchImpl,
-        timeoutMs,
-        accept,
-        0,
-        { method: "GET" },
-      );
-      return parseJsonResult(response);
+      return parseJsonResult(await textClient.getText(url));
     },
     async postJson(url: string, body: unknown) {
-      const response = await requestText(
-        url,
-        policy,
-        fetchImpl,
-        timeoutMs,
-        accept,
-        0,
-        { method: "POST", body: JSON.stringify(body) },
+      return parseJsonResult(
+        await postTextFollowingRedirects(
+          url,
+          policy,
+          fetchImpl,
+          timeoutMs,
+          accept,
+          0,
+          JSON.stringify(body),
+        ),
       );
-      return parseJsonResult(response);
     },
   };
 }
@@ -178,33 +186,43 @@ function parseJsonResult(response: TextGetResult): JsonGetResult {
   };
 }
 
-async function requestText(
+export function createAllowlistedBinaryClient(
+  policy: AllowedFetchPolicy,
+  options?: {
+    fetchImpl?: typeof fetch;
+    timeoutMs?: number;
+  },
+): BinaryHttpClient {
+  const fetchImpl = options?.fetchImpl ?? fetch;
+  const timeoutMs = options?.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  return {
+    async getBytes(url: string) {
+      return getBytesFollowingRedirects(url, policy, fetchImpl, timeoutMs, 0);
+    },
+  };
+}
+
+async function getTextFollowingRedirects(
   url: string,
   policy: AllowedFetchPolicy,
   fetchImpl: typeof fetch,
   timeoutMs: number,
   accept: string,
   redirectCount: number,
-  request: { method: "GET" | "POST"; body?: string },
 ): Promise<TextGetResult> {
   const parsed = assertAllowedUrl(url, policy);
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
-    const headers: Record<string, string> = {
-      Accept: accept,
-      "User-Agent": DEFAULT_USER_AGENT,
-    };
-    if (request.method === "POST") {
-      headers["Content-Type"] = "application/json";
-    }
     const response = await fetchImpl(parsed, {
-      method: request.method,
+      method: "GET",
       redirect: "manual",
       signal: controller.signal,
-      headers,
-      body: request.method === "POST" ? request.body : undefined,
+      headers: {
+        Accept: accept,
+        "User-Agent": DEFAULT_USER_AGENT,
+      },
     });
 
     if (response.status >= 300 && response.status < 400) {
@@ -219,15 +237,13 @@ async function requestText(
         });
       }
       const next = new URL(location, parsed);
-      // A redirect drops the POST body. The next hop is still allowlisted.
-      return requestText(
+      return getTextFollowingRedirects(
         next.toString(),
         policy,
         fetchImpl,
         timeoutMs,
         accept,
         redirectCount + 1,
-        { method: "GET" },
       );
     }
 
@@ -298,6 +314,220 @@ async function requestText(
       message: cause
         ? `${cause} fetching ${parsed.hostname}`
         : `Network error fetching ${parsed.hostname}`,
+      stage: "fetch",
+      code: "HTTP_NETWORK",
+      retryable: true,
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function postTextFollowingRedirects(
+  url: string,
+  policy: AllowedFetchPolicy,
+  fetchImpl: typeof fetch,
+  timeoutMs: number,
+  accept: string,
+  redirectCount: number,
+  requestBody: string,
+): Promise<TextGetResult> {
+  const parsed = assertAllowedUrl(url, policy);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetchImpl(parsed, {
+      method: "POST",
+      redirect: "manual",
+      signal: controller.signal,
+      headers: {
+        Accept: accept,
+        "Content-Type": "application/json",
+        "User-Agent": DEFAULT_USER_AGENT,
+      },
+      body: requestBody,
+    });
+
+    if (response.status >= 300 && response.status < 400) {
+      const location = response.headers.get("location");
+      if (!location || redirectCount >= MAX_REDIRECTS) {
+        throw new IngestionError({
+          message: `Redirect from ${parsed.hostname} was not followable.`,
+          stage: "fetch",
+          code: "HTTP_REDIRECT",
+          retryable: false,
+          details: { status: response.status },
+        });
+      }
+      const next = new URL(location, parsed);
+      // A redirect drops the POST body. The next hop is still allowlisted.
+      return getTextFollowingRedirects(
+        next.toString(),
+        policy,
+        fetchImpl,
+        timeoutMs,
+        accept,
+        redirectCount + 1,
+      );
+    }
+
+    const body = await response.text();
+    const contentType = response.headers.get("content-type");
+    const retryAfterMs = retryAfterToMs(response.headers.get("retry-after"));
+
+    if (response.status === 429 || response.status === 503) {
+      throw new IngestionError({
+        message: `Transient HTTP ${response.status} from ${parsed.hostname}`,
+        stage: "fetch",
+        code: `HTTP_${response.status}`,
+        retryable: true,
+        details: { status: response.status, retryAfterMs },
+      });
+    }
+
+    if (response.status >= 500) {
+      throw new IngestionError({
+        message: `HTTP ${response.status} from ${parsed.hostname}`,
+        stage: "fetch",
+        code: `HTTP_${response.status}`,
+        retryable: true,
+        details: { status: response.status },
+      });
+    }
+
+    if (response.status === 401 || response.status === 403) {
+      throw new IngestionError({
+        message: `Access restricted HTTP ${response.status} from ${parsed.hostname}`,
+        stage: "fetch",
+        code: `HTTP_${response.status}`,
+        retryable: false,
+        details: { status: response.status },
+      });
+    }
+
+    if (response.status >= 400) {
+      throw new IngestionError({
+        message: `HTTP ${response.status} from ${parsed.hostname}`,
+        stage: "fetch",
+        code: `HTTP_${response.status}`,
+        retryable: false,
+        details: { status: response.status, bodyPreview: body.slice(0, 500) },
+      });
+    }
+
+    return {
+      url: parsed.toString(),
+      status: response.status,
+      contentType,
+      body,
+    };
+  } catch (error) {
+    if (error instanceof IngestionError) {
+      throw error;
+    }
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new IngestionError({
+        message: `Timed out fetching ${parsed.hostname}`,
+        stage: "fetch",
+        code: "HTTP_TIMEOUT",
+        retryable: true,
+      });
+    }
+    const cause = networkCauseCode(error);
+    throw new IngestionError({
+      message: cause
+        ? `${cause} fetching ${parsed.hostname}`
+        : `Network error fetching ${parsed.hostname}`,
+      stage: "fetch",
+      code: "HTTP_NETWORK",
+      retryable: true,
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+
+async function getBytesFollowingRedirects(
+  url: string,
+  policy: AllowedFetchPolicy,
+  fetchImpl: typeof fetch,
+  timeoutMs: number,
+  redirectCount: number,
+): Promise<BinaryGetResult> {
+  const parsed = assertAllowedUrl(url, policy);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetchImpl(parsed, {
+      method: "GET",
+      redirect: "manual",
+      signal: controller.signal,
+      headers: {
+        Accept: "application/vnd.oasis.opendocument.spreadsheet, application/octet-stream",
+        "User-Agent": DEFAULT_USER_AGENT,
+      },
+    });
+    if (response.status >= 300 && response.status < 400) {
+      const location = response.headers.get("location");
+      if (!location || redirectCount >= MAX_REDIRECTS) {
+        throw new IngestionError({
+          message: `Redirect from ${parsed.hostname} was not followable.`,
+          stage: "fetch",
+          code: "HTTP_REDIRECT",
+          retryable: false,
+          details: { status: response.status },
+        });
+      }
+      return getBytesFollowingRedirects(
+        new URL(location, parsed).toString(),
+        policy,
+        fetchImpl,
+        timeoutMs,
+        redirectCount + 1,
+      );
+    }
+    const contentType = response.headers.get("content-type");
+    const retryAfterMs = retryAfterToMs(response.headers.get("retry-after"));
+    if (response.status === 429 || response.status === 503 || response.status >= 500) {
+      throw new IngestionError({
+        message: `HTTP ${response.status} from ${parsed.hostname}`,
+        stage: "fetch",
+        code: `HTTP_${response.status}`,
+        retryable: true,
+        details: { status: response.status, retryAfterMs },
+      });
+    }
+    if (response.status >= 400) {
+      throw new IngestionError({
+        message: `HTTP ${response.status} from ${parsed.hostname}`,
+        stage: "fetch",
+        code: `HTTP_${response.status}`,
+        retryable: false,
+        details: { status: response.status },
+      });
+    }
+    return {
+      url: parsed.toString(),
+      status: response.status,
+      contentType,
+      body: new Uint8Array(await response.arrayBuffer()),
+    };
+  } catch (error) {
+    if (error instanceof IngestionError) {
+      throw error;
+    }
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new IngestionError({
+        message: `Timed out fetching ${parsed.hostname}`,
+        stage: "fetch",
+        code: "HTTP_TIMEOUT",
+        retryable: true,
+      });
+    }
+    throw new IngestionError({
+      message: `Network error fetching ${parsed.hostname}`,
       stage: "fetch",
       code: "HTTP_NETWORK",
       retryable: true,

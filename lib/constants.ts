@@ -41,7 +41,8 @@ export type FeatureLimits = (typeof FEATURE_LIMITS)[Plan];
 export const DISPLAY_PRICING = {
   currency: "GBP",
   proMonthly: "£39/month",
-  proAnnual: "£390/year",
+  proAnnual: "£350/year",
+  foundingAnnual: "£290/year",
 } as const;
 
 export const PUBLIC_NAV = [
@@ -76,6 +77,7 @@ export const FOOTER_NAV = [
   { href: "/deals", label: "Find Deals" },
   { href: "/categories", label: "Categories" },
   { href: "/how-it-works", label: "How It Works" },
+  { href: "/guides", label: "Guides" },
   { href: "/pricing", label: "Pricing" },
   { href: "/privacy", label: "Privacy" },
   { href: "/terms", label: "Terms" },

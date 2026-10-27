@@ -6,9 +6,11 @@ import {
   type DealPreviewSearchRow,
   type PublicSupabaseClient,
 } from "@/lib/db/previews";
-import { loadCompanyProfileIdForUser, toSafeMatchView } from "@/lib/matching/load";
-import { parseStoredReasons } from "@/lib/matching/reasons";
-import type { SafeMatchView } from "@/lib/matching/types";
+import {
+  gatedRowMatch,
+  resolveMatchAccess,
+  type MatchAccess,
+} from "@/lib/matching/entitlement";
 import {
   toPublicDealPreview,
   type RankedDealSearchItem,
@@ -21,20 +23,16 @@ import {
   takeHomeLatestItems,
 } from "@/lib/search/home-latest";
 import {
+  clampSearchPage,
   parseSignedInSearchParams,
+  PUBLIC_SEARCH_MAX_PAGE_SIZE,
   publicSearchOffset,
   type SearchParamRecord,
   type SignedInSearchFilters,
 } from "@/lib/search/params";
 
-function rowMatch(row: DealPreviewSearchRow): SafeMatchView | null {
-  return row.relevance_score == null
-    ? null
-    : toSafeMatchView(Number(row.relevance_score), parseStoredReasons(row.preview_reasons));
-}
-
-function toRankedItem(row: DealPreviewSearchRow): RankedDealSearchItem {
-  return { preview: toPublicDealPreview(row), match: rowMatch(row) };
+function toRankedItem(access: MatchAccess, row: DealPreviewSearchRow): RankedDealSearchItem {
+  return { preview: toPublicDealPreview(row), match: gatedRowMatch(access, row) };
 }
 
 export async function searchHomeLatestDealPreviews(input: {
@@ -43,6 +41,7 @@ export async function searchHomeLatestDealPreviews(input: {
   limit?: number;
 }): Promise<{
   companyProfileId: string | null;
+  matchEnabled: boolean;
   result: RankedDealSearchResult;
 }> {
   const limit = input.limit ?? HOME_LATEST_LIMIT;
@@ -58,14 +57,13 @@ export async function searchHomeLatestDealPreviews(input: {
         })
       : [];
   const rows = takeHomeLatestItems(primaryRows, awardedRows, (row) => row.slug, limit);
-  const companyProfileId = input.userId
-    ? await loadCompanyProfileIdForUser(input.client, input.userId)
-    : null;
+  const access = await resolveMatchAccess(input.client, input.userId);
 
   return {
-    companyProfileId,
+    companyProfileId: access.companyProfileId,
+    matchEnabled: access.enabled,
     result: {
-      items: rows.map(toRankedItem),
+      items: rows.map((row) => toRankedItem(access, row)),
       total: rows.length,
       page: 1,
       pageSize: limit,
@@ -76,35 +74,41 @@ export async function searchHomeLatestDealPreviews(input: {
 /**
  * Relevance scores come from the viewer's own company profile, resolved from
  * auth.uid() inside search_preview_dtos — never from a client-supplied id.
+ * Match scores, reasons, relevance sort and minScore are Pro-only: for any
+ * other viewer they are dropped here and again inside the SQL function.
  */
 export async function searchDealPreviewsForUser(input: {
   client: PublicSupabaseClient;
   searchParams: SearchParamRecord;
   userId?: string | null;
   defaultSort?: SignedInSearchFilters["sort"];
+  /** Forces the page size. Public /deals uses this so `?limit=` cannot raise it. */
+  pageSize?: number;
 }): Promise<{
   filters: SignedInSearchFilters;
   result: RankedDealSearchResult;
   companyProfileId: string | null;
+  matchEnabled: boolean;
 }> {
   const requested = parseSignedInSearchParams(input.searchParams, {
     defaultSort: input.defaultSort,
   });
-  const companyProfileId = input.userId
-    ? await loadCompanyProfileIdForUser(input.client, input.userId)
-    : null;
-
+  const access = await resolveMatchAccess(input.client, input.userId);
+  const fallbackSort =
+    input.defaultSort && input.defaultSort !== "relevance" ? input.defaultSort : "biddable";
   const sort =
-    !companyProfileId && requested.sort === "relevance"
-      ? (input.defaultSort ?? "biddable")
-      : requested.sort;
-  const filters: SignedInSearchFilters = {
+    !access.enabled && requested.sort === "relevance" ? fallbackSort : requested.sort;
+  const limit =
+    input.pageSize != null
+      ? Math.min(PUBLIC_SEARCH_MAX_PAGE_SIZE, Math.max(1, Math.floor(input.pageSize)))
+      : requested.limit;
+  let filters: SignedInSearchFilters = {
     ...requested,
     sort,
-    minScore: companyProfileId ? requested.minScore : undefined,
+    limit,
+    minScore: access.enabled ? requested.minScore : undefined,
   };
 
-  const offset = publicSearchOffset(filters);
   const searchArgs = {
     query: filters.query,
     category: filters.category,
@@ -117,13 +121,13 @@ export async function searchDealPreviewsForUser(input: {
     minScore: filters.minScore,
     sort: filters.sort,
   };
-  const rows = await searchPublishedDealPreviews(input.client, {
+  let rows = await searchPublishedDealPreviews(input.client, {
     ...searchArgs,
     limit: filters.limit,
-    offset,
+    offset: publicSearchOffset(filters),
   });
   let total = rows[0]?.total_count ?? 0;
-  if (rows.length === 0 && offset > 0) {
+  if (rows.length === 0 && filters.page > 1) {
     const countRows = await searchPublishedDealPreviews(input.client, {
       ...searchArgs,
       limit: 1,
@@ -131,14 +135,27 @@ export async function searchDealPreviewsForUser(input: {
     });
     total = countRows[0]?.total_count ?? 0;
   }
+  const page = clampSearchPage(filters.page, Number(total), filters.limit);
+  if (page !== filters.page) {
+    filters = { ...filters, page };
+    rows =
+      Number(total) > 0
+        ? await searchPublishedDealPreviews(input.client, {
+            ...searchArgs,
+            limit: filters.limit,
+            offset: publicSearchOffset(filters),
+          })
+        : [];
+  }
 
   return {
     filters,
-    companyProfileId,
+    companyProfileId: access.companyProfileId,
+    matchEnabled: access.enabled,
     result: {
-      items: rows.map(toRankedItem),
+      items: rows.map((row) => toRankedItem(access, row)),
       total: Number(total),
-      page: filters.page,
+      page,
       pageSize: filters.limit,
     },
   };

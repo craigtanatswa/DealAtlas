@@ -34,10 +34,15 @@ test.describe("Anonymous journey", () => {
 
     await page.getByRole("link", { name: seed.previewTitle }).click();
     await page.waitForURL(new RegExp(`/deals/${seed.publishedSlug}`));
-    await expect(page.getByText(/Join DealAtlas Pro to unlock the buyer/i)).toBeVisible();
-    await expect(page.getByText("Buyer identity", { exact: true })).toBeVisible();
+    // Role queries skip the display:none copy of the card (mobile vs desktop).
+    const proCard = page.getByRole("complementary", {
+      name: "Unlock this opportunity with Pro",
+    });
+    await expect(proCard).toBeVisible();
+    await expect(proCard.getByText("Buyer", { exact: true })).toBeVisible();
+    await expect(proCard.getByText("How to apply", { exact: true })).toBeVisible();
     await expect(
-      page.getByRole("link", { name: "Unlock with DealAtlas Pro" }),
+      proCard.getByRole("link", { name: /Start Pro – £39\/mo|Become a founding member/ }),
     ).toBeVisible();
     await expectNoProtectedLeaks(page);
 
@@ -45,9 +50,10 @@ test.describe("Anonymous journey", () => {
     expect(paid.status()).toBe(401);
     expect(findProtectedMarkerLeaks(await paid.text())).toEqual([]);
 
-    await page.getByRole("link", { name: "View pricing" }).click();
+    await page.getByRole("link", { name: "Pricing", exact: true }).first().click();
     await page.waitForURL(/\/pricing/);
-    await expect(page.getByRole("heading", { name: "DealAtlas Pro" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Pricing", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Pro annual" })).toBeVisible();
     await expectNoProtectedLeaks(page);
 
     await page.getByRole("link", { name: "Get Started" }).first().click();

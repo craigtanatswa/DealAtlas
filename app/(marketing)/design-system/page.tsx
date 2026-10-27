@@ -30,7 +30,7 @@ export default async function DesignSystemPage() {
   }
 
   return (
-    <Main className="gap-8">
+    <Main back className="gap-8">
       <p className="text-sm font-medium text-muted-foreground">Design system</p>
       <Heading>Component fixtures</Heading>
       <p className="max-w-2xl text-[0.9375rem] leading-7 text-muted-foreground md:text-base">

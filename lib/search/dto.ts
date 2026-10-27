@@ -4,6 +4,10 @@ import { BUYER_SECTORS } from "@/lib/constants";
 import type { DealPreviewSearchRow } from "@/lib/db/previews";
 import type { SafeMatchView } from "@/lib/matching/types";
 import {
+  decodePreviewDetails,
+  type PreviewDetails,
+} from "@/lib/preview/compose";
+import {
   DEAL_STAGES,
   DEAL_STATUSES,
   DEAL_TYPES,
@@ -33,6 +37,16 @@ export const PUBLIC_PREVIEW_DTO_KEYS = [
   "requirementsPreview",
   "relevanceTags",
   "freshnessLabel",
+  "goodsServices",
+  "quantities",
+  "technicalSpecs",
+  "standards",
+  "keyDates",
+  "deliveryRequirements",
+  "scope",
+  "commercialRequirements",
+  "currency",
+  "specificSector",
 ] as const;
 
 export type PublicDealPreview = {
@@ -54,7 +68,7 @@ export type PublicDealPreview = {
   requirementsPreview: string[];
   relevanceTags: string[];
   freshnessLabel: string | null;
-};
+} & PreviewDetails;
 
 export type PublicDealSearchResult = {
   items: PublicDealPreview[];
@@ -97,28 +111,7 @@ const FORBIDDEN_PREVIEW_KEYS = [
 ] as const;
 
 export function parseRequirementsPreview(value: unknown): string[] {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-
-  return value
-    .map((item) => {
-      if (typeof item === "string") {
-        return item.trim();
-      }
-      if (item && typeof item === "object") {
-        const record = item as Record<string, unknown>;
-        if (typeof record.text === "string") {
-          return record.text.trim();
-        }
-        if (typeof record.label === "string") {
-          return record.label.trim();
-        }
-      }
-      return "";
-    })
-    .filter((item) => item.length > 0 && item.length <= 500)
-    .slice(0, 20);
+  return decodePreviewDetails(value).requirements;
 }
 
 function parseLevel(value: unknown): SuitabilityLevel | null {
@@ -193,6 +186,7 @@ export function toPublicDealPreview(row: PreviewDtoFields): PublicDealPreview {
       ? row.relevance_tags.filter((tag): tag is string => typeof tag === "string").slice(0, 12)
       : [],
     freshnessLabel: row.freshness_label?.trim() || null,
+    ...decodePreviewDetails(row.requirements_preview).details,
   };
 }
 
@@ -216,8 +210,17 @@ export function toDealCardData(
     dealType: preview.dealType,
     relevanceTags: preview.relevanceTags.slice(0, 4),
     freshnessLabel: preview.freshnessLabel,
-    matchScore: matchScore ?? null,
-    matchReasons: (matchReasons ?? []).slice(0, 3),
+    goodsServices: preview.goodsServices,
+    quantities: preview.quantities,
+    standards: preview.standards,
+    keyDates: preview.keyDates,
+    specificSector: preview.specificSector,
+    currency: preview.currency,
+    // Match keys exist only when the server gate supplied a Pro match, so
+    // free and anonymous card payloads never carry them, not even as null.
+    ...(typeof matchScore === "number"
+      ? { matchScore, matchReasons: (matchReasons ?? []).slice(0, 3) }
+      : {}),
   };
 }
 

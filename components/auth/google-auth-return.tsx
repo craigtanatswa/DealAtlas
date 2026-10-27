@@ -9,7 +9,7 @@ import {
   parseGoogleIdTokenHash,
   type StoredGoogleOAuth,
 } from "@/lib/auth/google-id-token";
-import { LOGIN_PATH, sanitizeRedirectPath } from "@/lib/auth/redirect";
+import { LOGIN_PATH, resolveNextPath } from "@/lib/auth/redirect";
 import { mapAuthError } from "@/lib/auth/messages";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 
@@ -54,7 +54,7 @@ export function GoogleAuthReturn() {
       return;
     }
 
-    const next = sanitizeRedirectPath(stored.next);
+    const next = resolveNextPath(stored.next);
     const supabase = createSupabaseBrowserClient();
 
     void supabase.auth

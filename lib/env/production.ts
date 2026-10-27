@@ -110,7 +110,19 @@ export type LiveDodoEnv = {
   DODO_PAYMENTS_RETURN_URL?: string;
   DODO_PRO_MONTHLY_PRODUCT_ID?: string;
   DODO_PRO_ANNUAL_PRODUCT_ID?: string;
+  DODO_PRO_ANNUAL_LEGACY_PRODUCT_IDS?: string;
+  DODO_FOUNDING_PRODUCT_ID?: string;
 };
+
+export function parseProductIdList(value: string | undefined | null): string[] {
+  if (!value) {
+    return [];
+  }
+  return value
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0);
+}
 
 export function liveDodoConfigErrors(env: LiveDodoEnv): string[] {
   if (env.DODO_PAYMENTS_ENVIRONMENT !== "live_mode") {
@@ -161,6 +173,46 @@ export function liveDodoConfigErrors(env: LiveDodoEnv): string[] {
     errors.push(
       "Live Dodo product IDs must come from the live catalogue, not local billing fixtures.",
     );
+  }
+
+  if (!env.DODO_FOUNDING_PRODUCT_ID || !/^pdt_[A-Za-z0-9]{21}$/.test(env.DODO_FOUNDING_PRODUCT_ID)) {
+    errors.push(
+      "DODO_FOUNDING_PRODUCT_ID is required when DODO_PAYMENTS_ENVIRONMENT=live_mode and must be a live product id (pdt_ followed by 21 letters or digits).",
+    );
+  } else if (LIVE_FORBIDDEN_PRODUCT_IDS.has(env.DODO_FOUNDING_PRODUCT_ID)) {
+    errors.push(
+      "Live Dodo product IDs must come from the live catalogue, not local billing fixtures.",
+    );
+  }
+
+  const legacyProductIds = parseProductIdList(
+    env.DODO_PRO_ANNUAL_LEGACY_PRODUCT_IDS,
+  );
+  const configuredProductIds = [
+    env.DODO_PRO_MONTHLY_PRODUCT_ID,
+    env.DODO_PRO_ANNUAL_PRODUCT_ID,
+    env.DODO_FOUNDING_PRODUCT_ID,
+  ].filter((id): id is string => Boolean(id));
+
+  for (const legacyId of legacyProductIds) {
+    if (!/^pdt_[A-Za-z0-9]{21}$/.test(legacyId)) {
+      errors.push(
+        "DODO_PRO_ANNUAL_LEGACY_PRODUCT_IDS must contain only live product ids (pdt_ followed by 21 letters or digits).",
+      );
+      break;
+    }
+    if (LIVE_FORBIDDEN_PRODUCT_IDS.has(legacyId)) {
+      errors.push(
+        "Live Dodo product IDs must come from the live catalogue, not local billing fixtures.",
+      );
+      break;
+    }
+    if (configuredProductIds.includes(legacyId)) {
+      errors.push(
+        "DODO_PRO_ANNUAL_LEGACY_PRODUCT_IDS must not reuse a monthly, annual, or founding product id.",
+      );
+      break;
+    }
   }
 
   return errors;

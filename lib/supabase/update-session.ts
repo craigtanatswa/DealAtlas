@@ -4,6 +4,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { resolveProtectedRouteRedirect } from "@/lib/auth/redirect";
 import type { PublicDatabase } from "@/lib/db/public-schema";
 import { parseDealIdParam } from "@/lib/deals/paths";
+import { dealPathGate, dealPreviewPathSlug } from "@/lib/deals/public-slug";
 import { getPublicEnv } from "@/lib/env/public";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
@@ -62,8 +63,12 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
   if (missing) {
     return copyCookies(supabaseResponse, unpublishedDealResponse());
   }
-  if (await retiredPublicSlug(pathname)) {
+  const slugGate = await publicDealSlugGate(pathname);
+  if (slugGate === "gone") {
     return copyCookies(supabaseResponse, goneSlugResponse());
+  }
+  if (slugGate === "missing") {
+    return copyCookies(supabaseResponse, unpublishedDealResponse());
   }
 
   return supabaseResponse;
@@ -104,21 +109,36 @@ async function missingAppDealForFree(
   return !error && data === true;
 }
 
-async function retiredPublicSlug(pathname: string): Promise<boolean> {
-  const match = pathname.match(/^\/deals\/([^/]+)$/);
-  if (!match || match[1] === "sitemap.xml") return false;
-  let slug = match[1];
-  try {
-    slug = decodeURIComponent(slug);
-  } catch {
-    return false;
-  }
+async function publicDealSlugGate(pathname: string): Promise<"next" | "gone" | "missing"> {
+  const slug = dealPreviewPathSlug(pathname);
+  if (slug === null) return "next";
+  if (slug === "") return "missing";
   try {
     const admin = createSupabaseAdminClient();
-    const { data, error } = await admin.rpc("preview_slug_is_retired", { p_slug: slug });
-    return !error && data === true;
+    const [{ data: retired, error: retiredError }, { data: row, error: rowError }] = await Promise.all([
+      admin.rpc("preview_slug_is_retired", { p_slug: slug }),
+      admin
+        .from("deal_previews")
+        .select("slug, deal_id, is_published, leakage_risk, unpublished_by_admin")
+        .eq("slug", slug)
+        .maybeSingle(),
+    ]);
+    if (retiredError || rowError) return "next";
+    return dealPathGate({
+      pathname,
+      retired: retired === true,
+      match: row
+        ? {
+            slug: row.slug,
+            dealId: row.deal_id,
+            isPublished: row.is_published,
+            leakageRisk: row.leakage_risk,
+            unpublishedByAdmin: row.unpublished_by_admin,
+          }
+        : null,
+    });
   } catch {
-    return false;
+    return "next";
   }
 }
 

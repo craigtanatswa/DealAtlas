@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { BillingSummary } from "@/components/billing/billing-summary";
 import { CheckoutPlanForm } from "@/components/billing/checkout-plan-form";
+import { ProAnnualButtonLabel } from "@/components/billing/founding-price";
 import { PageHeader } from "@/components/layout/page-header";
 import { Main } from "@/components/layout/container";
 import {
@@ -12,6 +13,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { requireUser } from "@/lib/auth/session";
+import { readFoundingMember } from "@/lib/billing/founding-db";
 import { loadDodoCustomerIdForUser } from "@/lib/billing/store";
 import { getCurrentEntitlement } from "@/lib/entitlements/service";
 import { isProEntitlement } from "@/lib/entitlements/policy";
@@ -21,10 +23,19 @@ export const metadata: Metadata = {
   title: "Billing",
 };
 
-export default async function BillingPage() {
+export default async function BillingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ notice?: string | string[] }>;
+}) {
   const { user } = await requireUser("/app/billing");
-  const entitlement = await getCurrentEntitlement(user.id);
-  const customerId = await loadDodoCustomerIdForUser(user.id);
+  const { notice } = await searchParams;
+  const alreadySubscribed = notice === "already_subscribed";
+  const [entitlement, customerId, foundingMember] = await Promise.all([
+    getCurrentEntitlement(user.id),
+    loadDodoCustomerIdForUser(user.id),
+    readFoundingMember(user.id),
+  ]);
   const pro = isProEntitlement(entitlement);
 
   return (
@@ -33,9 +44,16 @@ export default async function BillingPage() {
         title="Billing"
         description="Manage DealAtlas Pro. Invoices, payment methods, and cancellation are handled in the Dodo customer portal. Access is not granted from a checkout redirect."
       />
+      {alreadySubscribed ? (
+        <p role="status" className="rounded-md border p-4 text-sm">
+          You already have an active DealAtlas Pro subscription. Use the billing
+          portal below to change or cancel it.
+        </p>
+      ) : null}
       <BillingSummary
         entitlement={entitlement}
         hasCustomerPortal={Boolean(customerId)}
+        foundingMember={foundingMember}
       />
       {pro ? null : (
         <Card>
@@ -52,7 +70,10 @@ export default async function BillingPage() {
               label="Subscribe monthly"
               recommended
             />
-            <CheckoutPlanForm planKey="PRO_ANNUAL" label="Subscribe annually" />
+            <CheckoutPlanForm
+              planKey="PRO_ANNUAL"
+              label={<ProAnnualButtonLabel text="Subscribe annually" />}
+            />
           </CardContent>
         </Card>
       )}

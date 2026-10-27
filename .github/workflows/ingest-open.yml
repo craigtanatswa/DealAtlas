@@ -1,10 +1,10 @@
 name: Ingest open notices
 
-# Find a Tender, then Contracts Finder, then TED Search API v3.
-# A TED fetch failure uses continue-on-error so it cannot fail the job
+# Find a Tender, then Contracts Finder, GCA, grants, then TED Search API v3.
+# A TED or GCA fetch failure uses continue-on-error so it cannot fail the job
 # or skip Find a Tender publish. Row parse errors still exit 0.
 # Manual dispatch defaults to dry_run so a click fetches and counts without writing.
-# The every-third-day cron ingests. A separate daily cron only unpublishes expired deals.
+# The daily cron ingests (21:00 UTC, 23:00 CAT). A separate daily cron only unpublishes expired deals.
 # scheduled-jobs.yml is not part of this workflow.
 on:
   workflow_dispatch:
@@ -22,7 +22,7 @@ on:
         type: boolean
         default: false
   schedule:
-    - cron: "41 4 */3 * *"
+    - cron: "0 21 * * *"
     - cron: "17 5 * * *"
     - cron: "23 */6 * * *"
   push:
@@ -41,7 +41,7 @@ concurrency:
 jobs:
   ingest:
     name: Ingest Find a Tender
-    if: (github.event_name == 'workflow_dispatch' && inputs.publish_only != true) || github.event.schedule == '41 4 */3 * *'
+    if: (github.event_name == 'workflow_dispatch' && inputs.publish_only != true) || github.event.schedule == '0 21 * * *'
     runs-on: ubuntu-latest
     environment: ingest
     timeout-minutes: 300
@@ -114,6 +114,72 @@ jobs:
           fi
           npm run ingest-open
 
+      - name: Ingest Government Commercial Agency agreements
+        id: gca_agreements
+        if: always() && steps.ingest.outcome != 'cancelled'
+        continue-on-error: true
+        env:
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'false' }}
+          OPEN_INGEST_PHASE: ingest
+          OPEN_INGEST_SOURCE: gca-agreements
+          OPEN_INGEST_STATE: ${{ runner.temp }}/open-ingest-changed.json
+        run: |
+          set -euo pipefail
+          case "$DRY_RUN" in
+            true|false) ;;
+            *) echo "dry_run must be true or false" >&2; exit 1 ;;
+          esac
+          npm run ingest-open
+
+      - name: Ingest Government Commercial Agency pipeline
+        id: gca_pipeline
+        if: always() && steps.ingest.outcome != 'cancelled'
+        continue-on-error: true
+        env:
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'false' }}
+          OPEN_INGEST_PHASE: ingest
+          OPEN_INGEST_SOURCE: gca-procurement-pipeline
+          OPEN_INGEST_STATE: ${{ runner.temp }}/open-ingest-changed.json
+        run: |
+          set -euo pipefail
+          case "$DRY_RUN" in
+            true|false) ;;
+            *) echo "dry_run must be true or false" >&2; exit 1 ;;
+          esac
+          npm run ingest-open
+
+      - name: Ingest Find a Grant
+        id: find_a_grant
+        if: always() && steps.ingest.outcome != 'cancelled'
+        env:
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'false' }}
+          OPEN_INGEST_PHASE: ingest
+          OPEN_INGEST_SOURCE: find-a-grant
+          OPEN_INGEST_STATE: ${{ runner.temp }}/open-ingest-changed.json
+        run: |
+          set -euo pipefail
+          case "$DRY_RUN" in
+            true|false) ;;
+            *) echo "dry_run must be true or false" >&2; exit 1 ;;
+          esac
+          npm run ingest-open
+
+      - name: Ingest Innovate UK competitions
+        id: innovate_uk
+        if: always() && steps.ingest.outcome != 'cancelled'
+        env:
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'false' }}
+          OPEN_INGEST_PHASE: ingest
+          OPEN_INGEST_SOURCE: innovate-uk
+          OPEN_INGEST_STATE: ${{ runner.temp }}/open-ingest-changed.json
+        run: |
+          set -euo pipefail
+          case "$DRY_RUN" in
+            true|false) ;;
+            *) echo "dry_run must be true or false" >&2; exit 1 ;;
+          esac
+          npm run ingest-open
+
       - name: Ingest open TED notices
         id: ted
         continue-on-error: true
@@ -163,8 +229,9 @@ jobs:
         id: publish
         # Row parse errors exit 0 so build, unpublish and publish still run.
         # A Find a Tender fetch failure or a failed preview build skips publish.
-        # A Contracts Finder failure does not skip publish; that step still fails the job.
-        # A TED fetch failure does not skip publish and cannot fail the job.
+        # A Contracts Finder, Find a Grant, or Innovate UK failure does not skip publish.
+        # Those steps still fail the job.
+        # A Government Commercial Agency or TED failure is continue-on-error and does not skip publish.
         if: always() && steps.ingest.outcome == 'success' && steps.build.outcome == 'success' && (github.event_name != 'workflow_dispatch' || inputs.dry_run == false)
         env:
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
@@ -187,6 +254,10 @@ jobs:
           BUILD_COUNTS: ${{ steps.build.outputs.counts }}
           INGEST_OK: ${{ steps.ingest.outcome == 'success' && '1' || '0' }}
           CONTRACTS_FINDER_OK: ${{ steps.contracts_finder.outcome == 'success' && '1' || '0' }}
+          FIND_A_GRANT_OK: ${{ steps.find_a_grant.outcome == 'success' && '1' || '0' }}
+          INNOVATE_UK_OK: ${{ steps.innovate_uk.outcome == 'success' && '1' || '0' }}
+          GCA_AGREEMENTS_OK: ${{ steps.gca_agreements.outcome == 'success' && '1' || '0' }}
+          GCA_PIPELINE_OK: ${{ steps.gca_pipeline.outcome == 'success' && '1' || '0' }}
           TED_OK: ${{ steps.ted.outcome == 'success' && '1' || '0' }}
           BUILD_OK: ${{ steps.build.outcome == 'success' && '1' || '0' }}
           UNPUBLISH_OK: ${{ steps.unpublish.outcome == 'success' && '1' || '0' }}

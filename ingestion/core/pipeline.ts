@@ -10,6 +10,12 @@ import { contextFromCandidate } from "@/ingestion/intelligence/types";
 import { persistIntelligenceAndPreview } from "@/ingestion/preview/publish";
 import { CONTRACTS_FINDER_SOURCE_KEY } from "@/ingestion/sources/contracts-finder/constants";
 import { linkContractsFinderDuplicate } from "@/ingestion/sources/contracts-finder/link";
+import {
+  GCA_AGREEMENTS_SOURCE_KEY,
+  GCA_PIPELINE_SOURCE_KEY,
+} from "@/ingestion/sources/gca/constants";
+import { linkGcaPortalDuplicate } from "@/ingestion/sources/gca/link";
+import { isGrantSource, linkGrantDuplicate } from "@/ingestion/sources/grant-notice/link";
 import { defaultSleep } from "@/ingestion/core/retry";
 import { unwrapReleasePayload } from "@/ingestion/sources/find-a-tender/parse";
 import type {
@@ -184,6 +190,7 @@ export async function runIngestion(
   const runId = run?.id ?? null;
 
   let cursor = options.cursor;
+  let truncated = false;
   let remaining = options.limit ?? Number.POSITIVE_INFINITY;
   const minFetchIntervalMs = options.minFetchIntervalMs ?? 0;
   const sleep = options.sleep ?? defaultSleep;
@@ -204,6 +211,9 @@ export async function runIngestion(
           updatedTo: options.updatedTo,
           stages: options.stages,
         });
+        if (page.truncated) {
+          truncated = true;
+        }
       } catch (error) {
         const ingestionError = asIngestionError(error, "discover");
         counters.errorCount += 1;
@@ -303,6 +313,36 @@ export async function runIngestion(
           for (const candidate of candidates) {
             if (source.sourceKey === CONTRACTS_FINDER_SOURCE_KEY) {
               const linked = await linkContractsFinderDuplicate({
+                store: options.store,
+                source,
+                raw: snapshot.record,
+                candidate,
+                now,
+              });
+              if (linked) {
+                counters.duplicatesLinked += 1;
+                continue;
+              }
+            }
+            if (
+              source.sourceKey === GCA_AGREEMENTS_SOURCE_KEY ||
+              source.sourceKey === GCA_PIPELINE_SOURCE_KEY
+            ) {
+              const linked = await linkGcaPortalDuplicate({
+                store: options.store,
+                source,
+                raw: snapshot.record,
+                candidate,
+                now,
+              });
+              if (linked) {
+                counters.duplicatesLinked += 1;
+                continue;
+              }
+            }
+
+            if (isGrantSource(source.sourceKey)) {
+              const linked = await linkGrantDuplicate({
                 store: options.store,
                 source,
                 raw: snapshot.record,
@@ -479,6 +519,7 @@ export async function runIngestion(
       runId,
       cursor: cursor ?? null,
       counters,
+      truncated,
       errors,
     };
   } catch (error) {
@@ -505,6 +546,7 @@ export async function runIngestion(
         runId,
         cursor: cursor ?? null,
         counters,
+        truncated,
         errors: [
           ...errors,
           {

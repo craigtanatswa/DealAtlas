@@ -75,6 +75,7 @@ Listing-style cards, scannable like a professional B2B directory:
 
 - DealAtlas preview title
 - sanitised summary with enough commercial detail to judge fit
+- CPV description, day-count deadline and publication month when those fields exist
 - status
 - public/private buyer
 - category
@@ -135,6 +136,12 @@ CTA:
 Secondary link:
 View pricing
 
+While the founding offer is on sale, the same panel uses the server place count (never a customer list):
+
+- Places left: **Become a founding member – £290/yr**, helper `£290/yr for as long as you stay subscribed · {remaining} places left` (remaining only, never the total), secondary **or standard Pro £39/mo**. One place left uses **Last founding place · 1 place left** and no other urgency line.
+- Sold out: **Start Pro – £39/mo** and **or £350/yr (save 25%)** (percentage derived from `DISPLAY_PRICING`). The founding card is gone; annual is marked Recommended.
+- The last place taken during checkout shows **Founding places just filled up. You haven't been charged.** with standard annual and monthly buttons. The deal return path is kept. A checkout redirect still does not grant Pro.
+
 ## 10. Homepage and workspace
 The public homepage is marketing and search. It does not list free deal cards. Visitors search from the hero, which submits to `/deals`, where published previews are browsed. Do not hide product value behind sign-up. The public hero may show decorative, non-interactive category chips around the search column; they use the existing category catalogue only, fetch nothing, and must not cover the headline, copy, or search. A testimonial carousel may sit below the hero; its quotes are development placeholders and must be replaced with verified customer testimonials before production use. Do not invent live counts, ratings, or win figures.
 
@@ -143,17 +150,19 @@ Authenticated `/app` leads with search and live opportunities, then quotas and a
 Do not invent live opportunity counts, users, or contract values.
 
 ## 11. Search UX
+Public `/deals` keeps the existing listing cards and colours. Filters sit in one panel above the results, not in a sidebar.
+
 Desktop:
-- large search bar as the primary CTA
-- category shortcuts into existing filters
-- left filter rail
-- active filter chips
-- results count
-- listing cards
+- search box and Search button on one row
+- category, sector, region, value, closing window, type and status on the next row
+- active filter chips and Clear all inside the same panel
+- result count and sort on one row
+- 10 opportunities per page, with Previous, page numbers and Next
 
 Mobile:
-- full-width search
-- filter drawer/sheet
+- search box and Search button on one row
+- Filters button, plus Region and Value
+- remaining filters in the existing sheet
 - listing cards
 - no permanently stacked filter column
 

@@ -27,9 +27,10 @@ describe("free discovery HTML and protected paths", () => {
 
     const html = `${detail.container.innerHTML}\n${search.container.innerHTML}`;
     expect(findProtectedMarkerLeaks(html)).toEqual([]);
+    expect(html).not.toMatch(/\b\d{8}\b/);
     expect(html).not.toMatch(/blur/);
     expect(html).toContain(DEAL_PREVIEW_DETAIL_FIXTURE.previewTitle);
-    expect(html).toContain("Unlock the buyer and pursue this opportunity");
+    expect(html).toContain("Unlock this opportunity with Pro");
     expect(html).toContain("1 opportunity");
   });
 
@@ -37,6 +38,7 @@ describe("free discovery HTML and protected paths", () => {
     const html = render(<UnlockPanel />).container.innerHTML;
     expect(findProtectedMarkerLeaks(html)).toEqual([]);
     expect(html).not.toMatch(/CANARY/);
+    expect(html).not.toMatch(/competitor/i);
   });
 
   it("does not ship a UI bypass or protected fields on free fixtures", () => {

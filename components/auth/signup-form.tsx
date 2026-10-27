@@ -3,15 +3,26 @@
 import { useActionState } from "react";
 import Link from "next/link";
 
+import { AnalyticsAttributionFields } from "@/components/analytics/attribution-fields";
 import { signUpAction } from "@/lib/auth/actions";
 import { INITIAL_ACTION_STATE } from "@/lib/auth/messages";
+import { loginPathForPlan, loginPathWithNext } from "@/lib/auth/redirect";
+import type { CheckoutPlanKey } from "@/lib/billing/types";
 import { FormStatus } from "@/components/auth/form-status";
 import { GoogleSignInButton } from "@/components/auth/google-sign-in-button";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 
-export function SignupForm({ nextPath }: { nextPath: string }) {
+export function SignupForm({
+  nextPath,
+  plan,
+  analyticsEnabled = false,
+}: {
+  nextPath: string;
+  plan: CheckoutPlanKey | null;
+  analyticsEnabled?: boolean;
+}) {
   const [state, action, pending] = useActionState(
     signUpAction,
     INITIAL_ACTION_STATE,
@@ -22,6 +33,7 @@ export function SignupForm({ nextPath }: { nextPath: string }) {
       <GoogleSignInButton nextPath={nextPath} />
       <form action={action} className="flex flex-col gap-4">
         <input type="hidden" name="next" value={nextPath} />
+        <AnalyticsAttributionFields enabled={analyticsEnabled} />
         <Field id="displayName" label="Display name">
           <Input
             id="displayName"
@@ -66,7 +78,10 @@ export function SignupForm({ nextPath }: { nextPath: string }) {
         </Button>
         <p className="text-sm text-muted-foreground">
           Already have an account?{" "}
-          <Link href="/login" className="underline-offset-4 hover:underline">
+          <Link
+            href={plan ? loginPathForPlan(plan) : loginPathWithNext(nextPath)}
+            className="underline-offset-4 hover:underline"
+          >
             Sign in
           </Link>
         </p>

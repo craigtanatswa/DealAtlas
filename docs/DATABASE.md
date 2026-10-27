@@ -48,8 +48,12 @@ One row per Supabase Auth user.
 - email
 - display_name
 - role USER/ADMIN
+- founding_member — set only by the founding webhook path; cleared on cancel or expiry (0047)
+- founding_since
 - created_at
 - updated_at
+
+`private.founding_slots` holds one row per user (`reserved`, `active`, `released`, or `ended`). Service role calls the slot functions; anon and authenticated cannot read the table or execute the functions. A reserved row expires after 30 minutes. On cancel or expiry `close_founding_membership` (0047) moves an active row to `ended` (sets `ended_at` once) and clears `profiles.founding_member`, so the founding price ends. An ended row still counts as a used place and is never released, deleted or re-activated. `reserve_founding_slot` answers `ineligible` for anyone with an active or ended row (no rejoin; checkout returns 409 `FOUNDING_NOT_ELIGIBLE`), and `activate_founding_slot` refuses an ended row, so a late or replayed activation cannot restore founding. A replayed cancel is a no-op. `private.founding_event_claims` has one row per processed event and one row per Dodo subscription. `GET /api/founding` returns the remaining count and a sold-out flag only.
 
 ### subscriptions
 Local mirror of Dodo subscription entitlement state.
@@ -306,7 +310,7 @@ The gate flags (HIGH unless noted):
 
 `deals_leak_source_tsv_idx` is created with `fastupdate = off` (`0020`) so a bulk insert does not leave a GIN pending list in front of the next preview write. After each ingest or preview-rebuild batch the worker calls `public.maintain_deals_leak_index()` (`gin_clean_pending_list` plus `ANALYZE public.deals`). After the first bulk rebuild, an operator should also run `VACUUM (ANALYZE) public.deals` once; `VACUUM` cannot run inside that function. A full catalogue rebuild is `workflow_dispatch` only, on `.github/workflows/rebuild-previews.yml` (dry-run by default, `environment: production`). It selects every `deal_previews` row, does not publish or lift holds, keeps an existing template hex slug, and calls `maintain_deals_leak_index` after each live batch. `.github/workflows/scheduled-jobs.yml` is unchanged and stays disabled.
 
-Old public slugs are not redirected. `0020` hashes every existing `deal_previews.slug` into `private.retired_preview_slugs` inside the database, and each later publish hashes the slug it replaces. `public.preview_slug_is_retired` is true only when that hash exists and the slug is no longer the current preview. Execute is `service_role` only. The proxy calls it with the server admin client and answers those requests with HTTP 410. Plaintext retired slugs are not stored and are not committed.
+Old public slugs are not redirected. `0020` hashes every existing `deal_previews.slug` into `private.retired_preview_slugs` inside the database, and each later publish hashes the slug it replaces. `public.preview_slug_is_retired` is true only when that hash exists and the slug is no longer the current preview. Execute is `service_role` only. The proxy calls it with the server admin client and answers those requests with HTTP 410. `0026` also refuses a deal-id 8-hex suffix and an older title slug with no 8-hex suffix. The proxy answers any other `/deals` path that is not the current published row with 404 before the page shell is sent. Plaintext retired slugs are not stored and are not committed.
 
 Admin holds (`unpublished_by_admin`) are recorded per deal in `private.preview_holds`, which no API role (including `service_role`) can read or write. While a hold row exists the gate forces `unpublished_by_admin = true`, so ingestion upserts that reset the flag, forged session settings, deleting/re-inserting the preview and deleting/re-creating the deal (the table has no foreign key) all keep the hold. Only `public.admin_release_preview_hold` (service role, called after the app's ADMIN check) deletes the hold row.
 
@@ -396,6 +400,7 @@ Included in the build pack:
 - `0017_job_runs.sql`
 - `0018_preview_gate_v2_and_dto_rpcs.sql` (additive; apply before the app release that uses the DTO RPCs)
 - `0019_revoke_client_preview_table_access.sql` (apply only after that app release is live)
+- `0041_preview_detail_allowlist.sql` (rich free previews: `private.preview_dto_requirements` keeps only allow-listed detail fields, checks structured fields against fixed vocabularies (CPV division titles, standards, commercial lines, banded key dates, broad regions, quantity units), drops any line that `private.preview_detail_text_risky` flags (emails, URLs, domains, phones, notice/reference IDs, `RM` codes, day counts, postcodes, ALL-CAPS tokens, portal and framework names), and accepts untagged lines only from the closed requirement labels. `lotCount`, `procedureType` and `framework` are not allowed. `private.detect_preview_leakage` also raises HIGH for risky detail lines and deadline day counts. `search_deal_previews_for_profile` projects through the same filter. Execute stays revoked from anon/authenticated. Apply before the app release that reads the new fields)
 
 Apply in numeric order with the Supabase CLI (`npx supabase db reset` locally, or `npx supabase db push` to a linked project). Never reset or drop a linked production database. `db push` applies every pending file, so roll out `0018` and `0019` as separate pushes (push from a checkout without `0019`, deploy the app, then push again) or apply them manually in order.
 

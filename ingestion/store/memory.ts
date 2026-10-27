@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { previewSlugHash } from "@/lib/deals/public-slug";
 
 import { normalizeTitle } from "@/ingestion/normalizers/text";
+import { textHasReferenceToken } from "@/ingestion/sources/gca/link";
 import type {
   AwardRecord,
   ContractRecord,
@@ -47,6 +48,7 @@ export type MemoryIngestionState = {
     sourceNoticeId: string | null;
     criterionName: string;
     criterionDescription: string | null;
+    weightPercent: number | null;
   }>;
   awards: AwardRecord[];
   awardSuppliers: Array<{ awardId: string; organizationId: string }>;
@@ -58,7 +60,13 @@ export type MemoryIngestionState = {
     role: string;
     lotId: string | null;
   }>;
-  classifications: Array<{ dealId: string; cpvCode: string | null; lotId: string | null }>;
+  classifications: Array<{
+    dealId: string;
+    cpvCode: string | null;
+    lotId: string | null;
+    sourceDescription: string | null;
+    isPrimary: boolean;
+  }>;
   dataChanges: DataChangeRecord[];
   relatedDeals: Array<{ dealId: string; relatedDealId: string; relationshipType: string }>;
   categories: Array<{ id: string; slug: string; name: string }>;
@@ -226,6 +234,16 @@ export function createMemoryIngestionStore(seed?: {
         .map((item) => ({
           name: item.criterionName,
           description: item.criterionDescription,
+          weightPercent: item.weightPercent,
+        }));
+    },
+    async listClassificationsForDeal(dealId) {
+      return state.classifications
+        .filter((item) => item.dealId === dealId)
+        .map((item) => ({
+          code: item.cpvCode,
+          description: item.sourceDescription,
+          isPrimary: item.isPrimary,
         }));
     },
     async countDocumentsForDeal(dealId) {
@@ -384,6 +402,26 @@ export function createMemoryIngestionStore(seed?: {
     async findDealByOcid(ocid) {
       return state.deals.find((deal) => deal.ocid === ocid) ?? null;
     },
+    async findDealByPortalReference(sourceKeys, reference) {
+      const ids = new Set(
+        state.sources
+          .filter((source) => sourceKeys.includes(source.sourceKey))
+          .map((source) => source.id),
+      );
+      const token = reference.trim().toLowerCase();
+      const owned = state.deals.filter(
+        (deal) => deal.primarySourceId != null && ids.has(deal.primarySourceId),
+      );
+      return (
+        owned.find((deal) => deal.reference?.trim().toLowerCase() === token) ??
+        owned.find(
+          (deal) =>
+            textHasReferenceToken(reference, deal.sourceTitle) ||
+            textHasReferenceToken(reference, deal.sourceDescription),
+        ) ??
+        null
+      );
+    },
     async findDealBySourceReference(sourceId, reference) {
       return (
         state.deals.find(
@@ -397,6 +435,13 @@ export function createMemoryIngestionStore(seed?: {
           (deal) =>
             deal.buyerOrganizationId === buyerOrganizationId &&
             deal.normalizedTitle === normalizedTitle,
+        ) ?? null
+      );
+    },
+    async findDealByNormalizedTitle(normalizedTitle) {
+      return (
+        state.deals.find(
+          (deal) => deal.normalizedTitle === normalizedTitle && deal.dealType === "GRANT",
         ) ?? null
       );
     },
@@ -529,6 +574,7 @@ export function createMemoryIngestionStore(seed?: {
         sourceNoticeId: input.sourceNoticeId ?? null,
         criterionName: input.criterionName,
         criterionDescription: input.criterionDescription ?? null,
+        weightPercent: input.weightPercent ?? null,
       });
     },
     async findAward(dealId, awardIdentifier) {
@@ -661,6 +707,8 @@ export function createMemoryIngestionStore(seed?: {
         dealId: input.dealId,
         cpvCode: input.cpvCode ?? null,
         lotId: input.lotId ?? null,
+        sourceDescription: input.sourceDescription ?? null,
+        isPrimary: input.isPrimary ?? false,
       });
     },
     async insertDataChange(input) {

@@ -1,0 +1,246 @@
+import { CheckIcon } from "lucide-react";
+import Link from "next/link";
+import type { ReactNode } from "react";
+
+import { CheckoutPlanForm } from "@/components/billing/checkout-plan-form";
+import { FoundingCheckoutButton } from "@/components/billing/founding-checkout-button";
+import {
+  FoundingButtonLabel,
+  FoundingPriceLead,
+  ProAnnualButtonLabel,
+  ProAnnualPriceLead,
+} from "@/components/billing/founding-price";
+import { Heading, Text } from "@/components/layout/heading";
+import { Button } from "@/components/ui/button";
+import { signupPathForPlan, signupPathWithNext } from "@/lib/auth/redirect";
+import type { CheckoutPlanKey } from "@/lib/billing/types";
+import {
+  FOUNDING_COPY,
+  foundingSignupPath,
+  foundingSoldOutNote,
+  foundingUiState,
+  type FoundingPublicCount,
+  type FoundingUiState,
+} from "@/lib/billing/founding-ui";
+import { DISPLAY_PRICING, FEATURE_LIMITS } from "@/lib/constants";
+import { cn } from "@/lib/utils";
+
+const FREE_FEATURES = [
+  "Browse live deal previews",
+  "Sector, region and value band",
+  "Closing dates",
+  `Save up to ${FEATURE_LIMITS.FREE.savedDeals} opportunities`,
+] as const;
+
+const PRO_FEATURES = [
+  "Buyer, reference number and original source",
+  "Tender documents and named contacts",
+  "Full details on every deal",
+  "Saved searches and alerts",
+] as const;
+
+const FOUNDING_BUTTON =
+  "w-full bg-[#00806A] text-white hover:bg-[#006b56]";
+
+function splitPrice(label: string): { amount: string; period: string } {
+  const slash = label.indexOf("/");
+  if (slash === -1) return { amount: label, period: "" };
+  return { amount: label.slice(0, slash), period: label.slice(slash) };
+}
+
+function FeatureList({ items }: { items: readonly string[] }) {
+  return (
+    <ul className="mt-6 flex flex-col gap-3 text-sm leading-5 text-foreground">
+      {items.map((item) => (
+        <li key={item} className="flex gap-2">
+          <CheckIcon className="mt-0.5 size-4 shrink-0 text-dealatlas-teal" aria-hidden="true" />
+          <span>{item}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function Price({ label }: { label: string }) {
+  const price = splitPrice(label);
+  return (
+    <p className="mt-4 text-4xl font-semibold tracking-tight text-foreground tabular-nums">
+      {price.amount}
+      {price.period ? (
+        <span className="text-base font-medium text-muted-foreground">{price.period}</span>
+      ) : null}
+    </p>
+  );
+}
+
+function PlanCard({
+  className,
+  children,
+}: {
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    <section
+      className={cn(
+        "relative flex h-full flex-col rounded-lg border border-border bg-background p-6",
+        className,
+      )}
+    >
+      {children}
+    </section>
+  );
+}
+
+function PlanCta({
+  signedIn,
+  planKey,
+  label,
+  variant = "outline",
+  buttonClassName,
+  analyticsPlan,
+}: {
+  signedIn: boolean;
+  planKey: CheckoutPlanKey;
+  label: ReactNode;
+  variant?: "default" | "outline";
+  buttonClassName?: string;
+  analyticsPlan?: "founding";
+}) {
+  if (!signedIn) {
+    return (
+      <Button asChild variant={variant} className={cn("h-11 w-full", buttonClassName)}>
+        <Link href={signupPathForPlan(planKey)}>{label}</Link>
+      </Button>
+    );
+  }
+  return (
+    <CheckoutPlanForm
+      planKey={planKey}
+      label={label}
+      showPrice={false}
+      variant={variant}
+      returnTo="/pricing"
+      analyticsPlan={analyticsPlan}
+      className="w-full"
+      buttonClassName={cn("w-full", buttonClassName)}
+    />
+  );
+}
+
+export function PricingPlans({
+  signedIn,
+  founding,
+  state: stateProp,
+}: {
+  signedIn: boolean;
+  founding?: FoundingPublicCount;
+  state?: Exclude<FoundingUiState, "hidden">;
+}) {
+  const state = founding ? foundingUiState(founding) : (stateProp ?? "hidden");
+  // Founding full, hidden or not offered: the card disappears and the grid reflows to three plans.
+  const showFounding = state === "available";
+  const soldOut = state === "sold_out";
+  const annualVariant = showFounding ? "outline" : "default";
+
+  return (
+    <>
+      <div className="mx-auto flex max-w-3xl flex-col gap-3 text-center">
+        <Heading>Pricing</Heading>
+        <Text variant="muted">Every Pro plan unlocks the same features.</Text>
+        <p className="text-sm text-pretty text-muted-foreground">
+          Pro access starts only after payment is confirmed.
+        </p>
+      </div>
+      <div
+        className={cn(
+          "grid items-stretch gap-6 pt-3",
+          showFounding ? "lg:grid-cols-4" : "lg:grid-cols-3",
+        )}
+      >
+        <PlanCard className={cn(showFounding ? "order-2 lg:order-1" : "order-1")}>
+          <h2 className="font-heading text-xl font-semibold text-balance">Free</h2>
+          <p className="mt-4 text-4xl font-semibold tracking-tight tabular-nums">£0</p>
+          <p className="mt-1 text-sm text-muted-foreground">{FOUNDING_COPY.freeNote}</p>
+          <FeatureList items={FREE_FEATURES} />
+          <div className="mt-auto pt-6">
+            <Button asChild variant="outline" className="h-11 w-full">
+              <Link href={signedIn ? "/deals" : signupPathWithNext("/pricing")}>
+                {signedIn ? FOUNDING_COPY.browse : FOUNDING_COPY.createAccount}
+              </Link>
+            </Button>
+          </div>
+        </PlanCard>
+
+        {showFounding ? (
+          <PlanCard className="order-1 border-2 border-dealatlas-teal bg-[color-mix(in_srgb,var(--teal)_8%,var(--background))] lg:order-2">
+            <p className="absolute -top-3 left-6 rounded-full bg-[#00806A] px-2.5 py-0.5 text-xs font-medium text-white">
+              {FOUNDING_COPY.badge}
+            </p>
+            <h2 className="font-heading text-xl font-semibold text-balance">{FOUNDING_COPY.title}</h2>
+            <FoundingPriceLead className="mt-4" />
+            <p className="mt-4 text-[0.8125rem] leading-5 text-muted-foreground">{FOUNDING_COPY.rechecked}</p>
+            <FeatureList items={PRO_FEATURES} />
+            <div className="mt-auto flex flex-col gap-3 pt-6">
+              {signedIn ? (
+                <FoundingCheckoutButton
+                  label={<FoundingButtonLabel text={FOUNDING_COPY.cta} />}
+                  returnTo="/pricing"
+                  buttonClassName={FOUNDING_BUTTON}
+                />
+              ) : (
+                <Button asChild className={cn("h-auto min-h-11 w-full whitespace-normal py-2", FOUNDING_BUTTON)}>
+                  <Link href={foundingSignupPath()}><FoundingButtonLabel text={FOUNDING_COPY.cta} /></Link>
+                </Button>
+              )}
+              <p className="text-center text-[0.8125rem] leading-5 text-pretty text-muted-foreground">
+                {FOUNDING_COPY.cancelTerms}
+              </p>
+            </div>
+          </PlanCard>
+        ) : null}
+
+        <PlanCard className="order-3">
+          <h2 className="font-heading text-xl font-semibold text-balance">Pro monthly</h2>
+          <Price label={DISPLAY_PRICING.proMonthly} />
+          <p className="mt-1 text-sm text-muted-foreground">{FOUNDING_COPY.monthlyNote}</p>
+          <FeatureList items={PRO_FEATURES} />
+          <div className="mt-auto pt-6">
+            <PlanCta
+              signedIn={signedIn}
+              planKey="PRO_MONTHLY"
+              label={FOUNDING_COPY.startMonthly}
+            />
+          </div>
+        </PlanCard>
+
+        <PlanCard
+          className={cn("order-4", !showFounding && "border-2 border-primary")}
+        >
+          {!showFounding ? (
+            <p className="absolute -top-3 left-6 rounded-full bg-primary px-2.5 py-0.5 text-xs font-medium text-primary-foreground">
+              {FOUNDING_COPY.recommended}
+            </p>
+          ) : null}
+          <h2 className="font-heading text-xl font-semibold text-balance">Pro annual</h2>
+          <ProAnnualPriceLead className="mt-4" />
+          <p className="mt-1 text-sm text-muted-foreground">{FOUNDING_COPY.annualSaving}</p>
+          <FeatureList items={PRO_FEATURES} />
+          <div className="mt-auto pt-6">
+            <PlanCta
+              signedIn={signedIn}
+              planKey="PRO_ANNUAL"
+              label={<ProAnnualButtonLabel text={FOUNDING_COPY.startAnnual} />}
+              variant={annualVariant}
+            />
+          </div>
+        </PlanCard>
+      </div>
+      {soldOut ? (
+        <p className="mx-auto max-w-xl rounded-lg bg-muted px-4 py-3 text-center text-sm text-pretty text-muted-foreground">
+          {foundingSoldOutNote()}
+        </p>
+      ) : null}
+    </>
+  );
+}

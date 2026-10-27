@@ -48,7 +48,7 @@ describe("supabase migrations", () => {
   const files = listMigrations();
   const sql = files.map(readMigration).join("\n");
 
-  it("are numbered 0001-0025 then 0028 and 0031, leaving 0026, 0027, 0029 and 0030 for open pull requests", () => {
+  it("are numbered 0001-0026, 0028-0030, 0040-0043, 0046, 0047, 0049, 0051 and 0053, leaving 0027, 0031-0039, 0044-0045, 0048, 0050 and 0052 for open pull requests", () => {
     expect(files).toEqual([
       "0001_extensions_and_types.sql",
       "0002_core_schema.sql",
@@ -75,24 +75,128 @@ describe("supabase migrations", () => {
       "0023_contracts_finder_ocds.sql",
       "0024_service_role_statement_timeout.sql",
       "0025_publish_upcoming_and_biddable_sort.sql",
+      "0026_legacy_public_slugs.sql",
       "0028_publish_all_compliant_sources.sql",
-      "0031_ted_search_api.sql",
+      "0029_founding_member_slots.sql",
+      "0030_founding_availability_and_claims.sql",
+      "0040_publish_unknown_terms_sources.sql",
+      "0041_preview_detail_allowlist.sql",
+      "0042_gca_and_nhs_sources.sql",
+      "0043_grant_sources.sql",
+      "0046_search_preview_dtos_page_first.sql",
+      "0047_founding_cancel_ends_membership.sql",
+      "0049_ted_search_api.sql",
+      "0051_match_data_pro_only.sql",
+      "0053_search_preview_dtos_categories.sql",
     ]);
   });
 
-  it("adds a disabled TED Search API source and does not publish it", () => {
-    const sql = readMigration("0031_ted_search_api.sql");
-    expect(sql).toContain("'ted'");
-    expect(sql).toContain("'JSON_API'");
-    expect(sql).toContain("'OPEN_LICENSE'");
-    expect(sql).toContain("https://ted.europa.eu/en/legal-notice");
-    expect(sql).toContain("European Union");
-    expect(sql).toContain("Do not use the TED logo");
-    expect(sql).toContain("notice-type");
-    expect(sql).toContain("deadline-receipt-request");
-    expect(sql).toContain("place-of-performance");
-    expect(sql).toMatch(/'OPEN_LICENSE',\n\s*false,\n\s*false,/);
-    expect(sql).not.toMatch(/enabled = excluded\.enabled/);
+  it("0053 adds a multi-raw category filter to search_preview_dtos without changing its contract", () => {
+    const m = readMigration("0053_search_preview_dtos_categories.sql");
+    expect(m).toContain("drop function if exists public.search_preview_dtos(");
+    expect(m).toContain("create function public.search_preview_dtos(");
+    expect(m).toContain("p_categories text[] default null");
+    expect(m).toContain("dp.main_category = any(p_categories)");
+    expect(m).toContain("coalesce(private.is_user_pro(auth.uid()), false)");
+    expect(m).toContain("private.preview_dto_requirements(p.requirements_preview)");
+    expect(m).toContain("private.preview_dto_reasons(p.match_reasons)");
+    expect(m).toContain("p.total_count");
+
+    const returns = m.slice(
+      m.indexOf("returns table (", m.indexOf("create function public.search_preview_dtos(")),
+      m.indexOf("language sql", m.indexOf("create function public.search_preview_dtos(")),
+    );
+    for (const column of [
+      "slug",
+      "preview_title",
+      "preview_summary",
+      "deal_type",
+      "buyer_sector",
+      "stage",
+      "status",
+      "main_category",
+      "broad_region",
+      "value_band",
+      "deadline_band",
+      "duration_band",
+      "sme_suitability",
+      "bid_complexity",
+      "competition_level",
+      "requirements_preview",
+      "relevance_tags",
+      "freshness_label",
+      "relevance_score",
+      "preview_reasons",
+      "total_count",
+    ]) {
+      expect(returns, column).toMatch(new RegExp(String.raw`\b${column}\b`));
+    }
+    expect(returns).not.toMatch(/\bdeal_id\b/);
+
+    expect(m).toMatch(
+      /grant execute on function public\.search_preview_dtos\([\s\S]*?text\[\][\s\S]*?\) to anon, authenticated, service_role;/,
+    );
+  });
+
+  it("0053 gives the export RPCs p_categories and keeps them service-role only", () => {
+    const m = readMigration("0053_search_preview_dtos_categories.sql");
+    for (const fn of ["search_deal_previews", "search_deal_previews_for_profile"]) {
+      expect(m).toContain(`drop function if exists public.${fn}(`);
+      expect(m).toContain(`create function public.${fn}(`);
+      expect(m).toMatch(
+        new RegExp(String.raw`create function public\.${fn}\([\s\S]*?p_categories text\[\] default null[\s\S]*?\)`, "i"),
+      );
+      expect(m).toMatch(
+        new RegExp(String.raw`revoke all on function public\.${fn}\([\s\S]*?\) from public, anon, authenticated;`),
+      );
+      expect(m).toMatch(
+        new RegExp(String.raw`grant execute on function public\.${fn}\([\s\S]*?\) to service_role;`),
+      );
+      expect(m).not.toMatch(
+        new RegExp(String.raw`grant execute on function public\.${fn}\([\s\S]*?\) to [^;]*\b(anon|authenticated)\b`),
+      );
+    }
+  });
+
+  it("0047 ends founding on cancel, keeps the place used, and refuses rejoin", () => {
+    const m = readMigration("0047_founding_cancel_ends_membership.sql");
+    expect(m).toContain("status in ('active', 'ended')");
+    expect(m).toContain("set founding_member = false");
+    expect(m).toContain("return 'ineligible';");
+    expect(m).not.toContain("return 'active';");
+    expect(m).not.toMatch(/delete\s+from\s+private\.founding_slots/i);
+  });
+
+  it("keeps founding slots private and capped", () => {
+    const sql = readMigration("0029_founding_member_slots.sql");
+    expect(sql).toContain("private.founding_slots");
+    expect(sql).toContain("pg_advisory_xact_lock");
+    expect(sql).toContain("v_held >= 25");
+    expect(sql).toContain("v_others < 25");
+    expect(sql).toContain("private.founding_cap_fallbacks");
+    expect(sql).toContain("return 'standard'");
+    expect(sql).not.toMatch(/set founding_member = false/);
+    expect(sql).toContain("interval '30 minutes'");
+    expect(sql).toContain("revoke all on table private.founding_slots from public, anon, authenticated, service_role");
+    expect(sql).not.toMatch(/disable row level security/i);
+  });
+
+  it("claims one founder per event and per subscription", () => {
+    const sql = readMigration("0030_founding_availability_and_claims.sql");
+    expect(sql).toContain("provider_event_id text primary key");
+    expect(sql).toContain("unique (dodo_subscription_id)");
+    expect(sql).toContain("when unique_violation then");
+    expect(sql).toContain(
+      "revoke all on table private.founding_event_claims from public, anon, authenticated, service_role",
+    );
+    expect(sql).not.toMatch(/disable row level security/i);
+  });
+
+  it("publishes enabled UNKNOWN terms and keeps prohibited or unscrapeable sources out", () => {
+    const sql = readMigration("0040_publish_unknown_terms_sources.sql");
+    expect(sql).toContain("'UNKNOWN'::public.reuse_status");
+    expect(sql).toContain("s.reuse_status <> 'PROHIBITED'::public.reuse_status");
+    expect(sql).not.toContain("scraping_permitted");
     expect(sql).not.toMatch(/disable row level security/i);
   });
 
@@ -105,6 +209,13 @@ describe("supabase migrations", () => {
     expect(sql).not.toMatch(/disable row level security/i);
   });
 
+  it("refuses legacy public slugs from the preview DTO", () => {
+    const sql = readMigration("0026_legacy_public_slugs.sql");
+    expect(sql).toContain("private.preview_slug_is_legacy");
+    expect(sql).toContain("and not private.preview_slug_is_legacy(dp.slug, dp.deal_id)");
+    expect(sql).toContain("revoke all on function private.preview_slug_is_legacy(text, uuid)");
+  });
+
   it("publishes undated upcoming notices and sorts biddable deals first", () => {
     const sql = readMigration("0025_publish_upcoming_and_biddable_sort.sql");
     expect(sql).toContain("UPCOMING with a null deadline stays published");
@@ -112,6 +223,26 @@ describe("supabase migrations", () => {
     expect(sql).toContain("p_sort text default 'updated'");
     expect(sql).not.toMatch(/enforce_preview_safety/);
     expect(sql).not.toMatch(/disable row level security/i);
+  });
+
+  it("0046 pages search_preview_dtos before building DTO columns, with the same sort and helpers", () => {
+    const m = readMigration("0046_search_preview_dtos_page_first.sql");
+    const page = m.indexOf("paged as (");
+    const limit = m.indexOf("limit greatest(1, least(coalesce(p_limit, 20), 50))");
+    const helpers = m.indexOf("private.preview_dto_requirements(p.requirements_preview)");
+    expect(page).toBeGreaterThan(0);
+    expect(limit).toBeGreaterThan(page);
+    expect(helpers).toBeGreaterThan(limit);
+    expect(m.slice(page, limit)).not.toMatch(/private\.preview_dto_/);
+    expect(m).toContain("private.preview_dto_reasons(p.match_reasons)");
+    expect(m).toContain("private.preview_freshness_label(p.created_at, p.updated_at)");
+    expect(m).toContain("p.relevance_tags[1:12]");
+    expect(m).toContain("count(*) over () as total_count");
+    expect(m).toContain("when lower(coalesce(p_sort, 'updated')) = 'biddable' and r.status = 'CLOSING_SOON'::public.deal_status then 0");
+    expect(m).toContain("where dp.is_published = true\n      and dp.leakage_risk = 'LOW'\n      and dp.unpublished_by_admin = false");
+    expect(m).toContain("security definer");
+    expect(m).not.toMatch(/\b(grant|revoke)\b/i);
+    expect(m).not.toMatch(/disable row level security/i);
   });
 
   it("keeps search_deal_previews on deal_previews only after filter extension", () => {
@@ -280,6 +411,54 @@ describe("supabase migrations", () => {
     expect(sql).not.toMatch(grantPattern);
   });
 
+  it("0041 keeps the rich-preview filter fail-closed and private (S&B PR42)", () => {
+    const m = readMigration("0041_preview_detail_allowlist.sql");
+    expect(m).toContain("create or replace function private.preview_detail_text_risky(p text)");
+    expect(m).toContain("not private.preview_detail_text_risky(i.body)");
+    expect(m).toContain(
+      "revoke execute on function private.preview_dto_requirements(jsonb) from public, anon, authenticated;",
+    );
+    expect(m).toContain(
+      "revoke execute on function private.preview_detail_text_risky(text) from public, anon, authenticated;",
+    );
+    expect(m).toContain("private.preview_dto_requirements(ranked.requirements_preview)");
+    expect(m).toContain("private.preview_detail_findings(p_preview_title, p_preview_summary, p_requirements)");
+    // Banned quasi-identifier fields are not in any allow-list.
+    expect(m).not.toMatch(/when '(lotCount|procedureType|framework)' then/);
+    expect(m).not.toMatch(/grant\s+execute[^;]*to\s+(anon|authenticated)/i);
+  });
+
+  it("0041 vocabularies match the TypeScript sources", async () => {
+    const m = readMigration("0041_preview_detail_allowlist.sql");
+    const q = (value: string) => `'${value.replace(/'/g, "''")}'`;
+    const { CPV_DIVISION_TITLES } = await import("@/lib/preview/cpv-label");
+    const { BROAD_REGIONS } = await import("@/lib/preview/region");
+    const { REQUIREMENT_PREVIEW_LABELS } = await import("@/lib/preview/labels");
+    const { PORTAL_TERMS, FRAMEWORK_TERMS, SAFE_UPPERCASE_TOKENS } = await import("@/lib/preview/risk");
+    for (const value of [
+      ...CPV_DIVISION_TITLES,
+      ...BROAD_REGIONS,
+      ...REQUIREMENT_PREVIEW_LABELS,
+      ...PORTAL_TERMS,
+      ...FRAMEWORK_TERMS,
+      ...SAFE_UPPERCASE_TOKENS,
+    ]) {
+      expect(m, value).toContain(q(value));
+    }
+  });
+
+  it("seeds blocked grant portals as prohibited and disabled", () => {
+    const sql = readMigration("0043_grant_sources.sql");
+    for (const key of ["etendersni", "ukri-funding-finder"]) {
+      const row = sql.slice(sql.indexOf(`'${key}'`));
+      expect(row).toContain("'PROHIBITED'");
+      expect(row.slice(0, 700)).toContain("false");
+    }
+    expect(sql).toContain("Cloudflare/WAF");
+    expect(sql).toContain("electronic reproduction");
+    expect(sql).not.toMatch(/disable row level security/i);
+  });
+
   it("keep the combined schema file in sync with migrations", () => {
     const bundled = fs.readFileSync(
       path.join(ROOT, "supabase", "dealatlas_full_schema.sql"),
@@ -287,4 +466,33 @@ describe("supabase migrations", () => {
     );
     expect(bundled).toBe(expectedBundle(files));
   });
+
+  it("returns match data from the preview DTOs only to Pro viewers", () => {
+    const body = readMigration("0051_match_data_pro_only.sql");
+    expect(body).toContain("create or replace function public.search_preview_dtos(");
+    expect(body).toContain("create or replace function public.get_preview_dto_by_slug(");
+    expect(body).toContain("create or replace function public.get_preview_dto_by_deal_id(");
+    expect(body.match(/coalesce\(private\.is_user_pro\(auth\.uid\(\)\), false\)/g)).toHaveLength(3);
+    expect(body).toContain("when o.requested_sort = 'relevance' and not o.pro then 'biddable'");
+    expect(body).toContain("case when o.pro then p_min_score end as min_score");
+    expect(body).not.toContain("p_min_score is null or");
+    expect(body).not.toMatch(/lower\(coalesce\(p_sort, 'updated'\)\) = 'relevance'/);
+  });
+
+  it("adds a disabled TED Search API source and does not publish it", () => {
+    const sql = readMigration("0049_ted_search_api.sql");
+    expect(sql).toContain("'ted'");
+    expect(sql).toContain("'JSON_API'");
+    expect(sql).toContain("'OPEN_LICENSE'");
+    expect(sql).toContain("https://ted.europa.eu/en/legal-notice");
+    expect(sql).toContain("European Union");
+    expect(sql).toContain("Do not use the TED logo");
+    expect(sql).toContain("notice-type");
+    expect(sql).toContain("deadline-receipt-request");
+    expect(sql).toContain("place-of-performance");
+    expect(sql).toMatch(/'OPEN_LICENSE',\n\s*false,\n\s*false,/);
+    expect(sql).not.toMatch(/enabled = excluded\.enabled/);
+  });
+
 });
+

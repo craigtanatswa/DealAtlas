@@ -88,7 +88,11 @@ describe("preview generation from canonical records", () => {
     expect(preview.smeSuitability).toBe("HIGH");
     expect(preview.slug).toMatch(/^[a-z0-9]+(?:-[a-z0-9]+)*-[0-9a-f]{8}$/);
     expect(preview.slug.endsWith(deal.id.replace(/-/g, "").slice(0, 8))).toBe(false);
-    expect(preview.requirementsPreview.every((item) => (REQUIREMENT_PREVIEW_LABELS as readonly string[]).includes(item))).toBe(true);
+    const detailLines = preview.requirementsPreview.filter((item) => /^[a-z][A-Za-z0-9]+: /.test(item));
+    const labels = preview.requirementsPreview.filter((item) => !/^[a-z][A-Za-z0-9]+: /.test(item));
+    expect(labels.every((item) => (REQUIREMENT_PREVIEW_LABELS as readonly string[]).includes(item))).toBe(true);
+    expect(detailLines.some((item) => item.startsWith("goodsServices:"))).toBe(true);
+    expect(preview.requirementsPreview.join(" ")).not.toMatch(/\b\d{8}\b/);
     expect(preview.previewTitle.toLowerCase()).not.toBe(deal.sourceTitle.toLowerCase());
     expect(combined).not.toContain("Example City Council");
     expect(combined).not.toContain("ocds-h6vhtk-fixture1");

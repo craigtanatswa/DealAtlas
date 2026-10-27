@@ -3,7 +3,11 @@ import type { WebhookPayload } from "@dodopayments/core/schemas";
 
 import { toIsoDate } from "@/lib/billing/event-id";
 import { CHECKOUT_METADATA_KEYS, readMetadataString } from "@/lib/billing/metadata";
-import { mapProductId, type PlanProductMap } from "@/lib/billing/plans";
+import {
+  mapProductId,
+  webhookAcceptedProductIds,
+  type PlanProductMap,
+} from "@/lib/billing/plans";
 import { mapDodoSubscriptionStatus } from "@/lib/billing/status";
 import type {
   IncomingBillingEvent,
@@ -71,7 +75,8 @@ export function snapshotFromSubscriptionFields(
     ),
     currentPeriodEnd: toIsoDate(data.next_billing_date as Date | string | undefined),
     cancelledAt: toIsoDate(data.cancelled_at as Date | string | null | undefined),
-    productKnown: Boolean(mapped),
+    productKnown:
+      Boolean(mapped) && webhookAcceptedProductIds(products).includes(productId),
   };
 }
 

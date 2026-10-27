@@ -1,19 +1,20 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 
-import { DealKeywordForm } from "@/components/deals/deal-keyword-form";
 import { DealSortForm } from "@/components/deals/deal-sort-form";
-import {
-  DealActiveFilters,
-  DealSearchFilterDrawer,
-  DealSearchFilterRail,
-} from "@/components/deals/deal-search-filters";
+import { DealSearchPanel } from "@/components/deals/deal-search-filters";
 import { DealSearchResults } from "@/components/deals/deal-search-results";
 import { PageHeader } from "@/components/layout/page-header";
 import { Main } from "@/components/layout/container";
 import { getAuthUser } from "@/lib/auth/session";
 import { searchDealPreviewsForUser } from "@/lib/matching/search";
 import { getAppOrigin } from "@/lib/auth/urls";
-import { hasActivePublicFilters, parsePublicSearchParams } from "@/lib/search/params";
+import {
+  hasActivePublicFilters,
+  isPublicDealsPageOutOfRange,
+  parsePublicSearchParams,
+  PUBLIC_DEALS_PAGE_SIZE,
+} from "@/lib/search/params";
 import { publicDealsIndexMetadata } from "@/lib/search/metadata";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -38,48 +39,40 @@ export async function generateMetadata({
 
 export default async function DealsIndexPage({ searchParams }: PageProps) {
   const params = await searchParams;
+  const requestedPage = parsePublicSearchParams(params).page;
   const client = await createSupabaseServerClient();
   const user = await getAuthUser();
-  const { filters, result, companyProfileId } = await searchDealPreviewsForUser({
+  const { filters, result, matchEnabled } = await searchDealPreviewsForUser({
     client,
     searchParams: params,
     userId: user?.id,
     defaultSort: "biddable",
+    pageSize: PUBLIC_DEALS_PAGE_SIZE,
   });
+  const showRelevance = matchEnabled;
+
+  if (isPublicDealsPageOutOfRange(requestedPage, result.total, filters.limit)) {
+    notFound();
+  }
 
   return (
-    <Main className="gap-8">
+    <Main back className="gap-8">
       <PageHeader
         title="Discover opportunities"
         description="Browse contracts, supply requests and deals. Join DealAtlas Pro to unlock buyer identity, original notices, and how to apply."
       />
-      <div className="sticky top-16 z-20 flex flex-col gap-3 border-b border-border bg-background py-3">
-        <div className="flex items-end gap-3">
-          <div className="min-w-0 flex-1">
-            <DealKeywordForm filters={filters} />
-          </div>
-          <DealSortForm filters={filters} />
-        </div>
-        <DealSearchFilterDrawer
-          filters={filters}
-          showRelevance={Boolean(companyProfileId)}
-          publicStatus
-        />
-      </div>
-      <DealActiveFilters filters={filters} />
-      <div className="grid gap-8 lg:grid-cols-[17rem_minmax(0,1fr)]">
-        <DealSearchFilterRail
-          filters={filters}
-          showRelevance={Boolean(companyProfileId)}
-          publicStatus
-        />
-        <DealSearchResults
-          result={result}
-          filters={filters}
-          publicSearch
-          signedIn={Boolean(user)}
-        />
-      </div>
+      <DealSearchPanel
+        filters={filters}
+        showRelevance={showRelevance}
+        publicStatus
+      />
+      <DealSearchResults
+        result={result}
+        filters={filters}
+        publicSearch
+        signedIn={Boolean(user)}
+        sort={<DealSortForm filters={filters} showRelevance={showRelevance} />}
+      />
     </Main>
   );
 }

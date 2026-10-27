@@ -1,3 +1,4 @@
+import { FoundingPriceInline } from "@/components/billing/founding-price";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -8,6 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { FOUNDING_COPY } from "@/lib/billing/founding-ui";
 import { accessUntilCopy, formatBillingDate, planLabel, STATUS_LABELS } from "@/lib/billing/display";
 import { isProEntitlement } from "@/lib/entitlements/policy";
 import type { EntitlementSnapshot } from "@/lib/entitlements/types";
@@ -25,9 +27,11 @@ function statusVariant(status: EntitlementSnapshot["status"]) {
 export function BillingSummary({
   entitlement,
   hasCustomerPortal,
+  foundingMember = false,
 }: {
   entitlement: EntitlementSnapshot;
   hasCustomerPortal: boolean;
+  foundingMember?: boolean;
 }) {
   const periodEnd = formatBillingDate(entitlement.currentPeriodEnd);
   const accessUntil = accessUntilCopy(entitlement);
@@ -45,12 +49,20 @@ export function BillingSummary({
       <CardContent className="grid gap-4">
         <div className="flex flex-wrap items-center gap-2">
           <p className="font-heading text-xl font-semibold tracking-tight">
-            {pro ? planLabel(entitlement.planKey, entitlement.billingInterval) : "Free"}
+            {pro ? planLabel(entitlement.planKey, entitlement.billingInterval, foundingMember) : "Free"}
           </p>
           <Badge variant={statusVariant(entitlement.status)}>
             {STATUS_LABELS[entitlement.status] ?? entitlement.status}
           </Badge>
         </div>
+        {pro && foundingMember ? (
+          <div className="space-y-1">
+            <FoundingPriceInline className="text-lg" />
+            <p className="text-[0.9375rem] leading-6 text-muted-foreground">
+              {FOUNDING_COPY.priceLocked}
+            </p>
+          </div>
+        ) : null}
         <dl className="grid gap-3 text-[0.9375rem] leading-6">
           <div>
             <dt className="text-muted-foreground">Billing interval</dt>

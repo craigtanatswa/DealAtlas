@@ -1,4 +1,5 @@
 import { CheckoutPlanForm } from "@/components/billing/checkout-plan-form";
+import { FoundingUnlockActions } from "@/components/billing/founding-unlock-actions";
 import { LockedField } from "@/components/deals/locked-field";
 import { Button } from "@/components/ui/button";
 import {
@@ -8,6 +9,11 @@ import {
   CardFooter,
   CardHeader,
 } from "@/components/ui/card";
+import {
+  foundingUiState,
+  type FoundingPublicCount,
+} from "@/lib/billing/founding-ui";
+import { signupPathForPlan } from "@/lib/auth/redirect";
 import Link from "next/link";
 
 export const LOCKED_INTELLIGENCE_FIELDS = [
@@ -16,7 +22,6 @@ export const LOCKED_INTELLIGENCE_FIELDS = [
   { label: "Official notice", benefit: "Subscription required" },
   { label: "Reference number", benefit: "Unlock full details" },
   { label: "Documents and requirements", benefit: "Documents and requirements" },
-  { label: "Buyer and competitor intelligence", benefit: "Buyer/competitor intelligence" },
 ] as const;
 
 export type UnlockCtaMode = "anonymous" | "free" | "pro";
@@ -25,9 +30,10 @@ export function UnlockPanel({
   heading = "Unlock the buyer and pursue this opportunity",
   fields = LOCKED_INTELLIGENCE_FIELDS,
   mode = "anonymous",
-  loginHref = "/login?next=/pricing",
   revealHref,
   returnTo,
+  founding,
+  hasScope = false,
 }: {
   heading?: string;
   fields?: readonly { label: string; benefit: string }[];
@@ -35,6 +41,9 @@ export function UnlockPanel({
   loginHref?: string;
   revealHref?: string;
   returnTo?: string;
+  /** Counts only. Omitted, or not offered, keeps the standard Pro CTA. */
+  founding?: FoundingPublicCount;
+  hasScope?: boolean;
 }) {
   if (mode === "pro") {
     return (
@@ -57,6 +66,8 @@ export function UnlockPanel({
     );
   }
 
+  const foundingState = foundingUiState(founding);
+
   return (
     <Card>
       <CardHeader>
@@ -64,8 +75,9 @@ export function UnlockPanel({
           {heading}
         </h2>
         <CardDescription>
-          You already have the commercial context. Pro reveals who is buying,
-          the original notice, and how to apply after a verified subscription.
+          {hasScope
+            ? "You already have the commercial context. Pro reveals who is buying, the original notice, and how to apply after a verified subscription."
+            : "Pro reveals who is buying, the original notice, and how to apply after a verified subscription."}
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-2 sm:grid-cols-2">
@@ -77,21 +89,37 @@ export function UnlockPanel({
           />
         ))}
       </CardContent>
-      <CardFooter className="flex flex-wrap items-center gap-3">
-        {mode === "free" ? (
-          <CheckoutPlanForm
-            planKey="PRO_MONTHLY"
-            label="Unlock with DealAtlas Pro"
+      <CardFooter
+        className={
+          foundingState === "hidden"
+            ? "flex flex-wrap items-center gap-3"
+            : "flex-col items-stretch gap-2"
+        }
+      >
+        {foundingState === "hidden" ? (
+          <>
+            {mode === "free" ? (
+              <CheckoutPlanForm
+                planKey="PRO_MONTHLY"
+                label="Unlock with DealAtlas Pro"
+                returnTo={returnTo}
+              />
+            ) : (
+              <Button asChild>
+                <Link href={signupPathForPlan("PRO_MONTHLY")}>Unlock with DealAtlas Pro</Link>
+              </Button>
+            )}
+            <Button asChild variant="link">
+              <Link href="/pricing">View pricing</Link>
+            </Button>
+          </>
+        ) : (
+          <FoundingUnlockActions
+            founding={founding}
+            mode={mode === "free" ? "free" : "anonymous"}
             returnTo={returnTo}
           />
-        ) : (
-          <Button asChild>
-            <Link href={loginHref}>Unlock with DealAtlas Pro</Link>
-          </Button>
         )}
-        <Button asChild variant="link">
-          <Link href="/pricing">View pricing</Link>
-        </Button>
       </CardFooter>
     </Card>
   );
