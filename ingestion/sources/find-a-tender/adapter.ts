@@ -34,6 +34,8 @@ export type FindATenderAdapterOptions = {
   defaultLookbackHours?: number;
 };
 
+const MAX_EMPTY_PAGES = 20;
+
 export function createFindATenderAdapter(
   options: FindATenderAdapterOptions = {},
 ): SourceAdapter {
@@ -52,46 +54,68 @@ export function createFindATenderAdapter(
         discoverOptions?.updatedFrom ??
         formatOcdsDateTime(new Date(now().getTime() - lookbackHours * 60 * 60 * 1000));
 
-      const url = new URL(FIND_A_TENDER_RELEASE_API);
-      url.searchParams.set("limit", String(limit));
+      const wantedTags = parseWantedTags(discoverOptions?.stages);
       const resumedWindow = cursor ? parseFindATenderCursorWindow(cursor) : null;
       // Find a Tender rejects a cursor unless it is sent with the same
       // updatedFrom/updatedTo window that created it. A new 24h window plus an
       // old cursor, or a cursor with no window, both return HTTP 400.
-      url.searchParams.set("updatedFrom", resumedWindow?.updatedFrom ?? updatedFrom);
-      url.searchParams.set("updatedTo", resumedWindow?.updatedTo ?? updatedTo);
-      if (discoverOptions?.stages) {
-        url.searchParams.set("stages", discoverOptions.stages);
-      }
-      if (cursor) {
-        url.searchParams.set("cursor", cursor);
-      }
+      const windowFrom = resumedWindow?.updatedFrom ?? updatedFrom;
+      const windowTo = resumedWindow?.updatedTo ?? updatedTo;
 
-      const response = await withRetry(() => http.getJson(url.toString()));
-      const pkg = parseReleasePackage(response.body);
-      const items: DiscoveredItem[] = [];
-      for (const release of pkg.releases ?? []) {
-        const record = asRecord(release);
-        const id = asString(record?.id);
-        if (!id) {
-          continue;
+      let pageCursor = cursor;
+      let nextCursor: string | undefined;
+      let items: DiscoveredItem[] = [];
+      let emptyPages = 0;
+
+      while (true) {
+        const url = new URL(FIND_A_TENDER_RELEASE_API);
+        url.searchParams.set("limit", String(limit));
+        url.searchParams.set("updatedFrom", windowFrom);
+        url.searchParams.set("updatedTo", windowTo);
+        // The API `stages` filter only matches PCR 2015 releases and drops
+        // Procurement Act 2023 notices. Keep both by filtering OCDS `tag`
+        // client-side and never sending `stages` to Find a Tender.
+        if (pageCursor) {
+          url.searchParams.set("cursor", pageCursor);
         }
-        items.push({
-          externalRecordId: id,
-          ocid: asString(record?.ocid) ?? undefined,
-          sourceUrl: findATenderNoticeUrl(id),
-          payload: {
-            license: pkg.license,
-            publisher: pkg.publisher,
-            release,
-          },
-        });
+
+        const response = await withRetry(() => http.getJson(url.toString()));
+        const pkg = parseReleasePackage(response.body);
+        const releases = pkg.releases ?? [];
+        nextCursor = cursorFromNextLink(pkg.links?.next);
+
+        items = [];
+        for (const release of releases) {
+          const record = asRecord(release);
+          const id = asString(record?.id);
+          if (!id || !matchesWantedTag(record, wantedTags)) {
+            continue;
+          }
+          items.push({
+            externalRecordId: id,
+            ocid: asString(record?.ocid) ?? undefined,
+            sourceUrl: findATenderNoticeUrl(id),
+            payload: {
+              license: pkg.license,
+              publisher: pkg.publisher,
+              release,
+            },
+          });
+        }
+
+        // The pipeline stops paging on an empty page, so skip pages whose
+        // releases are all unwanted tags and try the next page in this window.
+        if (items.length > 0 || releases.length === 0) {
+          break;
+        }
+        if (!nextCursor || emptyPages + 1 >= MAX_EMPTY_PAGES) {
+          break;
+        }
+        emptyPages += 1;
+        pageCursor = nextCursor;
       }
 
-      return {
-        items,
-        nextCursor: cursorFromNextLink(pkg.links?.next),
-      };
+      return { items, nextCursor };
     },
 
     async fetch(item: DiscoveredItem): Promise<RawSourceRecord> {
@@ -149,6 +173,27 @@ export function createFindATenderAdapter(
       return parseFindATenderRaw(raw.payload, now());
     },
   };
+}
+
+function parseWantedTags(stages?: string): string[] {
+  return (stages ?? "")
+    .split(",")
+    .map((tag) => tag.trim())
+    .filter((tag) => tag.length > 0);
+}
+
+function matchesWantedTag(
+  record: Record<string, unknown> | null,
+  wantedTags: string[],
+): boolean {
+  if (wantedTags.length === 0) {
+    return true;
+  }
+  const tags = record?.tag;
+  const values = Array.isArray(tags) ? tags : [tags];
+  return values.some(
+    (tag) => typeof tag === "string" && wantedTags.includes(tag.trim()),
+  );
 }
 
 function parseFindATenderCursorWindow(

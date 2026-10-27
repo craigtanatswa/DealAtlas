@@ -232,8 +232,14 @@ function publicHost(message: string): string {
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const WINDOW_MS = 7 * DAY_MS;
-const MAX_BACKFILL_DAYS = 366;
+const MAX_BACKFILL_DAYS = 180;
 const MAX_RECORDS = 10000;
+/**
+ * FTS tags kept by the adapter's client-side discover filter. The API `stages`
+ * query param is intentionally not sent: it only matches PCR 2015 releases and
+ * drops Procurement Act 2023 notices, which carry `tag: ["tender"]`.
+ */
+const FIND_A_TENDER_DISCOVER_TAGS = "tender,tenderUpdate";
 
 export function openIngestWindows(
   now: Date,
@@ -254,7 +260,10 @@ export function openIngestWindows(
     });
     cursor = next;
   }
-  return windows;
+  // Newest first so a MAX_RECORDS cap keeps recent open deals. A 180-day
+  // backfill is ~26 windows; at ~24 paced requests per window that is roughly
+  // 100-130 minutes of fetch plus writes, inside the 300-minute job timeout.
+  return windows.reverse();
 }
 
 function emptyCounts(): OpenIngestCounts {
@@ -371,7 +380,10 @@ export async function runOpenFindATenderIngest(options: {
         limit: remaining,
         updatedFrom: window.updatedFrom,
         updatedTo: window.updatedTo,
-        stages: "tender",
+        stages:
+          sourceKey === CONTRACTS_FINDER_SOURCE_KEY
+            ? "tender"
+            : FIND_A_TENDER_DISCOVER_TAGS,
         now,
         force: true,
         pageSize: 100,

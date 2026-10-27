@@ -179,8 +179,9 @@ describe("adversarial source text never reaches a free channel (P1-3, P1-4)", ()
       expect(blob, marker).not.toContain(marker);
     }
     expect(blob).not.toMatch(/https?:\/\/(?!localhost|schema\.org|www\.w3\.org|www\.sitemaps\.org)/);
-    // The slug ends in a random 8-hex suffix that can be all digits; it is
-    // ours, not a source id, so drop it before the 8-digit check.
+    // Slug suffixes are opaque 8-hex and never all-digit; strip any trailing
+    // suffix before the 8-digit check so a future generator change cannot
+    // weaken this assertion.
     const slugSuffix = blob.match(/\/deals\/[a-z0-9-]+-([0-9a-f]{8})\b/)?.[1];
     const withoutSlugSuffix = slugSuffix ? blob.replaceAll(slugSuffix, "") : blob;
     expect(withoutSlugSuffix).not.toMatch(/\b\d{8}\b/);

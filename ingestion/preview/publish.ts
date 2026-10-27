@@ -1,5 +1,3 @@
-import { randomBytes } from "node:crypto";
-
 import { extractDealIntelligence } from "@/ingestion/intelligence/extract";
 import type { LanguageModelProvider } from "@/ingestion/intelligence/provider";
 import { createRulesLanguageModel } from "@/ingestion/intelligence/provider";
@@ -32,10 +30,10 @@ async function allocatePreviewSlug(
   dealId: string,
 ): Promise<string> {
   for (let attempt = 0; attempt < 5; attempt += 1) {
-    const slug = buildPreviewSlug(title, randomBytes(4).toString("hex"));
+    const slug = buildPreviewSlug(title);
     if (!(await store.previewSlugInUse(slug, dealId))) return slug;
   }
-  return buildPreviewSlug(title, randomBytes(4).toString("hex"));
+  return buildPreviewSlug(title);
 }
 
 function insightRecord(dealId: string, intelligence: DealIntelligence): DealInsightRecord {

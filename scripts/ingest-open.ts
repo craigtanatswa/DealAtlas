@@ -10,8 +10,8 @@ function countsFromEnv(): { dryRun: boolean; backfillDays: number } {
     throw new Error("dry_run must be true or false");
   }
   const days = Number(process.env.BACKFILL_DAYS ?? "7");
-  if (!Number.isInteger(days) || days < 1 || days > 366) {
-    throw new Error("backfill_days must be an integer from 1 to 366");
+  if (!Number.isInteger(days) || days < 1 || days > 180) {
+    throw new Error("backfill_days must be an integer from 1 to 180");
   }
   return { dryRun: dry === "true", backfillDays: days };
 }
