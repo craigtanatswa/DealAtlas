@@ -17,6 +17,7 @@ export const DEAL_TYPES = [
   "EARLY_MARKET_ENGAGEMENT",
   "CONTRACT_RENEWAL",
   "AWARD",
+  "GRANT",
 ] as const satisfies ReadonlyArray<Database["public"]["Enums"]["deal_type"]>;
 
 export type DealType = (typeof DEAL_TYPES)[number];
@@ -37,6 +38,7 @@ export const DEAL_TYPE_LABELS: Record<DealType, string> = {
   EARLY_MARKET_ENGAGEMENT: "Early market engagement",
   CONTRACT_RENEWAL: "Contract renewal",
   AWARD: "Award",
+  GRANT: "Grant",
 };
 
 export const DEAL_STATUSES = [

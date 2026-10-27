@@ -58,7 +58,9 @@ async function main() {
     publicIngestErrorLine,
     runOpenCatalogueIngest,
     runOpenContractsFinderIngest,
+    runOpenFindAGrantIngest,
     runOpenFindATenderIngest,
+    runOpenInnovateUkIngest,
   } = await import("@/lib/jobs/ingest-open");
   const { createSupabaseIngestionStore } = await import("@/ingestion/store/supabase");
   const { createIngestionSupabaseClient } = await import(
@@ -72,13 +74,16 @@ async function main() {
   if (
     source !== "find-a-tender" &&
     source !== "contracts-finder" &&
+    source !== "find-a-grant" &&
+    source !== "innovate-uk" &&
     source !== "gca-agreements" &&
     source !== "gca-procurement-pipeline"
   ) {
     throw new Error(
-      "OPEN_INGEST_SOURCE must be find-a-tender, contracts-finder, gca-agreements, or gca-procurement-pipeline",
+      "OPEN_INGEST_SOURCE must be find-a-tender, contracts-finder, find-a-grant, innovate-uk, gca-agreements, or gca-procurement-pipeline",
     );
   }
+  const dealIds = phase === "previews" ? readChangedDealIds(statePath) : undefined;
   const result =
     source === "gca-agreements" || source === "gca-procurement-pipeline"
       ? await runOpenCatalogueIngest({
@@ -86,17 +91,26 @@ async function main() {
           dryRun: phase === "previews" ? false : dryRun,
           phase,
           sourceKey: source,
-          dealIds: phase === "previews" ? readChangedDealIds(statePath) : undefined,
+          dealIds,
         })
-      : await (source === "contracts-finder"
-          ? runOpenContractsFinderIngest
-          : runOpenFindATenderIngest)({
-          store,
-          dryRun: phase === "previews" ? false : dryRun,
-          backfillDays,
-          phase,
-          dealIds: phase === "previews" ? readChangedDealIds(statePath) : undefined,
-        });
+      : source === "find-a-grant" || source === "innovate-uk"
+        ? await (source === "find-a-grant"
+            ? runOpenFindAGrantIngest
+            : runOpenInnovateUkIngest)({
+            store,
+            dryRun: phase === "previews" ? false : dryRun,
+            phase,
+            dealIds,
+          })
+        : await (source === "contracts-finder"
+            ? runOpenContractsFinderIngest
+            : runOpenFindATenderIngest)({
+            store,
+            dryRun: phase === "previews" ? false : dryRun,
+            backfillDays,
+            phase,
+            dealIds,
+          });
   if (phase === "ingest" && statePath && !dryRun) {
     const prior = source === "find-a-tender" ? [] : readChangedDealIds(statePath);
     const ids = [...new Set([...prior, ...result.changedDealIds])];
