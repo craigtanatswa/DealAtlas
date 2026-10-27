@@ -17,6 +17,8 @@ async function main() {
     buildCountsJson: process.env.BUILD_COUNTS,
     ingestOk: process.env.INGEST_OK,
     contractsFinderOk: process.env.CONTRACTS_FINDER_OK,
+    findAGrantOk: process.env.FIND_A_GRANT_OK,
+    innovateUkOk: process.env.INNOVATE_UK_OK,
     gcaAgreementsOk: process.env.GCA_AGREEMENTS_OK,
     gcaPipelineOk: process.env.GCA_PIPELINE_OK,
     buildOk: process.env.BUILD_OK,

@@ -1,4 +1,9 @@
-import { createAllowlistedJsonClient, type JsonHttpClient } from "@/ingestion/core/http";
+import {
+  createAllowlistedJsonClient,
+  createAllowlistedTextClient,
+  type JsonHttpClient,
+  type TextHttpClient,
+} from "@/ingestion/core/http";
 import { runIngestion } from "@/ingestion/core/pipeline";
 import { defaultSleep } from "@/ingestion/core/retry";
 import { createContractsFinderAdapter } from "@/ingestion/sources/contracts-finder/adapter";
@@ -6,12 +11,22 @@ import {
   CONTRACTS_FINDER_FETCH_POLICY,
   CONTRACTS_FINDER_SOURCE_KEY,
 } from "@/ingestion/sources/contracts-finder/constants";
+import { createFindAGrantAdapter } from "@/ingestion/sources/find-a-grant/adapter";
+import {
+  FIND_A_GRANT_FETCH_POLICY,
+  FIND_A_GRANT_SOURCE_KEY,
+} from "@/ingestion/sources/find-a-grant/constants";
 import { createFindATenderAdapter } from "@/ingestion/sources/find-a-tender/adapter";
 import {
   FIND_A_TENDER_FETCH_POLICY,
   FIND_A_TENDER_SOURCE_KEY,
   formatOcdsDateTime,
 } from "@/ingestion/sources/find-a-tender/constants";
+import { createInnovateUkAdapter } from "@/ingestion/sources/innovate-uk/adapter";
+import {
+  INNOVATE_UK_FETCH_POLICY,
+  INNOVATE_UK_SOURCE_KEY,
+} from "@/ingestion/sources/innovate-uk/constants";
 import { createRequestPacer } from "@/ingestion/sources/find-a-tender/pace";
 import { createGcaAgreementsAdapter } from "@/ingestion/sources/gca/agreements";
 import {
@@ -424,24 +439,69 @@ export function runOpenContractsFinderIngest(
   });
 }
 
+const GRANT_REQUESTS_PER_MINUTE = 10;
+const GRANT_WINDOW_MS = 60_000;
+
+function pacedTextClient(
+  http: TextHttpClient,
+  sleep: (ms: number) => Promise<void>,
+): TextHttpClient {
+  const pace = createRequestPacer({
+    maxRequests: GRANT_REQUESTS_PER_MINUTE,
+    windowMs: GRANT_WINDOW_MS,
+    sleep,
+  });
+  return {
+    async getText(url: string) {
+      await pace();
+      return http.getText(url);
+    },
+  };
+}
+
 export async function runOpenCatalogueIngest(options: {
+  sourceKey:
+    | typeof FIND_A_GRANT_SOURCE_KEY
+    | typeof INNOVATE_UK_SOURCE_KEY
+    | typeof GCA_AGREEMENTS_SOURCE_KEY
+    | typeof GCA_PIPELINE_SOURCE_KEY;
   store: IngestionStore;
   now?: Date;
   dryRun: boolean;
   adapter?: SourceAdapter;
+  http?: TextHttpClient;
   sleep?: (ms: number) => Promise<void>;
+  limit?: number;
   phase?: "ingest" | "previews" | "all";
   dealIds?: string[];
-  sourceKey: typeof GCA_AGREEMENTS_SOURCE_KEY | typeof GCA_PIPELINE_SOURCE_KEY;
 }): Promise<OpenIngestResult> {
   const now = options.now ?? new Date();
   const sleep = options.sleep ?? defaultSleep;
   const sourceKey = options.sourceKey;
-  const adapter =
-    options.adapter ??
-    (sourceKey === GCA_PIPELINE_SOURCE_KEY
-      ? createGcaPipelineAdapter({ now: () => now, sleep })
-      : createGcaAgreementsAdapter({ now: () => now, sleep }));
+  const isGca =
+    sourceKey === GCA_AGREEMENTS_SOURCE_KEY || sourceKey === GCA_PIPELINE_SOURCE_KEY;
+  let adapter = options.adapter;
+  if (!adapter) {
+    if (isGca) {
+      adapter =
+        sourceKey === GCA_PIPELINE_SOURCE_KEY
+          ? createGcaPipelineAdapter({ now: () => now, sleep })
+          : createGcaAgreementsAdapter({ now: () => now, sleep });
+    } else {
+      const http =
+        options.http ??
+        createAllowlistedTextClient(
+          sourceKey === INNOVATE_UK_SOURCE_KEY
+            ? INNOVATE_UK_FETCH_POLICY
+            : FIND_A_GRANT_FETCH_POLICY,
+        );
+      const paced = pacedTextClient(http, sleep);
+      adapter =
+        sourceKey === INNOVATE_UK_SOURCE_KEY
+          ? createInnovateUkAdapter({ http: paced, now: () => now })
+          : createFindAGrantAdapter({ http: paced, now: () => now });
+    }
+  }
   const counts = emptyCounts();
   const errors: OpenIngestError[] = [];
   const changed = new Set<string>(options.dealIds ?? []);
@@ -454,7 +514,7 @@ export async function runOpenCatalogueIngest(options: {
       store: options.store,
       adapter,
       triggerType: options.dryRun ? "DRY_RUN" : "SCHEDULED",
-      limit: MAX_RECORDS,
+      limit: options.limit ?? MAX_RECORDS,
       now,
       force: true,
       pageSize: 100,
@@ -542,4 +602,16 @@ export async function runOpenCatalogueIngest(options: {
     changedDealIds: phase === "previews" ? [] : [...changed],
     errors,
   };
+}
+
+export function runOpenFindAGrantIngest(
+  options: Omit<Parameters<typeof runOpenCatalogueIngest>[0], "sourceKey">,
+): Promise<OpenIngestResult> {
+  return runOpenCatalogueIngest({ ...options, sourceKey: FIND_A_GRANT_SOURCE_KEY });
+}
+
+export function runOpenInnovateUkIngest(
+  options: Omit<Parameters<typeof runOpenCatalogueIngest>[0], "sourceKey">,
+): Promise<OpenIngestResult> {
+  return runOpenCatalogueIngest({ ...options, sourceKey: INNOVATE_UK_SOURCE_KEY });
 }

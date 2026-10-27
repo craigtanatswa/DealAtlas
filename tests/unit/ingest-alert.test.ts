@@ -58,6 +58,8 @@ describe("open ingest alerts", () => {
       build_capped: 0,
       ingest_ok: 1,
       contracts_finder_ok: 0,
+      find_a_grant_ok: 0,
+      innovate_uk_ok: 0,
       gca_agreements_ok: 0,
       gca_pipeline_ok: 0,
       build_ok: 0,
