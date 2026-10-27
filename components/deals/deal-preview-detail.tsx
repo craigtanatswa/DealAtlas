@@ -304,6 +304,10 @@ export function DealPreviewDetail({
                 caption="Relevance based on your company profile."
               />
             </div>
+          ) : signedIn ? (
+            <div className="mt-4">
+              <MatchReasons score={null} reasons={[]} />
+            </div>
           ) : null}
         </Section>
 

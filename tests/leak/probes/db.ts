@@ -282,12 +282,15 @@ export function aclDiff(a: Acl, b: Acl): { intended: string[]; unintended: strin
           if (from !== to) unintended.push(`table ${table}: ${from === undefined ? "added" : "dropped"}`);
           continue;
         }
-        note(`table ${table} ${role} ${priv}`, from, to, table === "deal_previews");
+        // 0051 revokes client SELECT on deal_matches (match data is Pro-only).
+        note(`table ${table} ${role} ${priv}`, from, to, table === "deal_previews" || (table === "deal_matches" && priv === "select"));
       }
     }
   }
   for (const column of Object.keys(a.columns)) {
-    for (const role of ["anon", "authenticated"] as const) note(`column ${column} ${role}`, a.columns[column][role], b.columns[column]?.[role] ?? false, false);
+    // 0051: the table-level revoke also drops the deal_matches column grants.
+    // Only true -> false counts as intended; any new grant is still unintended.
+    for (const role of ["anon", "authenticated"] as const) note(`column ${column} ${role}`, a.columns[column][role], b.columns[column]?.[role] ?? false, column.startsWith("deal_matches."));
   }
   for (const schema of Object.keys(a.schemas)) {
     for (const role of ["anon", "authenticated"] as const) {

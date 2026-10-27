@@ -8,6 +8,7 @@ import { FoundingButtonLabel, FoundingPriceLead } from "@/components/billing/fou
 import { Heading, Text } from "@/components/layout/heading";
 import { Button } from "@/components/ui/button";
 import { signupPathForPlan, signupPathWithNext } from "@/lib/auth/redirect";
+import type { CheckoutPlanKey } from "@/lib/billing/types";
 import {
   FOUNDING_COPY,
   foundingSignupPath,
@@ -94,7 +95,7 @@ function PlanCta({
   analyticsPlan,
 }: {
   signedIn: boolean;
-  planKey: "PRO_MONTHLY" | "PRO_ANNUAL";
+  planKey: CheckoutPlanKey;
   label: string;
   variant?: "default" | "outline";
   buttonClassName?: string;

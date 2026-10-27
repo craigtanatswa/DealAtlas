@@ -10,6 +10,7 @@ import {
   createMemoryBillingStore,
   extractBillingEvent,
 } from "@/lib/billing";
+import { DUPLICATE_SUBSCRIPTION_FLAG } from "@/lib/billing/apply";
 import { resolveEntitlement, ENTITLEMENT_FIXTURE_NOW } from "@/lib/entitlements";
 
 function incoming(
@@ -200,5 +201,58 @@ describe("billing lifecycle apply", () => {
     );
     expect(result.outcome).toBe("applied");
     expect(entitlementFromStore(store).plan).toBe("PRO");
+  });
+});
+
+describe("duplicate subscription flag", () => {
+  it("flags a second live subscription but keeps one current Pro row", async () => {
+    const store = createMemoryBillingStore({
+      profileIds: [BILLING_FIXTURE_USER_ID],
+    });
+    const first = incomingAt(
+      billingWebhookFixtures.monthlyActive(),
+      "evt_first_sub",
+      "2026-06-01T12:00:00.000Z",
+    );
+    const secondPayload = billingWebhookFixtures.annualActive();
+    const second = incomingAt(
+      {
+        ...secondPayload,
+        data: { ...secondPayload.data, subscription_id: "sub_second_live" },
+      },
+      "evt_second_sub",
+      "2026-06-02T12:00:00.000Z",
+    );
+
+    expect(await applyBillingEvent(first, store)).toEqual({ outcome: "applied" });
+    expect(store.events.get("evt_first_sub")?.processingError).toBeNull();
+
+    expect(await applyBillingEvent(second, store)).toEqual({ outcome: "applied" });
+    expect(store.events.get("evt_second_sub")).toMatchObject({
+      status: "PROCESSED",
+      processingError: DUPLICATE_SUBSCRIPTION_FLAG,
+    });
+    expect(store.subscriptions).toHaveLength(2);
+    expect(store.subscriptions.filter((row) => row.isCurrent)).toHaveLength(1);
+    expect(entitlementFromStore(store).plan).toBe("PRO");
+
+    // A replay of the flagged event is a no-op.
+    expect(await applyBillingEvent(second, store)).toEqual({ outcome: "duplicate" });
+    expect(store.subscriptions).toHaveLength(2);
+  });
+
+  it("does not flag a renewal of the same subscription", async () => {
+    const store = createMemoryBillingStore({
+      profileIds: [BILLING_FIXTURE_USER_ID],
+    });
+    await applyBillingEvent(
+      incomingAt(billingWebhookFixtures.monthlyActive(), "evt_a", "2026-06-01T12:00:00.000Z"),
+      store,
+    );
+    await applyBillingEvent(
+      incomingAt(billingWebhookFixtures.monthlyActive(), "evt_b", "2026-06-02T12:00:00.000Z"),
+      store,
+    );
+    expect(store.events.get("evt_b")?.processingError).toBeNull();
   });
 });

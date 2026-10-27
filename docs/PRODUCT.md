@@ -142,7 +142,7 @@ Initial launch should have one paid tier plus annual billing.
 
 Recommended launch pricing to test:
 - Pro Monthly: £39/month
-- Pro Annual: £350/year (display price; Dodo product price is managed by Billing)
+- Pro Annual: £350/year
 
 Pricing is a commercial assumption and should be configurable without code changes. Dodo product IDs must live in environment variables, not in source code.
 
