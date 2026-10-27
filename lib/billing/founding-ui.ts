@@ -69,17 +69,28 @@ function annualSaveVsMonthly(): string {
   return pct ? `Save ${pct}% vs monthly.` : "Save vs monthly.";
 }
 
-function soldOutAnnualLink(): string {
-  const pct = annualSavePercent();
-  const annualShort = DISPLAY_PRICING.proAnnual.replace("/year", "/yr");
-  return pct ? `or ${annualShort} (save ${pct}%)` : `or ${annualShort}`;
-}
-
 /** Founding annual price shown per month, e.g. "£24.17". Derived, never hardcoded. */
 export function foundingMonthlyEquivalent(): string | null {
   const founding = parseGbpYear(DISPLAY_PRICING.foundingAnnual);
   if (!founding) return null;
   return `£${(founding / 12).toFixed(2)}`;
+}
+
+/** Pro annual price in short form, e.g. "£350/yr". */
+export function proAnnualShort(): string {
+  return DISPLAY_PRICING.proAnnual.replace("/year", "/yr");
+}
+
+/** Pro annual price shown per month, e.g. "£29.17". Derived, never hardcoded. */
+export function proAnnualMonthlyEquivalent(): string | null {
+  const annual = parseGbpYear(DISPLAY_PRICING.proAnnual);
+  if (!annual) return null;
+  return `£${(annual / 12).toFixed(2)}`;
+}
+
+/** "billed £350/yr, VAT included" */
+export function proAnnualBilledLine(): string {
+  return `billed ${proAnnualShort()}, VAT included`;
 }
 
 /** "£39/mo" */
@@ -145,11 +156,11 @@ export const FOUNDING_COPY = {
   paywallCta: `Become a founding member – ${foundingAnnualShort()}`,
   paywallMonthly: `or standard Pro ${DISPLAY_PRICING.proMonthly.replace("/month", "/mo")}`,
   soldOutMonthly: `Start Pro – ${DISPLAY_PRICING.proMonthly.replace("/month", "/mo")}`,
-  soldOutAnnual: soldOutAnnualLink(),
+  soldOutAnnual: "Or Pro annual",
   raceLead: "Founding places just filled up. You haven't been charged.",
   notEligibleLead: FOUNDING_NOT_ELIGIBLE_MESSAGE,
   raceBody: `Continue with standard annual at ${DISPLAY_PRICING.proAnnual.replace("/year", "/yr")}?`,
-  raceAnnual: `Continue with annual – ${DISPLAY_PRICING.proAnnual.replace("/year", "/yr")}`,
+  raceAnnual: "Continue with annual",
   raceMonthly: `Choose monthly – ${DISPLAY_PRICING.proMonthly.replace("/month", "/mo")}`,
   recommended: "Recommended",
   annualSaving: annualSaveVsMonthly(),

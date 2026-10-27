@@ -2,7 +2,7 @@ import Link from "next/link";
 import { LockIcon } from "lucide-react";
 
 import { CheckoutPlanForm } from "@/components/billing/checkout-plan-form";
-import { FoundingButtonLabel } from "@/components/billing/founding-price";
+import { FoundingButtonLabel, ProAnnualButtonLabel } from "@/components/billing/founding-price";
 import { FoundingCheckoutButton } from "@/components/billing/founding-checkout-button";
 import { Button } from "@/components/ui/button";
 import { signupPathForPlan } from "@/lib/auth/redirect";
@@ -193,7 +193,7 @@ export function DealProCard({
             {mode === "free" ? (
               <CheckoutPlanForm
                 planKey="PRO_ANNUAL"
-                label={FOUNDING_COPY.soldOutAnnual}
+                label={<ProAnnualButtonLabel text={FOUNDING_COPY.soldOutAnnual} />}
                 variant="link"
                 showPrice={false}
                 returnTo={returnTo}
@@ -202,7 +202,7 @@ export function DealProCard({
             ) : (
               <Button asChild variant="link" className="mt-1 w-full">
                 <Link href={signupPathForPlan("PRO_ANNUAL")}>
-                  {FOUNDING_COPY.soldOutAnnual}
+                  <ProAnnualButtonLabel text={FOUNDING_COPY.soldOutAnnual} />
                 </Link>
               </Button>
             )}

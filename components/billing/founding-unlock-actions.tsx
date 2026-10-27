@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { CheckoutPlanForm } from "@/components/billing/checkout-plan-form";
-import { FoundingButtonLabel } from "@/components/billing/founding-price";
+import { FoundingButtonLabel, ProAnnualButtonLabel } from "@/components/billing/founding-price";
 import { FoundingCheckoutButton } from "@/components/billing/founding-checkout-button";
 import { Button } from "@/components/ui/button";
 import { signupPathForPlan } from "@/lib/auth/redirect";
@@ -44,7 +44,7 @@ export function FoundingUnlockActions({
             />
             <CheckoutPlanForm
               planKey="PRO_ANNUAL"
-              label={FOUNDING_COPY.soldOutAnnual}
+              label={<ProAnnualButtonLabel text={FOUNDING_COPY.soldOutAnnual} />}
               showPrice={false}
               variant="link"
               returnTo={returnTo}
@@ -57,7 +57,9 @@ export function FoundingUnlockActions({
               <Link href={signupPathForPlan("PRO_MONTHLY")}>{FOUNDING_COPY.soldOutMonthly}</Link>
             </Button>
             <Button asChild variant="link">
-              <Link href={signupPathForPlan("PRO_ANNUAL")}>{FOUNDING_COPY.soldOutAnnual}</Link>
+              <Link href={signupPathForPlan("PRO_ANNUAL")}>
+                <ProAnnualButtonLabel text={FOUNDING_COPY.soldOutAnnual} />
+              </Link>
             </Button>
           </>
         )}

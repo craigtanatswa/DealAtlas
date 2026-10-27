@@ -4,7 +4,12 @@ import type { ReactNode } from "react";
 
 import { CheckoutPlanForm } from "@/components/billing/checkout-plan-form";
 import { FoundingCheckoutButton } from "@/components/billing/founding-checkout-button";
-import { FoundingButtonLabel, FoundingPriceLead } from "@/components/billing/founding-price";
+import {
+  FoundingButtonLabel,
+  FoundingPriceLead,
+  ProAnnualButtonLabel,
+  ProAnnualPriceLead,
+} from "@/components/billing/founding-price";
 import { Heading, Text } from "@/components/layout/heading";
 import { Button } from "@/components/ui/button";
 import { signupPathForPlan, signupPathWithNext } from "@/lib/auth/redirect";
@@ -95,7 +100,7 @@ function PlanCta({
 }: {
   signedIn: boolean;
   planKey: CheckoutPlanKey;
-  label: string;
+  label: ReactNode;
   variant?: "default" | "outline";
   buttonClassName?: string;
   analyticsPlan?: "founding";
@@ -213,14 +218,14 @@ export function PricingPlans({
             </p>
           ) : null}
           <h2 className="font-heading text-xl font-semibold text-balance">Pro annual</h2>
-          <Price label={DISPLAY_PRICING.proAnnual} />
+          <ProAnnualPriceLead className="mt-4" />
           <p className="mt-1 text-sm text-muted-foreground">{FOUNDING_COPY.annualSaving}</p>
           <FeatureList items={PRO_FEATURES} />
           <div className="mt-auto pt-6">
             <PlanCta
               signedIn={signedIn}
               planKey="PRO_ANNUAL"
-              label={FOUNDING_COPY.startAnnual}
+              label={<ProAnnualButtonLabel text={FOUNDING_COPY.startAnnual} />}
               variant={annualVariant}
             />
           </div>

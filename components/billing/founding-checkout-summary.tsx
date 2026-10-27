@@ -1,6 +1,11 @@
 import { CheckoutPlanForm } from "@/components/billing/checkout-plan-form";
 import { FoundingCheckoutButton } from "@/components/billing/founding-checkout-button";
-import { FoundingButtonLabel, FoundingPriceLead } from "@/components/billing/founding-price";
+import {
+  FoundingButtonLabel,
+  FoundingPriceLead,
+  ProAnnualButtonLabel,
+  ProAnnualPriceLead,
+} from "@/components/billing/founding-price";
 import { Heading } from "@/components/layout/heading";
 import {
   FOUNDING_COPY,
@@ -8,7 +13,6 @@ import {
   foundingDueToday,
   proMonthlyShort,
 } from "@/lib/billing/founding-ui";
-import { DISPLAY_PRICING } from "@/lib/constants";
 
 /** Founding plan summary on /checkout. Remaining places only; the cap is never rendered. */
 export function FoundingCheckoutSummary({
@@ -96,17 +100,12 @@ export function FoundingFullCheckout() {
         {FOUNDING_FULL_MESSAGE}
       </p>
       <section className="rounded-xl border-2 border-primary bg-background p-5 shadow-sm">
-        <div className="flex items-baseline justify-between gap-3">
-          <h2 className="font-heading text-base font-semibold">Pro annual</h2>
-          <p className="text-2xl font-semibold tracking-tight tabular-nums">
-            {DISPLAY_PRICING.proAnnual.replace("/year", "")}
-            <span className="text-sm font-normal text-muted-foreground">/year</span>
-          </p>
-        </div>
+        <h2 className="font-heading text-base font-semibold">Pro annual</h2>
+        <ProAnnualPriceLead className="mt-4" />
         <p className="mt-1 text-sm text-muted-foreground">{FOUNDING_COPY.annualSaving} VAT included.</p>
         <CheckoutPlanForm
           planKey="PRO_ANNUAL"
-          label={FOUNDING_COPY.startAnnual}
+          label={<ProAnnualButtonLabel text={FOUNDING_COPY.startAnnual} />}
           showPrice={false}
           returnTo="/pricing"
           className="mt-5 w-full"

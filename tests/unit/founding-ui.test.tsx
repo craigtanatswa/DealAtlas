@@ -75,7 +75,7 @@ describe("founding pricing cards", () => {
     expect(screen.getByText("£290/yr for as long as you stay subscribed")).toBeTruthy();
     expect(container.textContent).toContain("£24.17/mo");
     expect(container.textContent).toContain("(£290/yr)");
-    expect(container.textContent).not.toMatch(/billed|VAT incl/i);
+    expect(screen.getByText("billed £350/yr, VAT included")).toBeTruthy();
     expect(container.querySelector('s[aria-label="was £39 a month"]')).toBeTruthy();
     expect(container.textContent).not.toMatch(/of 25/);
     expect(container.querySelector('[role="progressbar"]')).toBeNull();
@@ -118,7 +118,7 @@ describe("founding pricing cards", () => {
     expect(screen.queryByText("Become a founding member")).toBeNull();
     expect(screen.queryByRole("heading", { name: "Founding member Pro" })).toBeNull();
     expect(container.querySelector("input[name='offer']")).toBeNull();
-    expect(screen.getByRole("link", { name: "Start Pro annual" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: /Start Pro annual/ })).toBeTruthy();
     expect(screen.getByRole("link", { name: "Create free account" })).toBeTruthy();
   });
 });
@@ -153,7 +153,7 @@ describe("founding deal paywall", () => {
   it("falls back to standard prices when founding is sold out", () => {
     const { container } = render(<UnlockPanel mode="free" founding={soldOutCount} />);
     expect(screen.getByRole("button", { name: "Start Pro – £39/mo" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "or £350/yr (save 25%)" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Or Pro annual/ })).toBeTruthy();
     expect(container.querySelector("input[name='offer']")).toBeNull();
     expect(
       container.querySelector("input[name='planKey'][value='PRO_ANNUAL']"),
@@ -180,7 +180,7 @@ describe("founding checkout race", () => {
     expect(
       screen.getByText("Founding places just filled up. You haven't been charged."),
     ).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Continue with annual – £350/yr" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Continue with annual/ })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Choose monthly – £39/mo" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "Grounds maintenance for community sites" })).toBeTruthy();
     expect(container.querySelector("input[name='offer']")).toBeNull();
@@ -294,7 +294,7 @@ describe("founding full error state", () => {
 
     const alert = await screen.findByRole("alert");
     expect(alert.textContent).toContain(FOUNDING_FULL_MESSAGE);
-    const fallback = within(alert).getByRole("button", { name: "Start Pro annual" });
+    const fallback = within(alert).getByRole("button", { name: /Start Pro annual/ });
     expect(planKeyOf(fallback.closest("form")!)).toBe("PRO_ANNUAL");
 
     const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
@@ -311,7 +311,7 @@ describe("founding full error state", () => {
     const alert = await screen.findByRole("alert");
     expect(alert.textContent).toContain("Server copy wins.");
     expect(alert.textContent).not.toContain(FOUNDING_FULL_MESSAGE);
-    expect(within(alert).getByRole("button", { name: "Start Pro annual" })).toBeTruthy();
+    expect(within(alert).getByRole("button", { name: /Start Pro annual/ })).toBeTruthy();
   });
 
   it("falls back to the local copy when FOUNDING_CAP_FULL has no message", async () => {
@@ -331,7 +331,7 @@ describe("founding full error state", () => {
     fireEvent.click(screen.getByRole("button", { name: "Become a founding member" }));
     const alert = await screen.findByRole("alert");
     expect(alert.textContent).toBe("Checkout could not be started. Try again.");
-    expect(screen.queryByRole("button", { name: "Start Pro annual" })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Start Pro annual/ })).toBeNull();
   });
 
   it("redirects to the checkout url on success", async () => {
@@ -346,10 +346,11 @@ describe("founding full error state", () => {
   it("checkout for a full founding plan shows the message and Pro annual, no founding summary", () => {
     const { container } = render(<FoundingFullCheckout />);
     expect(screen.getByRole("alert").textContent).toBe(FOUNDING_FULL_MESSAGE);
-    expect(screen.getByText("£350")).toBeTruthy();
-    expect(planKeyOf(screen.getByRole("button", { name: "Start Pro annual" }).closest("form")!)).toBe(
-      "PRO_ANNUAL",
-    );
+    expect(screen.getByText("billed £350/yr, VAT included")).toBeTruthy();
+    expect(container.textContent).toContain("£29.17/mo");
+    expect(
+      planKeyOf(screen.getByRole("button", { name: /Start Pro annual/ }).closest("form")!),
+    ).toBe("PRO_ANNUAL");
     expect(container.querySelectorAll(`input[name='planKey'][value='${FOUNDING_PLAN_KEY}']`)).toHaveLength(0);
     expect(container.textContent).not.toMatch(/£24\.17|£290|for as long as you stay subscribed|places left|Due today/);
     expect(container.textContent).not.toMatch(/\d+\s+places?\s+left/i);

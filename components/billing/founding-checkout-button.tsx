@@ -3,6 +3,7 @@
 import { useState, type FormEvent, type ReactNode } from "react";
 
 import { CheckoutPlanForm } from "@/components/billing/checkout-plan-form";
+import { ProAnnualButtonLabel } from "@/components/billing/founding-price";
 import { Button } from "@/components/ui/button";
 import {
   FOUNDING_COPY,
@@ -84,7 +85,7 @@ export function FoundingCheckoutButton({
         <p className="text-pretty">{status.message}</p>
         <CheckoutPlanForm
           planKey="PRO_ANNUAL"
-          label={FOUNDING_COPY.startAnnual}
+          label={<ProAnnualButtonLabel text={FOUNDING_COPY.startAnnual} />}
           showPrice={false}
           returnTo={returnTo}
           className="mt-3 w-full"
