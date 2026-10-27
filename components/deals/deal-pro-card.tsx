@@ -2,10 +2,13 @@ import Link from "next/link";
 import { LockIcon } from "lucide-react";
 
 import { CheckoutPlanForm } from "@/components/billing/checkout-plan-form";
+import { FoundingButtonLabel, ProAnnualButtonLabel } from "@/components/billing/founding-price";
+import { FoundingCheckoutButton } from "@/components/billing/founding-checkout-button";
 import { Button } from "@/components/ui/button";
 import { signupPathForPlan } from "@/lib/auth/redirect";
 import {
   FOUNDING_COPY,
+  foundingSignupPath,
   foundingPaywallPlaces,
   foundingUiState,
   type FoundingPublicCount,
@@ -82,8 +85,8 @@ export function DealProCard({
     );
   }
 
-  const state = founding ? foundingUiState(founding) : "hidden";
-  const foundingActive = state === "available" || state === "last";
+  const state = foundingUiState(founding);
+  const foundingActive = state === "available";
   const monthlyShort = DISPLAY_PRICING.proMonthly.replace("/month", "/mo");
 
   return (
@@ -131,28 +134,23 @@ export function DealProCard({
         {foundingActive && founding ? (
           <>
             {mode === "free" ? (
-              <CheckoutPlanForm
-                planKey="PRO_ANNUAL"
-                label={FOUNDING_COPY.paywallCta}
-                analyticsPlan="founding"
-                showPrice={false}
+              <FoundingCheckoutButton
+                label={<FoundingButtonLabel text={FOUNDING_COPY.cta} />}
                 returnTo={returnTo}
-                className="w-full"
-                buttonClassName="h-11 w-full"
               />
             ) : (
-              <Button asChild className="h-11 w-full">
-                <Link href={signupPathForPlan("PRO_ANNUAL")}>
-                  {FOUNDING_COPY.paywallCta}
+              <Button asChild className="h-auto min-h-11 w-full whitespace-normal py-2">
+                <Link href={foundingSignupPath()}>
+                  <FoundingButtonLabel text={FOUNDING_COPY.cta} />
                 </Link>
               </Button>
             )}
             <p className="mt-2 text-center text-xs font-medium text-foreground/80">
-              {FOUNDING_COPY.priceLocked} ·{" "}
               <span className="text-emerald-700">
-                {foundingPaywallPlaces(founding.remaining, founding.cap)}
-              </span>{" "}
-              · VAT incl.
+                {foundingPaywallPlaces()}
+              </span>
+              {" · "}
+              <span>{FOUNDING_COPY.priceLocked}</span>
             </p>
             {mode === "free" ? (
               <CheckoutPlanForm
@@ -195,7 +193,7 @@ export function DealProCard({
             {mode === "free" ? (
               <CheckoutPlanForm
                 planKey="PRO_ANNUAL"
-                label={FOUNDING_COPY.soldOutAnnual}
+                label={<ProAnnualButtonLabel text={FOUNDING_COPY.soldOutAnnual} />}
                 variant="link"
                 showPrice={false}
                 returnTo={returnTo}
@@ -204,7 +202,7 @@ export function DealProCard({
             ) : (
               <Button asChild variant="link" className="mt-1 w-full">
                 <Link href={signupPathForPlan("PRO_ANNUAL")}>
-                  {FOUNDING_COPY.soldOutAnnual}
+                  <ProAnnualButtonLabel text={FOUNDING_COPY.soldOutAnnual} />
                 </Link>
               </Button>
             )}

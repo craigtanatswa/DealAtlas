@@ -26,6 +26,7 @@ import {
   hashAlertToken,
   mintConfirmToken,
   mintUnsubscribeToken,
+  safeEqualHex,
   verifyUnsubscribeTokenAny,
 } from "@/lib/alerts/signup/tokens";
 
@@ -579,7 +580,7 @@ export async function handleAlertUnsubscribe(input: {
     SubscriptionRow,
     "id" | "status" | "user_id" | "unsubscribe_token_hash"
   >;
-  if (row.unsubscribe_token_hash !== hash) {
+  if (!safeEqualHex(row.unsubscribe_token_hash, hash)) {
     return { redirectTo: dest };
   }
   if (row.status === "unsubscribed") {

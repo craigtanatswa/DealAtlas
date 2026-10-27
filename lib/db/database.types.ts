@@ -3152,6 +3152,7 @@ export type Database = {
         Args: {
           p_buyer_sector?: Database["public"]["Enums"]["buyer_sector"]
           p_category?: string
+          p_categories?: string[]
           p_deadline_band?: string
           p_deal_type?: Database["public"]["Enums"]["deal_type"]
           p_limit?: number
@@ -3188,6 +3189,7 @@ export type Database = {
         Args: {
           p_buyer_sector?: Database["public"]["Enums"]["buyer_sector"]
           p_category?: string
+          p_categories?: string[]
           p_company_profile_id: string
           p_deadline_band?: string
           p_deal_type?: Database["public"]["Enums"]["deal_type"]
@@ -3229,6 +3231,7 @@ export type Database = {
         Args: {
           p_buyer_sector?: Database["public"]["Enums"]["buyer_sector"]
           p_category?: string
+          p_categories?: string[]
           p_deadline_band?: string
           p_deal_type?: Database["public"]["Enums"]["deal_type"]
           p_limit?: number
@@ -3329,6 +3332,7 @@ export type Database = {
         | "EARLY_MARKET_ENGAGEMENT"
         | "CONTRACT_RENEWAL"
         | "AWARD"
+        | "GRANT"
       ingestion_status:
         | "QUEUED"
         | "RUNNING"
@@ -3575,6 +3579,7 @@ export const Constants = {
         "EARLY_MARKET_ENGAGEMENT",
         "CONTRACT_RENEWAL",
         "AWARD",
+        "GRANT",
       ],
       ingestion_status: [
         "QUEUED",

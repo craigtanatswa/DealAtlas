@@ -10,19 +10,24 @@ import { contextFromCandidate } from "@/ingestion/intelligence/types";
 import { persistIntelligenceAndPreview } from "@/ingestion/preview/publish";
 import { CONTRACTS_FINDER_SOURCE_KEY } from "@/ingestion/sources/contracts-finder/constants";
 import { linkContractsFinderDuplicate } from "@/ingestion/sources/contracts-finder/link";
+import { linkCrossPublishedDuplicate } from "@/ingestion/sources/ocds-monthly/link";
+import { PUBLIC_CONTRACTS_SCOTLAND_SOURCE_KEY } from "@/ingestion/sources/public-contracts-scotland/constants";
+import { SELL2WALES_SOURCE_KEY } from "@/ingestion/sources/sell2wales/constants";
 import {
   GCA_AGREEMENTS_SOURCE_KEY,
   GCA_PIPELINE_SOURCE_KEY,
 } from "@/ingestion/sources/gca/constants";
 import { linkGcaPortalDuplicate } from "@/ingestion/sources/gca/link";
+import { isGrantSource, linkGrantDuplicate } from "@/ingestion/sources/grant-notice/link";
 import { defaultSleep } from "@/ingestion/core/retry";
 import { unwrapReleasePayload } from "@/ingestion/sources/find-a-tender/parse";
 import type {
+  CanonicalCandidate,
   IngestionCounters,
   IngestionRunResult,
   SourceAdapter,
 } from "@/ingestion/core/types";
-import type { DataSourceRecord, IngestionStore } from "@/ingestion/store/types";
+import type { DataSourceRecord, IngestionStore, RawRecordRow } from "@/ingestion/store/types";
 
 export type RunIngestionOptions = {
   sourceKey: string;
@@ -79,6 +84,28 @@ function toComplianceInput(source: DataSourceRecord) {
     licenceUrl: source.licenceUrl,
     termsUrl: source.termsUrl,
   };
+}
+
+const CROSS_PUBLISHED_SOURCE_KEYS = new Set<string>([
+  PUBLIC_CONTRACTS_SCOTLAND_SOURCE_KEY,
+  SELL2WALES_SOURCE_KEY,
+]);
+
+async function linkDuplicateCandidate(options: {
+  sourceKey: string;
+  store: IngestionStore;
+  source: DataSourceRecord;
+  raw: RawRecordRow;
+  candidate: CanonicalCandidate;
+  now: Date;
+}): Promise<boolean> {
+  if (options.sourceKey === CONTRACTS_FINDER_SOURCE_KEY) {
+    return linkContractsFinderDuplicate(options);
+  }
+  if (CROSS_PUBLISHED_SOURCE_KEYS.has(options.sourceKey)) {
+    return linkCrossPublishedDuplicate(options);
+  }
+  return false;
 }
 
 export async function runIngestion(
@@ -310,8 +337,23 @@ export async function runIngestion(
           }
 
           for (const candidate of candidates) {
-            if (source.sourceKey === CONTRACTS_FINDER_SOURCE_KEY) {
-              const linked = await linkContractsFinderDuplicate({
+            const linked = await linkDuplicateCandidate({
+              sourceKey: source.sourceKey,
+              store: options.store,
+              source,
+              raw: snapshot.record,
+              candidate,
+              now,
+            });
+            if (linked) {
+              counters.duplicatesLinked += 1;
+              continue;
+            }
+            if (
+              source.sourceKey === GCA_AGREEMENTS_SOURCE_KEY ||
+              source.sourceKey === GCA_PIPELINE_SOURCE_KEY
+            ) {
+              const linked = await linkGcaPortalDuplicate({
                 store: options.store,
                 source,
                 raw: snapshot.record,
@@ -323,11 +365,9 @@ export async function runIngestion(
                 continue;
               }
             }
-            if (
-              source.sourceKey === GCA_AGREEMENTS_SOURCE_KEY ||
-              source.sourceKey === GCA_PIPELINE_SOURCE_KEY
-            ) {
-              const linked = await linkGcaPortalDuplicate({
+
+            if (isGrantSource(source.sourceKey)) {
+              const linked = await linkGrantDuplicate({
                 store: options.store,
                 source,
                 raw: snapshot.record,

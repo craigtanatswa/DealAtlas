@@ -277,6 +277,46 @@ Only **one** researched source met the automation bar. That is below the target 
 
 ---
 
+## Devolved public tender portals
+
+Checked: **14 October 2026**.
+
+These are official public-sector notice portals, separate from the private-source review above. Both have a published OCDS API that returns JSON without a login or a CAPTCHA. Neither adapter scrapes HTML. Both are seeded with `scraping_permitted = false` and `enabled = false`.
+
+| Source key | Reuse status | Scraping permitted | Enabled | Decision |
+| --- | --- | --- | --- | --- |
+| `public-contracts-scotland` | OPEN_LICENSE | false | no | Official OCDS Notices API under the Open Government Licence v3.0, including Quick Quote awards (`noticeType` 104). |
+| `sell2wales` | OPEN_LICENSE | false | no | Official OCDS Notices API. The publication policy licences the data under the Open Government Licence. The RSS feed is a different licence and is not used. |
+
+On this date the API hosts presented a leaf certificate without the Sectigo intermediate. Standard TLS verification failed until that intermediate was supplied for this check only. The adapters keep TLS verification on.
+
+### Public Contracts Scotland
+
+| Field | Evidence |
+| --- | --- |
+| Official machine route | [OCDS Web API](https://api.publiccontractsscotland.gov.uk/v1): `GET https://api.publiccontractsscotland.gov.uk/v1/Notices` with `dateFrom` (`mm-yyyy`), `noticeType`, and `outputType=0` for OCDS. Record route: `GET /v1/Notice?id={ocid}`. Bulk files are also listed on the [notice download page](https://www.publiccontractsscotland.gov.uk/NoticeDownload/Download.aspx). |
+| Login / CAPTCHA | The API help page describes the query parameters and does not ask for an API key, account, or CAPTCHA. A September 2026 site-notice request returned HTTP 200 JSON (`license` set to the Open Government Licence URL) with no authentication challenge. |
+| Terms / licence | [Terms](https://www.publiccontractsscotland.gov.uk/sitehelp/help_terms.aspx), Copyright and the Open Government License: “Most of the material featured on this Website is subject to Crown copyright protection. However, you may use content published on this Website under the Open Government Licence v3.0 except where otherwise stated.” The same section requires the attribution “Contains public sector information licensed under the Open Government Licence v3.0.” and says the permission does not cover third-party copyright, personal data, or logos. [OGL v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/) permits commercial and non-commercial reuse. |
+| Robots | [robots.txt](https://www.publiccontractsscotland.gov.uk/robots.txt) includes `User-agent: *` / `Disallow: /`. That rule is for the website. Ingestion uses the API host, not HTML crawling. |
+| Reuse status | **OPEN_LICENSE** |
+| Automated scraping permitted? | **No** |
+| Quick Quotes | The same API lists `noticeType` 104 as “Site Notice - Quick Quote Award”. A September 2026 request returned HTTP 200 OCDS JSON, `license` set to the Open Government Licence URL, and releases tagged `award`. The [purchaser guide](https://www.publiccontractsscotland.gov.uk/userguides/Quick%20Quote%20-%20Purchaser%20Guide.pdf) says: “Quick Quotes are only distributed to the selected suppliers and are not made public on the portal.” The [OCDS publication policy](https://www.publiccontractsscotland.gov.uk/NoticeDownload/Publication%20Policies-%20PCS%20OCDS%20v1.3-%20February%202022.pdf) includes “award notices published for quotations (Quick Quotes)”. Live invitations are not an official public feed. Ingestion requests type 104 only. |
+| Implementation decision | **Build the adapter. Leave it disabled.** Request contract notices and Quick Quote awards. Do not scrape the buyer Quick Quote workspace. Do not download buyer documents. A shared OCID or `relatedProcesses` OCID attaches to the existing deal. |
+
+### Sell2Wales
+
+| Field | Evidence |
+| --- | --- |
+| Official machine route | [OCDS Web API](https://api.sell2wales.gov.wales/v1): `GET https://api.sell2wales.gov.wales/v1/Notices` with `dateFrom`, `noticeType`, `outputType=0`, and `locale` (`2057` English, `1106` Welsh). Record route: `GET /v1/Notice?id={ocid}`. The [publication policy](https://www.sell2wales.gov.wales/helpandresources/ocds/publicationpolicy) also lists bulk OCDS release and record downloads. |
+| Login / CAPTCHA | The API help page does not ask for an API key, account, or CAPTCHA. The record route returned an OCDS package whose `license` is the Open Government Licence URL. On 14 October 2026 several list queries returned HTTP 500 (`Error converting data type nvarchar to float`) from the publisher. That is a server error, not an access control. The source stays disabled until an operator enables it. |
+| Data licence | [Publication policy](https://www.sell2wales.gov.wales/helpandresources/ocds/publicationpolicy): “This means the data can be used, reused and redistributed by any interested party in line with the Open Government License.” Section 6: “The data on Sell2Wales is licensed using the Open Government License. This allows users to: copy, publish, distribute and transmit the Information; adapt the Information; exploit the Information commercially and non-commercially for example, by combining it with other Information, or by including it in your own product or application.” |
+| Website terms | [Terms](https://www.sell2wales.gov.wales/helpandresources/websitepolicies/termsandconditions) clause 5.2: “You may use and re-use any material on the Website which is marked as Crown copyright … in accordance with the terms and conditions of the Open Government License provided it is reproduced accurately and not used in a misleading context.” Clause 4.3 says users agree not to “reproduce, duplicate, copy, sell, resell or exploit for any commercial purposes any portion of the Service, use of the Service or access to the Service.” The Service is defined as the functional portal (notices, documents, questions, tender submission). The OCDS publication policy is the licence for the machine-readable notice data and expressly permits commercial reuse. Ingestion uses that API, not the interactive service. |
+| RSS (not used) | [RSS terms](https://www.sell2wales.gov.wales/sitehelp/help_rss_terms.aspx): “You may not directly or indirectly charge users specifically for accessing this RSS Feed Content or otherwise commercialise such content, nor attempt to re-sell the RSS Feed Content in any way.” That route is rejected. |
+| Robots | [robots.txt](https://www.sell2wales.gov.wales/robots.txt) returned no `Disallow` rules on the check date. |
+| Reuse status | **OPEN_LICENSE** |
+| Automated scraping permitted? | **No** |
+| Implementation decision | **Build the adapter. Leave it disabled.** English locale only. Do not scrape HTML, do not use RSS, and do not download documents that require registration. A shared OCID or `relatedProcesses` OCID attaches to the existing deal. |
+
 ## Adapter framework
 
 Private/supply-chain sources are onboarded through a **reusable** config + `createPrivateSourceAdapter` (`ingestion/sources/private`). Adding a newly approved source requires:
@@ -360,3 +400,58 @@ Checked: **14 October 2026**. Crown Commercial Service became the Government Com
 Where OPEN_LICENSE government information is reused:
 
 Contains public sector information licensed under the [Open Government Licence v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/).
+
+---
+
+# Public procurement and grant sources — 14 October 2026
+
+Checked: **14 October 2026**.
+
+A source is buildable when there is a public machine route, or plain public pages that need no login or CAPTCHA, robots.txt allows the paths that would be fetched, and the terms do not explicitly forbid automated access or commercial reuse. `OPEN_LICENSE` is used only where a licence such as the Open Government Licence is documented. `scraping_permitted` stays false unless the terms explicitly allow scraping. New sources stay disabled.
+
+| Source key | Reuse status | Scraping permitted | Enabled | Decision |
+| --- | --- | --- | --- | --- |
+| `etendersni` | PROHIBITED | false | no | **BLOCKED.** Seeded disabled. Cloudflare/WAF challenge and no API. No fetcher. |
+| `ukri-funding-finder` | PROHIBITED | false | no | Seeded disabled. Terms forbid commercial electronic reproduction without permission. No fetcher. |
+| `find-a-grant` | OPEN_LICENSE | false | no | Build the public page adapter. Keep it disabled. |
+| `innovate-uk` | OPEN_LICENSE | false | no | Build the public competition-search adapter. Keep it disabled. |
+
+## eTendersNI — BLOCKED
+
+| Field | Evidence |
+| --- | --- |
+| Official source URL | [eTendersNI](https://etendersni.gov.uk/epps/home.do) |
+| Machine route | None. Prior research found the portal behind a Cloudflare/WAF challenge and no API. No OCDS, RSS or CSV notice feed was found. |
+| Public pages | Not fetched past the challenge. A separate check of the [opportunity list](https://etendersni.gov.uk/epps/prepareCurrentOpportunities.do?currentType=cft) found a search form that says “Please type the code shown below” and loads `/epps/genCaptcha/captcha….jpg`. `https://etendersni.gov.uk/robots.txt` returns **302** to `https://etendersni.gov.uk/epps/home.do`, the HTML homepage, not a robots file. |
+| Terms | Footer: “Copyright © European Dynamics”. About page: “e-Sourcing Platform © 2022 European Dynamics - The Information Society Integrator”. No Open Government Licence on the portal. |
+| Other data | Open Data NI has historical Construction & Procurement Delivery award CSVs under the UK Open Government Licence, for example the [2016/2017 supplies and services file](https://admin.opendatani.gov.uk/en_GB/dataset/contracts-awarded-by-central-procurement-directorate-in-the-2016-2017-year/resource/d5b993f2-4f6f-4e94-9f45-c77b98201438) (metadata last updated 19 July 2017). That is a past award snapshot, not a live notice feed, so it is not used as an eTendersNI adapter. |
+| Decision | **BLOCKED.** Seed `reuse_status = PROHIBITED`, `enabled = false`. Do not build a fetcher. Do not attempt to get past the Cloudflare/WAF challenge, the CAPTCHA, or a login. |
+
+## UKRI Funding Finder — excluded
+
+| Field | Evidence |
+| --- | --- |
+| Official source URL | [Funding finder](https://www.ukri.org/opportunity/) |
+| Machine route | Not used. The catalogue is not ingested. |
+| Terms | [UKRI terms of use](https://www.ukri.org/who-we-are/terms-of-use/): “Except as permitted for academic, personal or other non-commercial purposes, users must not reprint or electronically reproduce from the UKRI website any document, graphic or image in whole or in part without the prior written permission of UKRI, or in accordance with the Copyright, Designs and Patents Act 1988.” That forbids commercial electronic reproduction without permission. |
+| Decision | **Excluded.** Seed `reuse_status = PROHIBITED`, `enabled = false`. Do not build a fetcher. |
+
+## Find a Grant — build, disabled
+
+| Field | Evidence |
+| --- | --- |
+| Official source URL | [Find a grant](https://find-government-grants.service.gov.uk/) and the public list [https://find-government-grants.service.gov.uk/grants](https://find-government-grants.service.gov.uk/grants) |
+| Machine route | No separate catalogue API. `https://www.gov.uk/api/search.json?filter_format=grant&count=1` returned `total: 0` on the check date, so the GOV.UK Search API does not carry this catalogue. The public list is server-rendered and needs no login or CAPTCHA. `?page=2` returns the next page. |
+| Terms | [Terms and conditions](https://find-government-grants.service.gov.uk/info/terms-and-conditions): “Most content on Find a grant is subject to Crown copyright protection and is published under the Open Government Licence (OGL).” Footer: “All content is available under the Open Government Licence v3.0, except where otherwise stated.” The same page says “You must not try to gain unauthorised access to Find a grant” and “You must not attack Find a grant in any way. This includes denial-of-service attacks.” It does not forbid automated reading of the public pages or commercial reuse. The GOV.UK sentence “You can scrape GOV.UK as long as you respect our robots.txt policy” is on [Reuse GOV.UK content](https://www.gov.uk/help/reuse-govuk-content) and applies to GOV.UK, not this host, so `scraping_permitted` stays false. |
+| Robots | `https://find-government-grants.service.gov.uk/robots.txt` is **HTTP 404** HTML (“Page not found”) with `x-robots-tag: index`. No `Disallow` rules are published. The adapter fetches `/robots.txt` and `/grants` only, at most 10 requests per minute. |
+| Decision | **Build** `find-a-grant`. `OPEN_LICENSE`, `scraping_permitted = false`, `enabled = false`. Preserve-only. |
+
+## Innovate UK funding competitions — build, disabled
+
+| Field | Evidence |
+| --- | --- |
+| Official source URL | [Innovation competitions](https://apply-for-innovation-funding.service.gov.uk/competition/search) |
+| Machine route | No public JSON or RSS catalogue was found. The search page is public HTML. It returned **HTTP 200** with competition titles, summaries and dates, and no login or CAPTCHA. |
+| Terms | [Terms and conditions](https://apply-for-innovation-funding.service.gov.uk/info/terms-and-conditions), section 5: “You can reproduce content published on the Innovate UK website under the Open Government Licence (OGL) as long as you follow the licence conditions.” The same section says “You should contact us if you want to reproduce a piece of content.” Section 2.1 forbids reproducing the site “in contravention of the provisions of the terms” and forbids access “without authority”. It does not forbid automated access to the public competition list. Footer: content is available under the Open Government Licence v3.0 except where otherwise stated. `scraping_permitted` stays false because the terms do not explicitly allow scraping. |
+| Robots | `GET https://apply-for-innovation-funding.service.gov.uk/robots.txt` returns **302** to `https://apply-for-innovation-funding.service.gov.uk/login`. No robots file is published. The adapter does not follow that redirect. `/competition/search` is allowed because no `Disallow` exists and the path itself is public. At most 10 requests per minute. |
+| Decision | **Build** `innovate-uk`. `OPEN_LICENSE`, `scraping_permitted = false`, `enabled = false`. Preserve-only. A grant whose normalised title matches an existing grant deal is linked onto that deal. |
