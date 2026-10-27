@@ -1,18 +1,25 @@
-import { CheckIcon, LockIcon } from "lucide-react";
+import { CheckIcon } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { CheckoutPlanForm } from "@/components/billing/checkout-plan-form";
+import { FoundingCheckoutButton } from "@/components/billing/founding-checkout-button";
+import {
+  FoundingButtonLabel,
+  FoundingPriceLead,
+  ProAnnualButtonLabel,
+  ProAnnualPriceLead,
+} from "@/components/billing/founding-price";
 import { Heading, Text } from "@/components/layout/heading";
 import { Button } from "@/components/ui/button";
 import { signupPathForPlan, signupPathWithNext } from "@/lib/auth/redirect";
 import type { CheckoutPlanKey } from "@/lib/billing/types";
 import {
-  FOUNDING_CAP,
   FOUNDING_COPY,
-  FOUNDING_PLAN_KEY,
-  foundingPlacesLabel,
+  foundingSignupPath,
   foundingSoldOutNote,
+  foundingUiState,
+  type FoundingPublicCount,
   type FoundingUiState,
 } from "@/lib/billing/founding-ui";
 import { DISPLAY_PRICING, FEATURE_LIMITS } from "@/lib/constants";
@@ -28,7 +35,6 @@ const FREE_FEATURES = [
 const PRO_FEATURES = [
   "Buyer, reference number and original source",
   "Tender documents and named contacts",
-  "Buyer and competitor intelligence",
   "Full details on every deal",
   "Saved searches and alerts",
 ] as const;
@@ -55,16 +61,13 @@ function FeatureList({ items }: { items: readonly string[] }) {
   );
 }
 
-function Price({ label, includeVat }: { label: string; includeVat?: boolean }) {
+function Price({ label }: { label: string }) {
   const price = splitPrice(label);
   return (
     <p className="mt-4 text-4xl font-semibold tracking-tight text-foreground tabular-nums">
       {price.amount}
       {price.period ? (
         <span className="text-base font-medium text-muted-foreground">{price.period}</span>
-      ) : null}
-      {includeVat ? (
-        <span className="text-base font-medium text-muted-foreground"> (incl. VAT)</span>
       ) : null}
     </p>
   );
@@ -89,17 +92,6 @@ function PlanCard({
   );
 }
 
-function PlacesMeter() {
-  return (
-    <div className="mt-5">
-      <p className="text-sm font-medium text-foreground">{foundingPlacesLabel()}</p>
-      <p className="mt-2 text-[0.8125rem] leading-5 text-muted-foreground">
-        {FOUNDING_COPY.rechecked}
-      </p>
-    </div>
-  );
-}
-
 function PlanCta({
   signedIn,
   planKey,
@@ -110,7 +102,7 @@ function PlanCta({
 }: {
   signedIn: boolean;
   planKey: CheckoutPlanKey;
-  label: string;
+  label: ReactNode;
   variant?: "default" | "outline";
   buttonClassName?: string;
   analyticsPlan?: "founding";
@@ -138,13 +130,18 @@ function PlanCta({
 
 export function PricingPlans({
   signedIn,
-  state,
+  founding,
+  state: stateProp,
 }: {
   signedIn: boolean;
-  state: Exclude<FoundingUiState, "hidden">;
+  founding?: FoundingPublicCount;
+  state?: Exclude<FoundingUiState, "hidden">;
 }) {
+  const state = founding ? foundingUiState(founding) : (stateProp ?? "hidden");
+  // Founding full, hidden or not offered: the card disappears and the grid reflows to three plans.
+  const showFounding = state === "available";
   const soldOut = state === "sold_out";
-  const annualVariant = soldOut ? "default" : "outline";
+  const annualVariant = showFounding ? "outline" : "default";
 
   return (
     <>
@@ -158,10 +155,10 @@ export function PricingPlans({
       <div
         className={cn(
           "grid items-stretch gap-6 pt-3",
-          soldOut ? "lg:grid-cols-3" : "lg:grid-cols-4",
+          showFounding ? "lg:grid-cols-4" : "lg:grid-cols-3",
         )}
       >
-        <PlanCard className={cn(soldOut ? "order-1" : "order-2 lg:order-1")}>
+        <PlanCard className={cn(showFounding ? "order-2 lg:order-1" : "order-1")}>
           <h2 className="font-heading text-xl font-semibold text-balance">Free</h2>
           <p className="mt-4 text-4xl font-semibold tracking-tight tabular-nums">£0</p>
           <p className="mt-1 text-sm text-muted-foreground">{FOUNDING_COPY.freeNote}</p>
@@ -175,36 +172,33 @@ export function PricingPlans({
           </div>
         </PlanCard>
 
-        {soldOut ? null : (
+        {showFounding ? (
           <PlanCard className="order-1 border-2 border-dealatlas-teal bg-[color-mix(in_srgb,var(--teal)_8%,var(--background))] lg:order-2">
             <p className="absolute -top-3 left-6 rounded-full bg-[#00806A] px-2.5 py-0.5 text-xs font-medium text-white">
               {FOUNDING_COPY.badge}
             </p>
             <h2 className="font-heading text-xl font-semibold text-balance">{FOUNDING_COPY.title}</h2>
-            <p className="mt-1 text-sm text-muted-foreground">{FOUNDING_COPY.firstMembers}</p>
-            <Price label={DISPLAY_PRICING.foundingAnnual} includeVat />
-            <p className="mt-1 text-sm font-medium text-[#00806A]">{FOUNDING_COPY.lessThanAnnual}</p>
-            <p className="mt-4 flex items-start gap-2 text-sm font-medium text-foreground">
-              <LockIcon className="mt-0.5 size-4 shrink-0 text-[#00806A]" aria-hidden="true" />
-              <span>{FOUNDING_COPY.priceLocked}</span>
-            </p>
-            <PlacesMeter />
+            <FoundingPriceLead className="mt-4" />
+            <p className="mt-4 text-[0.8125rem] leading-5 text-muted-foreground">{FOUNDING_COPY.rechecked}</p>
             <FeatureList items={PRO_FEATURES} />
             <div className="mt-auto flex flex-col gap-3 pt-6">
-              <PlanCta
-                signedIn={signedIn}
-                planKey={FOUNDING_PLAN_KEY}
-                label={FOUNDING_COPY.cta}
-                analyticsPlan="founding"
-                variant="default"
-                buttonClassName={FOUNDING_BUTTON}
-              />
+              {signedIn ? (
+                <FoundingCheckoutButton
+                  label={<FoundingButtonLabel text={FOUNDING_COPY.cta} />}
+                  returnTo="/pricing"
+                  buttonClassName={FOUNDING_BUTTON}
+                />
+              ) : (
+                <Button asChild className={cn("h-auto min-h-11 w-full whitespace-normal py-2", FOUNDING_BUTTON)}>
+                  <Link href={foundingSignupPath()}><FoundingButtonLabel text={FOUNDING_COPY.cta} /></Link>
+                </Button>
+              )}
               <p className="text-center text-[0.8125rem] leading-5 text-pretty text-muted-foreground">
                 {FOUNDING_COPY.cancelTerms}
               </p>
             </div>
           </PlanCard>
-        )}
+        ) : null}
 
         <PlanCard className="order-3">
           <h2 className="font-heading text-xl font-semibold text-balance">Pro monthly</h2>
@@ -221,22 +215,22 @@ export function PricingPlans({
         </PlanCard>
 
         <PlanCard
-          className={cn("order-4", soldOut && "border-2 border-primary")}
+          className={cn("order-4", !showFounding && "border-2 border-primary")}
         >
-          {soldOut ? (
+          {!showFounding ? (
             <p className="absolute -top-3 left-6 rounded-full bg-primary px-2.5 py-0.5 text-xs font-medium text-primary-foreground">
               {FOUNDING_COPY.recommended}
             </p>
           ) : null}
           <h2 className="font-heading text-xl font-semibold text-balance">Pro annual</h2>
-          <Price label={DISPLAY_PRICING.proAnnual} />
+          <ProAnnualPriceLead className="mt-4" />
           <p className="mt-1 text-sm text-muted-foreground">{FOUNDING_COPY.annualSaving}</p>
           <FeatureList items={PRO_FEATURES} />
           <div className="mt-auto pt-6">
             <PlanCta
               signedIn={signedIn}
               planKey="PRO_ANNUAL"
-              label={FOUNDING_COPY.startAnnual}
+              label={<ProAnnualButtonLabel text={FOUNDING_COPY.startAnnual} />}
               variant={annualVariant}
             />
           </div>
@@ -244,7 +238,7 @@ export function PricingPlans({
       </div>
       {soldOut ? (
         <p className="mx-auto max-w-xl rounded-lg bg-muted px-4 py-3 text-center text-sm text-pretty text-muted-foreground">
-          {foundingSoldOutNote(FOUNDING_CAP)}
+          {foundingSoldOutNote()}
         </p>
       ) : null}
     </>

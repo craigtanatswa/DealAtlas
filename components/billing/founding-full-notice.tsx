@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { CheckoutPlanForm } from "@/components/billing/checkout-plan-form";
+import { ProAnnualButtonLabel } from "@/components/billing/founding-price";
 import { Button } from "@/components/ui/button";
 import { FOUNDING_COPY } from "@/lib/billing/founding-ui";
 
@@ -30,7 +31,7 @@ export function FoundingFullNotice({
             <>
               <CheckoutPlanForm
                 planKey="PRO_ANNUAL"
-                label={FOUNDING_COPY.raceAnnual}
+                label={<ProAnnualButtonLabel text={FOUNDING_COPY.raceAnnual} />}
                 showPrice={false}
                 returnTo={returnTo}
                 className="sm:flex-1"
@@ -49,7 +50,9 @@ export function FoundingFullNotice({
           ) : (
             <>
               <Button asChild className="h-11 sm:flex-1">
-                <Link href={loginHref}>{FOUNDING_COPY.raceAnnual}</Link>
+                <Link href={loginHref}>
+                  <ProAnnualButtonLabel text={FOUNDING_COPY.raceAnnual} />
+                </Link>
               </Button>
               <Button asChild variant="outline" className="h-11 sm:flex-1">
                 <Link href={loginHref}>{FOUNDING_COPY.raceMonthly}</Link>

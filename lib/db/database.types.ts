@@ -3258,6 +3258,7 @@ export type Database = {
         | "EARLY_MARKET_ENGAGEMENT"
         | "CONTRACT_RENEWAL"
         | "AWARD"
+        | "GRANT"
       ingestion_status:
         | "QUEUED"
         | "RUNNING"
@@ -3504,6 +3505,7 @@ export const Constants = {
         "EARLY_MARKET_ENGAGEMENT",
         "CONTRACT_RENEWAL",
         "AWARD",
+        "GRANT",
       ],
       ingestion_status: [
         "QUEUED",
