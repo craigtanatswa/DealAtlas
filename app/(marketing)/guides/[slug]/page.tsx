@@ -14,10 +14,7 @@ import {
   publishedGuidePaths,
   type Guide,
 } from "@/lib/guides/content";
-import {
-  guideNeedsLiveCount,
-  substituteLiveCountInGuide,
-} from "@/lib/guides/live-count";
+import { resolveGuideWithLiveCount } from "@/lib/guides/live-count";
 import { guideJsonLd } from "@/lib/guides/json-ld";
 import { countPublishedDealsForGuides } from "@/lib/search/public";
 import { marketingPageMetadata, NOINDEX_ROBOTS } from "@/lib/seo/metadata";
@@ -31,9 +28,9 @@ type PageProps = {
 };
 
 async function resolveLiveCount(guide: Guide): Promise<Guide> {
-  if (!guideNeedsLiveCount(guide)) return guide;
-  const total = await countPublishedDealsForGuides(await createSupabaseServerClient());
-  return substituteLiveCountInGuide(guide, total);
+  return resolveGuideWithLiveCount(guide, async () =>
+    countPublishedDealsForGuides(await createSupabaseServerClient()),
+  );
 }
 
 export function generateStaticParams() {

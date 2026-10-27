@@ -5,7 +5,24 @@ import path from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterAll, describe, expect, it, vi } from "vitest";
 
+const liveCountMocks = vi.hoisted(() => ({
+  countPublishedDealsForGuides: vi.fn(async () => 1234),
+  createSupabaseServerClient: vi.fn(async () => ({})),
+  getAppOrigin: vi.fn(() => "https://www.dealatlas.uk"),
+}));
+
 vi.mock("server-only", () => ({}));
+vi.mock("@/lib/search/public", () => ({
+  countPublishedDealsForGuides: liveCountMocks.countPublishedDealsForGuides,
+}));
+vi.mock("@/lib/supabase/server", () => ({
+  createSupabaseServerClient: liveCountMocks.createSupabaseServerClient,
+}));
+vi.mock("@/lib/auth/urls", () => ({ getAppOrigin: liveCountMocks.getAppOrigin }));
+vi.mock("next/navigation", async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  usePathname: () => "/guides/uk-tender-search",
+}));
 
 import { GuideMarkdown } from "@/components/guides/guide-markdown";
 import {
@@ -16,10 +33,14 @@ import {
   publishedGuidePaths,
 } from "@/lib/guides/content";
 import { guideJsonLd, guidesIndexJsonLd } from "@/lib/guides/json-ld";
-import { blockCtaPositions, inlineText, parseInline, parseMarkdown, safeHref } from "@/lib/guides/markdown";
+import { blockCtaPositions, extractFaq, inlineText, parseInline, parseMarkdown, safeHref } from "@/lib/guides/markdown";
 import {
   applyLiveCount,
+  guideNeedsLiveCount,
   LIVE_COUNT_TOKEN,
+  LIVE_COUNT_UNAVAILABLE_WARN,
+  resolveGuideWithLiveCount,
+  stripLiveCountFromGuide,
   substituteLiveCountInGuide,
 } from "@/lib/guides/live-count";
 import { isKnownGuideSlug } from "@/lib/analytics/events";
@@ -268,6 +289,89 @@ describe("guide markdown sanitising", () => {
     expect(html).toContain("£5,193,000");
     expect(html).not.toContain("<h1");
     expect(html).not.toContain('href="/deals/');
+  });
+});
+
+describe("live count fallback", () => {
+  it("strips the live count clause without inventing a figure", () => {
+    const guide = getPublishedGuide(SLUG_3)!;
+    const stripped = stripLiveCountFromGuide(guide);
+    expect(JSON.stringify(guide)).toContain(LIVE_COUNT_TOKEN);
+    const text = JSON.stringify(stripped);
+    expect(text).not.toMatch(/\{\{[^}]+\}\}/);
+    expect(text).not.toMatch(/\d+\s+live\s+UK\s+opportunities/);
+    expect(text).toContain("Browse live UK opportunities on DealAtlas today.");
+    expect(guideNeedsLiveCount(stripped)).toBe(false);
+    expect(stripped.faq).toEqual(extractFaq(stripped.blocks));
+  });
+
+  it("resolves with the count on success and strips without one on failure", async () => {
+    const guide = getPublishedGuide(SLUG_3)!;
+    const success = await resolveGuideWithLiveCount(guide, async () => 1234);
+    expect(JSON.stringify(success)).toContain("1234 live UK opportunities on DealAtlas today.");
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      const failure = await resolveGuideWithLiveCount(guide, async () => {
+        throw new Error("count down");
+      });
+      expect(JSON.stringify(failure)).not.toMatch(/\{\{[^}]+\}\}/);
+      expect(JSON.stringify(failure)).not.toMatch(/\d+\s+live\s+UK\s+opportunities/);
+      expect(JSON.stringify(failure)).toContain("Browse live UK opportunities on DealAtlas today.");
+      expect(warn).toHaveBeenCalledWith(LIVE_COUNT_UNAVAILABLE_WARN);
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it("does not swallow unknown-token throws when the count succeeds", async () => {
+    const guide = getPublishedGuide(SLUG)!;
+    const unresolved: typeof guide = {
+      ...guide,
+      blocks: parseMarkdown("An unknown {{OTHER_TOKEN}} remains."),
+    };
+    await expect(
+      resolveGuideWithLiveCount(unresolved, async () => 1234),
+    ).rejects.toThrow(/\{\{OTHER_TOKEN\}\}/);
+  });
+
+  it("renders the page without a count when the count query fails", async () => {
+    liveCountMocks.countPublishedDealsForGuides.mockRejectedValue(new Error("count unavailable"));
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      const { default: GuidePage } = await import("@/app/(marketing)/guides/[slug]/page");
+      const element = await GuidePage({ params: Promise.resolve({ slug: SLUG_3 }) });
+      const html = renderToStaticMarkup(element);
+      expect(html).not.toMatch(/\{\{[^}]+\}\}/);
+      expect(html).not.toMatch(/\d+\s+live\s+UK\s+opportunities/);
+      expect(html).toContain("Browse live UK opportunities on DealAtlas today.");
+      expect(
+        warn.mock.calls.filter(([message]) => message === LIVE_COUNT_UNAVAILABLE_WARN),
+      ).toHaveLength(1);
+    } finally {
+      liveCountMocks.countPublishedDealsForGuides.mockResolvedValue(1234);
+      warn.mockRestore();
+    }
+  });
+
+  it("builds metadata without a count when the count query fails", async () => {
+    liveCountMocks.countPublishedDealsForGuides.mockRejectedValue(new Error("count unavailable"));
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      const { generateMetadata } = await import("@/app/(marketing)/guides/[slug]/page");
+      const metadata = await generateMetadata({ params: Promise.resolve({ slug: SLUG_3 }) });
+      const metadataText = JSON.stringify({
+        title: metadata.title,
+        description: metadata.description,
+      });
+      expect(metadataText).not.toMatch(/\{\{[^}]+\}\}/);
+      expect(metadataText).not.toMatch(/\d+\s+live\s+UK\s+opportunities/);
+      expect(
+        warn.mock.calls.filter(([message]) => message === LIVE_COUNT_UNAVAILABLE_WARN),
+      ).toHaveLength(1);
+    } finally {
+      liveCountMocks.countPublishedDealsForGuides.mockResolvedValue(1234);
+      warn.mockRestore();
+    }
   });
 });
 
