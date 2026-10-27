@@ -1,0 +1,43 @@
+{
+  "notices": [
+    {
+      "publication-number": "999111-2026",
+      "publication-date": "2026-10-01+02:00",
+      "notice-type": "cn-standard",
+      "procedure-type": "open",
+      "notice-title": {
+        "eng": "Portable spectrum analysers for a public laboratory",
+        "swe": ["Spektrum"]
+      },
+      "buyer-name": { "eng": ["Canary Municipal Works"] },
+      "buyer-country": ["SWE"],
+      "buyer-city": { "eng": ["Stockholm"] },
+      "buyer-internet-address": "https://canary-buyer.example/apply",
+      "classification-cpv": ["32000000"],
+      "deadline-receipt-request": ["2026-11-20T22:59:58Z"],
+      "place-of-performance": ["SWE", "SE110"],
+      "submission-language": ["ENG"],
+      "description-proc": "A public laboratory needs portable measurement equipment.",
+      "description-lot": {
+        "eng": ["Portable spectrum analysers for field measurement."]
+      },
+      "estimated-value-proc": "2500000",
+      "estimated-value-cur-proc": "SEK",
+      "estimated-value-lot": ["2500000"],
+      "estimated-value-cur-lot": ["SEK"],
+      "organisation-email-buyer": ["buyer@canary-buyer.example"],
+      "organisation-tel-buyer": ["+468000000"],
+      "document-url-lot": ["https://documents.example/canary-spec.pdf", "not-a-url"],
+      "internal-identifier-proc": "REF-CANARY-42",
+      "framework-agreement-lot": ["none"],
+      "contract-duration-start-date-lot": ["2027-01-01+01:00"],
+      "contract-duration-end-date-lot": ["2028-01-01+01:00"],
+      "links": {
+        "html": {
+          "ENG": "https://ted.europa.eu/en/notice/-/detail/999111-2026"
+        }
+      }
+    }
+  ],
+  "totalNoticeCount": 1
+}
