@@ -1,4 +1,10 @@
-import { createAllowlistedJsonClient, type JsonHttpClient } from "@/ingestion/core/http";
+import {
+  createAllowlistedJsonClient,
+  createAllowlistedTextClient,
+  type AllowedFetchPolicy,
+  type JsonHttpClient,
+  type TextHttpClient,
+} from "@/ingestion/core/http";
 import { runIngestion } from "@/ingestion/core/pipeline";
 import { defaultSleep } from "@/ingestion/core/retry";
 import { createContractsFinderAdapter } from "@/ingestion/sources/contracts-finder/adapter";
@@ -6,13 +12,44 @@ import {
   CONTRACTS_FINDER_FETCH_POLICY,
   CONTRACTS_FINDER_SOURCE_KEY,
 } from "@/ingestion/sources/contracts-finder/constants";
+import { createFindAGrantAdapter } from "@/ingestion/sources/find-a-grant/adapter";
+import {
+  FIND_A_GRANT_FETCH_POLICY,
+  FIND_A_GRANT_SOURCE_KEY,
+} from "@/ingestion/sources/find-a-grant/constants";
 import { createFindATenderAdapter } from "@/ingestion/sources/find-a-tender/adapter";
 import {
   FIND_A_TENDER_FETCH_POLICY,
   FIND_A_TENDER_SOURCE_KEY,
   formatOcdsDateTime,
 } from "@/ingestion/sources/find-a-tender/constants";
-import { createRequestPacer } from "@/ingestion/sources/find-a-tender/pace";
+import {
+  FIND_A_TENDER_REQUEST_LIMIT,
+  FIND_A_TENDER_REQUEST_WINDOW_MS,
+  createRequestPacer,
+} from "@/ingestion/sources/find-a-tender/pace";
+import { createPublicContractsScotlandAdapter } from "@/ingestion/sources/public-contracts-scotland/adapter";
+import {
+  PUBLIC_CONTRACTS_SCOTLAND_FETCH_POLICY,
+  PUBLIC_CONTRACTS_SCOTLAND_SOURCE_KEY,
+} from "@/ingestion/sources/public-contracts-scotland/constants";
+import { createSell2WalesAdapter } from "@/ingestion/sources/sell2wales/adapter";
+import {
+  SELL2WALES_FETCH_POLICY,
+  SELL2WALES_SOURCE_KEY,
+} from "@/ingestion/sources/sell2wales/constants";
+import { createTedAdapter } from "@/ingestion/sources/ted/adapter";
+import {
+  TED_FETCH_POLICY,
+  TED_REQUEST_LIMIT,
+  TED_REQUEST_WINDOW_MS,
+  TED_SOURCE_KEY,
+} from "@/ingestion/sources/ted/constants";
+import { createInnovateUkAdapter } from "@/ingestion/sources/innovate-uk/adapter";
+import {
+  INNOVATE_UK_FETCH_POLICY,
+  INNOVATE_UK_SOURCE_KEY,
+} from "@/ingestion/sources/innovate-uk/constants";
 import { createGcaAgreementsAdapter } from "@/ingestion/sources/gca/agreements";
 import {
   GCA_AGREEMENTS_SOURCE_KEY,
@@ -224,6 +261,46 @@ function emptyCounts(): OpenIngestCounts {
   return { fetched: 0, new: 0, updated: 0, unchanged: 0, failed: 0, capped: 0 };
 }
 
+export const OPEN_INGEST_SOURCE_KEYS = [
+  FIND_A_TENDER_SOURCE_KEY,
+  CONTRACTS_FINDER_SOURCE_KEY,
+  PUBLIC_CONTRACTS_SCOTLAND_SOURCE_KEY,
+  SELL2WALES_SOURCE_KEY,
+  TED_SOURCE_KEY,
+] as const;
+
+export type OpenIngestSourceKey = (typeof OPEN_INGEST_SOURCE_KEYS)[number];
+
+/** Devolved portals stay at or under 10 requests a minute. Find a Tender stays slower. */
+export function openIngestPacerOptions(sourceKey: string): {
+  maxRequests: number;
+  windowMs: number;
+} {
+  if (sourceKey === TED_SOURCE_KEY) {
+    return { maxRequests: TED_REQUEST_LIMIT, windowMs: TED_REQUEST_WINDOW_MS };
+  }
+  if (
+    sourceKey === PUBLIC_CONTRACTS_SCOTLAND_SOURCE_KEY ||
+    sourceKey === SELL2WALES_SOURCE_KEY
+  ) {
+    return { maxRequests: 10, windowMs: 60_000 };
+  }
+  return {
+    maxRequests: FIND_A_TENDER_REQUEST_LIMIT,
+    windowMs: FIND_A_TENDER_REQUEST_WINDOW_MS,
+  };
+}
+
+/** Find a Tender starts the changed-id file. Later sources append so a failure cannot drop it. */
+export function mergeOpenIngestChangedIds(
+  source: string,
+  prior: string[],
+  current: string[],
+): string[] {
+  const base = source === FIND_A_TENDER_SOURCE_KEY ? [] : prior;
+  return [...new Set([...base, ...current])];
+}
+
 export function openIngestLogLine(counts: OpenIngestCounts): string {
   return JSON.stringify({
     fetched: counts.fetched,
@@ -247,36 +324,28 @@ export async function runOpenFindATenderIngest(options: {
   /** ingest writes canonical rows. previews rebuilds changed deals. all does both. */
   phase?: "ingest" | "previews" | "all";
   dealIds?: string[];
-  sourceKey?: typeof FIND_A_TENDER_SOURCE_KEY | typeof CONTRACTS_FINDER_SOURCE_KEY;
+  sourceKey?: OpenIngestSourceKey;
 }): Promise<OpenIngestResult> {
   const now = options.now ?? new Date();
   const sleep = options.sleep ?? defaultSleep;
-  const pace = createRequestPacer({ sleep });
   const sourceKey = options.sourceKey ?? FIND_A_TENDER_SOURCE_KEY;
+  const pace = createRequestPacer({ sleep, ...openIngestPacerOptions(sourceKey) });
   const http =
-    options.http ??
-    createAllowlistedJsonClient(
-      sourceKey === CONTRACTS_FINDER_SOURCE_KEY
-        ? CONTRACTS_FINDER_FETCH_POLICY
-        : FIND_A_TENDER_FETCH_POLICY,
-    );
+    options.http ?? createAllowlistedJsonClient(fetchPolicyFor(sourceKey));
   const paced: JsonHttpClient = {
     async getJson(url: string) {
       await pace();
       return http.getJson(url);
     },
+    async postJson(url: string, body: unknown) {
+      await pace();
+      if (!http.postJson) {
+        throw new Error("JSON client has no postJson");
+      }
+      return http.postJson(url, body);
+    },
   };
-  const adapter =
-    options.adapter ??
-    (sourceKey === CONTRACTS_FINDER_SOURCE_KEY
-      ? createContractsFinderAdapter({
-          http: paced,
-          now: () => now,
-        })
-      : createFindATenderAdapter({
-          http: paced,
-          now: () => now,
-        }));
+  const adapter = options.adapter ?? adapterFor(sourceKey, paced, () => now);
 
   const counts = emptyCounts();
   const errors: OpenIngestError[] = [];
@@ -415,6 +484,40 @@ export async function runOpenFindATenderIngest(options: {
   };
 }
 
+function fetchPolicyFor(sourceKey: OpenIngestSourceKey): AllowedFetchPolicy {
+  switch (sourceKey) {
+    case CONTRACTS_FINDER_SOURCE_KEY:
+      return CONTRACTS_FINDER_FETCH_POLICY;
+    case PUBLIC_CONTRACTS_SCOTLAND_SOURCE_KEY:
+      return PUBLIC_CONTRACTS_SCOTLAND_FETCH_POLICY;
+    case SELL2WALES_SOURCE_KEY:
+      return SELL2WALES_FETCH_POLICY;
+    case TED_SOURCE_KEY:
+      return TED_FETCH_POLICY;
+    default:
+      return FIND_A_TENDER_FETCH_POLICY;
+  }
+}
+
+function adapterFor(
+  sourceKey: OpenIngestSourceKey,
+  http: JsonHttpClient,
+  now: () => Date,
+): SourceAdapter {
+  switch (sourceKey) {
+    case CONTRACTS_FINDER_SOURCE_KEY:
+      return createContractsFinderAdapter({ http, now });
+    case PUBLIC_CONTRACTS_SCOTLAND_SOURCE_KEY:
+      return createPublicContractsScotlandAdapter({ http, now });
+    case SELL2WALES_SOURCE_KEY:
+      return createSell2WalesAdapter({ http, now });
+    case TED_SOURCE_KEY:
+      return createTedAdapter({ http, now });
+    default:
+      return createFindATenderAdapter({ http, now });
+  }
+}
+
 export function runOpenContractsFinderIngest(
   options: Omit<Parameters<typeof runOpenFindATenderIngest>[0], "sourceKey">,
 ): Promise<OpenIngestResult> {
@@ -424,24 +527,96 @@ export function runOpenContractsFinderIngest(
   });
 }
 
+export function runOpenPublicContractsScotlandIngest(
+  options: Omit<Parameters<typeof runOpenFindATenderIngest>[0], "sourceKey">,
+): Promise<OpenIngestResult> {
+  return runOpenFindATenderIngest({
+    ...options,
+    sourceKey: PUBLIC_CONTRACTS_SCOTLAND_SOURCE_KEY,
+  });
+}
+
+export function runOpenSell2WalesIngest(
+  options: Omit<Parameters<typeof runOpenFindATenderIngest>[0], "sourceKey">,
+): Promise<OpenIngestResult> {
+  return runOpenFindATenderIngest({
+    ...options,
+    sourceKey: SELL2WALES_SOURCE_KEY,
+  });
+}
+
+export function runOpenTedIngest(
+  options: Omit<Parameters<typeof runOpenFindATenderIngest>[0], "sourceKey">,
+): Promise<OpenIngestResult> {
+  return runOpenFindATenderIngest({
+    ...options,
+    sourceKey: TED_SOURCE_KEY,
+  });
+}
+
+const GRANT_REQUESTS_PER_MINUTE = 10;
+const GRANT_WINDOW_MS = 60_000;
+
+function pacedTextClient(
+  http: TextHttpClient,
+  sleep: (ms: number) => Promise<void>,
+): TextHttpClient {
+  const pace = createRequestPacer({
+    maxRequests: GRANT_REQUESTS_PER_MINUTE,
+    windowMs: GRANT_WINDOW_MS,
+    sleep,
+  });
+  return {
+    async getText(url: string) {
+      await pace();
+      return http.getText(url);
+    },
+  };
+}
+
 export async function runOpenCatalogueIngest(options: {
+  sourceKey:
+    | typeof FIND_A_GRANT_SOURCE_KEY
+    | typeof INNOVATE_UK_SOURCE_KEY
+    | typeof GCA_AGREEMENTS_SOURCE_KEY
+    | typeof GCA_PIPELINE_SOURCE_KEY;
   store: IngestionStore;
   now?: Date;
   dryRun: boolean;
   adapter?: SourceAdapter;
+  http?: TextHttpClient;
   sleep?: (ms: number) => Promise<void>;
+  limit?: number;
   phase?: "ingest" | "previews" | "all";
   dealIds?: string[];
-  sourceKey: typeof GCA_AGREEMENTS_SOURCE_KEY | typeof GCA_PIPELINE_SOURCE_KEY;
 }): Promise<OpenIngestResult> {
   const now = options.now ?? new Date();
   const sleep = options.sleep ?? defaultSleep;
   const sourceKey = options.sourceKey;
-  const adapter =
-    options.adapter ??
-    (sourceKey === GCA_PIPELINE_SOURCE_KEY
-      ? createGcaPipelineAdapter({ now: () => now, sleep })
-      : createGcaAgreementsAdapter({ now: () => now, sleep }));
+  const isGca =
+    sourceKey === GCA_AGREEMENTS_SOURCE_KEY || sourceKey === GCA_PIPELINE_SOURCE_KEY;
+  let adapter = options.adapter;
+  if (!adapter) {
+    if (isGca) {
+      adapter =
+        sourceKey === GCA_PIPELINE_SOURCE_KEY
+          ? createGcaPipelineAdapter({ now: () => now, sleep })
+          : createGcaAgreementsAdapter({ now: () => now, sleep });
+    } else {
+      const http =
+        options.http ??
+        createAllowlistedTextClient(
+          sourceKey === INNOVATE_UK_SOURCE_KEY
+            ? INNOVATE_UK_FETCH_POLICY
+            : FIND_A_GRANT_FETCH_POLICY,
+        );
+      const paced = pacedTextClient(http, sleep);
+      adapter =
+        sourceKey === INNOVATE_UK_SOURCE_KEY
+          ? createInnovateUkAdapter({ http: paced, now: () => now })
+          : createFindAGrantAdapter({ http: paced, now: () => now });
+    }
+  }
   const counts = emptyCounts();
   const errors: OpenIngestError[] = [];
   const changed = new Set<string>(options.dealIds ?? []);
@@ -454,7 +629,7 @@ export async function runOpenCatalogueIngest(options: {
       store: options.store,
       adapter,
       triggerType: options.dryRun ? "DRY_RUN" : "SCHEDULED",
-      limit: MAX_RECORDS,
+      limit: options.limit ?? MAX_RECORDS,
       now,
       force: true,
       pageSize: 100,
@@ -542,4 +717,16 @@ export async function runOpenCatalogueIngest(options: {
     changedDealIds: phase === "previews" ? [] : [...changed],
     errors,
   };
+}
+
+export function runOpenFindAGrantIngest(
+  options: Omit<Parameters<typeof runOpenCatalogueIngest>[0], "sourceKey">,
+): Promise<OpenIngestResult> {
+  return runOpenCatalogueIngest({ ...options, sourceKey: FIND_A_GRANT_SOURCE_KEY });
+}
+
+export function runOpenInnovateUkIngest(
+  options: Omit<Parameters<typeof runOpenCatalogueIngest>[0], "sourceKey">,
+): Promise<OpenIngestResult> {
+  return runOpenCatalogueIngest({ ...options, sourceKey: INNOVATE_UK_SOURCE_KEY });
 }

@@ -422,6 +422,7 @@ export type IngestionStore = {
     buyerOrganizationId: string,
     normalizedTitle: string,
   ): Promise<DealRecord | null>;
+  findDealByNormalizedTitle(normalizedTitle: string): Promise<DealRecord | null>;
   createDeal(input: CreateDealInput): Promise<DealRecord>;
   updateDeal(id: string, patch: Partial<DealRecord>): Promise<DealRecord>;
 

@@ -52,7 +52,7 @@ select ok(
 );
 
 select ok(
-  has_function_privilege('anon', 'public.search_preview_dtos(text, text, public.buyer_sector, public.deal_type, text, public.deal_status, public.deal_status[], text, text, numeric, text, integer, integer)', 'execute'),
+  has_function_privilege('anon', 'public.search_preview_dtos(text, text, public.buyer_sector, public.deal_type, text, public.deal_status, public.deal_status[], text, text, numeric, text, integer, integer, text[])', 'execute'),
   'anon can execute the DTO search RPC'
 );
 select ok(has_function_privilege('anon', 'public.get_preview_dto_by_slug(text)', 'execute'), 'anon can execute DTO by slug');
@@ -61,15 +61,15 @@ select ok(not has_function_privilege('anon', 'public.get_preview_dto_by_deal_id(
 select ok(not has_function_privilege('anon', 'public.resolve_preview_deal_id(text)', 'execute'), 'anon cannot resolve deal ids');
 select ok(not has_function_privilege('anon', 'public.list_saved_deal_previews()', 'execute'), 'anon cannot list saved deals');
 select ok(
-  not has_function_privilege('anon', 'public.search_deal_previews(text, text, public.buyer_sector, public.deal_type, text, public.deal_status, text, text, integer, integer)', 'execute'),
+  not has_function_privilege('anon', 'public.search_deal_previews(text, text, public.buyer_sector, public.deal_type, text, public.deal_status, text, text, integer, integer, text[])', 'execute'),
   'anon cannot execute the legacy deal_id-bearing search RPC'
 );
 select ok(
-  not has_function_privilege('authenticated', 'public.search_deal_previews_for_profile(uuid, text, text, public.buyer_sector, public.deal_type, text, public.deal_status, text, text, numeric, text, integer, integer)', 'execute'),
+  not has_function_privilege('authenticated', 'public.search_deal_previews_for_profile(uuid, text, text, public.buyer_sector, public.deal_type, text, public.deal_status, text, text, numeric, text, integer, integer, text[])', 'execute'),
   'authenticated cannot execute the legacy profile search RPC'
 );
 select ok(
-  not has_function_privilege('anon', 'public.search_deal_previews_for_profile(uuid, text, text, public.buyer_sector, public.deal_type, text, public.deal_status, text, text, numeric, text, integer, integer)', 'execute'),
+  not has_function_privilege('anon', 'public.search_deal_previews_for_profile(uuid, text, text, public.buyer_sector, public.deal_type, text, public.deal_status, text, text, numeric, text, integer, integer, text[])', 'execute'),
   'anon cannot execute the legacy profile search RPC after 0019'
 );
 select ok(
@@ -389,6 +389,49 @@ select is(
 );
 
 select is(
+  (select array_agg(slug order by slug) from public.search_preview_dtos(p_categories => array['technology'])),
+  array['published-low-risk-preview-a1b2c3d4'],
+  'anon DTO search filters p_categories and returns only published LOW-risk rows in the set'
+);
+
+select is(
+  (select count(*)::integer from public.search_preview_dtos(p_categories => array['Energy', 'Water and Wastewater'])),
+  0,
+  'anon DTO search accepts p_categories even when no fixture row is in that set'
+);
+
+select is(
+  (select relevance_score from public.search_preview_dtos(p_categories => array['technology']) limit 1),
+  null::numeric,
+  'anon DTO rows carry no relevance score when p_categories is set'
+);
+
+select is(
+  (select preview_reasons from public.search_preview_dtos(p_categories => array['technology']) limit 1),
+  '[]'::jsonb,
+  'anon DTO rows carry no preview reasons when p_categories is set'
+);
+
+select ok(
+  not exists (
+    select 1
+    from public.search_preview_dtos(p_categories => array['technology']) as r
+    where to_jsonb(r) ?| array[
+      'deal_id', 'source_url', 'source_title', 'reference', 'ocid', 'buyer_organization_id',
+      'canonical_name', 'email', 'phone', 'application_url', 'created_at', 'updated_at',
+      'leakage_risk', 'is_published', 'unpublished_by_admin'
+    ]
+  ),
+  'anon DTO rows with p_categories keep the same allowlisted columns'
+);
+
+select is(
+  (select array_agg(slug order by slug) from public.search_preview_dtos(p_category => 'technology', p_categories => null)),
+  array['published-low-risk-preview-a1b2c3d4'],
+  'p_categories null keeps the existing p_category filter working'
+);
+
+select is(
   (select count(*)::integer from public.get_preview_dto_by_slug('unpublished-low-risk-preview')),
   0,
   'anon cannot load an unpublished preview by slug'
@@ -558,6 +601,18 @@ select is(
   (select preview_reasons from public.search_preview_dtos() where slug = 'published-low-risk-preview-a1b2c3d4'),
   '[]'::jsonb,
   'free DTO search carries no preview reasons'
+);
+
+select is(
+  (select relevance_score from public.search_preview_dtos(p_categories => array['technology']) where slug = 'published-low-risk-preview-a1b2c3d4'),
+  null::numeric,
+  'free DTO search carries no relevance score when p_categories is set'
+);
+
+select is(
+  (select preview_reasons from public.search_preview_dtos(p_categories => array['technology']) where slug = 'published-low-risk-preview-a1b2c3d4'),
+  '[]'::jsonb,
+  'free DTO search carries no preview reasons when p_categories is set'
 );
 
 select is(

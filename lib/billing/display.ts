@@ -30,7 +30,7 @@ export function planLabel(
     return PLAN_KEY_LABELS.PRO_MONTHLY;
   }
   if (planKey === "PRO_ANNUAL" || billingInterval === "ANNUAL") {
-    return foundingMember ? "Founding Pro — Locked for life" : PLAN_KEY_LABELS.PRO_ANNUAL;
+    return foundingMember ? `Founding Pro — ${DISPLAY_PRICING.foundingAnnual.replace("/year", "/yr")} for as long as you stay subscribed` : PLAN_KEY_LABELS.PRO_ANNUAL;
   }
   return "Free";
 }

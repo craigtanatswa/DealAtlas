@@ -8149,6 +8149,274 @@ on conflict (kind, term) do nothing;
 -- ============================================================================
 
 -- ============================================================================
+-- BEGIN 0043_grant_sources.sql
+-- ============================================================================
+
+-- DealAtlas migration 0043 (renumbered from 0033)
+-- Find a Grant and Innovate UK funding competitions.
+-- Grants use deal_type GRANT. Both sources stay disabled: the Open Government
+-- Licence covers reuse, and the terms do not explicitly allow scraping.
+
+alter type public.deal_type add value if not exists 'GRANT';
+
+insert into public.data_sources (
+  source_key,
+  name,
+  source_type,
+  access_method,
+  base_url,
+  api_url,
+  licence_name,
+  licence_url,
+  terms_url,
+  reuse_status,
+  scraping_permitted,
+  enabled,
+  schedule_expression,
+  rate_limit_per_minute,
+  robots_checked_at,
+  terms_checked_at,
+  compliance_notes
+)
+values
+  (
+    'find-a-grant',
+    'Find a Grant',
+    'GOVERNMENT_WEB',
+    'HTML',
+    'https://find-government-grants.service.gov.uk/',
+    'https://find-government-grants.service.gov.uk/grants',
+    'Open Government Licence v3.0',
+    'https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/',
+    'https://find-government-grants.service.gov.uk/info/terms-and-conditions',
+    'OPEN_LICENSE',
+    false,
+    false,
+    '0 6 * * *',
+    10,
+    timestamptz '2026-10-14T00:00:00Z',
+    timestamptz '2026-10-14T00:00:00Z',
+    'Public grant list under the Open Government Licence v3.0. robots.txt is HTTP 404 with no Disallow. Terms do not explicitly allow scraping, so this source stays disabled. Preserve-only. Do not send source identity to free users.'
+  ),
+  (
+    'innovate-uk',
+    'Innovate UK funding competitions',
+    'GOVERNMENT_WEB',
+    'HTML',
+    'https://apply-for-innovation-funding.service.gov.uk/',
+    'https://apply-for-innovation-funding.service.gov.uk/competition/search',
+    'Open Government Licence v3.0',
+    'https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/',
+    'https://apply-for-innovation-funding.service.gov.uk/info/terms-and-conditions',
+    'OPEN_LICENSE',
+    false,
+    false,
+    '0 6 * * *',
+    10,
+    timestamptz '2026-10-14T00:00:00Z',
+    timestamptz '2026-10-14T00:00:00Z',
+    'Public Innovation Funding Service competition search under the Open Government Licence v3.0. robots.txt redirects to login, which the adapter treats as disallow-all. Terms do not explicitly allow scraping, so this source stays disabled. Preserve-only. Do not send source identity to free users.'
+  ),
+  (
+    'etendersni',
+    'eTendersNI',
+    'GOVERNMENT_WEB',
+    'HTML',
+    'https://etendersni.gov.uk/',
+    null,
+    null,
+    null,
+    'https://etendersni.gov.uk/epps/home.do',
+    'PROHIBITED',
+    false,
+    false,
+    null,
+    null,
+    timestamptz '2026-10-14T00:00:00Z',
+    timestamptz '2026-10-14T00:00:00Z',
+    'BLOCKED. Prior research found a Cloudflare/WAF challenge and no API. Do not attempt to get past the challenge. No fetcher. The opportunity search also presents an image CAPTCHA. Copyright is European Dynamics, not an open licence.'
+  ),
+  (
+    'ukri-funding-finder',
+    'UKRI Funding Finder',
+    'GOVERNMENT_WEB',
+    'HTML',
+    'https://www.ukri.org/opportunity/',
+    null,
+    null,
+    null,
+    'https://www.ukri.org/who-we-are/terms-of-use/',
+    'PROHIBITED',
+    false,
+    false,
+    null,
+    null,
+    timestamptz '2026-10-14T00:00:00Z',
+    timestamptz '2026-10-14T00:00:00Z',
+    'Excluded. UKRI terms of use forbid electronic reproduction for commercial purposes without prior written permission. No fetcher.'
+  )
+on conflict (source_key) do update set
+  name = excluded.name,
+  source_type = excluded.source_type,
+  access_method = excluded.access_method,
+  base_url = excluded.base_url,
+  api_url = excluded.api_url,
+  licence_name = excluded.licence_name,
+  licence_url = excluded.licence_url,
+  terms_url = excluded.terms_url,
+  reuse_status = excluded.reuse_status,
+  scraping_permitted = excluded.scraping_permitted,
+  enabled = excluded.enabled,
+  schedule_expression = excluded.schedule_expression,
+  rate_limit_per_minute = excluded.rate_limit_per_minute,
+  robots_checked_at = excluded.robots_checked_at,
+  terms_checked_at = excluded.terms_checked_at,
+  compliance_notes = excluded.compliance_notes,
+  updated_at = now();
+
+insert into private.leak_gate_terms (kind, term) values
+  ('source_platform', 'apply-for-innovation-funding'),
+  ('source_platform', 'find a grant'),
+  ('source_platform', 'find-a-grant'),
+  ('source_platform', 'find-government-grants'),
+  ('source_platform', 'innovation funding service'),
+  ('source_platform', 'innovate uk'),
+  ('source_platform', 'innovate uk funding competitions'),
+  ('source_platform', 'ukri funding finder'),
+  ('source_platform', 'ukri.org')
+on conflict (kind, term) do nothing;
+
+-- ============================================================================
+-- END 0043_grant_sources.sql
+-- ============================================================================
+
+-- ============================================================================
+-- BEGIN 0045_devolved_ocds_portals.sql
+-- ============================================================================
+
+-- DealAtlas migration 0045 (renumbered from 0032)
+-- Public Contracts Scotland and Sell2Wales official OCDS APIs.
+-- Both stay disabled. Scraping is not permitted. Open pull requests reserve 0042-0044 and 0046.
+
+insert into public.data_sources (
+  source_key,
+  name,
+  source_type,
+  access_method,
+  base_url,
+  api_url,
+  licence_name,
+  licence_url,
+  terms_url,
+  reuse_status,
+  scraping_permitted,
+  enabled,
+  schedule_expression,
+  rate_limit_per_minute,
+  robots_checked_at,
+  terms_checked_at,
+  compliance_notes
+)
+values (
+  'public-contracts-scotland',
+  'Public Contracts Scotland',
+  'GOVERNMENT_OPEN_DATA',
+  'OCDS_API',
+  'https://www.publiccontractsscotland.gov.uk/',
+  'https://api.publiccontractsscotland.gov.uk/v1/Notices',
+  'Open Government Licence v3.0',
+  'https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/',
+  'https://www.publiccontractsscotland.gov.uk/sitehelp/help_terms.aspx',
+  'OPEN_LICENSE',
+  false,
+  false,
+  '0 */6 * * *',
+  10,
+  timestamptz '2026-10-14T00:00:00Z',
+  timestamptz '2026-10-14T00:00:00Z',
+  'Official OCDS Notices API only, including Quick Quote awards (notice type 104). Open Government Licence v3.0. Quick Quote invitations are not public. Do not scrape the website HTML. Disabled until an operator enables the row. Preserve-only ingestion. At most 10 requests per minute. Keep TLS verification on.'
+)
+on conflict (source_key) do update set
+  name = excluded.name,
+  source_type = excluded.source_type,
+  access_method = excluded.access_method,
+  base_url = excluded.base_url,
+  api_url = excluded.api_url,
+  licence_name = excluded.licence_name,
+  licence_url = excluded.licence_url,
+  terms_url = excluded.terms_url,
+  reuse_status = excluded.reuse_status,
+  scraping_permitted = excluded.scraping_permitted,
+  enabled = excluded.enabled,
+  schedule_expression = excluded.schedule_expression,
+  rate_limit_per_minute = excluded.rate_limit_per_minute,
+  robots_checked_at = excluded.robots_checked_at,
+  terms_checked_at = excluded.terms_checked_at,
+  compliance_notes = excluded.compliance_notes,
+  updated_at = now();
+
+insert into public.data_sources (
+  source_key,
+  name,
+  source_type,
+  access_method,
+  base_url,
+  api_url,
+  licence_name,
+  licence_url,
+  terms_url,
+  reuse_status,
+  scraping_permitted,
+  enabled,
+  schedule_expression,
+  rate_limit_per_minute,
+  robots_checked_at,
+  terms_checked_at,
+  compliance_notes
+)
+values (
+  'sell2wales',
+  'Sell2Wales',
+  'GOVERNMENT_OPEN_DATA',
+  'OCDS_API',
+  'https://www.sell2wales.gov.wales/',
+  'https://api.sell2wales.gov.wales/v1/Notices',
+  'Open Government Licence v3.0',
+  'https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/',
+  'https://www.sell2wales.gov.wales/helpandresources/ocds/publicationpolicy',
+  'OPEN_LICENSE',
+  false,
+  false,
+  '0 */6 * * *',
+  10,
+  timestamptz '2026-10-14T00:00:00Z',
+  timestamptz '2026-10-14T00:00:00Z',
+  'Official OCDS Notices API only. Open Government Licence v3.0 on the publication policy. Do not scrape HTML and do not use the RSS feed. Disabled until an operator enables the row. Preserve-only ingestion. At most 10 requests per minute. Keep TLS verification on.'
+)
+on conflict (source_key) do update set
+  name = excluded.name,
+  source_type = excluded.source_type,
+  access_method = excluded.access_method,
+  base_url = excluded.base_url,
+  api_url = excluded.api_url,
+  licence_name = excluded.licence_name,
+  licence_url = excluded.licence_url,
+  terms_url = excluded.terms_url,
+  reuse_status = excluded.reuse_status,
+  scraping_permitted = excluded.scraping_permitted,
+  enabled = excluded.enabled,
+  schedule_expression = excluded.schedule_expression,
+  rate_limit_per_minute = excluded.rate_limit_per_minute,
+  robots_checked_at = excluded.robots_checked_at,
+  terms_checked_at = excluded.terms_checked_at,
+  compliance_notes = excluded.compliance_notes,
+  updated_at = now();
+
+-- ============================================================================
+-- END 0045_devolved_ocds_portals.sql
+-- ============================================================================
+
+-- ============================================================================
 -- BEGIN 0046_search_preview_dtos_page_first.sql
 -- ============================================================================
 
@@ -8532,6 +8800,67 @@ grant execute on function public.close_founding_membership(uuid) to service_role
 -- ============================================================================
 
 -- ============================================================================
+-- BEGIN 0049_ted_search_api.sql
+-- ============================================================================
+
+-- DealAtlas migration 0049
+-- TED Search API v3. Disabled until an operator turns the source on.
+
+insert into public.data_sources (
+  source_key,
+  name,
+  source_type,
+  access_method,
+  base_url,
+  api_url,
+  licence_name,
+  licence_url,
+  terms_url,
+  reuse_status,
+  scraping_permitted,
+  enabled,
+  rate_limit_per_minute,
+  terms_checked_at,
+  compliance_notes
+)
+values (
+  'ted',
+  'Tenders Electronic Daily',
+  'GOVERNMENT_OPEN_DATA',
+  'JSON_API',
+  'https://ted.europa.eu/',
+  'https://api.ted.europa.eu/v3/notices/search',
+  'Commission Decision 2011/833/EU',
+  'https://ted.europa.eu/en/legal-notice',
+  'https://ted.europa.eu/en/news/fair-usage-policy-on-ted',
+  'OPEN_LICENSE',
+  false,
+  false,
+  10,
+  timestamptz '2026-10-14T00:00:00Z',
+  'Official TED Search API v3 (POST https://api.ted.europa.eu/v3/notices/search). No API key. Do not scrape HTML. Do not download notice XML or PDF. Licence: https://ted.europa.eu/en/legal-notice under Commission Decision 2011/833/EU. Procurement notices may be reused, including commercially. Attribution: credit the European Union, source Tenders Electronic Daily (TED), Publications Office of the European Union. Do not use the TED logo. Expert-search fields: notice-type (cn-standard, cn-social, pin-cfc-standard, pin-cfc-social, cn-desg), procedure-type (open, restricted, neg-w-call, comp-dial, innovation; design contests included when procedure-type is absent), submission-language = ENG, deadline-receipt-request on or after the run date with a row check that the deadline is still in the future, place-of-performance in the EU-27 or anyw-eea. publication-date is only the ingest window. UK notices stay on Find a Tender. Rate limit 10 requests per minute, under the published 700 requests per minute fair-use cap. Ingestion is preserve-only and must not publish previews. Disabled by default.'
+)
+on conflict (source_key) do update set
+  name = excluded.name,
+  source_type = excluded.source_type,
+  access_method = excluded.access_method,
+  base_url = excluded.base_url,
+  api_url = excluded.api_url,
+  licence_name = excluded.licence_name,
+  licence_url = excluded.licence_url,
+  terms_url = excluded.terms_url,
+  reuse_status = excluded.reuse_status,
+  scraping_permitted = excluded.scraping_permitted,
+  rate_limit_per_minute = excluded.rate_limit_per_minute,
+  terms_checked_at = excluded.terms_checked_at,
+  compliance_notes = excluded.compliance_notes,
+  updated_at = now();
+
+-- ============================================================================
+-- END 0049_ted_search_api.sql
+-- ============================================================================
+
+-- ============================================================================
 -- BEGIN 0051_match_data_pro_only.sql
 -- ============================================================================
 
@@ -8846,4 +9175,587 @@ revoke select on table public.deal_matches from anon, authenticated;
 
 -- ============================================================================
 -- END 0051_match_data_pro_only.sql
+-- ============================================================================
+
+-- ============================================================================
+-- BEGIN 0053_search_preview_dtos_categories.sql
+-- ============================================================================
+
+-- Multi-raw category filter for the preview search and export RPCs.
+--
+-- A taxonomy filter such as "Energy & Utilities" expands to several raw
+-- deal_previews.main_category values ("Energy", "Energy & Utilities",
+-- "Water and Wastewater"). Client code used to fan out one RPC call per raw
+-- value and merge the pages itself, which lost updated_at ordering for the
+-- default sort=updated because the DTOs carry no timestamps. Filtering by an
+-- array inside the RPC keeps ordering, paging and total_count server-side.
+--
+-- p_categories is added last and defaults to null, so positional callers keep
+-- working and p_category still applies when p_categories is null or empty.
+-- Postgres cannot CREATE OR REPLACE a function with a changed argument list,
+-- so each function is dropped and recreated, then granted again.
+
+drop function if exists public.search_preview_dtos(
+  text,
+  text,
+  public.buyer_sector,
+  public.deal_type,
+  text,
+  public.deal_status,
+  public.deal_status[],
+  text,
+  text,
+  numeric,
+  text,
+  integer,
+  integer
+);
+
+create function public.search_preview_dtos(
+  p_query text default null,
+  p_category text default null,
+  p_buyer_sector public.buyer_sector default null,
+  p_deal_type public.deal_type default null,
+  p_region text default null,
+  p_status public.deal_status default null,
+  p_statuses public.deal_status[] default null,
+  p_value_band text default null,
+  p_deadline_band text default null,
+  p_min_score numeric default null,
+  p_sort text default 'updated',
+  p_limit integer default 20,
+  p_offset integer default 0,
+  p_categories text[] default null
+)
+returns table (
+  slug text,
+  preview_title text,
+  preview_summary text,
+  deal_type public.deal_type,
+  buyer_sector public.buyer_sector,
+  stage public.deal_stage,
+  status public.deal_status,
+  main_category text,
+  broad_region text,
+  value_band text,
+  deadline_band text,
+  duration_band text,
+  sme_suitability text,
+  bid_complexity text,
+  competition_level text,
+  requirements_preview jsonb,
+  relevance_tags text[],
+  freshness_label text,
+  relevance_score numeric,
+  preview_reasons jsonb,
+  total_count bigint
+)
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  with opts as (
+    -- Match data is Pro-only. private.is_user_pro is the fail-closed check.
+    select
+      coalesce(private.is_user_pro(auth.uid()), false) as pro,
+      lower(coalesce(p_sort, 'updated')) as requested_sort
+  ),
+  eff as (
+    select
+      o.pro,
+      case
+        when o.requested_sort = 'relevance' and not o.pro then 'biddable'
+        else o.requested_sort
+      end as sort,
+      case when o.pro then p_min_score end as min_score
+    from opts o
+  ),
+  viewer as (
+    select cp.id as company_profile_id
+    from public.company_profiles cp
+    cross join eff
+    where cp.user_id = auth.uid()
+      and eff.pro
+    limit 1
+  ),
+  q as (
+    select nullif(btrim(left(coalesce(p_query, ''), 200)), '') as text
+  ),
+  ranked as (
+    select
+      dp.*,
+      eff.sort,
+      dm.relevance_score as match_score,
+      dm.preview_reasons as match_reasons,
+      case
+        when q.text is null then 0
+        else ts_rank(
+          to_tsvector('english'::regconfig, coalesce(dp.preview_title, '') || ' ' || coalesce(dp.preview_summary, '') || ' ' || coalesce(dp.main_category, '')),
+          websearch_to_tsquery('english'::regconfig, q.text)
+        )
+      end as query_rank
+    from public.deal_previews dp
+    cross join q
+    cross join eff
+    left join viewer v on true
+    left join public.deal_matches dm
+      on dm.deal_id = dp.deal_id
+     and dm.company_profile_id = v.company_profile_id
+    where dp.is_published = true
+      and dp.leakage_risk = 'LOW'
+      and dp.unpublished_by_admin = false
+      and (
+        case
+          when p_categories is not null and cardinality(p_categories) > 0
+            then dp.main_category = any(p_categories)
+          else (p_category is null or dp.main_category = p_category)
+        end
+      )
+      and (p_buyer_sector is null or dp.buyer_sector = p_buyer_sector)
+      and (p_deal_type is null or dp.deal_type = p_deal_type)
+      and (p_region is null or dp.broad_region = p_region)
+      and (p_status is null or dp.status = p_status)
+      and (p_statuses is null or cardinality(p_statuses) = 0 or dp.status = any(p_statuses))
+      and (p_value_band is null or dp.value_band = p_value_band)
+      and (p_deadline_band is null or dp.deadline_band = p_deadline_band)
+      and (eff.min_score is null or coalesce(dm.relevance_score, -1) >= eff.min_score)
+      and (
+        q.text is null
+        or to_tsvector('english'::regconfig, coalesce(dp.preview_title, '') || ' ' || coalesce(dp.preview_summary, '') || ' ' || coalesce(dp.main_category, ''))
+             @@ websearch_to_tsquery('english'::regconfig, q.text)
+      )
+  ),
+  paged as (
+    -- Order and page on plain columns first. The DTO helpers below are costly
+    -- per row, and rows skipped by OFFSET must not pay for them.
+    select
+      r.*,
+      count(*) over () as total_count,
+      case when r.sort = 'relevance' then coalesce(r.match_score, -1) else 0 end as sort_score,
+      case
+        when r.sort = 'biddable' and r.status = 'CLOSING_SOON'::public.deal_status then 0
+        when r.sort = 'biddable' and r.status = 'OPEN'::public.deal_status then 1
+        when r.sort = 'biddable' and r.status = 'UPCOMING'::public.deal_status then 2
+        when r.sort = 'biddable' then 3
+        else 0
+      end as sort_status,
+      case
+        when r.sort in ('biddable', 'deadline') then (
+          select d.submission_deadline
+          from public.deals d
+          where d.id = r.deal_id
+        )
+      end as sort_deadline,
+      case when r.sort = 'relevance' then r.query_rank else 0 end as sort_rank
+    from ranked r
+    order by sort_score desc, sort_status asc, sort_deadline asc nulls last, sort_rank desc, r.updated_at desc, r.slug
+    limit greatest(1, least(coalesce(p_limit, 20), 50))
+    offset greatest(0, least(coalesce(p_offset, 0), 10000))
+  )
+  select
+    p.slug,
+    p.preview_title,
+    p.preview_summary,
+    p.deal_type,
+    p.buyer_sector,
+    p.stage,
+    p.status,
+    p.main_category,
+    p.broad_region,
+    p.value_band,
+    p.deadline_band,
+    p.duration_band,
+    p.sme_suitability,
+    p.bid_complexity,
+    p.competition_level,
+    private.preview_dto_requirements(p.requirements_preview),
+    p.relevance_tags[1:12],
+    private.preview_freshness_label(p.created_at, p.updated_at),
+    p.match_score,
+    private.preview_dto_reasons(p.match_reasons),
+    p.total_count
+  from paged p
+  order by p.sort_score desc, p.sort_status asc, p.sort_deadline asc nulls last, p.sort_rank desc, p.updated_at desc, p.slug;
+$$;
+
+revoke all on function public.search_preview_dtos(
+  text,
+  text,
+  public.buyer_sector,
+  public.deal_type,
+  text,
+  public.deal_status,
+  public.deal_status[],
+  text,
+  text,
+  numeric,
+  text,
+  integer,
+  integer,
+  text[]
+) from public, anon, authenticated;
+
+grant execute on function public.search_preview_dtos(
+  text,
+  text,
+  public.buyer_sector,
+  public.deal_type,
+  text,
+  public.deal_status,
+  public.deal_status[],
+  text,
+  text,
+  numeric,
+  text,
+  integer,
+  integer,
+  text[]
+) to anon, authenticated, service_role;
+
+drop function if exists public.search_deal_previews(
+  text,
+  text,
+  public.buyer_sector,
+  public.deal_type,
+  text,
+  public.deal_status,
+  text,
+  text,
+  integer,
+  integer
+);
+
+create function public.search_deal_previews(
+  p_query text default null,
+  p_category text default null,
+  p_buyer_sector public.buyer_sector default null,
+  p_deal_type public.deal_type default null,
+  p_region text default null,
+  p_status public.deal_status default null,
+  p_value_band text default null,
+  p_deadline_band text default null,
+  p_limit integer default 20,
+  p_offset integer default 0,
+  p_categories text[] default null
+)
+returns table (
+  deal_id uuid,
+  slug text,
+  preview_title text,
+  preview_summary text,
+  deal_type public.deal_type,
+  buyer_sector public.buyer_sector,
+  stage public.deal_stage,
+  status public.deal_status,
+  main_category text,
+  broad_region text,
+  value_band text,
+  deadline_band text,
+  duration_band text,
+  sme_suitability text,
+  bid_complexity text,
+  competition_level text,
+  requirements_preview jsonb,
+  relevance_tags text[],
+  freshness_label text,
+  total_count bigint
+)
+language sql
+stable
+security invoker
+set search_path = public, extensions, pg_catalog
+as $$
+  select
+    dp.deal_id,
+    dp.slug,
+    dp.preview_title,
+    dp.preview_summary,
+    dp.deal_type,
+    dp.buyer_sector,
+    dp.stage,
+    dp.status,
+    dp.main_category,
+    dp.broad_region,
+    dp.value_band,
+    dp.deadline_band,
+    dp.duration_band,
+    dp.sme_suitability,
+    dp.bid_complexity,
+    dp.competition_level,
+    dp.requirements_preview,
+    dp.relevance_tags,
+    dp.freshness_label,
+    count(*) over() as total_count
+  from public.deal_previews dp
+  where dp.is_published = true
+    and dp.leakage_risk = 'LOW'
+    and (
+      case
+        when p_categories is not null and cardinality(p_categories) > 0
+          then dp.main_category = any(p_categories)
+        else (p_category is null or dp.main_category = p_category)
+      end
+    )
+    and (p_buyer_sector is null or dp.buyer_sector = p_buyer_sector)
+    and (p_deal_type is null or dp.deal_type = p_deal_type)
+    and (p_region is null or dp.broad_region = p_region)
+    and (p_status is null or dp.status = p_status)
+    and (p_value_band is null or dp.value_band = p_value_band)
+    and (p_deadline_band is null or dp.deadline_band = p_deadline_band)
+    and (
+      p_query is null
+      or btrim(p_query) = ''
+      or to_tsvector('english', coalesce(dp.preview_title, '') || ' ' || coalesce(dp.preview_summary, '') || ' ' || coalesce(dp.main_category, ''))
+           @@ websearch_to_tsquery('english', p_query)
+      or dp.preview_title % p_query
+    )
+  order by
+    case when p_query is null or btrim(p_query) = '' then 0
+      else ts_rank(
+        to_tsvector('english', coalesce(dp.preview_title, '') || ' ' || coalesce(dp.preview_summary, '') || ' ' || coalesce(dp.main_category, '')),
+        websearch_to_tsquery('english', p_query)
+      )
+    end desc,
+    dp.updated_at desc
+  limit greatest(1, least(coalesce(p_limit, 20), 50))
+  offset greatest(coalesce(p_offset, 0), 0);
+$$;
+
+revoke all on function public.search_deal_previews(
+  text,
+  text,
+  public.buyer_sector,
+  public.deal_type,
+  text,
+  public.deal_status,
+  text,
+  text,
+  integer,
+  integer,
+  text[]
+) from public, anon, authenticated;
+grant execute on function public.search_deal_previews(
+  text,
+  text,
+  public.buyer_sector,
+  public.deal_type,
+  text,
+  public.deal_status,
+  text,
+  text,
+  integer,
+  integer,
+  text[]
+) to service_role;
+
+drop function if exists public.search_deal_previews_for_profile(
+  uuid,
+  text,
+  text,
+  public.buyer_sector,
+  public.deal_type,
+  text,
+  public.deal_status,
+  text,
+  text,
+  numeric,
+  text,
+  integer,
+  integer
+);
+
+create function public.search_deal_previews_for_profile(
+  p_company_profile_id uuid,
+  p_query text default null,
+  p_category text default null,
+  p_buyer_sector public.buyer_sector default null,
+  p_deal_type public.deal_type default null,
+  p_region text default null,
+  p_status public.deal_status default null,
+  p_value_band text default null,
+  p_deadline_band text default null,
+  p_min_score numeric default null,
+  p_sort text default 'updated',
+  p_limit integer default 20,
+  p_offset integer default 0,
+  p_categories text[] default null
+)
+returns table (
+  deal_id uuid,
+  slug text,
+  preview_title text,
+  preview_summary text,
+  deal_type public.deal_type,
+  buyer_sector public.buyer_sector,
+  stage public.deal_stage,
+  status public.deal_status,
+  main_category text,
+  broad_region text,
+  value_band text,
+  deadline_band text,
+  duration_band text,
+  sme_suitability text,
+  bid_complexity text,
+  competition_level text,
+  requirements_preview jsonb,
+  relevance_tags text[],
+  freshness_label text,
+  relevance_score numeric,
+  preview_reasons jsonb,
+  total_count bigint
+)
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  with ranked as (
+    select
+      dp.deal_id,
+      dp.slug,
+      dp.preview_title,
+      dp.preview_summary,
+      dp.deal_type,
+      dp.buyer_sector,
+      dp.stage,
+      dp.status,
+      dp.main_category,
+      dp.broad_region,
+      dp.value_band,
+      dp.deadline_band,
+      dp.duration_band,
+      dp.sme_suitability,
+      dp.bid_complexity,
+      dp.competition_level,
+      dp.requirements_preview,
+      dp.relevance_tags,
+      dp.freshness_label,
+      dm.relevance_score,
+      case
+        when auth.role() = 'service_role' then coalesce(dm.preview_reasons, '[]'::jsonb)
+        else '[]'::jsonb
+      end as preview_reasons,
+      dp.updated_at,
+      case
+        when p_query is null or btrim(p_query) = '' then 0
+        else ts_rank(
+          to_tsvector(
+            'english',
+            coalesce(dp.preview_title, '') || ' ' || coalesce(dp.preview_summary, '') || ' ' || coalesce(dp.main_category, '')
+          ),
+          websearch_to_tsquery('english', p_query)
+        )
+      end as query_rank
+    from public.deal_previews dp
+    left join public.deal_matches dm
+      on dm.deal_id = dp.deal_id
+     and dm.company_profile_id = p_company_profile_id
+     and (
+       auth.role() = 'service_role'
+       or exists (
+         select 1
+         from public.company_profiles cp
+         where cp.id = p_company_profile_id
+           and cp.user_id = auth.uid()
+       )
+     )
+    where dp.is_published = true
+      and dp.leakage_risk = 'LOW'
+      and (
+        case
+          when p_categories is not null and cardinality(p_categories) > 0
+            then dp.main_category = any(p_categories)
+          else (p_category is null or dp.main_category = p_category)
+        end
+      )
+      and (p_buyer_sector is null or dp.buyer_sector = p_buyer_sector)
+      and (p_deal_type is null or dp.deal_type = p_deal_type)
+      and (p_region is null or dp.broad_region = p_region)
+      and (p_status is null or dp.status = p_status)
+      and (p_value_band is null or dp.value_band = p_value_band)
+      and (p_deadline_band is null or dp.deadline_band = p_deadline_band)
+      and (
+        p_min_score is null
+        or coalesce(dm.relevance_score, -1) >= p_min_score
+      )
+      and (
+        p_query is null
+        or btrim(p_query) = ''
+        or to_tsvector(
+             'english',
+             coalesce(dp.preview_title, '') || ' ' || coalesce(dp.preview_summary, '') || ' ' || coalesce(dp.main_category, '')
+           ) @@ websearch_to_tsquery('english', p_query)
+      )
+  )
+  select
+    ranked.deal_id,
+    ranked.slug,
+    ranked.preview_title,
+    ranked.preview_summary,
+    ranked.deal_type,
+    ranked.buyer_sector,
+    ranked.stage,
+    ranked.status,
+    ranked.main_category,
+    ranked.broad_region,
+    ranked.value_band,
+    ranked.deadline_band,
+    ranked.duration_band,
+    ranked.sme_suitability,
+    ranked.bid_complexity,
+    ranked.competition_level,
+    private.preview_dto_requirements(ranked.requirements_preview),
+    ranked.relevance_tags,
+    ranked.freshness_label,
+    ranked.relevance_score,
+    ranked.preview_reasons,
+    count(*) over() as total_count
+  from ranked
+  order by
+    case when lower(coalesce(p_sort, 'updated')) = 'relevance'
+      then coalesce(ranked.relevance_score, -1)
+      else 0
+    end desc,
+    ranked.query_rank desc,
+    ranked.updated_at desc
+  limit greatest(1, least(coalesce(p_limit, 20), 50))
+  offset greatest(coalesce(p_offset, 0), 0);
+$$;
+
+revoke all on function public.search_deal_previews_for_profile(
+  uuid,
+  text,
+  text,
+  public.buyer_sector,
+  public.deal_type,
+  text,
+  public.deal_status,
+  text,
+  text,
+  numeric,
+  text,
+  integer,
+  integer,
+  text[]
+) from public, anon, authenticated;
+grant execute on function public.search_deal_previews_for_profile(
+  uuid,
+  text,
+  text,
+  public.buyer_sector,
+  public.deal_type,
+  text,
+  public.deal_status,
+  text,
+  text,
+  numeric,
+  text,
+  integer,
+  integer,
+  text[]
+) to service_role;
+
+-- ============================================================================
+-- END 0053_search_preview_dtos_categories.sql
 -- ============================================================================

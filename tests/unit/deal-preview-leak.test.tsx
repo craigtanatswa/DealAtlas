@@ -65,6 +65,7 @@ describe("free discovery HTML and protected paths", () => {
     const html = render(<UnlockPanel />).container.innerHTML;
     expect(findProtectedMarkerLeaks(html)).toEqual([]);
     expect(html).not.toMatch(/CANARY/);
+    expect(html).not.toMatch(/competitor/i);
   });
 
   it("does not ship a UI bypass or protected fields on free fixtures", () => {
