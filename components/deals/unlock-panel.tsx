@@ -16,7 +16,6 @@ import Link from "next/link";
 export const LOCKED_INTELLIGENCE_FIELDS = [
   { label: "Buyer identity", benefit: "Available to subscribers" },
   { label: "Original source", benefit: "Unlock source" },
-  { label: "Official notice", benefit: "Subscription required" },
   { label: "Reference number", benefit: "Unlock full details" },
   { label: "Documents and requirements", benefit: "Documents and requirements" },
   { label: "Buyer and competitor intelligence", benefit: "Buyer/competitor intelligence" },

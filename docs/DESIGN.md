@@ -125,7 +125,6 @@ Headline example:
 Locked fields:
 - Buyer identity — Available to subscribers
 - Original source — Unlock source
-- Official notice — Subscription required
 - Reference number — Unlock full details
 - Documents and requirements
 - Buyer/competitor intelligence
