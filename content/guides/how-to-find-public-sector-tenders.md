@@ -2,11 +2,11 @@
 slug: how-to-find-public-sector-tenders
 published: true
 title: "How to find public sector tenders in the UK (2026 guide)"
-description: "How to find public sector tenders in the UK: where notices are published, 2026 thresholds, early signals such as pipeline notices, and how to register."
+description: "How to find public sector tenders in the UK: 2026 thresholds, early signals such as pipeline notices, and how to track opportunities on DealAtlas."
 h1: "How to find public sector tenders in the UK"
 breadcrumb: "How to find public sector tenders in the UK"
 datePublished: 2026-10-19
-updated: 2026-10-19
+updated: 2026-10-27
 primaryKeyword: "how to find public sector tenders"
 secondaryKeywords: ["find tenders UK", "public sector tenders UK", "government tenders UK", "where to find government contracts", "public sector contract opportunities"]
 relatedGuides: ["how-to-win-council-contracts"]
@@ -14,17 +14,19 @@ securityClearedAt: 2026-10-19
 craigApprovedAt: 2026-10-19
 ---
 
-UK public bodies advertise contracts across several websites, and a missed tender can mean waiting until the contract is re-let. This guide explains how to find public sector tenders in the UK under the [Procurement Act 2023](https://www.legislation.gov.uk/ukpga/2023/54/contents), which has applied to new procurements since 24 February 2025. It covers which buyers publish where, the value thresholds that decide what must be advertised, the early signals that appear before a tender, and how to register so you're ready to bid.
+Browse [live UK opportunities on DealAtlas](/deals) today.
+
+UK public buyers publish contract notices under the [Procurement Act 2023](https://www.legislation.gov.uk/ukpga/2023/54/contents), which has applied to new procurements since 24 February 2025. Notices sit across national platforms and buyer systems, so the practical job is finding the right ones early. This guide covers the value thresholds that decide what must be advertised, the early signals that appear before a tender, what you need ready to bid, and how to track opportunities on DealAtlas.
 
 ## The short answer
 
-Start with DealAtlas, which brings opportunities from UK public buyers into one place, sorted by category, region, value band and closing date. Then watch for early-signal notices such as pipeline, preliminary market engagement and planned procurement notices to see work coming before the tender opens.
+Start on [DealAtlas](/deals). Browse live UK public and private tenders and opportunities for SMEs in one place, filter by category, region, value band and closing date, then open [Pro](/pricing) for buyer details, documents, saved searches and alerts. Since 24 February 2025, buyers in England, Wales and Northern Ireland publish new above-threshold and advertised below-threshold notices on the central digital platform under the Act. Watch pipeline, preliminary market engagement and planned procurement notices to see work early, then follow each opportunity into the buyer's named system for documents and submission.
 
 ## Who buys, and which rules they follow
 
-Public sector buyers include government departments and their agencies, the NHS, local authorities, universities, schools, social housing organisations, police and fire services, and utility companies ([Information and guidance for suppliers](https://www.gov.uk/government/collections/information-and-guidance-for-suppliers)). Most of them buy under the Procurement Act 2023, with a few exceptions that change where you'll find their opportunities.
+Public sector buyers include government departments and their agencies, the NHS, local authorities, universities, schools, social housing organisations, police and fire services, and utility companies ([Information and guidance for suppliers](https://www.gov.uk/government/collections/information-and-guidance-for-suppliers)). Most of them buy under the Procurement Act 2023, with a few exceptions that change which publication rules apply.
 
-- Devolved Scottish authorities, including Scottish councils and health boards, mostly buy under Scotland's own procurement law and publish through Scotland's own system.
+- Devolved Scottish authorities, including Scottish councils and health boards, mostly buy under Scotland's own procurement law, so their below-threshold notices follow different publication rules from the Act.
 - In England, NHS bodies and local authorities buying in-scope healthcare services follow the Provider Selection Regime instead of the Act ([Health Care Services (Provider Selection Regime) Regulations 2023](https://www.legislation.gov.uk/uksi/2023/1348)).
 - Schools and private utilities have lighter publishing duties, so some of their lower-value work is never advertised centrally.
 
@@ -44,15 +46,29 @@ At or above these values, a competitive tender must start with a tender notice o
 
 ## Where to find tenders in the UK
 
-Buyers publish notices on the central digital platform, on devolved systems for Scotland, Wales and Northern Ireland, and through their own e-tendering systems. Checking them one by one is slow, which is why DealAtlas brings these opportunities into one place at [live opportunities](/deals).
+Browse [live opportunities on DealAtlas](/deals) first. DealAtlas brings UK public and private tenders and opportunities for SMEs, in one place, so you can scan by category, region, value band and closing date without hopping between national platforms and buyer systems. Free previews show what's live; [DealAtlas Pro](/pricing) unlocks the buyer, source, contacts and documents, plus saved searches and alerts.
 
-- Buyer e-tendering systems. The notice is published centrally, but tender documents, clarification questions and submissions usually run through the buyer's chosen portal. Each one needs its own account.
+Under the Act, contracting authorities in England, Wales and Northern Ireland publish required notices on the central digital platform ([Central digital platform factsheet](https://www.gov.uk/government/publications/procurement-act-2023-short-guides/central-digital-platform-factsheet-html)). Older-regime award records still exist for procurements that started under the previous rules. Devolved Scottish buyers follow Scotland's own law for much of their work, and many buyers still run documents and submissions through their own systems once you decide to bid.
 
-Two kinds of work won't show up as a new tender notice. Contracts awarded under an existing framework go only to suppliers already on it, so no tender notice is published for those call-offs ([Procurement Act 2023 guidance documents](https://www.gov.uk/government/collections/procurement-act-2023-guidance-documents)). Below-threshold work offered to selected suppliers without advertising stays invisible until a contract details notice appears, where one is required. To compete for either, you need to be on the framework, or known to the buyer, before the work is offered. The frameworks and dynamic markets guide explains how to get on them.
+Two kinds of work won't show up as a new open tender notice. Contracts awarded under an existing framework go only to suppliers already on it. Below-threshold work offered to selected suppliers without advertising stays invisible until a contract details notice appears, where one is required. To compete for either, you need to be on the framework, or known to the buyer, before the work is offered.
+
+## By sector
+
+Browse opportunities by the sector you serve:
+
+- [Construction and infrastructure](/categories/construction-infrastructure)
+- [Technology](/categories/technology)
+- [Professional services](/categories/professional-services)
+- [Healthcare](/categories/healthcare)
+- [Education](/categories/education)
+- [Transport and logistics](/categories/transport-logistics)
+- [Energy and utilities](/categories/energy-utilities)
+
+DealAtlas brings UK public and private tenders and opportunities for SMEs, in one place. Browse free previews on [live opportunities](/deals), and use [Pro alerts](/pricing) when you want new matches in your sector.
 
 ## How to find public sector tenders before they're advertised
 
-The Act added notice types that show you work months ahead of the tender. All of them are published on the central digital platform, and DealAtlas brings new opportunities into one place ([Procurement Act 2023 guidance documents](https://www.gov.uk/government/collections/procurement-act-2023-guidance-documents)).
+The Act added notice types that show you work months ahead of the tender. Buyers publish them on the central digital platform as part of the noticing sequence.
 
 - Pipeline notices (UK1). A buyer that expects to spend more than £100 million on relevant contracts in the financial year must publish one between 1 April and 26 May. It lists contracts over £2 million that it expects to tender or award directly in the next 18 months.
 - Preliminary market engagement notices (UK2). These tell you a buyer is talking to suppliers before tendering, through events, questionnaires or meetings. Taking part helps you understand the need before the specification is fixed.
@@ -64,39 +80,43 @@ The contract record helps too. Contract details notices (UK7) show what has been
 
 ## Register so you're ready to bid
 
-The government says there's no hurry to register as a supplier. You only need to register when you want to bid ([Central digital platform factsheet](https://www.gov.uk/government/publications/procurement-act-2023-short-guides/central-digital-platform-factsheet-html)). Doing it early saves time against a deadline.
+Finding an opportunity on [DealAtlas](/deals) is the discovery step. When you decide to bid for a public contract, the Act expects you to share core supplier information through the central digital platform before the tendering period ends ([Central digital platform factsheet](https://www.gov.uk/government/publications/procurement-act-2023-short-guides/central-digital-platform-factsheet-html)). You only need that registration when you want to bid. Doing it early saves time against a deadline.
 
 1. Create a GOV.UK One Login for yourself.
-2. Register your organisation on the central digital platform (Find a Tender). If you used the service before 24 February 2025, you need to re-register for the new platform.
+2. Register your organisation on the central digital platform. If you registered under the older service before 24 February 2025, you need to re-register for the enhanced platform.
 3. Complete the supplier information, which covers core business details, financial information, accreditations and, depending on your structure, connected persons such as directors and parent companies.
 4. Declare that the information is accurate and generate a share code. You give the buyer the share code, or a downloaded copy, in the way its tender documents specify.
-5. Review the information before each bid. The platform doesn't check it, and accuracy is your responsibility.
+5. Review the information before each bid. The platform does not check it for you, and accuracy is your responsibility.
 
 ## Build a search routine
 
-Finding tenders is a weekly job, not a one-off search.
+Finding tenders is a weekly job, not a one-off search. Run it on [DealAtlas](/deals), and use [Pro alerts](/pricing) when you want new matches delivered to you.
 
 - Search by the words buyers actually use. A notice for software support may say "managed service" or "application maintenance". Read a few past notices in your sector and copy their terms into your saved searches.
 - Filter by region and value band. Ignore anything you couldn't deliver or staff, and note lots you could deliver within larger contracts.
 - Check pipeline notices each spring, because required ones are published between 1 April and 26 May.
 - Track the deadline for clarification questions, not just the submission date.
-- Keep a list of buyers and frameworks in your sector, and check them on a schedule.
+- Keep a list of buyers and frameworks in your sector, and review new matches on a schedule.
 
 Once you've found a tender worth pursuing, the next job is the bid. Our guide on [how to win council contracts](/guides/how-to-win-council-contracts) covers the pre-bid checklist, how bids are scored and what happens after the decision. Most of it applies to other public buyers too.
 
 ## Find tenders UK-wide in one place
 
-Checking several national portals, buyer systems and notice types is slow. DealAtlas brings these opportunities into one place, sorted by category, region, value band and closing date, so you can scan [professional services](/categories/professional-services), [technology](/categories/technology) or [education](/categories/education) work in minutes. You can browse sanitised previews free on [live opportunities](/deals). When one is worth pursuing, DealAtlas Pro unlocks the buyer, the original source, contacts and documents, plus saved searches and alerts for new matches. See [how it works](/how-it-works) or [compare plans](/pricing).
+DealAtlas brings UK public and private tenders and opportunities for SMEs, in one place, sorted by category, region, value band and closing date. Scan [construction and infrastructure](/categories/construction-infrastructure), [professional services](/categories/professional-services) or [technology](/categories/technology) work in minutes. You can browse previews free on [live opportunities](/deals). When one is worth pursuing, DealAtlas Pro unlocks the buyer, the original source, contacts and documents, plus saved searches and alerts for new matches. See [how it works](/how-it-works) or [compare plans](/pricing).
 
 ## FAQ
 
 ### Where are UK public sector tenders published?
 
-For buyers in England, Wales and Northern Ireland, new opportunities under the Procurement Act 2023 are published on the central digital platform. Scottish buyers use their devolved system. Documents and submissions usually run through each buyer's own e-tendering system. You can find opportunities from across the UK in one place on [DealAtlas](/deals).
+For buyers in England, Wales and Northern Ireland, new opportunities under the Procurement Act 2023 are published on the central digital platform. Scottish buyers follow Scotland's own publication rules for much of their work. Documents and submissions usually run through each buyer's own system. To search live opportunities in one place, start on DealAtlas.
 
-### Can I see all these opportunities in one place?
+### How do I search UK public sector tenders in one place?
 
-DealAtlas brings UK public sector opportunities into one place. You can browse sanitised previews free on [live opportunities](/deals), and DealAtlas Pro unlocks the buyer, the original source, contacts and documents.
+Browse live opportunities free on DealAtlas, filter by category, region, value band and closing date, then use DealAtlas Pro for buyer details, documents, saved searches and alerts. You only need to register on the central digital platform when you are ready to bid for a public contract.
+
+### Are older-regime notices still published after the Procurement Act 2023?
+
+Award records and some notices for procurements that started under the previous rules, before 24 February 2025, still exist. New procurements under the Procurement Act 2023 need notices on the central digital platform.
 
 ### What is the threshold for advertising a public contract in 2026?
 
@@ -117,4 +137,4 @@ Watch pipeline notices, preliminary market engagement notices and planned procur
 - [Information and guidance for suppliers](https://www.gov.uk/government/collections/information-and-guidance-for-suppliers)
 - [Health Care Services (Provider Selection Regime) Regulations 2023](https://www.legislation.gov.uk/uksi/2023/1348)
 
-This guide is general information, not legal advice. Last checked against gov.uk and legislation.gov.uk on 19 October 2026.
+This guide is general information, not legal advice. Last checked against gov.uk and legislation.gov.uk on 27 October 2026.
