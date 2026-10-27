@@ -149,7 +149,7 @@ export function DealPreviewDetail({
       : signupPathWithAlert(`/deals/${deal.slug}`),
   };
   const barLabel =
-    unlock?.founding?.offered && unlock.founding.remaining > 0
+    unlock?.founding?.offered && !unlock.founding.sold_out
       ? `Unlock with Pro · from ${DISPLAY_PRICING.foundingAnnual.replace("/year", "/yr")}`
       : `Unlock with Pro · from ${DISPLAY_PRICING.proMonthly.replace("/month", "/mo")}`;
   const specs = [

@@ -160,15 +160,14 @@ describe("founding member checkout", () => {
     });
   });
 
-  it("shows a counts-only place label when founding is offered in the UI", () => {
-    expect(foundingUiState({ offered: false, remaining: 25 })).toBe("hidden");
-    expect(foundingUiState({ offered: true, remaining: 17 })).toBe("available");
-    expect(foundingUiState({ offered: true, remaining: 1 })).toBe("last");
-    expect(foundingUiState({ offered: true, remaining: 0 })).toBe("sold_out");
-    expect(foundingPlacesLabel(17)).toBe("17 of 25 founding places left");
-    expect(foundingPlacesLabel(1)).toBe("Last founding place · 1 of 25 places left");
-    expect(foundingPaywallPlaces(17)).toBe("17 of 25 places left");
-    expect(foundingPaywallPlaces(1)).toBe("Last founding place · 1 of 25 places left");
+  it("shows a count-free place label when founding is offered in the UI", () => {
+    expect(foundingUiState({ offered: false, sold_out: false })).toBe("hidden");
+    expect(foundingUiState({ offered: false, sold_out: true })).toBe("hidden");
+    expect(foundingUiState({ offered: true, sold_out: false })).toBe("available");
+    expect(foundingUiState({ offered: true, sold_out: true })).toBe("sold_out");
+    expect(foundingPlacesLabel()).toBe("Founding places available");
+    expect(foundingPaywallPlaces()).toBe("Founding places available");
+    expect(foundingPlacesLabel()).not.toMatch(/\d/);
     expect(foundingSoldOutNote()).toBe(
       "Founding membership is full. Thanks to our first 25 customers.",
     );
@@ -178,9 +177,9 @@ describe("founding member checkout", () => {
     expect(FOUNDING_COPY.firstMembers).toBe(`First ${FOUNDING_CAP} members only`);
   });
 
-  it("rounds the public offer down to a band", () => {
+  it("keeps the public offer count-free", () => {
     expect(foundingOfferCopy("open")).toEqual({ foundingAvailable: true, note: null });
-    expect(foundingOfferCopy("fewer_than_10").note).toBe("fewer than 10 left");
+    expect(foundingOfferCopy("fewer_than_10")).toEqual({ foundingAvailable: true, note: null });
     expect(foundingOfferCopy("sold_out").foundingAvailable).toBe(false);
   });
 
@@ -214,10 +213,10 @@ describe("founding member checkout", () => {
     expect(foundingSideEffect(failed, products)?.action).toBe("release");
   });
 
-  it("returns a counts-only availability payload and one claim per subscription", () => {
-    expect(foundingAvailabilityPayload(12)).toEqual({ remaining: 12, sold_out: false });
-    expect(foundingAvailabilityPayload(0)).toEqual({ remaining: 0, sold_out: true });
-    expect(Object.keys(foundingAvailabilityPayload(3)).sort()).toEqual(["remaining", "sold_out"]);
+  it("returns a sold_out-only availability payload and one claim per subscription", () => {
+    expect(foundingAvailabilityPayload(12)).toEqual({ sold_out: false });
+    expect(foundingAvailabilityPayload(0)).toEqual({ sold_out: true });
+    expect(Object.keys(foundingAvailabilityPayload(3))).toEqual(["sold_out"]);
 
     const first = foundingEvent("active");
     const renewal = foundingEvent("active", "subscription.renewed");

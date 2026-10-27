@@ -83,7 +83,7 @@ export function DealProCard({
   }
 
   const state = founding ? foundingUiState(founding) : "hidden";
-  const foundingActive = state === "available" || state === "last";
+  const foundingActive = state === "available";
   const monthlyShort = DISPLAY_PRICING.proMonthly.replace("/month", "/mo");
 
   return (
@@ -150,7 +150,7 @@ export function DealProCard({
             <p className="mt-2 text-center text-xs font-medium text-foreground/80">
               {FOUNDING_COPY.priceLocked} ·{" "}
               <span className="text-emerald-700">
-                {foundingPaywallPlaces(founding.remaining, founding.cap)}
+                {foundingPaywallPlaces()}
               </span>{" "}
               · VAT incl.
             </p>

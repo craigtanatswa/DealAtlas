@@ -6,26 +6,27 @@ import { FoundingFullNotice } from "@/components/billing/founding-full-notice";
 import { PricingPlans } from "@/components/billing/pricing-plans";
 import { UnlockPanel } from "@/components/deals/unlock-panel";
 import { FOUNDING_UNAVAILABLE_MESSAGE } from "@/lib/billing/founding";
-import { FOUNDING_CAP } from "@/lib/billing/founding-ui";
+import { FOUNDING_PLACES_AVAILABLE } from "@/lib/billing/founding-ui";
 
 afterEach(cleanup);
 
-const openCount = { offered: true, remaining: 17, cap: FOUNDING_CAP };
-const lastCount = { offered: true, remaining: 1, cap: FOUNDING_CAP };
-const soldOutCount = { offered: true, remaining: 0, cap: FOUNDING_CAP };
+const openCount = { offered: true, sold_out: false };
+const soldOutCount = { offered: true, sold_out: true };
 
 function planForms(container: HTMLElement): HTMLFormElement[] {
   return Array.from(container.querySelectorAll("form"));
 }
 
 describe("founding pricing cards", () => {
-  it("shows the server count and a founding offer, not a client price or example label", () => {
+  it("shows availability without a count and a founding offer, not a client price or example label", () => {
     const { container } = render(
-      <PricingPlans signedIn count={openCount} state="available" />,
+      <PricingPlans signedIn state="available" />,
     );
 
     expect(screen.getByRole("heading", { name: "Pricing" })).toBeTruthy();
-    expect(screen.getByText("17 of 25 founding places left")).toBeTruthy();
+    expect(screen.getByText(FOUNDING_PLACES_AVAILABLE)).toBeTruthy();
+    expect(container.querySelector("[role='progressbar']")).toBeNull();
+    expect(container.textContent).not.toMatch(/places left|of 25/);
     expect(screen.getByText("First 25 members only")).toBeTruthy();
     expect(screen.getByText("Locked for life")).toBeTruthy();
     expect(screen.getByText("£60 less than standard annual")).toBeTruthy();
@@ -45,17 +46,9 @@ describe("founding pricing cards", () => {
     expect(forms.every((form) => !form.querySelector("input[name='product_id']"))).toBe(true);
   });
 
-  it("uses the last-place sentence and no extra urgency", () => {
+  it("replaces the founding card when sold out", () => {
     const { container } = render(
-      <PricingPlans signedIn count={lastCount} state="last" />,
-    );
-    expect(screen.getByText("Last founding place · 1 of 25 places left")).toBeTruthy();
-    expect(container.textContent).not.toMatch(/only today|hurry|almost gone/i);
-  });
-
-  it("replaces the founding card when the count is zero", () => {
-    const { container } = render(
-      <PricingPlans signedIn={false} count={soldOutCount} state="sold_out" />,
+      <PricingPlans signedIn={false} state="sold_out" />,
     );
     expect(
       screen.getByText("Founding membership is full. Thanks to our first 25 customers."),
@@ -79,7 +72,8 @@ describe("founding deal paywall", () => {
       />,
     );
     expect(screen.getByRole("button", { name: "Become a founding member – £290/yr" })).toBeTruthy();
-    expect(screen.getByText(/17 of 25 places left/)).toBeTruthy();
+    expect(screen.getByText(new RegExp(FOUNDING_PLACES_AVAILABLE))).toBeTruthy();
+    expect(container.textContent).not.toMatch(/places left/);
     expect(screen.getByText(/Locked for life/)).toBeTruthy();
     const founding = planForms(container).find(
       (form) =>
