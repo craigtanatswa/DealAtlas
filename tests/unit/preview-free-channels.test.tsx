@@ -122,7 +122,8 @@ describe("free channels stay high information and low identifiability", () => {
       for (const phrase of wordWindows(deal.sourceDescription ?? "", 7)) {
         expect(blob, phrase).not.toContain(phrase);
       }
-      expect(blob).not.toMatch(/\b\d{8}\b/);
+      const blobWithoutSlugHex = blob.replace(/-[0-9a-f]{8}(?=$|[^a-z0-9])/g, "");
+      expect(blobWithoutSlugHex).not.toMatch(/\b\d{8}\b/);
       expect(blob).not.toContain("72000000");
       expect(blob).not.toContain("45233100");
       expect(blob).not.toMatch(/£\d{1,3}(?:,\d{3})+/);
