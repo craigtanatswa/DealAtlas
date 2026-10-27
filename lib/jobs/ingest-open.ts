@@ -38,6 +38,13 @@ import {
   SELL2WALES_FETCH_POLICY,
   SELL2WALES_SOURCE_KEY,
 } from "@/ingestion/sources/sell2wales/constants";
+import { createTedAdapter } from "@/ingestion/sources/ted/adapter";
+import {
+  TED_FETCH_POLICY,
+  TED_REQUEST_LIMIT,
+  TED_REQUEST_WINDOW_MS,
+  TED_SOURCE_KEY,
+} from "@/ingestion/sources/ted/constants";
 import { createInnovateUkAdapter } from "@/ingestion/sources/innovate-uk/adapter";
 import {
   INNOVATE_UK_FETCH_POLICY,
@@ -268,6 +275,7 @@ export const OPEN_INGEST_SOURCE_KEYS = [
   CONTRACTS_FINDER_SOURCE_KEY,
   PUBLIC_CONTRACTS_SCOTLAND_SOURCE_KEY,
   SELL2WALES_SOURCE_KEY,
+  TED_SOURCE_KEY,
 ] as const;
 
 export type OpenIngestSourceKey = (typeof OPEN_INGEST_SOURCE_KEYS)[number];
@@ -277,6 +285,9 @@ export function openIngestPacerOptions(sourceKey: string): {
   maxRequests: number;
   windowMs: number;
 } {
+  if (sourceKey === TED_SOURCE_KEY) {
+    return { maxRequests: TED_REQUEST_LIMIT, windowMs: TED_REQUEST_WINDOW_MS };
+  }
   if (
     sourceKey === PUBLIC_CONTRACTS_SCOTLAND_SOURCE_KEY ||
     sourceKey === SELL2WALES_SOURCE_KEY
@@ -334,6 +345,13 @@ export async function runOpenFindATenderIngest(options: {
     async getJson(url: string) {
       await pace();
       return http.getJson(url);
+    },
+    async postJson(url: string, body: unknown) {
+      await pace();
+      if (!http.postJson) {
+        throw new Error("JSON client has no postJson");
+      }
+      return http.postJson(url, body);
     },
   };
   const adapter = options.adapter ?? adapterFor(sourceKey, paced, () => now);
@@ -486,6 +504,8 @@ function fetchPolicyFor(sourceKey: OpenIngestSourceKey): AllowedFetchPolicy {
       return PUBLIC_CONTRACTS_SCOTLAND_FETCH_POLICY;
     case SELL2WALES_SOURCE_KEY:
       return SELL2WALES_FETCH_POLICY;
+    case TED_SOURCE_KEY:
+      return TED_FETCH_POLICY;
     default:
       return FIND_A_TENDER_FETCH_POLICY;
   }
@@ -503,6 +523,8 @@ function adapterFor(
       return createPublicContractsScotlandAdapter({ http, now });
     case SELL2WALES_SOURCE_KEY:
       return createSell2WalesAdapter({ http, now });
+    case TED_SOURCE_KEY:
+      return createTedAdapter({ http, now });
     default:
       return createFindATenderAdapter({ http, now });
   }
@@ -532,6 +554,15 @@ export function runOpenSell2WalesIngest(
   return runOpenFindATenderIngest({
     ...options,
     sourceKey: SELL2WALES_SOURCE_KEY,
+  });
+}
+
+export function runOpenTedIngest(
+  options: Omit<Parameters<typeof runOpenFindATenderIngest>[0], "sourceKey">,
+): Promise<OpenIngestResult> {
+  return runOpenFindATenderIngest({
+    ...options,
+    sourceKey: TED_SOURCE_KEY,
   });
 }
 
