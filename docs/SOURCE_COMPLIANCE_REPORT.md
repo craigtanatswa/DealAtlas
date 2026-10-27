@@ -277,6 +277,46 @@ Only **one** researched source met the automation bar. That is below the target 
 
 ---
 
+## Devolved public tender portals
+
+Checked: **14 October 2026**.
+
+These are official public-sector notice portals, separate from the private-source review above. Both have a published OCDS API that returns JSON without a login or a CAPTCHA. Neither adapter scrapes HTML. Both are seeded with `scraping_permitted = false` and `enabled = false`.
+
+| Source key | Reuse status | Scraping permitted | Enabled | Decision |
+| --- | --- | --- | --- | --- |
+| `public-contracts-scotland` | OPEN_LICENSE | false | no | Official OCDS Notices API under the Open Government Licence v3.0, including Quick Quote awards (`noticeType` 104). |
+| `sell2wales` | OPEN_LICENSE | false | no | Official OCDS Notices API. The publication policy licences the data under the Open Government Licence. The RSS feed is a different licence and is not used. |
+
+On this date the API hosts presented a leaf certificate without the Sectigo intermediate. Standard TLS verification failed until that intermediate was supplied for this check only. The adapters keep TLS verification on.
+
+### Public Contracts Scotland
+
+| Field | Evidence |
+| --- | --- |
+| Official machine route | [OCDS Web API](https://api.publiccontractsscotland.gov.uk/v1): `GET https://api.publiccontractsscotland.gov.uk/v1/Notices` with `dateFrom` (`mm-yyyy`), `noticeType`, and `outputType=0` for OCDS. Record route: `GET /v1/Notice?id={ocid}`. Bulk files are also listed on the [notice download page](https://www.publiccontractsscotland.gov.uk/NoticeDownload/Download.aspx). |
+| Login / CAPTCHA | The API help page describes the query parameters and does not ask for an API key, account, or CAPTCHA. A September 2026 site-notice request returned HTTP 200 JSON (`license` set to the Open Government Licence URL) with no authentication challenge. |
+| Terms / licence | [Terms](https://www.publiccontractsscotland.gov.uk/sitehelp/help_terms.aspx), Copyright and the Open Government License: “Most of the material featured on this Website is subject to Crown copyright protection. However, you may use content published on this Website under the Open Government Licence v3.0 except where otherwise stated.” The same section requires the attribution “Contains public sector information licensed under the Open Government Licence v3.0.” and says the permission does not cover third-party copyright, personal data, or logos. [OGL v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/) permits commercial and non-commercial reuse. |
+| Robots | [robots.txt](https://www.publiccontractsscotland.gov.uk/robots.txt) includes `User-agent: *` / `Disallow: /`. That rule is for the website. Ingestion uses the API host, not HTML crawling. |
+| Reuse status | **OPEN_LICENSE** |
+| Automated scraping permitted? | **No** |
+| Quick Quotes | The same API lists `noticeType` 104 as “Site Notice - Quick Quote Award”. A September 2026 request returned HTTP 200 OCDS JSON, `license` set to the Open Government Licence URL, and releases tagged `award`. The [purchaser guide](https://www.publiccontractsscotland.gov.uk/userguides/Quick%20Quote%20-%20Purchaser%20Guide.pdf) says: “Quick Quotes are only distributed to the selected suppliers and are not made public on the portal.” The [OCDS publication policy](https://www.publiccontractsscotland.gov.uk/NoticeDownload/Publication%20Policies-%20PCS%20OCDS%20v1.3-%20February%202022.pdf) includes “award notices published for quotations (Quick Quotes)”. Live invitations are not an official public feed. Ingestion requests type 104 only. |
+| Implementation decision | **Build the adapter. Leave it disabled.** Request contract notices and Quick Quote awards. Do not scrape the buyer Quick Quote workspace. Do not download buyer documents. A shared OCID or `relatedProcesses` OCID attaches to the existing deal. |
+
+### Sell2Wales
+
+| Field | Evidence |
+| --- | --- |
+| Official machine route | [OCDS Web API](https://api.sell2wales.gov.wales/v1): `GET https://api.sell2wales.gov.wales/v1/Notices` with `dateFrom`, `noticeType`, `outputType=0`, and `locale` (`2057` English, `1106` Welsh). Record route: `GET /v1/Notice?id={ocid}`. The [publication policy](https://www.sell2wales.gov.wales/helpandresources/ocds/publicationpolicy) also lists bulk OCDS release and record downloads. |
+| Login / CAPTCHA | The API help page does not ask for an API key, account, or CAPTCHA. The record route returned an OCDS package whose `license` is the Open Government Licence URL. On 14 October 2026 several list queries returned HTTP 500 (`Error converting data type nvarchar to float`) from the publisher. That is a server error, not an access control. The source stays disabled until an operator enables it. |
+| Data licence | [Publication policy](https://www.sell2wales.gov.wales/helpandresources/ocds/publicationpolicy): “This means the data can be used, reused and redistributed by any interested party in line with the Open Government License.” Section 6: “The data on Sell2Wales is licensed using the Open Government License. This allows users to: copy, publish, distribute and transmit the Information; adapt the Information; exploit the Information commercially and non-commercially for example, by combining it with other Information, or by including it in your own product or application.” |
+| Website terms | [Terms](https://www.sell2wales.gov.wales/helpandresources/websitepolicies/termsandconditions) clause 5.2: “You may use and re-use any material on the Website which is marked as Crown copyright … in accordance with the terms and conditions of the Open Government License provided it is reproduced accurately and not used in a misleading context.” Clause 4.3 says users agree not to “reproduce, duplicate, copy, sell, resell or exploit for any commercial purposes any portion of the Service, use of the Service or access to the Service.” The Service is defined as the functional portal (notices, documents, questions, tender submission). The OCDS publication policy is the licence for the machine-readable notice data and expressly permits commercial reuse. Ingestion uses that API, not the interactive service. |
+| RSS (not used) | [RSS terms](https://www.sell2wales.gov.wales/sitehelp/help_rss_terms.aspx): “You may not directly or indirectly charge users specifically for accessing this RSS Feed Content or otherwise commercialise such content, nor attempt to re-sell the RSS Feed Content in any way.” That route is rejected. |
+| Robots | [robots.txt](https://www.sell2wales.gov.wales/robots.txt) returned no `Disallow` rules on the check date. |
+| Reuse status | **OPEN_LICENSE** |
+| Automated scraping permitted? | **No** |
+| Implementation decision | **Build the adapter. Leave it disabled.** English locale only. Do not scrape HTML, do not use RSS, and do not download documents that require registration. A shared OCID or `relatedProcesses` OCID attaches to the existing deal. |
+
 ## Adapter framework
 
 Private/supply-chain sources are onboarded through a **reusable** config + `createPrivateSourceAdapter` (`ingestion/sources/private`). Adding a newly approved source requires:
