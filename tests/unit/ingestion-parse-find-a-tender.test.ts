@@ -62,7 +62,7 @@ describe("Find a Tender OCDS parse", () => {
     expect(candidate.awardCriteria.map((item) => item.name)).toContain("Price");
   });
 
-  it("follows links.next inside the same window and keeps stages=tender", async () => {
+  it("follows links.next inside the same window and filters stages by release tag", async () => {
     const urls: string[] = [];
     const adapter = createFindATenderAdapter({
       now: () => NOW,
@@ -75,7 +75,10 @@ describe("Find a Tender OCDS parse", () => {
               status: 200,
               contentType: "application/json",
               body: {
-                releases: [{ id: "000001-2026", ocid: "ocds-h6vhtk-fixture1" }],
+                releases: [
+                  { id: "000001-2026", ocid: "ocds-h6vhtk-fixture1", tag: ["tender"] },
+                  { id: "000003-2026", ocid: "ocds-h6vhtk-fixture3", tag: ["award", "contract"] },
+                ],
                 links: {
                   next: "https://www.find-tender.service.gov.uk/api/1.0/ocdsReleasePackages?limit=100&updatedFrom=2026-09-03T12:00:00&updatedTo=2026-09-10T12:00:00&stages=tender&cursor=dXBkYXRlZEZyb209MjAyNi0wOS0wM1QxMjowMDowMHx1cGRhdGVkVG89MjAyNi0wOS0xMFQxMjowMDowMHxuZXh0Q3Vyc29yPTE=",
                 },
@@ -87,7 +90,7 @@ describe("Find a Tender OCDS parse", () => {
             url,
             status: 200,
             contentType: "application/json",
-            body: { releases: [{ id: "000002-2026", ocid: "ocds-h6vhtk-fixture2" }] },
+            body: { releases: [{ id: "000002-2026", ocid: "ocds-h6vhtk-fixture2", tag: ["planning", "tender"] }] },
             rawText: "{}",
           };
         },
@@ -107,7 +110,8 @@ describe("Find a Tender OCDS parse", () => {
     });
     expect(first.items).toHaveLength(1);
     expect(second.items[0]?.externalRecordId).toBe("000002-2026");
-    expect(urls[1]).toContain("stages=tender");
+    expect(first.items.map((item) => item.externalRecordId)).toEqual(["000001-2026"]);
+    expect(urls.some((url) => url.includes("stages="))).toBe(false);
     expect(urls[1]).toContain("cursor=");
     expect(urls[1]).toContain("updatedFrom=2026-09-03T12%3A00%3A00");
   });

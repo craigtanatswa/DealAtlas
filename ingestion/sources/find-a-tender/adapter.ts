@@ -60,37 +60,29 @@ export function createFindATenderAdapter(
       // old cursor, or a cursor with no window, both return HTTP 400.
       url.searchParams.set("updatedFrom", resumedWindow?.updatedFrom ?? updatedFrom);
       url.searchParams.set("updatedTo", resumedWindow?.updatedTo ?? updatedTo);
-      if (discoverOptions?.stages) {
-        url.searchParams.set("stages", discoverOptions.stages);
-      }
-      if (cursor) {
-        url.searchParams.set("cursor", cursor);
-      }
-
-      const response = await withRetry(() => http.getJson(url.toString()));
-      const pkg = parseReleasePackage(response.body);
+      // Do not send `stages`: Find a Tender only applies it to 2014/24 (PCR 2015)
+      // releases, so Procurement Act 2023 tender notices (tag ["tender"]) are
+      // dropped. Filter on the release tag here instead.
+      const wantedTags = parseStages(discoverOptions?.stages);
+      let pageCursor = cursor;
       const items: DiscoveredItem[] = [];
-      for (const release of pkg.releases ?? []) {
-        const record = asRecord(release);
-        const id = asString(record?.id);
-        if (!id) {
-          continue;
+      // The pipeline stops on an empty page, so skip pages with no wanted tag.
+      for (let page = 0; ; page += 1) {
+        if (pageCursor) {
+          url.searchParams.set("cursor", pageCursor);
         }
-        items.push({
-          externalRecordId: id,
-          ocid: asString(record?.ocid) ?? undefined,
-          sourceUrl: findATenderNoticeUrl(id),
-          payload: {
-            license: pkg.license,
-            publisher: pkg.publisher,
-            release,
-          },
-        });
+        const response = await withRetry(() => http.getJson(url.toString()));
+        const pkg = parseReleasePackage(response.body);
+        collectItems(pkg, wantedTags, items);
+        pageCursor = cursorFromNextLink(pkg.links?.next);
+        if (items.length > 0 || !pageCursor || page >= MAX_EMPTY_PAGES) {
+          break;
+        }
       }
 
       return {
         items,
-        nextCursor: cursorFromNextLink(pkg.links?.next),
+        nextCursor: pageCursor,
       };
     },
 
@@ -170,6 +162,44 @@ function parseFindATenderCursorWindow(
     return fromEncoded(Buffer.from(cursor, "base64").toString("utf8"));
   } catch {
     return null;
+  }
+}
+
+const MAX_EMPTY_PAGES = 20;
+
+function parseStages(stages?: string): Set<string> | null {
+  const tags = (stages ?? "")
+    .split(",")
+    .map((tag) => tag.trim())
+    .filter(Boolean);
+  return tags.length > 0 ? new Set(tags) : null;
+}
+
+function collectItems(
+  pkg: ReturnType<typeof parseReleasePackage>,
+  wantedTags: Set<string> | null,
+  items: DiscoveredItem[],
+): void {
+  for (const release of pkg.releases ?? []) {
+    const record = asRecord(release);
+    const id = asString(record?.id);
+    if (!id) {
+      continue;
+    }
+    const tags = Array.isArray(record?.tag) ? record.tag : [];
+    if (wantedTags && !tags.some((tag) => typeof tag === "string" && wantedTags.has(tag))) {
+      continue;
+    }
+    items.push({
+      externalRecordId: id,
+      ocid: asString(record?.ocid) ?? undefined,
+      sourceUrl: findATenderNoticeUrl(id),
+      payload: {
+        license: pkg.license,
+        publisher: pkg.publisher,
+        release,
+      },
+    });
   }
 }
 
