@@ -15,7 +15,7 @@ describe("ingest-open workflow", () => {
     expect(workflow).toContain("backfill_days:");
     expect(workflow).toContain("type: string");
     expect(workflow).toContain('default: "7"');
-    expect(workflow.match(/BACKFILL_DAYS="\$\{BACKFILL_DAYS%\.0\}"/g)).toHaveLength(3);
+    expect(workflow.match(/BACKFILL_DAYS="\$\{BACKFILL_DAYS%\.0\}"/g)).toHaveLength(5);
     expect(workflow).toContain("inputs.backfill_days || '7'");
     expect(workflow).toContain("inputs.dry_run || 'false'");
     expect(workflow).toContain('cron: "0 21 * * *"');
@@ -62,6 +62,8 @@ describe("ingest-open workflow", () => {
     const publishStep = ingestJob.slice(ingestJob.indexOf("id: publish"), ingestJob.indexOf("name: Publish alert"));
     expect(publishStep).toContain("steps.ingest.outcome == 'success' && steps.build.outcome == 'success'");
     expect(publishStep).not.toContain("steps.contracts_finder.outcome");
+    expect(publishStep).not.toContain("public_contracts_scotland");
+    expect(publishStep).not.toContain("sell2wales");
     expect(publishStep).not.toContain("gca_agreements");
     expect(publishStep).not.toContain("gca_pipeline");
     const buildStep = ingestJob.slice(ingestJob.indexOf("id: build"), ingestJob.indexOf("id: unpublish"));
@@ -72,7 +74,15 @@ describe("ingest-open workflow", () => {
     expect(contractsFinderStep).not.toContain("continue-on-error");
     expect(ingestJob.match(/continue-on-error: true/g)).toHaveLength(3);
     expect(ingestJob.indexOf("id: ingest")).toBeLessThan(ingestJob.indexOf("id: contracts_finder"));
-    expect(ingestJob.indexOf("id: contracts_finder")).toBeLessThan(ingestJob.indexOf("id: gca_agreements"));
+    expect(ingestJob.indexOf("id: contracts_finder")).toBeLessThan(
+      ingestJob.indexOf("id: public_contracts_scotland"),
+    );
+    expect(ingestJob.indexOf("id: public_contracts_scotland")).toBeLessThan(
+      ingestJob.indexOf("id: sell2wales"),
+    );
+    expect(ingestJob.indexOf("id: sell2wales")).toBeLessThan(
+      ingestJob.indexOf("id: gca_agreements"),
+    );
     expect(ingestJob.indexOf("id: gca_agreements")).toBeLessThan(ingestJob.indexOf("id: gca_pipeline"));
     expect(ingestJob.indexOf("id: gca_pipeline")).toBeLessThan(ingestJob.indexOf("id: build"));
     expect(ingestJob.indexOf("id: contracts_finder")).toBeLessThan(ingestJob.indexOf("id: find_a_grant"));
@@ -80,6 +90,8 @@ describe("ingest-open workflow", () => {
     expect(ingestJob.indexOf("id: innovate_uk")).toBeLessThan(ingestJob.indexOf("id: ted"));
     expect(ingestJob.indexOf("id: ted")).toBeLessThan(ingestJob.indexOf("id: build"));
     expect(ingestJob).toContain("OPEN_INGEST_SOURCE: contracts-finder");
+    expect(ingestJob).toContain("OPEN_INGEST_SOURCE: public-contracts-scotland");
+    expect(ingestJob).toContain("OPEN_INGEST_SOURCE: sell2wales");
     expect(ingestJob).toContain("OPEN_INGEST_SOURCE: gca-agreements");
     expect(ingestJob).toContain("OPEN_INGEST_SOURCE: gca-procurement-pipeline");
     expect(ingestJob).toContain("OPEN_INGEST_SOURCE: find-a-grant");
@@ -135,6 +147,12 @@ describe("ingest-open workflow", () => {
       const sql = fs.readFileSync(path.join(migrations, name), "utf8");
       if (name.startsWith("0023_")) {
         expect(sql).toContain("'contracts-finder'");
+        continue;
+      }
+      if (name.startsWith("0045_")) {
+        expect(sql).toContain("'public-contracts-scotland'");
+        expect(sql).toContain("'sell2wales'");
+        expect(sql).toMatch(/'OPEN_LICENSE',\n\s*false,\n\s*false,/);
         continue;
       }
       expect(sql).not.toMatch(/insert into public\.data_sources[\s\S]{0,800}contracts-finder/i);

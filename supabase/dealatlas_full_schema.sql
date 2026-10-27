@@ -8291,6 +8291,132 @@ on conflict (kind, term) do nothing;
 -- ============================================================================
 
 -- ============================================================================
+-- BEGIN 0045_devolved_ocds_portals.sql
+-- ============================================================================
+
+-- DealAtlas migration 0045 (renumbered from 0032)
+-- Public Contracts Scotland and Sell2Wales official OCDS APIs.
+-- Both stay disabled. Scraping is not permitted. Open pull requests reserve 0042-0044 and 0046.
+
+insert into public.data_sources (
+  source_key,
+  name,
+  source_type,
+  access_method,
+  base_url,
+  api_url,
+  licence_name,
+  licence_url,
+  terms_url,
+  reuse_status,
+  scraping_permitted,
+  enabled,
+  schedule_expression,
+  rate_limit_per_minute,
+  robots_checked_at,
+  terms_checked_at,
+  compliance_notes
+)
+values (
+  'public-contracts-scotland',
+  'Public Contracts Scotland',
+  'GOVERNMENT_OPEN_DATA',
+  'OCDS_API',
+  'https://www.publiccontractsscotland.gov.uk/',
+  'https://api.publiccontractsscotland.gov.uk/v1/Notices',
+  'Open Government Licence v3.0',
+  'https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/',
+  'https://www.publiccontractsscotland.gov.uk/sitehelp/help_terms.aspx',
+  'OPEN_LICENSE',
+  false,
+  false,
+  '0 */6 * * *',
+  10,
+  timestamptz '2026-10-14T00:00:00Z',
+  timestamptz '2026-10-14T00:00:00Z',
+  'Official OCDS Notices API only, including Quick Quote awards (notice type 104). Open Government Licence v3.0. Quick Quote invitations are not public. Do not scrape the website HTML. Disabled until an operator enables the row. Preserve-only ingestion. At most 10 requests per minute. Keep TLS verification on.'
+)
+on conflict (source_key) do update set
+  name = excluded.name,
+  source_type = excluded.source_type,
+  access_method = excluded.access_method,
+  base_url = excluded.base_url,
+  api_url = excluded.api_url,
+  licence_name = excluded.licence_name,
+  licence_url = excluded.licence_url,
+  terms_url = excluded.terms_url,
+  reuse_status = excluded.reuse_status,
+  scraping_permitted = excluded.scraping_permitted,
+  enabled = excluded.enabled,
+  schedule_expression = excluded.schedule_expression,
+  rate_limit_per_minute = excluded.rate_limit_per_minute,
+  robots_checked_at = excluded.robots_checked_at,
+  terms_checked_at = excluded.terms_checked_at,
+  compliance_notes = excluded.compliance_notes,
+  updated_at = now();
+
+insert into public.data_sources (
+  source_key,
+  name,
+  source_type,
+  access_method,
+  base_url,
+  api_url,
+  licence_name,
+  licence_url,
+  terms_url,
+  reuse_status,
+  scraping_permitted,
+  enabled,
+  schedule_expression,
+  rate_limit_per_minute,
+  robots_checked_at,
+  terms_checked_at,
+  compliance_notes
+)
+values (
+  'sell2wales',
+  'Sell2Wales',
+  'GOVERNMENT_OPEN_DATA',
+  'OCDS_API',
+  'https://www.sell2wales.gov.wales/',
+  'https://api.sell2wales.gov.wales/v1/Notices',
+  'Open Government Licence v3.0',
+  'https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/',
+  'https://www.sell2wales.gov.wales/helpandresources/ocds/publicationpolicy',
+  'OPEN_LICENSE',
+  false,
+  false,
+  '0 */6 * * *',
+  10,
+  timestamptz '2026-10-14T00:00:00Z',
+  timestamptz '2026-10-14T00:00:00Z',
+  'Official OCDS Notices API only. Open Government Licence v3.0 on the publication policy. Do not scrape HTML and do not use the RSS feed. Disabled until an operator enables the row. Preserve-only ingestion. At most 10 requests per minute. Keep TLS verification on.'
+)
+on conflict (source_key) do update set
+  name = excluded.name,
+  source_type = excluded.source_type,
+  access_method = excluded.access_method,
+  base_url = excluded.base_url,
+  api_url = excluded.api_url,
+  licence_name = excluded.licence_name,
+  licence_url = excluded.licence_url,
+  terms_url = excluded.terms_url,
+  reuse_status = excluded.reuse_status,
+  scraping_permitted = excluded.scraping_permitted,
+  enabled = excluded.enabled,
+  schedule_expression = excluded.schedule_expression,
+  rate_limit_per_minute = excluded.rate_limit_per_minute,
+  robots_checked_at = excluded.robots_checked_at,
+  terms_checked_at = excluded.terms_checked_at,
+  compliance_notes = excluded.compliance_notes,
+  updated_at = now();
+
+-- ============================================================================
+-- END 0045_devolved_ocds_portals.sql
+-- ============================================================================
+
+-- ============================================================================
 -- BEGIN 0046_search_preview_dtos_page_first.sql
 -- ============================================================================
 
