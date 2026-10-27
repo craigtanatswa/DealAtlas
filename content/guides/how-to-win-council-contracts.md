@@ -6,12 +6,12 @@ description: "How to win council contracts under the Procurement Act 2023: the 2
 h1: "How to win council contracts: a practical guide for SMEs"
 breadcrumb: "How to win council contracts"
 datePublished: 2026-10-19
-updated: 2026-10-19
+updated: 2026-10-27
 primaryKeyword: "how to win council contracts"
 secondaryKeywords: ["council tenders for small businesses", "how to bid for council contracts", "local authority tenders UK", "selling to local government UK"]
 relatedGuides: ["how-to-find-public-sector-tenders"]
-securityClearedAt: 2026-10-19
-craigApprovedAt: 2026-10-19
+securityClearedAt: 2026-10-27
+craigApprovedAt: 2026-10-27
 ---
 
 Councils buy works, services and goods all year, often in contract sizes a small firm can deliver. Knowing how to win council contracts comes down to three habits. Find the right opportunities early, meet the entry requirements without last-minute scrambling, and write a bid that answers the published scoring criteria. This guide covers how councils in England, Wales and Northern Ireland buy under the [Procurement Act 2023](https://www.legislation.gov.uk/ukpga/2023/54/contents), which has applied to new procurements since 24 February 2025, and what that means for your next bid.
@@ -71,6 +71,18 @@ Selling to local government in the UK means watching several places at once. Our
 - The council's own e-tendering system. The notice is published centrally, but documents, clarification questions and submission often run through the council's chosen portal. You'll usually need a separate account for each one.
 
 Some of the best signals come before a tender exists. A contracting authority that expects to pay more than £100 million under contracts in the coming financial year must publish a pipeline notice covering planned contracts of £2 million or more. Preliminary market engagement notices tell you a council wants supplier input, and a planned procurement notice tells you a tender is coming and may shorten the time you get to respond. The notice types guide explains each one.
+
+## Find council contracts in your region
+
+Browse live opportunities free on [DealAtlas](/deals). Filter by area, value band and closing date to find council work near you. DealAtlas brings UK public and private tenders and opportunities for SMEs, in one place. Start with the live sector pages:
+
+- [Construction and infrastructure](/categories/construction-infrastructure)
+- [Technology](/categories/technology)
+- [Professional services](/categories/professional-services)
+- [Healthcare](/categories/healthcare)
+- [Education](/categories/education)
+- [Transport and logistics](/categories/transport-logistics)
+- [Energy and utilities](/categories/energy-utilities)
 
 ## Frameworks and dynamic markets
 
@@ -135,9 +147,9 @@ For a public contract, the council must give each supplier whose tender it asses
 
 Once you're delivering, the council must pay a valid, undisputed invoice within 30 days of receiving it ([section 68](https://www.legislation.gov.uk/ukpga/2023/54/section/68)). Equivalent terms are implied into subcontracts under public contracts, so the same applies if you deliver as a subcontractor.
 
-## How to track council opportunities
+## Track council opportunities as they appear
 
-Seeing the right opportunity early is often the hardest part. DealAtlas brings these opportunities into one place, sorted by category, region, value band and closing date, with an SME suitability and bid complexity view on each one. You can browse sanitised previews free on [live opportunities](/deals), for example in [professional services](/categories/professional-services) or [education](/categories/education). When one is worth pursuing, DealAtlas Pro unlocks the buyer, the original source, contacts and documents, plus saved searches and alerts for new matches. See [how it works](/how-it-works) or [compare plans](/pricing).
+[DealAtlas Pro](/pricing) adds saved searches and alerts for new matches in your sector and area, so UK public and private tenders and opportunities for SMEs land in one place. See [how it works](/how-it-works).
 
 ## FAQ
 
@@ -175,4 +187,4 @@ Below threshold, councils in England can reserve a competition to UK-based or lo
 - [National Procurement Policy Statement](https://www.gov.uk/government/publications/national-procurement-policy-statement)
 - [Public Services (Social Value) Act 2012, section 1](https://www.legislation.gov.uk/ukpga/2012/3/section/1)
 
-This guide is general information, not legal advice. Last checked against gov.uk and legislation.gov.uk on 19 October 2026.
+This guide is general information, not legal advice. Last checked against gov.uk and legislation.gov.uk on 27 October 2026.
