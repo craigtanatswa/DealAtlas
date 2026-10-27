@@ -39,7 +39,7 @@ const loadPreviewPage = cache(async (slug: string) => {
   const user = await getAuthUser();
   const client = await createSupabaseServerClient();
   return getPublicDealPreviewPageBySlug(client, parsed.data, {
-    signedIn: Boolean(user),
+    userId: user?.id ?? null,
   });
 });
 

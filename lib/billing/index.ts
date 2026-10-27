@@ -4,16 +4,23 @@
  */
 export {
   CHECKOUT_PLAN_KEYS,
+  SUBSCRIPTION_PLAN_KEYS,
   allowlistedProductIds,
   billingIntervalForPlan,
+  checkoutProductIds,
+  webhookAcceptedProductIds,
   isCheckoutPlanKey,
   isFoundingProduct,
   mapPlanKey,
   mapProductId,
   parseCheckoutRequest,
   selectCheckoutProduct,
+  shouldReserveFoundingSlot,
+  subscriptionPlanKeyFor,
   type CheckoutPlanKey,
+  type CheckoutSelection,
   type PlanProductMap,
+  type SubscriptionPlanKey,
 } from "@/lib/billing/plans";
 export { checkoutMetadata, CHECKOUT_METADATA_KEYS } from "@/lib/billing/metadata";
 export {
@@ -30,6 +37,7 @@ export {
 export { applyBillingEvent } from "@/lib/billing/apply";
 export {
   BILLING_FIXTURE_CUSTOMER_ID,
+  BILLING_FIXTURE_LEGACY_PRODUCT_ID,
   BILLING_FIXTURE_PRODUCTS,
   BILLING_FIXTURE_SUBSCRIPTION_ID,
   BILLING_FIXTURE_USER_ID,

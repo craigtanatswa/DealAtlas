@@ -114,8 +114,6 @@ export function UnlockPanel({
         ) : (
           <FoundingUnlockActions
             state={foundingState}
-            remaining={founding?.remaining ?? 0}
-            cap={founding?.cap ?? 25}
             mode={mode === "free" ? "free" : "anonymous"}
             returnTo={returnTo}
           />

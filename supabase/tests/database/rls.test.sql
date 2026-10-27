@@ -52,7 +52,7 @@ select ok(
 );
 
 select ok(
-  has_function_privilege('anon', 'public.search_preview_dtos(text, text, public.buyer_sector, public.deal_type, text, public.deal_status, public.deal_status[], text, text, numeric, text, integer, integer)', 'execute'),
+  has_function_privilege('anon', 'public.search_preview_dtos(text, text, public.buyer_sector, public.deal_type, text, public.deal_status, public.deal_status[], text, text, numeric, text, integer, integer, text[])', 'execute'),
   'anon can execute the DTO search RPC'
 );
 select ok(has_function_privilege('anon', 'public.get_preview_dto_by_slug(text)', 'execute'), 'anon can execute DTO by slug');
@@ -61,15 +61,15 @@ select ok(not has_function_privilege('anon', 'public.get_preview_dto_by_deal_id(
 select ok(not has_function_privilege('anon', 'public.resolve_preview_deal_id(text)', 'execute'), 'anon cannot resolve deal ids');
 select ok(not has_function_privilege('anon', 'public.list_saved_deal_previews()', 'execute'), 'anon cannot list saved deals');
 select ok(
-  not has_function_privilege('anon', 'public.search_deal_previews(text, text, public.buyer_sector, public.deal_type, text, public.deal_status, text, text, integer, integer)', 'execute'),
+  not has_function_privilege('anon', 'public.search_deal_previews(text, text, public.buyer_sector, public.deal_type, text, public.deal_status, text, text, integer, integer, text[])', 'execute'),
   'anon cannot execute the legacy deal_id-bearing search RPC'
 );
 select ok(
-  not has_function_privilege('authenticated', 'public.search_deal_previews_for_profile(uuid, text, text, public.buyer_sector, public.deal_type, text, public.deal_status, text, text, numeric, text, integer, integer)', 'execute'),
+  not has_function_privilege('authenticated', 'public.search_deal_previews_for_profile(uuid, text, text, public.buyer_sector, public.deal_type, text, public.deal_status, text, text, numeric, text, integer, integer, text[])', 'execute'),
   'authenticated cannot execute the legacy profile search RPC'
 );
 select ok(
-  not has_function_privilege('anon', 'public.search_deal_previews_for_profile(uuid, text, text, public.buyer_sector, public.deal_type, text, public.deal_status, text, text, numeric, text, integer, integer)', 'execute'),
+  not has_function_privilege('anon', 'public.search_deal_previews_for_profile(uuid, text, text, public.buyer_sector, public.deal_type, text, public.deal_status, text, text, numeric, text, integer, integer, text[])', 'execute'),
   'anon cannot execute the legacy profile search RPC after 0019'
 );
 select ok(
@@ -389,6 +389,49 @@ select is(
 );
 
 select is(
+  (select array_agg(slug order by slug) from public.search_preview_dtos(p_categories => array['technology'])),
+  array['published-low-risk-preview-a1b2c3d4'],
+  'anon DTO search filters p_categories and returns only published LOW-risk rows in the set'
+);
+
+select is(
+  (select count(*)::integer from public.search_preview_dtos(p_categories => array['Energy', 'Water and Wastewater'])),
+  0,
+  'anon DTO search accepts p_categories even when no fixture row is in that set'
+);
+
+select is(
+  (select relevance_score from public.search_preview_dtos(p_categories => array['technology']) limit 1),
+  null::numeric,
+  'anon DTO rows carry no relevance score when p_categories is set'
+);
+
+select is(
+  (select preview_reasons from public.search_preview_dtos(p_categories => array['technology']) limit 1),
+  '[]'::jsonb,
+  'anon DTO rows carry no preview reasons when p_categories is set'
+);
+
+select ok(
+  not exists (
+    select 1
+    from public.search_preview_dtos(p_categories => array['technology']) as r
+    where to_jsonb(r) ?| array[
+      'deal_id', 'source_url', 'source_title', 'reference', 'ocid', 'buyer_organization_id',
+      'canonical_name', 'email', 'phone', 'application_url', 'created_at', 'updated_at',
+      'leakage_risk', 'is_published', 'unpublished_by_admin'
+    ]
+  ),
+  'anon DTO rows with p_categories keep the same allowlisted columns'
+);
+
+select is(
+  (select array_agg(slug order by slug) from public.search_preview_dtos(p_category => 'technology', p_categories => null)),
+  array['published-low-risk-preview-a1b2c3d4'],
+  'p_categories null keeps the existing p_category filter working'
+);
+
+select is(
   (select count(*)::integer from public.get_preview_dto_by_slug('unpublished-low-risk-preview')),
   0,
   'anon cannot load an unpublished preview by slug'
@@ -545,28 +588,55 @@ select throws_ok(
   'authenticated select on deal_previews is denied'
 );
 
+-- 0051: match data is Pro-only. A free user with a profile and a stored
+-- match gets no score and no reasons from any DTO RPC. The canned-label
+-- checks run for the Pro user below.
 select is(
   (select relevance_score from public.search_preview_dtos() where slug = 'published-low-risk-preview-a1b2c3d4'),
-  72::numeric,
-  'signed-in DTO search carries only the caller''s own relevance score'
+  null::numeric,
+  'free DTO search carries no relevance score, even with a stored match'
 );
 
 select is(
   (select preview_reasons from public.search_preview_dtos() where slug = 'published-low-risk-preview-a1b2c3d4'),
-  '[{"code":"KEYWORD_OVERLAP","kind":"match","label":"Keyword overlap with the opportunity preview"}]'::jsonb,
-  'search DTO reasons carry the canned label for the code; stored labels and unknown codes are dropped'
+  '[]'::jsonb,
+  'free DTO search carries no preview reasons'
+);
+
+select is(
+  (select relevance_score from public.search_preview_dtos(p_categories => array['technology']) where slug = 'published-low-risk-preview-a1b2c3d4'),
+  null::numeric,
+  'free DTO search carries no relevance score when p_categories is set'
+);
+
+select is(
+  (select preview_reasons from public.search_preview_dtos(p_categories => array['technology']) where slug = 'published-low-risk-preview-a1b2c3d4'),
+  '[]'::jsonb,
+  'free DTO search carries no preview reasons when p_categories is set'
+);
+
+select is(
+  (select relevance_score from public.get_preview_dto_by_slug('published-low-risk-preview-a1b2c3d4')),
+  null::numeric,
+  'free slug DTO carries no relevance score'
 );
 
 select is(
   (select preview_reasons from public.get_preview_dto_by_slug('published-low-risk-preview-a1b2c3d4')),
-  '[{"code":"KEYWORD_OVERLAP","kind":"match","label":"Keyword overlap with the opportunity preview"}]'::jsonb,
-  'slug DTO reasons are canned only'
+  '[]'::jsonb,
+  'free slug DTO carries no preview reasons'
+);
+
+select is(
+  (select relevance_score from public.get_preview_dto_by_deal_id('22222222-2222-4222-8222-222222222222')),
+  null::numeric,
+  'free deal-id DTO carries no relevance score'
 );
 
 select is(
   (select preview_reasons from public.get_preview_dto_by_deal_id('22222222-2222-4222-8222-222222222222')),
-  '[{"code":"KEYWORD_OVERLAP","kind":"match","label":"Keyword overlap with the opportunity preview"}]'::jsonb,
-  'deal-id DTO reasons are canned only'
+  '[]'::jsonb,
+  'free deal-id DTO carries no preview reasons'
 );
 
 select throws_ok(
@@ -583,10 +653,11 @@ select throws_ok(
   'authenticated cannot read deal_matches.detail_reasons'
 );
 
-select is(
-  (select relevance_score from public.deal_matches where deal_id = '22222222-2222-4222-8222-222222222222'),
-  72::numeric,
-  'authenticated still reads its own match score'
+select throws_ok(
+  'select relevance_score from public.deal_matches limit 1',
+  '42501',
+  NULL,
+  'authenticated cannot read deal_matches.relevance_score directly (0051: match data only via Pro-gated DTOs)'
 );
 
 select is(
@@ -694,6 +765,13 @@ insert into auth.users (id, email) values
   ('77777777-7777-4777-8777-777777777777', 'pro-user@example.test');
 insert into public.subscriptions (user_id, provider, plan_key, status, current_period_start, current_period_end, is_current)
 values ('77777777-7777-4777-8777-777777777777', 'dodo', 'PRO_MONTHLY', 'ACTIVE', now() - interval '1 day', now() + interval '30 days', true);
+insert into public.company_profiles (id, user_id, company_name)
+values ('88888888-8888-4888-8888-888888888888', '77777777-7777-4777-8777-777777777777', 'Example Pro Co');
+insert into public.deal_matches (company_profile_id, deal_id, relevance_score, preview_reasons)
+values ('88888888-8888-4888-8888-888888888888', '22222222-2222-4222-8222-222222222222', 72,
+  '[{"code":"KEYWORD_OVERLAP","kind":"match","label":"Matches Pellingworth Borough Council history"},
+    {"code":"NOT_A_REASON_CODE","kind":"match","label":"Pellingworth depot"},
+    {"code":"REGION_MATCH","kind":"sideways","label":"Pellingworth"}]'::jsonb);
 insert into public.saved_deals (user_id, deal_id) values
   ('77777777-7777-4777-8777-777777777777', '22222222-2222-4222-8222-222222222222'),
   ('77777777-7777-4777-8777-777777777777', '33333333-3333-4333-8333-333333333333');
@@ -705,6 +783,30 @@ select is(
   (select array_agg(coalesce(slug, '<hidden>') order by slug nulls last) from public.list_saved_deal_previews()),
   array['published-low-risk-preview-a1b2c3d4', '<hidden>'],
   'a Pro user''s saved deals list keeps unpublished deals without preview fields'
+);
+
+select is(
+  (select relevance_score from public.search_preview_dtos() where slug = 'published-low-risk-preview-a1b2c3d4'),
+  72::numeric,
+  'Pro DTO search carries only the caller''s own relevance score'
+);
+
+select is(
+  (select preview_reasons from public.search_preview_dtos() where slug = 'published-low-risk-preview-a1b2c3d4'),
+  '[{"code":"KEYWORD_OVERLAP","kind":"match","label":"Keyword overlap with the opportunity preview"}]'::jsonb,
+  'search DTO reasons carry the canned label for the code; stored labels and unknown codes are dropped'
+);
+
+select is(
+  (select preview_reasons from public.get_preview_dto_by_slug('published-low-risk-preview-a1b2c3d4')),
+  '[{"code":"KEYWORD_OVERLAP","kind":"match","label":"Keyword overlap with the opportunity preview"}]'::jsonb,
+  'slug DTO reasons are canned only'
+);
+
+select is(
+  (select preview_reasons from public.get_preview_dto_by_deal_id('22222222-2222-4222-8222-222222222222')),
+  '[{"code":"KEYWORD_OVERLAP","kind":"match","label":"Keyword overlap with the opportunity preview"}]'::jsonb,
+  'deal-id DTO reasons are canned only'
 );
 
 select set_config('request.jwt.claims', '', true);

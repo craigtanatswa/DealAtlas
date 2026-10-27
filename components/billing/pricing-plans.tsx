@@ -6,11 +6,13 @@ import { CheckoutPlanForm } from "@/components/billing/checkout-plan-form";
 import { Heading, Text } from "@/components/layout/heading";
 import { Button } from "@/components/ui/button";
 import { signupPathForPlan, signupPathWithNext } from "@/lib/auth/redirect";
+import type { CheckoutPlanKey } from "@/lib/billing/types";
 import {
+  FOUNDING_CAP,
   FOUNDING_COPY,
+  FOUNDING_PLAN_KEY,
   foundingPlacesLabel,
   foundingSoldOutNote,
-  type FoundingPublicCount,
   type FoundingUiState,
 } from "@/lib/billing/founding-ui";
 import { DISPLAY_PRICING, FEATURE_LIMITS } from "@/lib/constants";
@@ -87,23 +89,10 @@ function PlanCard({
   );
 }
 
-function PlacesMeter({ remaining, cap }: { remaining: number; cap: number }) {
-  const taken = Math.min(cap, Math.max(0, cap - remaining));
-  const percent = cap > 0 ? Math.round((taken / cap) * 100) : 0;
-  const label = foundingPlacesLabel(remaining, cap);
+function PlacesMeter() {
   return (
     <div className="mt-5">
-      <p className="text-sm font-medium text-foreground tabular-nums">{label}</p>
-      <div
-        className="mt-2 h-1.5 overflow-hidden rounded-full bg-dealatlas-teal/15"
-        role="progressbar"
-        aria-valuemin={0}
-        aria-valuemax={cap}
-        aria-valuenow={taken}
-        aria-valuetext={label}
-      >
-        <div className="h-full rounded-full bg-dealatlas-teal" style={{ width: `${percent}%` }} />
-      </div>
+      <p className="text-sm font-medium text-foreground">{foundingPlacesLabel()}</p>
       <p className="mt-2 text-[0.8125rem] leading-5 text-muted-foreground">
         {FOUNDING_COPY.rechecked}
       </p>
@@ -120,7 +109,7 @@ function PlanCta({
   analyticsPlan,
 }: {
   signedIn: boolean;
-  planKey: "PRO_MONTHLY" | "PRO_ANNUAL";
+  planKey: CheckoutPlanKey;
   label: string;
   variant?: "default" | "outline";
   buttonClassName?: string;
@@ -149,11 +138,9 @@ function PlanCta({
 
 export function PricingPlans({
   signedIn,
-  count,
   state,
 }: {
   signedIn: boolean;
-  count: FoundingPublicCount;
   state: Exclude<FoundingUiState, "hidden">;
 }) {
   const soldOut = state === "sold_out";
@@ -201,12 +188,12 @@ export function PricingPlans({
               <LockIcon className="mt-0.5 size-4 shrink-0 text-[#00806A]" aria-hidden="true" />
               <span>{FOUNDING_COPY.priceLocked}</span>
             </p>
-            <PlacesMeter remaining={count.remaining} cap={count.cap} />
+            <PlacesMeter />
             <FeatureList items={PRO_FEATURES} />
             <div className="mt-auto flex flex-col gap-3 pt-6">
               <PlanCta
                 signedIn={signedIn}
-                planKey="PRO_ANNUAL"
+                planKey={FOUNDING_PLAN_KEY}
                 label={FOUNDING_COPY.cta}
                 analyticsPlan="founding"
                 variant="default"
@@ -257,7 +244,7 @@ export function PricingPlans({
       </div>
       {soldOut ? (
         <p className="mx-auto max-w-xl rounded-lg bg-muted px-4 py-3 text-center text-sm text-pretty text-muted-foreground">
-          {foundingSoldOutNote(count.cap)}
+          {foundingSoldOutNote(FOUNDING_CAP)}
         </p>
       ) : null}
     </>

@@ -1,15 +1,20 @@
+import { FOUNDING_NOT_ELIGIBLE_MESSAGE, FOUNDING_UNAVAILABLE_MESSAGE } from "@/lib/billing/founding";
+import type { CheckoutPlanKey } from "@/lib/billing/types";
 import { DISPLAY_PRICING } from "@/lib/constants";
+
+/** Checkout plan key for the founding offer. Shared with the #49 UI. */
+export const FOUNDING_PLAN_KEY = "FOUNDING" satisfies CheckoutPlanKey;
 
 /** Server cap. The browser never supplies this number. */
 export const FOUNDING_CAP = 25;
 
+/** Public founding state. No remaining, used or cap numbers. */
 export type FoundingPublicCount = {
   offered: boolean;
-  remaining: number;
-  cap: number;
+  sold_out: boolean;
 };
 
-export type FoundingUiState = "hidden" | "available" | "last" | "sold_out";
+export type FoundingUiState = "hidden" | "available" | "sold_out";
 
 function parseGbpYear(value: string): number | null {
   const match = value.match(/£(\d+)\/year/);
@@ -58,38 +63,27 @@ function soldOutAnnualLink(): string {
 
 export function foundingUiState(count: {
   offered: boolean;
-  remaining: number;
+  sold_out: boolean;
 }): FoundingUiState {
   if (!count.offered) return "hidden";
-  if (count.remaining <= 0) return "sold_out";
-  if (count.remaining === 1) return "last";
+  if (count.sold_out) return "sold_out";
   return "available";
 }
 
-export function foundingPlacesLabel(remaining: number, cap = FOUNDING_CAP): string {
-  const safeCap = Number.isInteger(cap) && cap > 0 ? cap : FOUNDING_CAP;
-  const safeRemaining = clampFoundingRemaining(remaining, safeCap);
-  if (safeRemaining === 1) {
-    return `Last founding place · 1 of ${safeCap} places left`;
-  }
-  return `${safeRemaining} of ${safeCap} founding places left`;
+/** Public places line. Deliberately carries no count. */
+export const FOUNDING_PLACES_AVAILABLE = "Founding places available";
+
+export function foundingPlacesLabel(): string {
+  return FOUNDING_PLACES_AVAILABLE;
 }
 
-/** Paywall helper. Last place uses the same sentence as the pricing card. */
-export function foundingPaywallPlaces(remaining: number, cap = FOUNDING_CAP): string {
-  const safeCap = Number.isInteger(cap) && cap > 0 ? cap : FOUNDING_CAP;
-  const safeRemaining = clampFoundingRemaining(remaining, safeCap);
-  if (safeRemaining === 1) return foundingPlacesLabel(1, safeCap);
-  return `${safeRemaining} of ${safeCap} places left`;
+export function foundingPaywallPlaces(): string {
+  return FOUNDING_PLACES_AVAILABLE;
 }
 
 export function foundingSoldOutNote(cap = FOUNDING_CAP): string {
   const safeCap = Number.isInteger(cap) && cap > 0 ? cap : FOUNDING_CAP;
   return `Founding membership is full. Thanks to our first ${safeCap} customers.`;
-}
-
-function clampFoundingRemaining(remaining: number, cap: number): number {
-  return Number.isInteger(remaining) ? Math.min(cap, Math.max(0, remaining)) : 0;
 }
 
 export const FOUNDING_COPY = {
@@ -105,7 +99,8 @@ export const FOUNDING_COPY = {
   paywallMonthly: `or standard Pro ${DISPLAY_PRICING.proMonthly.replace("/month", "/mo")}`,
   soldOutMonthly: `Start Pro – ${DISPLAY_PRICING.proMonthly.replace("/month", "/mo")}`,
   soldOutAnnual: soldOutAnnualLink(),
-  raceLead: "Founding places just filled up. You haven't been charged.",
+  raceLead: FOUNDING_UNAVAILABLE_MESSAGE,
+  notEligibleLead: FOUNDING_NOT_ELIGIBLE_MESSAGE,
   raceBody: `Continue with standard annual at ${DISPLAY_PRICING.proAnnual.replace("/year", "/yr")}?`,
   raceAnnual: `Continue with annual – ${DISPLAY_PRICING.proAnnual.replace("/year", "/yr")}`,
   raceMonthly: `Choose monthly – ${DISPLAY_PRICING.proMonthly.replace("/month", "/mo")}`,

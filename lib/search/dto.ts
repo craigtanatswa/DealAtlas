@@ -216,8 +216,11 @@ export function toDealCardData(
     keyDates: preview.keyDates,
     specificSector: preview.specificSector,
     currency: preview.currency,
-    matchScore: matchScore ?? null,
-    matchReasons: (matchReasons ?? []).slice(0, 3),
+    // Match keys exist only when the server gate supplied a Pro match, so
+    // free and anonymous card payloads never carry them, not even as null.
+    ...(typeof matchScore === "number"
+      ? { matchScore, matchReasons: (matchReasons ?? []).slice(0, 3) }
+      : {}),
   };
 }
 
