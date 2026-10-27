@@ -18,13 +18,13 @@ UK public bodies advertise contracts across several websites, and a missed tende
 
 ## The short answer
 
-Start with Find a Tender, the government's central digital platform. Since 24 February 2025, new above-threshold and advertised below-threshold opportunities from buyers in England, Wales and Northern Ireland are published there. Add Public Contracts Scotland for Scottish buyers, and the buyer's own e-tendering system for documents. Then watch pipeline, preliminary market engagement and planned procurement notices to see work coming before the tender opens.
+Start with DealAtlas, which brings opportunities from UK public buyers into one place, sorted by category, region, value band and closing date. Then watch for early-signal notices such as pipeline, preliminary market engagement and planned procurement notices to see work coming before the tender opens.
 
 ## Who buys, and which rules they follow
 
 Public sector buyers include government departments and their agencies, the NHS, local authorities, universities, schools, social housing organisations, police and fire services, and utility companies ([Information and guidance for suppliers](https://www.gov.uk/government/collections/information-and-guidance-for-suppliers)). Most of them buy under the Procurement Act 2023, with a few exceptions that change where you'll find their opportunities.
 
-- Devolved Scottish authorities, including Scottish councils and health boards, mostly buy under Scotland's own procurement law and advertise on Public Contracts Scotland.
+- Devolved Scottish authorities, including Scottish councils and health boards, mostly buy under Scotland's own procurement law and publish through Scotland's own system.
 - In England, NHS bodies and local authorities buying in-scope healthcare services follow the Provider Selection Regime instead of the Act ([Health Care Services (Provider Selection Regime) Regulations 2023](https://www.legislation.gov.uk/uksi/2023/1348)).
 - Schools and private utilities have lighter publishing duties, so some of their lower-value work is never advertised centrally.
 
@@ -40,22 +40,19 @@ The value of a contract, including VAT, decides how much of the Act applies. The
 | Utilities goods or services (not works) | £415,440 |
 | Light touch services, such as many health, social and education services | £663,540 |
 
-At or above these values, a competitive tender must start with a tender notice on Find a Tender. Below them, the buyer doesn't have to advertise at all. It can ask selected suppliers for quotes. But if it does advertise, it must first publish a below-threshold tender notice on the central digital platform for contracts worth £12,000 or more from central government authorities, or £30,000 or more from all other buyers ([section 87](https://www.legislation.gov.uk/ukpga/2023/54/section/87), [Below-threshold contracts guidance](https://www.gov.uk/government/publications/procurement-act-2023-guidance-documents-define-phase/guidance-below-threshold-contracts-html)). Central government authorities are the bodies listed in [Schedule 2 to the Procurement Regulations 2024](https://www.legislation.gov.uk/uksi/2024/692/schedule/2), which includes NHS trusts and NHS foundation trusts. Devolved Welsh central government authorities use the £30,000 figure. Because the works threshold is so much higher, a lot of [construction and infrastructure](/categories/construction-infrastructure) work is advertised under the below-threshold rules.
+At or above these values, a competitive tender must start with a tender notice on the central digital platform. Below them, the buyer doesn't have to advertise at all. It can ask selected suppliers for quotes. But if it does advertise, it must first publish a below-threshold tender notice on the central digital platform for contracts worth £12,000 or more from central government authorities, or £30,000 or more from all other buyers ([section 87](https://www.legislation.gov.uk/ukpga/2023/54/section/87), [Below-threshold contracts guidance](https://www.gov.uk/government/publications/procurement-act-2023-guidance-documents-define-phase/guidance-below-threshold-contracts-html)). Central government authorities are the bodies listed in [Schedule 2 to the Procurement Regulations 2024](https://www.legislation.gov.uk/uksi/2024/692/schedule/2), which includes NHS trusts and NHS foundation trusts. Devolved Welsh central government authorities use the £30,000 figure. Because the works threshold is so much higher, a lot of [construction and infrastructure](/categories/construction-infrastructure) work is advertised under the below-threshold rules.
 
 ## Where to find tenders in the UK
 
-If you want to find tenders across the UK, these are the places that matter.
+Buyers publish notices on the central digital platform, on devolved systems for Scotland, Wales and Northern Ireland, and through their own e-tendering systems. Checking them one by one is slow, which is why DealAtlas brings these opportunities into one place at [live opportunities](/deals).
 
-- Find a Tender. It's the central digital platform where UK buyers publish notices across the whole contract lifecycle. Searching is free, and you can set up email alerts ([Central digital platform factsheet](https://www.gov.uk/government/publications/procurement-act-2023-short-guides/central-digital-platform-factsheet-html)). Below-threshold notices from Scottish buyers and Northern Irish below-threshold contracts aren't required to appear there.
-- Contracts Finder. It still holds notices for lower-value procurements that started under the old rules before 24 February 2025, and you can search it for past contracts ([Contracts Finder](https://www.gov.uk/contracts-finder)).
-- Devolved portals. Public Contracts Scotland lists Scottish opportunities, Sell2Wales covers Welsh public bodies, and eSourcing NI and eTendersNI cover Northern Ireland.
 - Buyer e-tendering systems. The notice is published centrally, but tender documents, clarification questions and submissions usually run through the buyer's chosen portal. Each one needs its own account.
 
-Two kinds of work won't show up as a new tender notice. Contracts awarded under an existing framework go only to suppliers already on it, so no tender notice is published for those call-offs ([Find a Tender notice types](https://www.find-tender.service.gov.uk/Home/NoticeTypes)). Below-threshold work offered to selected suppliers without advertising stays invisible until a contract details notice appears, where one is required. To compete for either, you need to be on the framework, or known to the buyer, before the work is offered. The frameworks and dynamic markets guide explains how to get on them.
+Two kinds of work won't show up as a new tender notice. Contracts awarded under an existing framework go only to suppliers already on it, so no tender notice is published for those call-offs ([Procurement Act 2023 guidance documents](https://www.gov.uk/government/collections/procurement-act-2023-guidance-documents)). Below-threshold work offered to selected suppliers without advertising stays invisible until a contract details notice appears, where one is required. To compete for either, you need to be on the framework, or known to the buyer, before the work is offered. The frameworks and dynamic markets guide explains how to get on them.
 
 ## How to find public sector tenders before they're advertised
 
-The Act added notice types that show you work months ahead of the tender. All of them appear on Find a Tender ([Find a Tender notice types](https://www.find-tender.service.gov.uk/Home/NoticeTypes)).
+The Act added notice types that show you work months ahead of the tender. All of them are published on the central digital platform, and DealAtlas brings new opportunities into one place ([Procurement Act 2023 guidance documents](https://www.gov.uk/government/collections/procurement-act-2023-guidance-documents)).
 
 - Pipeline notices (UK1). A buyer that expects to spend more than £100 million on relevant contracts in the financial year must publish one between 1 April and 26 May. It lists contracts over £2 million that it expects to tender or award directly in the next 18 months.
 - Preliminary market engagement notices (UK2). These tell you a buyer is talking to suppliers before tendering, through events, questionnaires or meetings. Taking part helps you understand the need before the specification is fixed.
@@ -67,13 +64,13 @@ The contract record helps too. Contract details notices (UK7) show what has been
 
 ## Register so you're ready to bid
 
-You don't need an account to search Find a Tender, and the government says there's no hurry to register as a supplier. You only need to register when you want to bid ([Central digital platform factsheet](https://www.gov.uk/government/publications/procurement-act-2023-short-guides/central-digital-platform-factsheet-html)). Doing it early saves time against a deadline.
+The government says there's no hurry to register as a supplier. You only need to register when you want to bid ([Central digital platform factsheet](https://www.gov.uk/government/publications/procurement-act-2023-short-guides/central-digital-platform-factsheet-html)). Doing it early saves time against a deadline.
 
 1. Create a GOV.UK One Login for yourself.
-2. Register your organisation on Find a Tender. If you used the service before 24 February 2025, you need to re-register for the new platform.
+2. Register your organisation on the central digital platform (Find a Tender). If you used the service before 24 February 2025, you need to re-register for the new platform.
 3. Complete the supplier information, which covers core business details, financial information, accreditations and, depending on your structure, connected persons such as directors and parent companies.
 4. Declare that the information is accurate and generate a share code. You give the buyer the share code, or a downloaded copy, in the way its tender documents specify.
-5. Review the information before each bid. Find a Tender doesn't check it, and accuracy is your responsibility.
+5. Review the information before each bid. The platform doesn't check it, and accuracy is your responsibility.
 
 ## Build a search routine
 
@@ -95,15 +92,11 @@ Checking several national portals, buyer systems and notice types is slow. DealA
 
 ### Where are UK public sector tenders published?
 
-For buyers in England, Wales and Northern Ireland, new opportunities under the Procurement Act 2023 are published on Find a Tender, the central digital platform. Scottish buyers use Public Contracts Scotland. Documents and submissions usually run through each buyer's own e-tendering system.
+For buyers in England, Wales and Northern Ireland, new opportunities under the Procurement Act 2023 are published on the central digital platform. Scottish buyers use their devolved system. Documents and submissions usually run through each buyer's own e-tendering system. You can find opportunities from across the UK in one place on [DealAtlas](/deals).
 
-### Is Find a Tender free to use?
+### Can I see all these opportunities in one place?
 
-Yes. You can search opportunities and set up alerts at no cost, and you don't need to register as a supplier until you want to bid.
-
-### Is Contracts Finder still used?
-
-It holds notices for lower-value procurements that started under the previous rules, before 24 February 2025, and records of past contracts. New procurements under the Procurement Act 2023 are published on Find a Tender.
+DealAtlas brings UK public sector opportunities into one place. You can browse sanitised previews free on [live opportunities](/deals), and DealAtlas Pro unlocks the buyer, the original source, contacts and documents.
 
 ### What is the threshold for advertising a public contract in 2026?
 
@@ -111,7 +104,7 @@ From 1 January 2026, the main thresholds including VAT are £135,018 for central
 
 ### How can I find out about tenders before they are published?
 
-Watch pipeline notices, preliminary market engagement notices and planned procurement notices on Find a Tender. Pipeline notices from large buyers list contracts over £2 million planned for the next 18 months and are published between 1 April and 26 May.
+Watch pipeline notices, preliminary market engagement notices and planned procurement notices. Pipeline notices from large buyers list contracts over £2 million planned for the next 18 months and are published between 1 April and 26 May.
 
 ## Sources
 
@@ -119,11 +112,9 @@ Watch pipeline notices, preliminary market engagement notices and planned procur
 - [Guidance: Thresholds](https://www.gov.uk/government/publications/procurement-act-2023-guidance-documents-define-phase/guidance-thresholds-html) and [PPN 023: 2026 threshold amounts](https://www.gov.uk/government/publications/ppn-023-2026-threshold-amounts/ppn-023-2026-threshold-amounts-html)
 - [Guidance: Below-threshold contracts](https://www.gov.uk/government/publications/procurement-act-2023-guidance-documents-define-phase/guidance-below-threshold-contracts-html)
 - [Central digital platform factsheet](https://www.gov.uk/government/publications/procurement-act-2023-short-guides/central-digital-platform-factsheet-html)
-- [Find a Tender notice types and sequences](https://www.find-tender.service.gov.uk/Home/NoticeTypes)
-- [Contracts Finder](https://www.gov.uk/contracts-finder)
 - [Procurement Act 2023, section 87](https://www.legislation.gov.uk/ukpga/2023/54/section/87) and [Schedule 1](https://www.legislation.gov.uk/ukpga/2023/54/schedule/1)
 - [Procurement Regulations 2024, Schedule 2 (central government authorities)](https://www.legislation.gov.uk/uksi/2024/692/schedule/2)
 - [Information and guidance for suppliers](https://www.gov.uk/government/collections/information-and-guidance-for-suppliers)
 - [Health Care Services (Provider Selection Regime) Regulations 2023](https://www.legislation.gov.uk/uksi/2023/1348)
 
-This guide is general information, not legal advice. Last checked against gov.uk, legislation.gov.uk and Find a Tender on 19 October 2026.
+This guide is general information, not legal advice. Last checked against gov.uk and legislation.gov.uk on 19 October 2026.
