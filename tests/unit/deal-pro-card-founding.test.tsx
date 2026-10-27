@@ -10,9 +10,9 @@ import {
 
 afterEach(cleanup);
 
-const open = { available: true };
-const full = { available: false };
-const notOffered = { available: false };
+const open = { offered: true, sold_out: false };
+const full = { offered: true, sold_out: true };
+const notOffered = { offered: false, sold_out: true };
 const returnTo = "/deals/example-slug";
 
 function planKeys(container: HTMLElement): (string | null)[] {

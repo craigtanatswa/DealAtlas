@@ -1,8 +1,13 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { expandFilterToRawCategories } from "@/lib/categories/filter-map";
 import type { Database } from "@/lib/db/database.types";
 import { DEAL_PREVIEW_SITEMAP_PAGE_SIZE } from "@/lib/db/preview-columns";
-import { throwIfQueryError } from "@/lib/db/errors";
+import {
+  CATEGORY_FILTER_FANOUT_FALLBACK_WARN,
+  isMissingCategoriesParamError,
+  throwIfQueryError,
+} from "@/lib/db/errors";
 import type { PublicDatabase } from "@/lib/db/public-schema";
 import { paginationSchema, parseInput, slugSchema, uuidSchema } from "@/lib/validation";
 import { z } from "zod";
@@ -102,14 +107,49 @@ const previewSearchSchema = previewListSchema.extend({
   limit: z.coerce.number().int().min(1).max(50).default(20),
 });
 
-export async function searchPublishedDealPreviews(
+type PreviewSearchFilters = z.infer<typeof previewSearchSchema>;
+
+const CATEGORY_FANOUT_PAGE_SIZE = 50;
+const CATEGORY_FANOUT_MAX_PER_RAW = 500;
+
+const BIDDABLE_STATUS_ORDER: Record<string, number> = {
+  CLOSING_SOON: 0,
+  OPEN: 1,
+  UPCOMING: 2,
+};
+
+function compareCategoryRows(
+  sort: PreviewSearchFilters["sort"],
+): (a: DealPreviewSearchRow, b: DealPreviewSearchRow) => number {
+  if (sort === "biddable") {
+    return (a, b) =>
+      (BIDDABLE_STATUS_ORDER[a.status] ?? 3) -
+        (BIDDABLE_STATUS_ORDER[b.status] ?? 3) || a.slug.localeCompare(b.slug);
+  }
+  if (sort === "deadline") {
+    return (a, b) =>
+      String(a.deadline_band ?? "").localeCompare(String(b.deadline_band ?? "")) ||
+      a.slug.localeCompare(b.slug);
+  }
+  if (sort === "relevance") {
+    return (a, b) => {
+      const aScore = a.relevance_score ?? Number.NEGATIVE_INFINITY;
+      const bScore = b.relevance_score ?? Number.NEGATIVE_INFINITY;
+      return bScore - aScore || a.slug.localeCompare(b.slug);
+    };
+  }
+  return (a, b) => a.slug.localeCompare(b.slug);
+}
+
+async function searchPublishedDealPreviewsOnce(
   client: PublicSupabaseClient,
-  input: unknown = {},
+  filters: PreviewSearchFilters,
+  rawCategories: string[],
 ): Promise<DealPreviewSearchRow[]> {
-  const filters = parseInput(previewSearchSchema, input, "Published preview search");
   const { data, error } = await client.rpc("search_preview_dtos", {
     p_query: filters.query || undefined,
-    p_category: filters.category,
+    p_category: rawCategories.length === 1 ? rawCategories[0] : undefined,
+    p_categories: rawCategories.length > 1 ? rawCategories : undefined,
     p_buyer_sector: filters.buyerSector,
     p_deal_type: filters.dealType,
     p_region: filters.region,
@@ -127,6 +167,90 @@ export async function searchPublishedDealPreviews(
     data: data ?? [],
     error,
   });
+}
+
+async function collectRawCategoryRows(
+  client: PublicSupabaseClient,
+  filters: PreviewSearchFilters,
+  rawCategory: string,
+): Promise<DealPreviewSearchRow[]> {
+  const rows: DealPreviewSearchRow[] = [];
+  let offset = 0;
+  let total = Number.POSITIVE_INFINITY;
+
+  while (rows.length < CATEGORY_FANOUT_MAX_PER_RAW && offset < total) {
+    const page = await searchPublishedDealPreviewsOnce(
+      client,
+      {
+        ...filters,
+        category: rawCategory,
+        limit: CATEGORY_FANOUT_PAGE_SIZE,
+        offset,
+      },
+      [rawCategory],
+    );
+    if (page.length === 0) {
+      break;
+    }
+    total = Number(page[0]?.total_count ?? 0);
+    rows.push(...page);
+    offset += page.length;
+    if (page.length < CATEGORY_FANOUT_PAGE_SIZE) {
+      break;
+    }
+  }
+
+  return rows.slice(0, CATEGORY_FANOUT_MAX_PER_RAW);
+}
+
+async function searchAcrossRawCategories(
+  client: PublicSupabaseClient,
+  filters: PreviewSearchFilters,
+  rawCategories: string[],
+): Promise<DealPreviewSearchRow[]> {
+  const collected: DealPreviewSearchRow[] = [];
+  for (const rawCategory of rawCategories) {
+    collected.push(...(await collectRawCategoryRows(client, filters, rawCategory)));
+  }
+
+  const bySlug = new Map<string, DealPreviewSearchRow>();
+  for (const row of collected) {
+    if (!bySlug.has(row.slug)) {
+      bySlug.set(row.slug, row);
+    }
+  }
+
+  const merged = [...bySlug.values()];
+  const total = merged.length;
+  merged.sort(compareCategoryRows(filters.sort));
+
+  return merged
+    .slice(filters.offset, filters.offset + filters.limit)
+    .map((row) => ({ ...row, total_count: total }));
+}
+
+export async function searchPublishedDealPreviews(
+  client: PublicSupabaseClient,
+  input: unknown = {},
+): Promise<DealPreviewSearchRow[]> {
+  const filters = parseInput(previewSearchSchema, input, "Published preview search");
+  const rawCategories = filters.category
+    ? expandFilterToRawCategories(filters.category)
+    : [];
+
+  if (rawCategories.length > 1) {
+    try {
+      return await searchPublishedDealPreviewsOnce(client, filters, rawCategories);
+    } catch (error) {
+      if (!isMissingCategoriesParamError(error)) {
+        throw error;
+      }
+      console.warn(CATEGORY_FILTER_FANOUT_FALLBACK_WARN);
+      return searchAcrossRawCategories(client, filters, rawCategories);
+    }
+  }
+
+  return searchPublishedDealPreviewsOnce(client, filters, rawCategories);
 }
 
 export async function listPublishedDealPreviews(

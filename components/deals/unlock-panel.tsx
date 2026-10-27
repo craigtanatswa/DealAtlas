@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/card";
 import {
   foundingUiState,
-  type FoundingAvailability,
+  type FoundingPublicCount,
 } from "@/lib/billing/founding-ui";
 import { signupPathForPlan } from "@/lib/auth/redirect";
 import Link from "next/link";
@@ -33,7 +33,6 @@ export function UnlockPanel({
   revealHref,
   returnTo,
   founding,
-  available,
   hasScope = false,
 }: {
   heading?: string;
@@ -42,9 +41,8 @@ export function UnlockPanel({
   loginHref?: string;
   revealHref?: string;
   returnTo?: string;
-  /** Omitted or unavailable keeps the standard Pro CTA. */
-  founding?: FoundingAvailability;
-  available?: boolean;
+  /** Counts only. Omitted, or not offered, keeps the standard Pro CTA. */
+  founding?: FoundingPublicCount;
   hasScope?: boolean;
 }) {
   if (mode === "pro") {
@@ -68,9 +66,7 @@ export function UnlockPanel({
     );
   }
 
-  const availability =
-    founding ?? (available === undefined ? undefined : { available });
-  const foundingState = foundingUiState(availability);
+  const foundingState = foundingUiState(founding);
 
   return (
     <Card>
@@ -119,7 +115,7 @@ export function UnlockPanel({
           </>
         ) : (
           <FoundingUnlockActions
-            founding={availability}
+            founding={founding}
             mode={mode === "free" ? "free" : "anonymous"}
             returnTo={returnTo}
           />

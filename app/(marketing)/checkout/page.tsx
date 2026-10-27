@@ -23,7 +23,7 @@ import {
   foundingSignupPath,
   foundingUiState,
 } from "@/lib/billing/founding-ui";
-import { readFoundingAvailability } from "@/lib/billing/founding-public";
+import { readFoundingPublicCount } from "@/lib/billing/founding-public";
 
 export const dynamic = "force-dynamic";
 
@@ -56,14 +56,14 @@ export default async function CheckoutPage({
     redirect(founding || !plan ? foundingSignupPath() : signupPathForPlan(plan));
   }
 
-  const availability = founding ? await readFoundingAvailability() : null;
-  const foundingState = foundingUiState(availability);
+  const count = founding ? await readFoundingPublicCount() : null;
+  const foundingState = foundingUiState(count);
 
   return (
     <Main width="narrow" className="gap-6">
       {founding || !plan ? (
         foundingState === "available" ? (
-          <FoundingCheckoutSummary available />
+          <FoundingCheckoutSummary founding={count ?? undefined} />
         ) : (
           <FoundingFullCheckout />
         )

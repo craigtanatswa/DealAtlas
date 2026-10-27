@@ -10,20 +10,19 @@ import { signupPathForPlan } from "@/lib/auth/redirect";
 import {
   FOUNDING_COPY,
   foundingSignupPath,
+  foundingUiState,
   proMonthlyShort,
-  type FoundingAvailability,
+  type FoundingPublicCount,
 } from "@/lib/billing/founding-ui";
 
 export function HomeFoundingCta({
   signedIn,
-  available = true,
   founding,
 }: {
   signedIn: boolean;
-  available?: boolean;
-  founding?: FoundingAvailability;
+  founding?: FoundingPublicCount;
 }) {
-  if (!(founding?.available ?? available)) return null;
+  if (foundingUiState(founding) !== "available") return null;
 
   return (
     <section aria-labelledby="home-founding-heading" className="border-b border-border">

@@ -34,6 +34,7 @@ import {
   foundingMonthlyEquivalent,
   foundingPaywallPlaces,
   foundingPlacesLabel,
+  foundingSoldOutNote,
   foundingUiState,
   proMonthlyWasLabel,
 } from "@/lib/billing/founding-ui";
@@ -166,14 +167,21 @@ describe("founding member checkout", () => {
 
   it("shows a limited-places label when founding is offered in the UI", () => {
     expect(foundingUiState(undefined)).toBe("hidden");
-    expect(foundingUiState({ available: true })).toBe("available");
-    expect(foundingUiState({ available: false })).toBe("sold_out");
+    expect(foundingUiState(null)).toBe("hidden");
+    expect(foundingUiState({ offered: false, sold_out: false })).toBe("hidden");
+    expect(foundingUiState({ offered: false, sold_out: true })).toBe("hidden");
+    expect(foundingUiState({ offered: true, sold_out: false })).toBe("available");
+    expect(foundingUiState({ offered: true, sold_out: true })).toBe("sold_out");
     expect(FOUNDING_LIMITED_PLACES).toBe("Limited places");
     expect(foundingPlacesLabel()).toBe(FOUNDING_LIMITED_PLACES);
     expect(foundingPaywallPlaces()).toBe(FOUNDING_LIMITED_PLACES);
     for (const label of [foundingPlacesLabel(), foundingPaywallPlaces()]) {
       expect(label).not.toMatch(/\d+\s+places?\s+left/i);
+      expect(label).not.toContain("Founding places available");
     }
+    expect(foundingSoldOutNote()).toContain("Founding membership is full.");
+    expect(foundingSoldOutNote()).not.toMatch(/\d+\s*(places?|customers?|remaining|cap)/i);
+    expect(foundingSoldOutNote()).not.toContain("Founding places available");
     expect(FOUNDING_COPY.cancelTerms).toBe(
       "If you cancel, you lose founding status and the £290/yr price.",
     );
@@ -192,9 +200,9 @@ describe("founding member checkout", () => {
     expect(proMonthlyWasLabel()).toBe("was £39 a month");
   });
 
-  it("rounds the public offer down to a band", () => {
+  it("keeps the public offer count-free", () => {
     expect(foundingOfferCopy("open")).toEqual({ foundingAvailable: true, note: null });
-    expect(foundingOfferCopy("fewer_than_10").note).toBe("fewer than 10 left");
+    expect(foundingOfferCopy("fewer_than_10")).toEqual({ foundingAvailable: true, note: null });
     expect(foundingOfferCopy("sold_out").foundingAvailable).toBe(false);
   });
 
@@ -228,10 +236,10 @@ describe("founding member checkout", () => {
     expect(foundingSideEffect(failed, products)?.action).toBe("release");
   });
 
-  it("returns a counts-only availability payload and one claim per subscription", () => {
-    expect(foundingAvailabilityPayload(12)).toEqual({ remaining: 12, sold_out: false });
-    expect(foundingAvailabilityPayload(0)).toEqual({ remaining: 0, sold_out: true });
-    expect(Object.keys(foundingAvailabilityPayload(3)).sort()).toEqual(["remaining", "sold_out"]);
+  it("returns a sold_out-only availability payload and one claim per subscription", () => {
+    expect(foundingAvailabilityPayload(12)).toEqual({ sold_out: false });
+    expect(foundingAvailabilityPayload(0)).toEqual({ sold_out: true });
+    expect(Object.keys(foundingAvailabilityPayload(3))).toEqual(["sold_out"]);
 
     const first = foundingEvent("active");
     const renewal = foundingEvent("active", "subscription.renewed");

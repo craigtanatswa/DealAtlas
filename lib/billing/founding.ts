@@ -28,12 +28,10 @@ export type FoundingSideEffect = {
   subscriptionId: string | null;
 };
 
-export function foundingAvailabilityPayload(remaining: number): {
-  remaining: number;
-  sold_out: boolean;
-} {
-  const safe = Number.isInteger(remaining) && remaining > 0 ? remaining : 0;
-  return { remaining: safe, sold_out: safe === 0 };
+/** Public shape. The exact count never leaves the server. */
+export function foundingAvailabilityPayload(remaining: number): { sold_out: boolean } {
+  const open = Number.isInteger(remaining) && remaining > 0;
+  return { sold_out: !open };
 }
 
 export function foundingOfferCopy(band: string | null): {
@@ -44,7 +42,8 @@ export function foundingOfferCopy(band: string | null): {
     return { foundingAvailable: true, note: null };
   }
   if (band === "fewer_than_10") {
-    return { foundingAvailable: true, note: "fewer than 10 left" };
+    // No count band in public copy.
+    return { foundingAvailable: true, note: null };
   }
   return { foundingAvailable: false, note: null };
 }

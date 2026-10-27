@@ -11,19 +11,18 @@ import {
   FOUNDING_COPY,
   FOUNDING_FULL_MESSAGE,
   foundingDueToday,
+  foundingUiState,
   proMonthlyShort,
-  type FoundingAvailability,
+  type FoundingPublicCount,
 } from "@/lib/billing/founding-ui";
 
 /** Founding plan summary on /checkout. Renders only while the offer is available. */
 export function FoundingCheckoutSummary({
-  available,
   founding,
 }: {
-  available?: boolean;
-  founding?: FoundingAvailability;
+  founding?: FoundingPublicCount;
 }) {
-  if (!(founding?.available ?? available)) return null;
+  if (foundingUiState(founding) !== "available") return null;
 
   return (
     <>
@@ -88,7 +87,7 @@ export function FoundingCheckoutSummary({
 
 /**
  * /checkout?plan=FOUNDING when founding is full or not offered: no founding summary,
- * just the FOUNDING_CAP_FULL copy and the standard Pro annual option.
+ * just the full-founding copy and the standard Pro annual option.
  */
 export function FoundingFullCheckout() {
   return (

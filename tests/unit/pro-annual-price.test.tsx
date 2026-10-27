@@ -45,8 +45,8 @@ import {
 
 afterEach(cleanup);
 
-const openCount = { available: true };
-const soldOutCount = { available: false };
+const openCount = { offered: true, sold_out: false };
+const soldOutCount = { offered: true, sold_out: true };
 const billedLine = "billed £350/yr, VAT included";
 
 function expectProAnnualPrice(node: ParentNode) {

@@ -9,7 +9,8 @@ import {
   FOUNDING_COPY,
   foundingSignupPath,
   foundingPaywallPlaces,
-  type FoundingAvailability,
+  foundingUiState,
+  type FoundingPublicCount,
   type FoundingUiState,
 } from "@/lib/billing/founding-ui";
 
@@ -17,26 +18,22 @@ const FOUNDING_BUTTON =
   "w-full bg-[#00806A] text-white hover:bg-[#006b56]";
 
 export function FoundingUnlockActions({
-  state,
-  available,
+  state: stateProp,
   founding,
   mode,
   returnTo,
 }: {
   state?: Exclude<FoundingUiState, "hidden">;
-  available?: boolean;
-  founding?: FoundingAvailability;
+  founding?: FoundingPublicCount;
   mode: "anonymous" | "free";
   loginHref?: string;
   returnTo?: string;
 }) {
-  const isAvailable = founding
-    ? founding.available
-    : available !== undefined
-      ? available
-      : state !== "sold_out";
+  const state = founding ? foundingUiState(founding) : (stateProp ?? "hidden");
 
-  if (!isAvailable) {
+  if (state === "hidden") return null;
+
+  if (state === "sold_out") {
     return (
       <div className="flex w-full flex-col items-center gap-2">
         {mode === "free" ? (

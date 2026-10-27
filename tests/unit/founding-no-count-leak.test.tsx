@@ -12,7 +12,7 @@ import { UnlockPanel } from "@/components/deals/unlock-panel";
 import { HomeFoundingCta } from "@/components/marketing/home-founding-cta";
 
 const mocks = vi.hoisted(() => ({
-  readFoundingAvailability: vi.fn(async () => ({ available: true })),
+  readFoundingPublicCount: vi.fn(async () => ({ offered: true, sold_out: false })),
   getAuthUser: vi.fn(async () => null),
   getHomeSearchChips: vi.fn(async () => []),
   searchLiveHomePreviews: vi.fn(async () => ({ items: [], total: 0 })),
@@ -22,7 +22,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/billing/founding-public", () => ({
-  readFoundingAvailability: mocks.readFoundingAvailability,
+  readFoundingPublicCount: mocks.readFoundingPublicCount,
 }));
 vi.mock("@/lib/auth/session", () => ({ getAuthUser: mocks.getAuthUser }));
 vi.mock("@/lib/auth/urls", () => ({ getAppOrigin: mocks.getAppOrigin }));
@@ -41,11 +41,18 @@ vi.mock("next/navigation", () => ({
 
 const ROOT = process.cwd();
 
+const openCount = { offered: true, sold_out: false };
+const soldOutCount = { offered: true, sold_out: true };
+const notOfferedCount = { offered: false, sold_out: true };
+
 function htmlLeaks(html: string): void {
-  expect(html).not.toMatch(/remaining/i);
+  expect(html).not.toMatch(/\bremaining\b/i);
+  expect(html).not.toMatch(/(?<![-\w])cap(?![-\w])/i);
+  expect(html).not.toMatch(/\bcount\b/i);
   expect(html).not.toContain('"cap"');
   expect(html).not.toMatch(/\d+\s*places?\s+left/i);
   expect(html).not.toMatch(/of\s*25/);
+  expect(html).not.toContain("Founding places available");
 }
 
 function sourceFiles(dir: string): string[] {
@@ -56,43 +63,54 @@ function sourceFiles(dir: string): string[] {
   });
 }
 
-describe("founding UI only receives availability", () => {
+describe("founding UI only receives the public count shape", () => {
   it("renders every founding surface without a count, cap or places-left copy", () => {
     const surfaces = [
-      <PricingPlans key="pricing" signedIn founding={{ available: true }} />,
-      <HomeFoundingCta key="home" signedIn available />,
+      <PricingPlans key="pricing" signedIn founding={openCount} />,
+      <HomeFoundingCta key="home" signedIn founding={openCount} />,
       <DealProCard
         key="deal"
         mode="free"
-        founding={{ available: true }}
+        founding={openCount}
         alertsHref="/app/alerts"
       />,
-      <UnlockPanel key="unlock" mode="free" founding={{ available: true }} />,
+      <UnlockPanel key="unlock" mode="free" founding={openCount} />,
       <FoundingUnlockActions
         key="actions"
-        state="available"
+        founding={openCount}
         mode="anonymous"
       />,
-      <FoundingCheckoutSummary key="summary" available />,
+      <FoundingCheckoutSummary key="summary" founding={openCount} />,
     ];
 
     for (const surface of surfaces) {
-      htmlLeaks(renderToString(surface));
+      const html = renderToString(surface);
+      htmlLeaks(html);
+      expect(html).toContain("Limited places");
     }
   });
 
-  it("hides founding CTAs when availability is false", () => {
-    expect(renderToString(<HomeFoundingCta signedIn available={false} />)).toBe("");
-    expect(renderToString(<FoundingCheckoutSummary available={false} />)).toBe("");
+  it("hides founding CTAs when the offer is missing, not offered or sold out", () => {
     expect(
-      renderToString(
-        <DealProCard
-          mode="free"
-          founding={{ available: false }}
-          alertsHref="/app/alerts"
-        />,
-      ),
-    ).not.toMatch(/founding member/i);
+      renderToString(<HomeFoundingCta signedIn founding={notOfferedCount} />),
+    ).toBe("");
+    expect(
+      renderToString(<FoundingCheckoutSummary founding={notOfferedCount} />),
+    ).toBe("");
+    expect(renderToString(<HomeFoundingCta signedIn />)).toBe("");
+    expect(renderToString(<FoundingCheckoutSummary />)).toBe("");
+
+    for (const founding of [soldOutCount, notOfferedCount, undefined]) {
+      expect(
+        renderToString(
+          <DealProCard
+            mode="free"
+            founding={founding}
+            alertsHref="/app/alerts"
+          />,
+        ),
+      ).not.toMatch(/founding member/i);
+    }
   });
 
   it("renders the marketing pricing and home server pages without leaking numbers", async () => {
@@ -104,15 +122,17 @@ describe("founding UI only receives availability", () => {
     const pricing = renderToString(await PricingPage());
     htmlLeaks(pricing);
     expect(pricing).toMatch(/founding member/i);
+    expect(pricing).toContain("Limited places");
 
     const home = renderToString(await HomePage());
     htmlLeaks(home);
     expect(home).toMatch(/founding member/i);
+    expect(home).toContain("Limited places");
   });
 });
 
 describe("founding prop types", () => {
-  it("accept availability only, never counts or caps", () => {
+  it("accepts the public count shape only, never remaining, cap or available", () => {
     type PricingProps = Parameters<typeof PricingPlans>[0];
     type HomeProps = Parameters<typeof HomeFoundingCta>[0];
     type DealProps = Parameters<typeof DealProCard>[0];
@@ -120,44 +140,81 @@ describe("founding prop types", () => {
     type ActionsProps = Parameters<typeof FoundingUnlockActions>[0];
     type SummaryProps = Parameters<typeof FoundingCheckoutSummary>[0];
 
-    const pricing: PricingProps = { signedIn: true, founding: { available: true } };
-    const home: HomeProps = { signedIn: true, available: true };
+    const pricing: PricingProps = { signedIn: true, founding: openCount };
+    const home: HomeProps = { signedIn: true, founding: openCount };
     const deal: DealProps = {
       mode: "free",
-      founding: { available: true },
+      founding: openCount,
       alertsHref: "/app/alerts",
     };
-    const unlock: UnlockProps = { mode: "free", founding: { available: true } };
-    const actions: ActionsProps = { state: "available", mode: "anonymous" };
-    const summary: SummaryProps = { available: true };
+    const unlock: UnlockProps = { mode: "free", founding: openCount };
+    const actions: ActionsProps = { founding: openCount, mode: "anonymous" };
+    const summary: SummaryProps = { founding: openCount };
 
-    // @ts-expect-error counts are not part of the founding UI props
-    const badPricing: PricingProps = { signedIn: true, count: { remaining: 1, cap: 25 } };
-    // @ts-expect-error the home CTA takes a boolean, not a count
+    const badPricingRemaining: PricingProps = {
+      signedIn: true,
+      // @ts-expect-error remaining is not part of the public founding count
+      founding: { offered: true, sold_out: false, remaining: 1 },
+    };
+    const badPricingCap: PricingProps = {
+      signedIn: true,
+      // @ts-expect-error cap is not part of the public founding count
+      founding: { offered: true, sold_out: false, cap: 25 },
+    };
+    const badPricingAvailable: PricingProps = {
+      signedIn: true,
+      // @ts-expect-error availability is not part of the public founding count
+      founding: { offered: true, sold_out: false, available: true },
+    };
+    // @ts-expect-error the home CTA takes a count object, not a bare remaining count
     const badHome: HomeProps = { signedIn: true, remaining: 1 };
+    // @ts-expect-error the home CTA does not take availability
+    const badHomeAvailable: HomeProps = { signedIn: true, available: true };
     const badDeal: DealProps = {
       mode: "free",
-      // @ts-expect-error founding availability cannot carry a count
-      founding: { available: true, remaining: 1 },
+      // @ts-expect-error founding cannot carry a remaining count
+      founding: { offered: true, sold_out: false, remaining: 1 },
       alertsHref: "/app/alerts",
     };
     const badUnlock: UnlockProps = {
       mode: "free",
-      // @ts-expect-error founding availability cannot carry a cap
-      founding: { available: true, cap: 25 },
+      // @ts-expect-error founding cannot carry a cap
+      founding: { offered: true, sold_out: false, cap: 25 },
     };
-    // @ts-expect-error the unlock actions take no count
-    const badActions: ActionsProps = { state: "available", mode: "anonymous", remaining: 1 };
-    // @ts-expect-error the checkout summary takes availability, not a count
+    const badUnlockAvailable: UnlockProps = {
+      mode: "free",
+      // @ts-expect-error founding cannot carry availability
+      founding: { offered: true, sold_out: false, available: true },
+    };
+    // @ts-expect-error the unlock actions take no remaining count
+    const badActions: ActionsProps = { founding: openCount, mode: "anonymous", remaining: 1 };
+    // @ts-expect-error the unlock actions do not take availability
+    const badActionsAvailable: ActionsProps = { founding: openCount, mode: "anonymous", available: true };
+    // @ts-expect-error the checkout summary takes a count object, not a remaining count
     const badSummary: SummaryProps = { remaining: 1 };
+    // @ts-expect-error the checkout summary does not take availability
+    const badSummaryAvailable: SummaryProps = { available: true };
 
     void [pricing, home, deal, unlock, actions, summary];
-    void [badPricing, badHome, badDeal, badUnlock, badActions, badSummary];
+    void [
+      badPricingRemaining,
+      badPricingCap,
+      badPricingAvailable,
+      badHome,
+      badHomeAvailable,
+      badDeal,
+      badUnlock,
+      badUnlockAvailable,
+      badActions,
+      badActionsAvailable,
+      badSummary,
+      badSummaryAvailable,
+    ];
   });
 });
 
 describe("founding source has no count plumbing", () => {
-  it("keeps count identifiers out of components and public/app pages", () => {
+  it("keeps count identifiers and old labels out of components and public/app pages", () => {
     const roots = [
       path.join(ROOT, "components"),
       path.join(ROOT, "app", "(marketing)"),
@@ -169,10 +226,13 @@ describe("founding source has no count plumbing", () => {
       const relative = path.relative(ROOT, file);
       const problems: string[] = [];
       if (/\bremaining\b/.test(source)) problems.push("remaining");
-      if (/\breadFoundingRemaining\b|\bFoundingPublicCount\b/.test(source)) {
+      if (/\breadFoundingRemaining\b/.test(source)) {
         problems.push("founding count helper");
       }
       if (/FOUNDING_CAP(?!_FULL)/.test(source)) problems.push("FOUNDING_CAP");
+      if (source.includes("Founding places available")) {
+        problems.push("Founding places available");
+      }
       return problems.map((problem) => `${relative}: ${problem}`);
     });
 

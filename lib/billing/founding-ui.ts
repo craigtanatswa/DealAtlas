@@ -19,8 +19,10 @@ export function foundingSignupPath(): string {
   return `${SIGNUP_PATH}?next=${encodeURIComponent(foundingCheckoutPath())}`;
 }
 
-export type FoundingAvailability = {
-  available: boolean;
+/** Public founding state. No remaining, used or cap numbers. */
+export type FoundingPublicCount = {
+  offered: boolean;
+  sold_out: boolean;
 };
 
 export type FoundingUiState = "hidden" | "available" | "sold_out";
@@ -111,10 +113,11 @@ export function foundingDueToday(): string {
 }
 
 export function foundingUiState(
-  availability?: FoundingAvailability | null,
+  count?: FoundingPublicCount | null,
 ): FoundingUiState {
-  if (!availability) return "hidden";
-  return availability.available ? "available" : "sold_out";
+  if (!count || !count.offered) return "hidden";
+  if (count.sold_out) return "sold_out";
+  return "available";
 }
 
 /** Limited-places copy. No count, cap or other number is ever rendered. */
@@ -127,6 +130,11 @@ export function foundingPlacesLabel(): string {
 /** Paywall helper. Uses the same limited-places copy as the pricing card. */
 export function foundingPaywallPlaces(): string {
   return foundingPlacesLabel();
+}
+
+/** Sold-out note. Deliberately carries no count or cap. */
+export function foundingSoldOutNote(): string {
+  return `Founding membership is full. ${FOUNDING_FULL_MESSAGE}`;
 }
 
 export const FOUNDING_COPY = {

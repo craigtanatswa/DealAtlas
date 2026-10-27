@@ -1,13 +1,16 @@
 import "server-only";
 
-import type { FoundingAvailability } from "@/lib/billing/founding-ui";
-import { readFoundingRemaining } from "@/lib/billing/founding-db";
-import { getServerEnv } from "@/lib/env/server";
+import type { FoundingPublicCount } from "@/lib/billing/founding-ui";
+import { foundingConfigured, readFoundingRemaining } from "@/lib/billing/founding-db";
 
-/** Only the boolean leaves this function. The number never reaches the UI. */
-export async function readFoundingAvailability(): Promise<FoundingAvailability | null> {
-  const env = getServerEnv();
-  // Not offered: null keeps every founding surface hidden (not "sold out").
-  if (!env.DODO_FOUNDING_PRODUCT_ID) return null;
-  return { available: (await readFoundingRemaining()) > 0 };
+/**
+ * Public founding state: offered + sold_out only. No count, used or cap.
+ * Missing DODO_FOUNDING_PRODUCT_ID fails closed (not offered, sold out).
+ */
+export async function readFoundingPublicCount(): Promise<FoundingPublicCount> {
+  if (!foundingConfigured()) {
+    return { offered: false, sold_out: true };
+  }
+  const remaining = await readFoundingRemaining();
+  return { offered: true, sold_out: remaining <= 0 };
 }

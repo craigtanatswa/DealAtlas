@@ -29,7 +29,7 @@ function planKeyOf(form: Element): string | null | undefined {
   return form.querySelector("input[name='planKey']")?.getAttribute("value");
 }
 
-const openCount = { available: true };
+const openCount = { offered: true, sold_out: false };
 
 /** Usual price struck through, the founding monthly price in bold, then the annual price. */
 function expectFoundingPriceInside(button: HTMLElement) {
@@ -41,7 +41,7 @@ function expectFoundingPriceInside(button: HTMLElement) {
   expect(button.textContent).toContain("(£290/yr)");
   expect(button.textContent).not.toMatch(/billed|VAT incl/i);
 }
-const soldOutCount = { available: false };
+const soldOutCount = { offered: true, sold_out: true };
 
 function planForms(container: HTMLElement): HTMLFormElement[] {
   return Array.from(container.querySelectorAll("form"));
@@ -69,6 +69,7 @@ describe("founding pricing cards", () => {
 
     expect(screen.getByRole("heading", { name: "Pricing" })).toBeTruthy();
     expect(screen.getByText("Limited places")).toBeTruthy();
+    expect(container.textContent).not.toContain("Founding places available");
     expect(container.textContent).not.toMatch(/\d+\s+places?\s+left/i);
     expect(screen.getByText("£290/yr for as long as you stay subscribed")).toBeTruthy();
     expect(container.textContent).toContain("£24.17/mo");
@@ -98,12 +99,12 @@ describe("founding pricing cards", () => {
     expect(container.textContent).not.toMatch(/only today|hurry|almost gone/i);
   });
 
-  it("removes the founding card completely when founding is unavailable", () => {
+  it("removes the founding card when sold out and shows a count-free note", () => {
     const { container } = render(
       <PricingPlans signedIn={false} founding={soldOutCount} />,
     );
-    expect(container.textContent).not.toMatch(/founding/i);
-    expect(container.textContent).not.toMatch(/£290|£24\.17|for as long as you stay subscribed|sold out|all taken/i);
+    expect(screen.getByText(/Founding membership is full\./)).toBeTruthy();
+    expect(container.textContent).not.toMatch(/Become a founding member|£290|£24\.17|for as long as you stay subscribed/i);
     expect(screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent)).toEqual([
       "Free",
       "Pro monthly",
@@ -215,7 +216,7 @@ describe("founding checkout summary", () => {
   it("puts the struck-through and founding price inside every founding button", () => {
     for (const ui of [
       <PricingPlans key="p" signedIn founding={openCount} />,
-      <HomeFoundingCta key="h" signedIn available />,
+      <HomeFoundingCta key="h" signedIn founding={openCount} />,
       <DealProCard key="d" mode="free" founding={openCount} alertsHref="/app/alerts" />,
       <DealProCard key="a" mode="anonymous" founding={openCount} alertsHref="/signup" />,
     ]) {
@@ -229,7 +230,7 @@ describe("founding checkout summary", () => {
   });
 
   it("shows the monthly-equivalent price, due today and a limited-places label only", () => {
-    const { container } = render(<FoundingCheckoutSummary available />);
+    const { container } = render(<FoundingCheckoutSummary founding={openCount} />);
     expect(screen.getByText("Limited places")).toBeTruthy();
     expect(container.textContent).not.toMatch(/\d+\s+places?\s+left/i);
     expect(container.textContent).toContain("£24.17/mo");
@@ -263,7 +264,7 @@ describe("founding plan key", () => {
   });
 
   it("posts FOUNDING from the homepage band", () => {
-    const { container } = render(<HomeFoundingCta signedIn available />);
+    const { container } = render(<HomeFoundingCta signedIn founding={openCount} />);
     expect(planForms(container).map(planKeyOf)).toContain(FOUNDING_PLAN_KEY);
   });
 });
@@ -280,8 +281,8 @@ function stubCheckoutResponse(status: number, body: unknown) {
 describe("founding full error state", () => {
   it.each([
     ["pricing", () => <PricingPlans signedIn founding={openCount} />, /founding member/i],
-    ["homepage band", () => <HomeFoundingCta signedIn available />, /founding member/i],
-    ["checkout", () => <FoundingCheckoutSummary available />, /Continue to payment/],
+    ["homepage band", () => <HomeFoundingCta signedIn founding={openCount} />, /founding member/i],
+    ["checkout", () => <FoundingCheckoutSummary founding={openCount} />, /Continue to payment/],
   ])("shows the server message with a Pro annual fallback on %s", async (_where, ui, buttonName) => {
     const fetchMock = stubCheckoutResponse(409, { code: "FOUNDING_CAP_FULL", message: FOUNDING_FULL_MESSAGE });
     const { container } = render(ui());
