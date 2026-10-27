@@ -1,12 +1,14 @@
 import type { ReactNode } from "react";
 import { LockIcon } from "lucide-react";
 
+import { GetAlertsCard } from "@/components/alerts/get-alerts-card";
 import { DealProCard } from "@/components/deals/deal-pro-card";
 import { MatchReasons } from "@/components/deals/match-reasons";
 import { deadlineKeyFact, DealStatusBadge } from "@/components/deals/deal-status";
 import { OpeningAlertButton } from "@/components/deals/opening-alert";
 import { buyerSectorLabel, levelLabel } from "@/components/deals/types";
 import { Button } from "@/components/ui/button";
+import { alertsCategorySlug } from "@/lib/alerts/signup";
 import type { FoundingPublicCount } from "@/lib/billing/founding-ui";
 import { signupPathWithAlert } from "@/lib/auth/redirect";
 import { DISPLAY_PRICING } from "@/lib/constants";
@@ -138,6 +140,7 @@ export function DealPreviewDetail({
   // Placeholders (UNKNOWN, Not disclosed) and duplicates are not rendered.
   const sectorChip = disclosed(deal.specificSector) ?? category;
   const isPro = unlock?.mode === "pro";
+  const alertsCategory = alertsCategorySlug(deal.mainCategory);
   const cardProps = {
     mode: unlock?.mode,
     loginHref: unlock?.loginHref,
@@ -228,6 +231,15 @@ export function DealPreviewDetail({
 
         <div className="mt-8 lg:hidden" id="unlock-mobile">
           <DealProCard {...cardProps} idSuffix="mobile" />
+          {!isPro ? (
+            <div className="mt-4">
+              <GetAlertsCard
+                dealSlug={deal.slug}
+                categorySlug={alertsCategory}
+                idSuffix="alerts-mobile"
+              />
+            </div>
+          ) : null}
         </div>
 
         {deal.goodsServices.length > 0 ? (
@@ -334,6 +346,15 @@ export function DealPreviewDetail({
       <div className="hidden lg:block">
         <div className="sticky top-6">
           <DealProCard {...cardProps} idSuffix="desktop" />
+          {!isPro ? (
+            <div className="mt-4">
+              <GetAlertsCard
+                dealSlug={deal.slug}
+                categorySlug={alertsCategory}
+                idSuffix="alerts-desktop"
+              />
+            </div>
+          ) : null}
         </div>
       </div>
 

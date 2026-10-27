@@ -3,6 +3,10 @@
 import { usePathname } from "next/navigation";
 import { useEffect } from "react";
 
+import {
+  isAlertsEventName,
+  type AlertsEventProperties,
+} from "@/lib/alerts/analytics";
 import { recordLanding, recordPageView } from "@/lib/analytics/attribution";
 import { buildPostHogClientConfig } from "@/lib/analytics/config";
 import { isCheckoutAnalyticsPlan } from "@/lib/analytics/events";
@@ -82,11 +86,35 @@ export function PostHogAnalytics({ apiKey }: { apiKey: string }) {
         posthog?.capture("guide_cta_clicked", properties, { send_instantly: true });
       });
     };
+    const onAlertsEvent = (event: Event) => {
+      const detail = (event as CustomEvent<{
+        name?: unknown;
+        properties?: unknown;
+      }>).detail;
+      if (
+        !detail ||
+        !isAlertsEventName(detail.name) ||
+        typeof detail.properties !== "object" ||
+        detail.properties === null
+      ) {
+        return;
+      }
+      const name = detail.name;
+      // Rebuild from the two allowed keys so nothing else can ride along.
+      const raw = detail.properties as Partial<AlertsEventProperties>;
+      const properties: AlertsEventProperties = { category_slug: raw.category_slug! };
+      if (raw.outcome) properties.outcome = raw.outcome;
+      void loadClient(apiKey).then((posthog) => {
+        posthog?.capture(name, properties);
+      });
+    };
     document.addEventListener("submit", onSubmit, true);
     document.addEventListener("click", onClick, true);
+    window.addEventListener("dealatlas:alerts-event", onAlertsEvent);
     return () => {
       document.removeEventListener("submit", onSubmit, true);
       document.removeEventListener("click", onClick, true);
+      window.removeEventListener("dealatlas:alerts-event", onAlertsEvent);
     };
   }, [apiKey]);
 

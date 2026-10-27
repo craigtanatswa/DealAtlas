@@ -3,8 +3,17 @@
  * or a property here needs fresh Security clearance.
  */
 
-export const CLIENT_EVENTS = ["$pageview", "guide_cta_clicked", "pro_checkout_started"] as const;
+export const CLIENT_EVENTS = [
+  "$pageview",
+  "guide_cta_clicked",
+  "pro_checkout_started",
+  "alerts_signup_viewed",
+  "alerts_signup_submitted",
+  "alerts_signup_result",
+] as const;
 export type ClientEventName = (typeof CLIENT_EVENTS)[number];
+
+export const ALERTS_OUTCOMES = ["pending", "invalid", "rate_limited"] as const;
 
 export const SERVER_EVENTS = ["user_signed_up", "pro_subscribed"] as const;
 export type ServerEventName = (typeof SERVER_EVENTS)[number];

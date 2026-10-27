@@ -34,6 +34,28 @@ describe("free discovery HTML and protected paths", () => {
     expect(html).toContain("1 opportunity");
   });
 
+  it("offers free alerts on anonymous previews without protected fields", () => {
+    const { container } = render(
+      <DealPreviewDetail
+        deal={DEAL_PREVIEW_DETAIL_FIXTURE}
+        unlock={{ mode: "anonymous" }}
+      />,
+    );
+
+    const html = container.innerHTML;
+    expect(findProtectedMarkerLeaks(html)).toEqual([]);
+    expect(html).toContain("Get free alerts");
+    expect(container.querySelector('input[name="website"]')).toBeTruthy();
+
+    for (const input of Array.from(container.querySelectorAll("input"))) {
+      expect(input.getAttribute("type")).not.toBe("hidden");
+      const value = input.getAttribute("value");
+      if (value) {
+        expect(value).not.toMatch(/buyer|source/i);
+      }
+    }
+  });
+
   it("does not accept protected values on the locked panel", () => {
     const html = render(<UnlockPanel />).container.innerHTML;
     expect(findProtectedMarkerLeaks(html)).toEqual([]);

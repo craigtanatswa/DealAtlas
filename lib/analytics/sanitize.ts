@@ -4,6 +4,7 @@ import {
   isWorkspacePath,
 } from "@/lib/analytics/clean-path";
 import {
+  ALERTS_OUTCOMES,
   CLIENT_EVENTS,
   GUIDE_CTA_POSITIONS,
   GUIDE_CTA_TARGETS,
@@ -13,6 +14,7 @@ import {
   type ClientEventName,
   type UtmKey,
 } from "@/lib/analytics/events";
+import { DEAL_CATEGORY_SLUGS } from "@/lib/matching/categories";
 
 /**
  * Fail-closed property allowlist for every browser event (Security condition 1).
@@ -296,6 +298,32 @@ function eventProperties(
       }
       const source = cleanPath(raw.source_path) ?? page;
       return { plan: raw.plan, source_path: source };
+    }
+    case "alerts_signup_viewed":
+    case "alerts_signup_submitted": {
+      const category = raw.category_slug;
+      if (
+        typeof category !== "string" ||
+        !(DEAL_CATEGORY_SLUGS as readonly string[]).includes(category) ||
+        !page.startsWith("/deals/")
+      ) {
+        return null;
+      }
+      return { category_slug: category };
+    }
+    case "alerts_signup_result": {
+      const category = raw.category_slug;
+      const outcome = raw.outcome;
+      if (
+        typeof category !== "string" ||
+        !(DEAL_CATEGORY_SLUGS as readonly string[]).includes(category) ||
+        !page.startsWith("/deals/") ||
+        typeof outcome !== "string" ||
+        !(ALERTS_OUTCOMES as readonly string[]).includes(outcome)
+      ) {
+        return null;
+      }
+      return { category_slug: category, outcome };
     }
   }
 }
