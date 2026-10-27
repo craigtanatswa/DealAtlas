@@ -10,7 +10,6 @@ updated: 2026-10-27
 primaryKeyword: "UK tender search"
 secondaryKeywords: ["find UK tenders in one place", "find tenders", "SME tender alerts UK"]
 relatedGuides: ["how-to-find-public-sector-tenders", "how-to-win-council-contracts"]
-securityClearedAt: 2026-10-27
 craigApprovedAt: 2026-10-27
 ---
 
