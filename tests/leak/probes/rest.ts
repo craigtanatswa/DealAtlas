@@ -380,7 +380,9 @@ export async function restProbes(ctx: Ctx): Promise<void> {
         instance: "deal_matches?select=id,deal_id,relevance_score",
         role,
         req: { target: "rest", path: "/deal_matches", query: [["select", "id,deal_id,relevance_score"]] },
-        status: [200],
+        // Phase A (0018) still grants this read; 0051 revokes it, so from
+        // phase B a free user gets no match rows at all.
+        ...(ctx.phase === "A" ? { status: [200] } : { check: (o: ProbeOutcome) => [deniedNoData(o)] }),
       }),
     );
     for (const table of [
