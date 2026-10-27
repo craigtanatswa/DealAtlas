@@ -757,5 +757,36 @@ select is(
 select set_config('request.jwt.claims', '', true);
 reset role;
 
+
+-- ---------------------------------------------------------------------------
+-- Free alert email subscriptions (0052): service role only; no client access.
+-- ---------------------------------------------------------------------------
+select ok(not has_table_privilege('anon', 'public.alert_email_subscriptions', 'select'), 'anon cannot select alert_email_subscriptions');
+select ok(not has_table_privilege('anon', 'public.alert_email_subscriptions', 'insert'), 'anon cannot insert alert_email_subscriptions');
+select ok(not has_table_privilege('anon', 'public.alert_email_subscriptions', 'update'), 'anon cannot update alert_email_subscriptions');
+select ok(not has_table_privilege('anon', 'public.alert_email_subscriptions', 'delete'), 'anon cannot delete alert_email_subscriptions');
+select ok(not has_table_privilege('authenticated', 'public.alert_email_subscriptions', 'select'), 'authenticated cannot select alert_email_subscriptions');
+select ok(not has_table_privilege('authenticated', 'public.alert_email_subscriptions', 'insert'), 'authenticated cannot insert alert_email_subscriptions');
+select ok(not has_table_privilege('authenticated', 'public.alert_email_subscriptions', 'update'), 'authenticated cannot update alert_email_subscriptions');
+select ok(not has_table_privilege('authenticated', 'public.alert_email_subscriptions', 'delete'), 'authenticated cannot delete alert_email_subscriptions');
+select ok(has_table_privilege('service_role', 'public.alert_email_subscriptions', 'select'), 'service_role can select alert_email_subscriptions');
+select ok(has_table_privilege('service_role', 'public.alert_email_subscriptions', 'insert'), 'service_role can insert alert_email_subscriptions');
+select ok(has_table_privilege('service_role', 'public.alert_email_subscriptions', 'update'), 'service_role can update alert_email_subscriptions');
+select ok(not has_table_privilege('anon', 'private.alert_signup_rate_limits', 'select'), 'anon cannot select alert_signup_rate_limits');
+select ok(not has_table_privilege('authenticated', 'private.alert_signup_rate_limits', 'select'), 'authenticated cannot select alert_signup_rate_limits');
+select ok(not has_table_privilege('service_role', 'private.alert_signup_rate_limits', 'select'), 'service_role cannot select private rate limit table directly');
+select ok(
+  has_function_privilege('service_role', 'public.hit_alert_signup_rate_limit(text, integer, integer)', 'execute'),
+  'service_role can execute hit_alert_signup_rate_limit'
+);
+select ok(
+  not has_function_privilege('anon', 'public.hit_alert_signup_rate_limit(text, integer, integer)', 'execute'),
+  'anon cannot execute hit_alert_signup_rate_limit'
+);
+select ok(
+  not has_function_privilege('authenticated', 'public.hit_alert_signup_rate_limit(text, integer, integer)', 'execute'),
+  'authenticated cannot execute hit_alert_signup_rate_limit'
+);
+
 select * from finish();
 rollback;

@@ -48,7 +48,7 @@ describe("supabase migrations", () => {
   const files = listMigrations();
   const sql = files.map(readMigration).join("\n");
 
-  it("are numbered 0001-0026, 0028-0030, 0040-0042, 0046, then 0047 and 0051, leaving 0027, 0031-0039, 0043-0045 and 0048-0050 for open pull requests", () => {
+  it("are numbered 0001-0026, 0028-0030, 0040-0042, 0046, then 0047, 0051 and 0052, leaving 0027, 0031-0039, 0043-0045 and 0048-0050 for open pull requests", () => {
     expect(files).toEqual([
       "0001_extensions_and_types.sql",
       "0002_core_schema.sql",
@@ -85,6 +85,7 @@ describe("supabase migrations", () => {
       "0046_search_preview_dtos_page_first.sql",
       "0047_founding_cancel_ends_membership.sql",
       "0051_match_data_pro_only.sql",
+      "0052_alert_email_subscriptions.sql",
     ]);
   });
 
@@ -383,6 +384,20 @@ describe("supabase migrations", () => {
       "utf8",
     );
     expect(bundled).toBe(expectedBundle(files));
+  });
+
+
+  it("0052 adds free alert email subscriptions with service-role-only access", () => {
+    const body = readMigration("0052_alert_email_subscriptions.sql");
+    expect(body).toContain("create table public.alert_email_subscriptions");
+    expect(body).toContain("create table private.alert_signup_rate_limits");
+    expect(body).toContain("hit_alert_signup_rate_limit");
+    expect(body).toContain("revoke all on table public.alert_email_subscriptions from anon");
+    expect(body).toContain("revoke all on table public.alert_email_subscriptions from authenticated");
+    expect(body).toContain("grant select, insert, update on table public.alert_email_subscriptions to service_role");
+    expect(body).toContain("grant execute on function public.hit_alert_signup_rate_limit");
+    expect(body).not.toContain("grant select on table public.alert_email_subscriptions to anon");
+    expect(body).not.toContain("grant select on table public.alert_email_subscriptions to authenticated");
   });
 
   it("returns match data from the preview DTOs only to Pro viewers", () => {
