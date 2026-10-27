@@ -129,6 +129,40 @@ export async function restProbes(ctx: Ctx): Promise<void> {
         }),
       );
     }
+    // Phase B: the multi-raw category filter (0053) keeps the same DTO
+    // allowlist and strips match data for non-Pro viewers.
+    if (ctx.phase === "B") {
+      const categorySet = new Set(["Energy", "Technology"]);
+      jobs.push(
+        ctx
+          .run({
+            id: "REST-01",
+            instance: "p_categories=[Energy,Technology]",
+            role,
+            req: rpc("search_preview_dtos", { p_categories: ["Energy", "Technology"] }, { restAuth }),
+            status: [200],
+            check: (o) => [
+              ...dtoAssertions(o.json, SEARCH_KEYS, enums, { role, label: "search" }),
+              ok(
+                "only_categories_in_set",
+                rows(o).every((r) => categorySet.has(String(r.main_category))),
+                rows(o).map((r) => r.main_category),
+              ),
+              ok(
+                "no_source_fields",
+                rows(o).every((r) => !Object.keys(r).some((k) => /^(deal_id|source_|buyer_|reference|ocid|notice|contact|email|phone|application_url|canonical_name)/.test(k))),
+                rows(o)[0] && Object.keys(rows(o)[0]),
+              ),
+              ok(
+                "match_fields_empty",
+                rows(o).every((r) => r.relevance_score == null && JSON.stringify(r.preview_reasons) === "[]"),
+                rows(o).map((r) => ({ score: r.relevance_score, reasons: r.preview_reasons })),
+              ),
+            ],
+          })
+          .then(snap(`REST-01|${role}|p_categories`)),
+      );
+    }
     // REST-02
     for (const rowId of PUB_ROWS) {
       jobs.push(

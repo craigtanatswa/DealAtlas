@@ -84,7 +84,7 @@ async function listSavedDealIds(
 async function listFilteredDealIdsForCategory(
   admin: AdminClient,
   filters: SavedSearchFilters,
-  category: string | undefined,
+  rawCategories: string[],
   sort: string,
   minScore: number | undefined,
   companyProfileId: string | null,
@@ -94,6 +94,10 @@ async function listFilteredDealIdsForCategory(
   const ids: string[] = [];
   let offset = 0;
   let total = Number.POSITIVE_INFINITY;
+  const categoryParams = {
+    p_category: rawCategories.length === 1 ? rawCategories[0] : undefined,
+    p_categories: rawCategories.length > 1 ? rawCategories : undefined,
+  };
 
   while (ids.length < remaining && offset < total) {
     const limit = Math.min(PREVIEW_PAGE_SIZE, remaining - ids.length);
@@ -101,7 +105,7 @@ async function listFilteredDealIdsForCategory(
       const { data, error } = await admin.rpc("search_deal_previews_for_profile", {
         p_company_profile_id: companyProfileId,
         p_query: filters.query || undefined,
-        p_category: category,
+        ...categoryParams,
         p_buyer_sector: filters.buyerSector,
         p_deal_type: filters.dealType,
         p_region: filters.region,
@@ -136,7 +140,7 @@ async function listFilteredDealIdsForCategory(
 
     const { data, error } = await admin.rpc("search_deal_previews", {
       p_query: filters.query || undefined,
-      p_category: category,
+      ...categoryParams,
       p_buyer_sector: filters.buyerSector,
       p_deal_type: filters.dealType,
       p_region: filters.region,
@@ -181,42 +185,20 @@ async function listFilteredDealIds(
   const minScore = companyProfileId ? filters.minScore : undefined;
   const useRelevance = Boolean(companyProfileId) && (sort === "relevance" || minScore != null);
 
-  const expanded = filters.category
+  const rawCategories = filters.category
     ? expandFilterToRawCategories(filters.category)
     : [];
-  const rawCategories: Array<string | undefined> =
-    expanded.length > 0 ? expanded : [undefined];
 
-  const ids: string[] = [];
-  const seen = new Set<string>();
-
-  for (const rawCategory of rawCategories) {
-    if (ids.length >= remaining) {
-      break;
-    }
-    const categoryIds = await listFilteredDealIdsForCategory(
-      admin,
-      filters,
-      rawCategory,
-      sort,
-      minScore,
-      companyProfileId,
-      useRelevance,
-      remaining - ids.length,
-    );
-    for (const id of categoryIds) {
-      if (ids.length >= remaining) {
-        break;
-      }
-      if (seen.has(id)) {
-        continue;
-      }
-      seen.add(id);
-      ids.push(id);
-    }
-  }
-
-  return ids;
+  return listFilteredDealIdsForCategory(
+    admin,
+    filters,
+    rawCategories,
+    sort,
+    minScore,
+    companyProfileId,
+    useRelevance,
+    remaining,
+  );
 }
 
 /**
