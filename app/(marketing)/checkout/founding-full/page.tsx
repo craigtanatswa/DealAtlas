@@ -74,6 +74,7 @@ export default async function FoundingFullPage({
         loginHref={loginPathWithNext(returnTo ?? "/checkout/founding-full")}
         returnTo={returnTo ?? undefined}
         returnTitle={returnTitle}
+        notEligible={firstParam(params.reason) === "not_eligible"}
       />
     </Main>
   );

@@ -22,8 +22,14 @@ export const metadata: Metadata = {
   title: "Billing",
 };
 
-export default async function BillingPage() {
+export default async function BillingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ notice?: string | string[] }>;
+}) {
   const { user } = await requireUser("/app/billing");
+  const { notice } = await searchParams;
+  const alreadySubscribed = notice === "already_subscribed";
   const [entitlement, customerId, foundingMember] = await Promise.all([
     getCurrentEntitlement(user.id),
     loadDodoCustomerIdForUser(user.id),
@@ -37,6 +43,12 @@ export default async function BillingPage() {
         title="Billing"
         description="Manage DealAtlas Pro. Invoices, payment methods, and cancellation are handled in the Dodo customer portal. Access is not granted from a checkout redirect."
       />
+      {alreadySubscribed ? (
+        <p role="status" className="rounded-md border p-4 text-sm">
+          You already have an active DealAtlas Pro subscription. Use the billing
+          portal below to change or cancel it.
+        </p>
+      ) : null}
       <BillingSummary
         entitlement={entitlement}
         hasCustomerPortal={Boolean(customerId)}
