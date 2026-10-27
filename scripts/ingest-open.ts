@@ -63,6 +63,7 @@ async function main() {
     runOpenFindATenderIngest,
     runOpenPublicContractsScotlandIngest,
     runOpenSell2WalesIngest,
+    runOpenTedIngest,
     runOpenInnovateUkIngest,
   } = await import("@/lib/jobs/ingest-open");
   const { createSupabaseIngestionStore } = await import("@/ingestion/store/supabase");
@@ -79,13 +80,14 @@ async function main() {
     source !== "contracts-finder" &&
     source !== "public-contracts-scotland" &&
     source !== "sell2wales" &&
+    source !== "ted" &&
     source !== "find-a-grant" &&
     source !== "innovate-uk" &&
     source !== "gca-agreements" &&
     source !== "gca-procurement-pipeline"
   ) {
     throw new Error(
-      "OPEN_INGEST_SOURCE must be find-a-tender, contracts-finder, public-contracts-scotland, sell2wales, find-a-grant, innovate-uk, gca-agreements, or gca-procurement-pipeline",
+      "OPEN_INGEST_SOURCE must be find-a-tender, contracts-finder, public-contracts-scotland, sell2wales, ted, find-a-grant, innovate-uk, gca-agreements, or gca-procurement-pipeline",
     );
   }
   const dealIds = phase === "previews" ? readChangedDealIds(statePath) : undefined;
@@ -113,7 +115,9 @@ async function main() {
               ? runOpenPublicContractsScotlandIngest
               : source === "sell2wales"
                 ? runOpenSell2WalesIngest
-                : runOpenFindATenderIngest)({
+                : source === "ted"
+                  ? runOpenTedIngest
+                  : runOpenFindATenderIngest)({
             store,
             dryRun: phase === "previews" ? false : dryRun,
             backfillDays,

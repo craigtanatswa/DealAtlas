@@ -15,7 +15,7 @@ describe("ingest-open workflow", () => {
     expect(workflow).toContain("backfill_days:");
     expect(workflow).toContain("type: string");
     expect(workflow).toContain('default: "7"');
-    expect(workflow.match(/BACKFILL_DAYS="\$\{BACKFILL_DAYS%\.0\}"/g)).toHaveLength(4);
+    expect(workflow.match(/BACKFILL_DAYS="\$\{BACKFILL_DAYS%\.0\}"/g)).toHaveLength(5);
     expect(workflow).toContain("inputs.backfill_days || '7'");
     expect(workflow).toContain("inputs.dry_run || 'false'");
     expect(workflow).toContain('cron: "0 21 * * *"');
@@ -72,7 +72,7 @@ describe("ingest-open workflow", () => {
     expect(buildStep).not.toContain("steps.gca_pipeline.outcome");
     const contractsFinderStep = ingestJob.slice(ingestJob.indexOf("id: contracts_finder"), ingestJob.indexOf("id: gca_agreements"));
     expect(contractsFinderStep).not.toContain("continue-on-error");
-    expect(ingestJob.match(/continue-on-error: true/g)).toHaveLength(2);
+    expect(ingestJob.match(/continue-on-error: true/g)).toHaveLength(3);
     expect(ingestJob.indexOf("id: ingest")).toBeLessThan(ingestJob.indexOf("id: contracts_finder"));
     expect(ingestJob.indexOf("id: contracts_finder")).toBeLessThan(
       ingestJob.indexOf("id: public_contracts_scotland"),
@@ -87,7 +87,8 @@ describe("ingest-open workflow", () => {
     expect(ingestJob.indexOf("id: gca_pipeline")).toBeLessThan(ingestJob.indexOf("id: build"));
     expect(ingestJob.indexOf("id: contracts_finder")).toBeLessThan(ingestJob.indexOf("id: find_a_grant"));
     expect(ingestJob.indexOf("id: find_a_grant")).toBeLessThan(ingestJob.indexOf("id: innovate_uk"));
-    expect(ingestJob.indexOf("id: innovate_uk")).toBeLessThan(ingestJob.indexOf("id: build"));
+    expect(ingestJob.indexOf("id: innovate_uk")).toBeLessThan(ingestJob.indexOf("id: ted"));
+    expect(ingestJob.indexOf("id: ted")).toBeLessThan(ingestJob.indexOf("id: build"));
     expect(ingestJob).toContain("OPEN_INGEST_SOURCE: contracts-finder");
     expect(ingestJob).toContain("OPEN_INGEST_SOURCE: public-contracts-scotland");
     expect(ingestJob).toContain("OPEN_INGEST_SOURCE: sell2wales");
@@ -95,6 +96,7 @@ describe("ingest-open workflow", () => {
     expect(ingestJob).toContain("OPEN_INGEST_SOURCE: gca-procurement-pipeline");
     expect(ingestJob).toContain("OPEN_INGEST_SOURCE: find-a-grant");
     expect(ingestJob).toContain("OPEN_INGEST_SOURCE: innovate-uk");
+    expect(ingestJob).toContain("OPEN_INGEST_SOURCE: ted");
     expect(ingestJob).not.toContain("nhs-supply-chain");
     expect(ingestJob).not.toContain("nhs-sbs");
     expect(publishStep).not.toContain("steps.find_a_grant.outcome");
@@ -102,6 +104,10 @@ describe("ingest-open workflow", () => {
     expect(ingestJob).toContain("CONTRACTS_FINDER_OK: ${{ steps.contracts_finder.outcome == 'success' && '1' || '0' }}");
     expect(ingestJob).toContain("GCA_AGREEMENTS_OK: ${{ steps.gca_agreements.outcome == 'success' && '1' || '0' }}");
     expect(ingestJob).toContain("GCA_PIPELINE_OK: ${{ steps.gca_pipeline.outcome == 'success' && '1' || '0' }}");
+    expect(ingestJob).toContain("TED_OK: ${{ steps.ted.outcome == 'success' && '1' || '0' }}");
+    expect(publishStep).not.toContain("steps.ted");
+    const tedStep = ingestJob.slice(ingestJob.indexOf("id: ted"), ingestJob.indexOf("id: build"));
+    expect(tedStep).toContain("continue-on-error: true");
     expect(unpublishJob).not.toContain("ingest-open");
     expect(unpublishJob).not.toContain("Build previews");
     expect(unpublishJob).toContain('github.event.schedule == \'17 5 * * *\'');
@@ -155,4 +161,25 @@ describe("ingest-open workflow", () => {
     expect(endpoint).toContain("source_key = 'find-a-tender'");
     expect(endpoint).not.toMatch(/reuse_status|access_method|enabled/);
   });
+  it("keeps a TED fetch failure from blocking Find a Tender publish", () => {
+    const ingestJob = workflow.slice(workflow.indexOf("  ingest:"), workflow.indexOf("  unpublish:"));
+    const ted = ingestJob.slice(ingestJob.indexOf("id: ted"), ingestJob.indexOf("id: build"));
+    const publishStep = ingestJob.slice(
+      ingestJob.indexOf("id: publish"),
+      ingestJob.indexOf("name: Publish alert"),
+    );
+    expect(ted).toContain("continue-on-error: true");
+    expect(ted).toContain("OPEN_INGEST_SOURCE: ted");
+    expect(ingestJob.indexOf("id: contracts_finder")).toBeLessThan(ingestJob.indexOf("id: ted"));
+    expect(publishStep).toContain("steps.ingest.outcome == 'success' && steps.build.outcome == 'success'");
+    expect(publishStep).not.toContain("steps.ted");
+    expect(publishStep).not.toContain("steps.contracts_finder.outcome");
+    const scheduled = fs.readFileSync(
+      path.join(ROOT, ".github/workflows/scheduled-jobs.yml"),
+      "utf8",
+    );
+    expect(scheduled).not.toContain("api.ted.europa.eu");
+    expect(scheduled).not.toContain("OPEN_INGEST_SOURCE: ted");
+  });
+
 });

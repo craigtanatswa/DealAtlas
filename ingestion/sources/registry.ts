@@ -18,6 +18,8 @@ import {
 } from "@/ingestion/sources/gca/constants";
 import { createInnovateUkAdapter } from "@/ingestion/sources/innovate-uk/adapter";
 import { INNOVATE_UK_SOURCE_KEY } from "@/ingestion/sources/innovate-uk/constants";
+import { createTedAdapter } from "@/ingestion/sources/ted/adapter";
+import { TED_SOURCE_KEY } from "@/ingestion/sources/ted/constants";
 import { createUkInfrastructurePipelineAdapter } from "@/ingestion/sources/uk-infrastructure-pipeline/adapter";
 import { UK_INFRASTRUCTURE_PIPELINE_SOURCE_KEY } from "@/ingestion/sources/uk-infrastructure-pipeline/constants";
 
@@ -26,6 +28,7 @@ const adapters = new Map<string, () => SourceAdapter>([
   [CONTRACTS_FINDER_SOURCE_KEY, () => createContractsFinderAdapter()],
   [PUBLIC_CONTRACTS_SCOTLAND_SOURCE_KEY, () => createPublicContractsScotlandAdapter()],
   [SELL2WALES_SOURCE_KEY, () => createSell2WalesAdapter()],
+  [TED_SOURCE_KEY, () => createTedAdapter()],
   [
     UK_INFRASTRUCTURE_PIPELINE_SOURCE_KEY,
     () => createUkInfrastructurePipelineAdapter(),
@@ -65,6 +68,7 @@ export {
   FIND_A_TENDER_SOURCE_KEY,
   PUBLIC_CONTRACTS_SCOTLAND_SOURCE_KEY,
   SELL2WALES_SOURCE_KEY,
+  TED_SOURCE_KEY,
   GCA_AGREEMENTS_SOURCE_KEY,
   GCA_PIPELINE_SOURCE_KEY,
   INNOVATE_UK_SOURCE_KEY,

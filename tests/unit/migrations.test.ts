@@ -48,7 +48,7 @@ describe("supabase migrations", () => {
   const files = listMigrations();
   const sql = files.map(readMigration).join("\n");
 
-  it("are numbered 0001-0026, 0028-0030, 0040-0043, 0045-0047, 0051 and 0053, leaving 0027, 0031-0039, 0044, 0048-0050 and 0052 for open pull requests", () => {
+  it("are numbered 0001-0026, 0028-0030, 0040-0043, 0045-0047, 0049, 0051 and 0053, leaving 0027, 0031-0039, 0044, 0048, 0050 and 0052 for open pull requests", () => {
     expect(files).toEqual([
       "0001_extensions_and_types.sql",
       "0002_core_schema.sql",
@@ -86,6 +86,7 @@ describe("supabase migrations", () => {
       "0045_devolved_ocds_portals.sql",
       "0046_search_preview_dtos_page_first.sql",
       "0047_founding_cancel_ends_membership.sql",
+      "0049_ted_search_api.sql",
       "0051_match_data_pro_only.sql",
       "0053_search_preview_dtos_categories.sql",
     ]);
@@ -478,5 +479,21 @@ describe("supabase migrations", () => {
     expect(body).not.toContain("p_min_score is null or");
     expect(body).not.toMatch(/lower\(coalesce\(p_sort, 'updated'\)\) = 'relevance'/);
   });
+
+  it("adds a disabled TED Search API source and does not publish it", () => {
+    const sql = readMigration("0049_ted_search_api.sql");
+    expect(sql).toContain("'ted'");
+    expect(sql).toContain("'JSON_API'");
+    expect(sql).toContain("'OPEN_LICENSE'");
+    expect(sql).toContain("https://ted.europa.eu/en/legal-notice");
+    expect(sql).toContain("European Union");
+    expect(sql).toContain("Do not use the TED logo");
+    expect(sql).toContain("notice-type");
+    expect(sql).toContain("deadline-receipt-request");
+    expect(sql).toContain("place-of-performance");
+    expect(sql).toMatch(/'OPEN_LICENSE',\n\s*false,\n\s*false,/);
+    expect(sql).not.toMatch(/enabled = excluded\.enabled/);
+  });
+
 });
 
