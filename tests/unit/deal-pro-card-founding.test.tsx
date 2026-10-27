@@ -36,6 +36,10 @@ describe("deal page founding button", () => {
     expect(form.querySelector("input[name='returnTo']")?.getAttribute("value")).toBe(returnTo);
     expect(form.getAttribute("data-analytics-plan")).toBe("founding");
     expect(planKeys(container)).not.toContain("PRO_ANNUAL");
+    expect(screen.getByText("Limited places")).toBeTruthy();
+    expect(container.textContent).toContain("(£290/yr)");
+    expect(container.textContent).not.toMatch(/billed|VAT incl/i);
+    expect(container.textContent).not.toMatch(/\d+\s+places?\s+left/i);
   });
 
   it("sends signed-out visitors to signup then the founding checkout", () => {
@@ -55,6 +59,7 @@ describe("deal page founding button", () => {
     );
     expect(screen.queryByText(/founding/i)).toBeNull();
     expect(container.textContent).not.toMatch(/£290|places left|for as long as you stay subscribed/);
+    expect(container.textContent).not.toMatch(/\d+\s+places?\s+left/i);
     expect(planKeys(container)).not.toContain(FOUNDING_PLAN_KEY);
   });
 });

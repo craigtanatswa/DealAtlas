@@ -1,5 +1,3 @@
-import { LockIcon } from "lucide-react";
-
 import { CheckoutPlanForm } from "@/components/billing/checkout-plan-form";
 import { FoundingCheckoutButton } from "@/components/billing/founding-checkout-button";
 import { FoundingButtonLabel, FoundingPriceLead } from "@/components/billing/founding-price";
@@ -8,7 +6,6 @@ import {
   FOUNDING_COPY,
   FOUNDING_FULL_MESSAGE,
   foundingDueToday,
-  foundingPlacesLabel,
   proMonthlyShort,
 } from "@/lib/billing/founding-ui";
 import { DISPLAY_PRICING } from "@/lib/constants";
@@ -21,6 +18,8 @@ export function FoundingCheckoutSummary({
   remaining: number;
   cap: number;
 }) {
+  if (remaining <= 0 || cap <= 0) return null;
+
   return (
     <>
       <div>
@@ -37,25 +36,14 @@ export function FoundingCheckoutSummary({
         <p className="absolute -top-3 left-5 rounded-full bg-[#00806A] px-3 py-0.5 text-xs font-semibold text-white">
           {FOUNDING_COPY.badge}
         </p>
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h2
-              id="founding-summary-heading"
-              className="text-base font-semibold text-foreground"
-            >
-              {FOUNDING_COPY.title}
-            </h2>
-            <p className="mt-1 flex items-center gap-1.5 text-sm font-semibold text-foreground">
-              <LockIcon className="size-4 text-[#00806A]" aria-hidden="true" />
-              {FOUNDING_COPY.priceLocked}
-            </p>
-          </div>
-          <p className="whitespace-nowrap text-sm font-semibold text-emerald-700 tabular-nums">
-            {foundingPlacesLabel(remaining, cap)}
-          </p>
-        </div>
+        <h2
+          id="founding-summary-heading"
+          className="text-base font-semibold text-foreground"
+        >
+          {FOUNDING_COPY.title}
+        </h2>
         <div className="mt-4 border-t border-dealatlas-teal/20 pt-4">
-          <FoundingPriceLead size="md" />
+          <FoundingPriceLead />
         </div>
         <dl className="mt-4 space-y-2 text-sm">
           <div className="flex justify-between gap-4">

@@ -79,9 +79,9 @@ export function FoundingUnlockActions({
         </Button>
       )}
       <p className="text-center text-[0.8125rem] leading-5 text-pretty text-muted-foreground">
-        {foundingPaywallPlaces(remaining, cap)}
+        <span>{foundingPaywallPlaces(remaining, cap)}</span>
         {" · "}
-        {FOUNDING_COPY.priceLocked}
+        <span>{FOUNDING_COPY.priceLocked}</span>
       </p>
       {mode === "free" ? (
         <CheckoutPlanForm

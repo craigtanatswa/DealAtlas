@@ -40,7 +40,8 @@ function parseGbpMonth(value: string): number | null {
   return match ? Number(match[1]) : null;
 }
 
-function foundingAnnualShort(): string {
+/** Founding annual price in short form, e.g. "£290/yr". */
+export function foundingAnnualShort(): string {
   return DISPLAY_PRICING.foundingAnnual.replace("/year", "/yr");
 }
 
@@ -113,21 +114,19 @@ export function foundingUiState(count: {
   return "available";
 }
 
+/** Limited-places copy. The exact remaining count is never rendered. */
+export const FOUNDING_LIMITED_PLACES = "Limited places";
+
 export function foundingPlacesLabel(remaining: number, cap = FOUNDING_CAP): string {
   const safeCap = Number.isInteger(cap) && cap > 0 ? cap : FOUNDING_CAP;
   const safeRemaining = clampFoundingRemaining(remaining, safeCap);
-  if (safeRemaining === 1) {
-    return "Last founding place · 1 place left";
-  }
-  return `${safeRemaining} places left`;
+  if (safeRemaining <= 0) return "Founding places are all taken";
+  return FOUNDING_LIMITED_PLACES;
 }
 
-/** Paywall helper. Last place uses the same sentence as the pricing card. */
+/** Paywall helper. Uses the same limited-places copy as the pricing card. */
 export function foundingPaywallPlaces(remaining: number, cap = FOUNDING_CAP): string {
-  const safeCap = Number.isInteger(cap) && cap > 0 ? cap : FOUNDING_CAP;
-  const safeRemaining = clampFoundingRemaining(remaining, safeCap);
-  if (safeRemaining === 1) return foundingPlacesLabel(1, safeCap);
-  return `${safeRemaining} places left`;
+  return foundingPlacesLabel(remaining, cap);
 }
 
 function clampFoundingRemaining(remaining: number, cap: number): number {

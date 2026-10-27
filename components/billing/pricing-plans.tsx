@@ -1,4 +1,4 @@
-import { CheckIcon, LockIcon } from "lucide-react";
+import { CheckIcon } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
@@ -12,7 +12,6 @@ import type { CheckoutPlanKey } from "@/lib/billing/types";
 import {
   FOUNDING_COPY,
   foundingSignupPath,
-  foundingPlacesLabel,
   type FoundingPublicCount,
   type FoundingUiState,
 } from "@/lib/billing/founding-ui";
@@ -124,7 +123,6 @@ function PlanCta({
 
 export function PricingPlans({
   signedIn,
-  count,
   state,
 }: {
   signedIn: boolean;
@@ -171,12 +169,7 @@ export function PricingPlans({
             </p>
             <h2 className="font-heading text-xl font-semibold text-balance">{FOUNDING_COPY.title}</h2>
             <FoundingPriceLead className="mt-4" />
-            <p className="mt-4 flex items-start gap-2 text-sm font-medium text-foreground">
-              <LockIcon className="mt-0.5 size-4 shrink-0 text-[#00806A]" aria-hidden="true" />
-              <span>{FOUNDING_COPY.priceLocked}</span>
-            </p>
-            <p className="mt-4 text-sm font-semibold text-emerald-700 tabular-nums">{foundingPlacesLabel(count.remaining, count.cap)}</p>
-            <p className="mt-1 text-[0.8125rem] leading-5 text-muted-foreground">{FOUNDING_COPY.rechecked}</p>
+            <p className="mt-4 text-[0.8125rem] leading-5 text-muted-foreground">{FOUNDING_COPY.rechecked}</p>
             <FeatureList items={PRO_FEATURES} />
             <div className="mt-auto flex flex-col gap-3 pt-6">
               {signedIn ? (

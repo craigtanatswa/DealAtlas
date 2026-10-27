@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { LockIcon } from "lucide-react";
 
+import { FoundingPriceInline } from "@/components/billing/founding-price";
 import { DealProCard } from "@/components/deals/deal-pro-card";
 import { MatchReasons } from "@/components/deals/match-reasons";
 import { deadlineKeyFact, DealStatusBadge } from "@/components/deals/deal-status";
@@ -149,9 +150,13 @@ export function DealPreviewDetail({
       : signupPathWithAlert(`/deals/${deal.slug}`),
   };
   const barLabel =
-    unlock?.founding?.offered && unlock.founding.remaining > 0
-      ? `Unlock with Pro · from ${DISPLAY_PRICING.foundingAnnual.replace("/year", "/yr")}`
-      : `Unlock with Pro · from ${DISPLAY_PRICING.proMonthly.replace("/month", "/mo")}`;
+    unlock?.founding?.offered && unlock.founding.remaining > 0 ? (
+      <>
+        Unlock with Pro · <FoundingPriceInline />
+      </>
+    ) : (
+      `Unlock with Pro · from ${DISPLAY_PRICING.proMonthly.replace("/month", "/mo")}`
+    );
   const specs = [
     ...deal.quantities,
     ...deal.technicalSpecs,

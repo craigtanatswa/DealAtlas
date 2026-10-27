@@ -2,6 +2,7 @@
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { BillingSummary } from "@/components/billing/billing-summary";
 import { FoundingFullNotice } from "@/components/billing/founding-full-notice";
 import { PricingPlans } from "@/components/billing/pricing-plans";
 import {
@@ -11,6 +12,7 @@ import {
 import { DealProCard } from "@/components/deals/deal-pro-card";
 import { UnlockPanel } from "@/components/deals/unlock-panel";
 import { FoundingCheckoutButton } from "@/components/billing/founding-checkout-button";
+import { FoundingPriceLead } from "@/components/billing/founding-price";
 import { HomeFoundingCta } from "@/components/marketing/home-founding-cta";
 import {
   FOUNDING_CAP,
@@ -30,12 +32,15 @@ function planKeyOf(form: Element): string | null | undefined {
 
 const openCount = { offered: true, remaining: 17, cap: FOUNDING_CAP };
 
-/** Usual price struck through and the founding monthly price in bold, inside the button. */
+/** Usual price struck through, the founding monthly price in bold, then the annual price. */
 function expectFoundingPriceInside(button: HTMLElement) {
   const was = button.querySelector("s");
   expect(was?.textContent).toBe("£39/mo");
   expect(was?.getAttribute("aria-label")).toBe("was £39 a month");
+  expect(was?.nextElementSibling?.tagName).toBe("STRONG");
   expect(button.querySelector("strong")?.textContent).toBe("£24.17/mo");
+  expect(button.textContent).toContain("(£290/yr)");
+  expect(button.textContent).not.toMatch(/billed|VAT incl/i);
 }
 const lastCount = { offered: true, remaining: 1, cap: FOUNDING_CAP };
 const soldOutCount = { offered: true, remaining: 0, cap: FOUNDING_CAP };
@@ -44,17 +49,33 @@ function planForms(container: HTMLElement): HTMLFormElement[] {
   return Array.from(container.querySelectorAll("form"));
 }
 
+describe("founding price lead", () => {
+  it("puts the struck-through price first, then the bold founding price and annual price", () => {
+    const { container } = render(<FoundingPriceLead />);
+    const struck = container.querySelector('s[aria-label="was £39 a month"]');
+    expect(struck?.textContent).toBe("£39/mo");
+    expect(struck?.nextElementSibling?.textContent).toBe("£24.17/mo");
+    expect(container.textContent).toContain("£39/mo£24.17/mo (£290/yr)");
+    expect(screen.getByText("(£290/yr)")).toBeTruthy();
+    expect(screen.getByText("Limited places")).toBeTruthy();
+    expect(screen.getByText("£290/yr for as long as you stay subscribed")).toBeTruthy();
+    expect(container.textContent).not.toMatch(/billed|places left/i);
+  });
+});
+
 describe("founding pricing cards", () => {
-  it("shows the server count and a founding offer, not a client price or example label", () => {
+  it("shows the limited-places label and a founding offer, not a client price or example label", () => {
     const { container } = render(
       <PricingPlans signedIn count={openCount} state="available" />,
     );
 
     expect(screen.getByRole("heading", { name: "Pricing" })).toBeTruthy();
-    expect(screen.getByText("17 places left")).toBeTruthy();
+    expect(screen.getByText("Limited places")).toBeTruthy();
+    expect(container.textContent).not.toMatch(/\d+\s+places?\s+left/i);
     expect(screen.getByText("£290/yr for as long as you stay subscribed")).toBeTruthy();
-    expect(screen.getByText("billed £290/yr, VAT included")).toBeTruthy();
-    expect(screen.getByText("£24.17")).toBeTruthy();
+    expect(container.textContent).toContain("£24.17/mo");
+    expect(container.textContent).toContain("(£290/yr)");
+    expect(container.textContent).not.toMatch(/billed|VAT incl/i);
     expect(container.querySelector('s[aria-label="was £39 a month"]')).toBeTruthy();
     expect(container.textContent).not.toMatch(/of 25/);
     expect(container.querySelector('[role="progressbar"]')).toBeNull();
@@ -72,11 +93,12 @@ describe("founding pricing cards", () => {
     expect(forms.every((form) => !form.querySelector("input[name='product_id']"))).toBe(true);
   });
 
-  it("uses the last-place sentence and no extra urgency", () => {
+  it("uses the same limited-places label for the last place and no extra urgency", () => {
     const { container } = render(
       <PricingPlans signedIn count={lastCount} state="last" />,
     );
-    expect(screen.getByText("Last founding place · 1 place left")).toBeTruthy();
+    expect(screen.getByText("Limited places")).toBeTruthy();
+    expect(container.textContent).not.toMatch(/\d+\s+places?\s+left/i);
     expect(container.textContent).not.toMatch(/only today|hurry|almost gone/i);
   });
 
@@ -112,8 +134,11 @@ describe("founding deal paywall", () => {
     );
     const cta = screen.getByRole("button", { name: /^Become a founding member/ });
     expectFoundingPriceInside(cta);
-    expect(screen.getByText(/17 places left/)).toBeTruthy();
-    expect(screen.getByText(/£290\/yr for as long as you stay subscribed/)).toBeTruthy();
+    expect(screen.getByText("Limited places")).toBeTruthy();
+    expect(screen.getByText("£290/yr for as long as you stay subscribed")).toBeTruthy();
+    expect(container.textContent).toContain("(£290/yr)");
+    expect(container.textContent).not.toMatch(/billed|VAT incl/i);
+    expect(container.textContent).not.toMatch(/\d+\s+places?\s+left/i);
     const founding = planForms(container).find(
       (form) =>
         planKeyOf(form) === FOUNDING_PLAN_KEY &&
@@ -166,6 +191,31 @@ describe("founding checkout race", () => {
   });
 });
 
+describe("founding billing summary", () => {
+  it("uses the shared founding price format for an existing founding member, without places copy", () => {
+    const { container } = render(
+      <BillingSummary
+        entitlement={{
+          plan: "PRO",
+          status: "ACTIVE",
+          currentPeriodEnd: null,
+          cancelAtPeriodEnd: false,
+          billingInterval: "ANNUAL",
+          planKey: "PRO_ANNUAL",
+        }}
+        hasCustomerPortal={false}
+        foundingMember
+      />,
+    );
+    expect(container.textContent).toContain("£39/mo");
+    expect(container.textContent).toContain("£24.17/mo");
+    expect(container.textContent).toContain("(£290/yr)");
+    expect(container.textContent).not.toContain("Limited places");
+    expect(screen.getByText("£290/yr for as long as you stay subscribed")).toBeTruthy();
+    expect(container.textContent).not.toMatch(/\d+\s+places?\s+left/i);
+  });
+});
+
 describe("founding checkout summary", () => {
   it("puts the struck-through and founding price inside every founding button", () => {
     for (const ui of [
@@ -183,11 +233,13 @@ describe("founding checkout summary", () => {
     }
   });
 
-  it("shows the monthly-equivalent price, due today and remaining places only", () => {
+  it("shows the monthly-equivalent price, due today and a limited-places label only", () => {
     const { container } = render(<FoundingCheckoutSummary remaining={24} cap={25} />);
-    expect(screen.getByText("24 places left")).toBeTruthy();
-    expect(screen.getByText("£24.17")).toBeTruthy();
-    expect(screen.getByText("billed £290/yr, VAT included")).toBeTruthy();
+    expect(screen.getByText("Limited places")).toBeTruthy();
+    expect(container.textContent).not.toMatch(/\d+\s+places?\s+left/i);
+    expect(container.textContent).toContain("£24.17/mo");
+    expect(container.textContent).toContain("(£290/yr)");
+    expect(container.textContent).not.toMatch(/billed|VAT incl/i);
     expect(screen.getByText("Due today")).toBeTruthy();
     expect(screen.getByText("£290.00")).toBeTruthy();
     expect(container.querySelector('s[aria-label="was £39 a month"]')?.textContent).toBe("£39/mo");
@@ -300,6 +352,7 @@ describe("founding full error state", () => {
     );
     expect(container.querySelectorAll(`input[name='planKey'][value='${FOUNDING_PLAN_KEY}']`)).toHaveLength(0);
     expect(container.textContent).not.toMatch(/£24\.17|£290|for as long as you stay subscribed|places left|Due today/);
+    expect(container.textContent).not.toMatch(/\d+\s+places?\s+left/i);
     expect(screen.queryByRole("button", { name: "Continue to payment" })).toBeNull();
   });
 });

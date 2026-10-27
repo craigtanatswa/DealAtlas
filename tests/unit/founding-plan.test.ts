@@ -27,6 +27,8 @@ import {
 } from "@/lib/billing/founding";
 import {
   FOUNDING_COPY,
+  FOUNDING_LIMITED_PLACES,
+  foundingAnnualShort,
   foundingBilledLine,
   foundingDueToday,
   foundingMonthlyEquivalent,
@@ -162,15 +164,26 @@ describe("founding member checkout", () => {
     });
   });
 
-  it("shows a counts-only place label when founding is offered in the UI", () => {
+  it("shows a limited-places label when founding is offered in the UI", () => {
     expect(foundingUiState({ offered: false, remaining: 25 })).toBe("hidden");
     expect(foundingUiState({ offered: true, remaining: 17 })).toBe("available");
     expect(foundingUiState({ offered: true, remaining: 1 })).toBe("last");
     expect(foundingUiState({ offered: true, remaining: 0 })).toBe("sold_out");
-    expect(foundingPlacesLabel(17)).toBe("17 places left");
-    expect(foundingPlacesLabel(1)).toBe("Last founding place · 1 place left");
-    expect(foundingPaywallPlaces(17)).toBe("17 places left");
-    expect(foundingPaywallPlaces(1)).toBe("Last founding place · 1 place left");
+    expect(FOUNDING_LIMITED_PLACES).toBe("Limited places");
+    expect(foundingPlacesLabel(17)).toBe(FOUNDING_LIMITED_PLACES);
+    expect(foundingPlacesLabel(1)).toBe(FOUNDING_LIMITED_PLACES);
+    expect(foundingPlacesLabel(24, 25)).toBe(FOUNDING_LIMITED_PLACES);
+    expect(foundingPaywallPlaces(17)).toBe(FOUNDING_LIMITED_PLACES);
+    expect(foundingPaywallPlaces(1)).toBe(FOUNDING_LIMITED_PLACES);
+    expect(foundingPaywallPlaces(24, 25)).toBe(FOUNDING_LIMITED_PLACES);
+    for (const label of [
+      foundingPlacesLabel(17),
+      foundingPlacesLabel(1),
+      foundingPaywallPlaces(17),
+      foundingPaywallPlaces(1),
+    ]) {
+      expect(label).not.toMatch(/\d+\s+places?\s+left/i);
+    }
     expect(FOUNDING_COPY.cancelTerms).toBe(
       "If you cancel, you lose founding status and the £290/yr price.",
     );
@@ -182,6 +195,7 @@ describe("founding member checkout", () => {
 
   it("derives the founding price display from the annual amount", () => {
     expect(foundingMonthlyEquivalent()).toBe("£24.17");
+    expect(foundingAnnualShort()).toBe("£290/yr");
     expect(foundingBilledLine()).toBe("billed £290/yr, VAT included");
     expect(foundingDueToday()).toBe("£290.00");
     expect(FOUNDING_COPY.annualSaving).toBe("Save 25% vs monthly.");

@@ -146,11 +146,11 @@ export function DealProCard({
               </Button>
             )}
             <p className="mt-2 text-center text-xs font-medium text-foreground/80">
-              {FOUNDING_COPY.priceLocked} ·{" "}
               <span className="text-emerald-700">
                 {foundingPaywallPlaces(founding.remaining, founding.cap)}
-              </span>{" "}
-              · VAT incl.
+              </span>
+              {" · "}
+              <span>{FOUNDING_COPY.priceLocked}</span>
             </p>
             {mode === "free" ? (
               <CheckoutPlanForm

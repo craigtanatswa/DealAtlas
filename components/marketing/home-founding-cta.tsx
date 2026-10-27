@@ -1,4 +1,4 @@
-import { CheckIcon, LockIcon } from "lucide-react";
+import { CheckIcon } from "lucide-react";
 import Link from "next/link";
 
 import { CheckoutPlanForm } from "@/components/billing/checkout-plan-form";
@@ -10,14 +10,11 @@ import { signupPathForPlan } from "@/lib/auth/redirect";
 import {
   FOUNDING_COPY,
   foundingSignupPath,
-  foundingPlacesLabel,
   proMonthlyShort,
 } from "@/lib/billing/founding-ui";
 
 export function HomeFoundingCta({
   signedIn,
-  remaining,
-  cap,
 }: {
   signedIn: boolean;
   remaining: number;
@@ -45,26 +42,12 @@ export function HomeFoundingCta({
               <ul className="mt-4 space-y-2 text-sm text-foreground/80">
                 <li className="flex gap-2">
                   <CheckIcon className="mt-0.5 size-4 shrink-0 text-dealatlas-teal" aria-hidden="true" />
-                  <span>{FOUNDING_COPY.priceLocked}</span>
-                </li>
-                <li className="flex gap-2">
-                  <CheckIcon className="mt-0.5 size-4 shrink-0 text-dealatlas-teal" aria-hidden="true" />
                   <span>Full details on every deal</span>
-                </li>
-                <li className="flex gap-2">
-                  <CheckIcon className="mt-0.5 size-4 shrink-0 text-dealatlas-teal" aria-hidden="true" />
-                  <span className="font-semibold text-emerald-700 tabular-nums">
-                    {foundingPlacesLabel(remaining, cap)}
-                  </span>
                 </li>
               </ul>
             </div>
             <div className="flex flex-col justify-center rounded-xl border border-dealatlas-teal/30 bg-background p-5 shadow-sm">
               <FoundingPriceLead />
-              <p className="mt-2 flex items-center gap-1.5 text-sm font-semibold text-foreground">
-                <LockIcon className="size-4 text-[#00806A]" aria-hidden="true" />
-                {FOUNDING_COPY.priceLocked}
-              </p>
               {signedIn ? (
                 <FoundingCheckoutButton
                   label={<FoundingButtonLabel text={FOUNDING_COPY.cta} />}

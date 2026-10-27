@@ -1,41 +1,70 @@
-import { foundingBilledLine, foundingMonthlyEquivalent, proMonthlyShort, proMonthlyWasLabel } from "@/lib/billing/founding-ui";
-import { DISPLAY_PRICING } from "@/lib/constants";
+import {
+  FOUNDING_COPY,
+  FOUNDING_LIMITED_PLACES,
+  foundingAnnualShort,
+  foundingMonthlyEquivalent,
+  proMonthlyShort,
+  proMonthlyWasLabel,
+} from "@/lib/billing/founding-ui";
 import { cn } from "@/lib/utils";
 
-export function FoundingPriceLead({ size = "lg", className }: { size?: "lg" | "md"; className?: string }) {
+/**
+ * The one founding price format:
+ * struck-through usual monthly price, bold founding monthly price, then the
+ * founding annual price in brackets, e.g. "£39/mo £24.17/mo (£290/yr)".
+ * Every founding surface renders this component so the numbers cannot drift.
+ */
+export function FoundingPriceInline({ className }: { className?: string }) {
   const monthly = foundingMonthlyEquivalent();
   return (
+    <span
+      className={cn(
+        "inline-flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 whitespace-nowrap tabular-nums",
+        className,
+      )}
+    >
+      <s aria-label={proMonthlyWasLabel()} className="font-normal opacity-75 decoration-1">
+        {proMonthlyShort()}
+      </s>
+      <strong className="font-bold">{monthly ? `${monthly}/mo` : foundingAnnualShort()}</strong>{" "}
+      <span className="font-normal opacity-75">({foundingAnnualShort()})</span>
+    </span>
+  );
+}
+
+export function FoundingPriceLead({
+  size = "lg",
+  className,
+}: {
+  size?: "lg" | "md";
+  className?: string;
+}) {
+  return (
     <div className={className}>
-      <p className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
-        <span className={cn("font-bold tracking-tight text-foreground tabular-nums", size === "lg" ? "text-3xl" : "text-2xl")}>
-          {monthly ?? DISPLAY_PRICING.foundingAnnual}
-          {monthly ? <span className={cn("font-semibold text-muted-foreground", size === "lg" ? "text-base" : "text-sm")}>/mo</span> : null}
-        </span>
-        <s aria-label={proMonthlyWasLabel()} className={cn("font-medium text-muted-foreground decoration-2 tabular-nums", size === "lg" ? "text-lg" : "text-base")}>{proMonthlyShort()}</s>
+      <FoundingPriceInline
+        className={cn(
+          size === "lg" ? "text-3xl" : "text-2xl",
+          size === "lg" ? "[&>s]:text-lg [&>span]:text-base" : "[&>s]:text-base [&>span]:text-sm",
+        )}
+      />
+      <p className="mt-1 text-sm text-muted-foreground">
+        <span>{FOUNDING_LIMITED_PLACES}</span>
+        {" · "}
+        <span>{FOUNDING_COPY.priceLocked}</span>
       </p>
-      <p className="mt-1 text-sm text-muted-foreground">{foundingBilledLine()}</p>
     </div>
   );
 }
 
 /**
- * Founding button text: the action, then the usual monthly price struck through and the
- * founding monthly price in bold, e.g. "Become a founding member ~~£39/mo~~ **£24.17/mo**".
- * Prices come from DISPLAY_PRICING. The billed-yearly line stays outside the button.
+ * Founding button text: the action, then the shared founding price format.
+ * Prices come from DISPLAY_PRICING helpers via FoundingPriceInline.
  */
 export function FoundingButtonLabel({ text }: { text: string }) {
-  const monthly = foundingMonthlyEquivalent();
   return (
     <span className="flex flex-wrap items-baseline justify-center gap-x-2 gap-y-0.5 text-center">
       <span>{text}</span>
-      <span className="inline-flex items-baseline gap-1.5 whitespace-nowrap tabular-nums">
-        <s aria-label={proMonthlyWasLabel()} className="font-normal opacity-75 decoration-1">
-          {proMonthlyShort()}
-        </s>
-        <strong className="font-bold">
-          {monthly ? `${monthly}/mo` : DISPLAY_PRICING.foundingAnnual.replace("/year", "/yr")}
-        </strong>
-      </span>
+      <FoundingPriceInline />
     </span>
   );
 }
