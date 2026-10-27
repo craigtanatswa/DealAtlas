@@ -1,7 +1,7 @@
 import "server-only";
 
 import { expandFilterToRawCategories } from "@/lib/categories/filter-map";
-import { throwIfQueryError } from "@/lib/db/errors";
+import { isMissingCategoriesParamError, throwIfQueryError } from "@/lib/db/errors";
 import type { PublicSupabaseClient } from "@/lib/db/previews";
 import type { DealExportRequest } from "@/lib/exports/request";
 import { loadCompanyProfileIdForUser } from "@/lib/matching/load";
@@ -189,16 +189,66 @@ async function listFilteredDealIds(
     ? expandFilterToRawCategories(filters.category)
     : [];
 
-  return listFilteredDealIdsForCategory(
-    admin,
-    filters,
-    rawCategories,
-    sort,
-    minScore,
-    companyProfileId,
-    useRelevance,
-    remaining,
-  );
+  if (rawCategories.length <= 1) {
+    return listFilteredDealIdsForCategory(
+      admin,
+      filters,
+      rawCategories,
+      sort,
+      minScore,
+      companyProfileId,
+      useRelevance,
+      remaining,
+    );
+  }
+
+  try {
+    return await listFilteredDealIdsForCategory(
+      admin,
+      filters,
+      rawCategories,
+      sort,
+      minScore,
+      companyProfileId,
+      useRelevance,
+      remaining,
+    );
+  } catch (error) {
+    if (!isMissingCategoriesParamError(error)) {
+      throw error;
+    }
+  }
+
+  const ids: string[] = [];
+  const seen = new Set<string>();
+
+  for (const rawCategory of rawCategories) {
+    if (ids.length >= remaining) {
+      break;
+    }
+    const categoryIds = await listFilteredDealIdsForCategory(
+      admin,
+      filters,
+      [rawCategory],
+      sort,
+      minScore,
+      companyProfileId,
+      useRelevance,
+      remaining - ids.length,
+    );
+    for (const id of categoryIds) {
+      if (ids.length >= remaining) {
+        break;
+      }
+      if (seen.has(id)) {
+        continue;
+      }
+      seen.add(id);
+      ids.push(id);
+    }
+  }
+
+  return ids;
 }
 
 /**
