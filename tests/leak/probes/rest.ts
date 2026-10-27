@@ -5,6 +5,7 @@ import type { Role } from "../lib/scan";
 import { restErrorIsNamesOnly } from "../lib/waiver";
 import {
   DTO_SNAKE_KEYS,
+  FORBIDDEN_JSON_LD_KEYS,
   FREE_ROLES,
   NON_PRO_ROLES,
   PUB_ROWS,
@@ -150,8 +151,8 @@ export async function restProbes(ctx: Ctx): Promise<void> {
               ),
               ok(
                 "no_source_fields",
-                rows(o).every((r) => !Object.keys(r).some((k) => /^(deal_id|source_|buyer_|reference|ocid|notice|contact|email|phone|application_url|canonical_name)/.test(k))),
-                rows(o)[0] && Object.keys(rows(o)[0]),
+                rows(o).every((r) => !Object.keys(r).some((k) => FORBIDDEN_JSON_LD_KEYS.has(k))),
+                Object.keys(rows(o)[0] ?? {}).filter((k) => FORBIDDEN_JSON_LD_KEYS.has(k)),
               ),
               ok(
                 "match_fields_empty",
