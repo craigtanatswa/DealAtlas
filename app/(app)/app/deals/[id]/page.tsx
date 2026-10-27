@@ -133,7 +133,7 @@ export default async function AppDealPage({ params, searchParams }: PageProps) {
     );
   }
 
-  const [previewPage, founding] = await Promise.all([
+  const [previewPage, foundingCount] = await Promise.all([
     getPublicDealPreviewPageByDealId(client, dealId, { userId: user.id }),
     readFoundingPublicCount(),
   ]);
@@ -153,7 +153,7 @@ export default async function AppDealPage({ params, searchParams }: PageProps) {
           mode: "free",
           returnTo: appDealPath(dealId),
           revealHref: appDealPath(dealId),
-          founding: founding.offered ? founding : undefined,
+          founding: foundingCount,
         }}
       />
     </Main>

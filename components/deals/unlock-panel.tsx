@@ -9,7 +9,10 @@ import {
   CardFooter,
   CardHeader,
 } from "@/components/ui/card";
-import { foundingUiState, type FoundingPublicCount } from "@/lib/billing/founding-ui";
+import {
+  foundingUiState,
+  type FoundingPublicCount,
+} from "@/lib/billing/founding-ui";
 import { signupPathForPlan } from "@/lib/auth/redirect";
 import Link from "next/link";
 
@@ -19,7 +22,6 @@ export const LOCKED_INTELLIGENCE_FIELDS = [
   { label: "Official notice", benefit: "Subscription required" },
   { label: "Reference number", benefit: "Unlock full details" },
   { label: "Documents and requirements", benefit: "Documents and requirements" },
-  { label: "Buyer and competitor intelligence", benefit: "Buyer/competitor intelligence" },
 ] as const;
 
 export type UnlockCtaMode = "anonymous" | "free" | "pro";
@@ -64,7 +66,7 @@ export function UnlockPanel({
     );
   }
 
-  const foundingState = founding ? foundingUiState(founding) : "hidden";
+  const foundingState = foundingUiState(founding);
 
   return (
     <Card>
@@ -113,7 +115,7 @@ export function UnlockPanel({
           </>
         ) : (
           <FoundingUnlockActions
-            state={foundingState}
+            founding={founding}
             mode={mode === "free" ? "free" : "anonymous"}
             returnTo={returnTo}
           />

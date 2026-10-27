@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import { Button } from "@/components/ui/button";
 import type { CheckoutAnalyticsPlan } from "@/lib/analytics/events";
 import type { CheckoutPlanKey } from "@/lib/billing/types";
@@ -18,7 +20,7 @@ export function CheckoutPlanForm({
   planKey: CheckoutPlanKey;
   /** Only the founding CTA needs this; other plans follow the plan key. */
   analyticsPlan?: Extract<CheckoutAnalyticsPlan, "founding">;
-  label: string;
+  label: ReactNode;
   recommended?: boolean;
   returnTo?: string;
   showPrice?: boolean;

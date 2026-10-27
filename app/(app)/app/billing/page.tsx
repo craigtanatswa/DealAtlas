@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { BillingSummary } from "@/components/billing/billing-summary";
 import { CheckoutPlanForm } from "@/components/billing/checkout-plan-form";
+import { ProAnnualButtonLabel } from "@/components/billing/founding-price";
 import { PageHeader } from "@/components/layout/page-header";
 import { Main } from "@/components/layout/container";
 import {
@@ -69,7 +70,10 @@ export default async function BillingPage({
               label="Subscribe monthly"
               recommended
             />
-            <CheckoutPlanForm planKey="PRO_ANNUAL" label="Subscribe annually" />
+            <CheckoutPlanForm
+              planKey="PRO_ANNUAL"
+              label={<ProAnnualButtonLabel text="Subscribe annually" />}
+            />
           </CardContent>
         </Card>
       )}
