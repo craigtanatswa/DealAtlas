@@ -12,9 +12,16 @@ import {
   getPublishedGuide,
   listPublishedGuides,
   publishedGuidePaths,
+  type Guide,
 } from "@/lib/guides/content";
+import {
+  guideNeedsLiveCount,
+  substituteLiveCountInGuide,
+} from "@/lib/guides/live-count";
 import { guideJsonLd } from "@/lib/guides/json-ld";
+import { countPublishedDealsForGuides } from "@/lib/search/public";
 import { marketingPageMetadata, NOINDEX_ROBOTS } from "@/lib/seo/metadata";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 // Only published guides are pre-rendered; any other slug, including drafts, is a 404.
 export const dynamicParams = false;
@@ -22,6 +29,12 @@ export const dynamicParams = false;
 type PageProps = {
   params: Promise<{ slug: string }>;
 };
+
+async function resolveLiveCount(guide: Guide): Promise<Guide> {
+  if (!guideNeedsLiveCount(guide)) return guide;
+  const total = await countPublishedDealsForGuides(await createSupabaseServerClient());
+  return substituteLiveCountInGuide(guide, total);
+}
 
 export function generateStaticParams() {
   return listPublishedGuides().map((guide) => ({ slug: guide.slug }));
@@ -33,10 +46,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   if (!guide) {
     return { title: "Guide not found", robots: NOINDEX_ROBOTS };
   }
+  const resolved = await resolveLiveCount(guide);
   const metadata = marketingPageMetadata({
-    title: guide.title,
-    description: guide.description,
-    path: guide.path,
+    title: resolved.title,
+    description: resolved.description,
+    path: resolved.path,
     origin: getAppOrigin(),
     absoluteTitle: true,
   });
@@ -45,8 +59,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     openGraph: {
       ...metadata.openGraph,
       type: "article",
-      publishedTime: guide.datePublished,
-      modifiedTime: guide.updated,
+      publishedTime: resolved.datePublished,
+      modifiedTime: resolved.updated,
     },
   };
 }
@@ -58,11 +72,12 @@ export default async function GuidePage({ params }: PageProps) {
     notFound();
   }
 
+  const resolved = await resolveLiveCount(guide);
   const origin = getAppOrigin();
 
   return (
     <Main back className="gap-8">
-      <JsonLd data={guideJsonLd(origin, guide)} />
+      <JsonLd data={guideJsonLd(origin, resolved)} />
       <article className="flex max-w-3xl flex-col gap-8">
         <header className="flex flex-col gap-3">
           <nav aria-label="Breadcrumb" className="text-sm font-medium text-muted-foreground">
@@ -73,12 +88,12 @@ export default async function GuidePage({ params }: PageProps) {
               Guides
             </Link>
           </nav>
-          <Heading>{guide.h1}</Heading>
+          <Heading>{resolved.h1}</Heading>
           <p className="text-sm text-muted-foreground">
-            Updated <time dateTime={guide.updated}>{formatGuideDate(guide.updated)}</time>
+            Updated <time dateTime={resolved.updated}>{formatGuideDate(resolved.updated)}</time>
           </p>
         </header>
-        <GuideMarkdown blocks={guide.blocks} publishedGuidePaths={publishedGuidePaths()} />
+        <GuideMarkdown blocks={resolved.blocks} publishedGuidePaths={publishedGuidePaths()} />
       </article>
     </Main>
   );
