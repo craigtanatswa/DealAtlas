@@ -63,7 +63,7 @@ export default async function PricingPage() {
       {state === "hidden" ? (
         <LegacyPricing signedIn={Boolean(user)} founding={founding} />
       ) : (
-        <PricingPlans signedIn={Boolean(user)} count={count} state={state} />
+        <PricingPlans signedIn={Boolean(user)} state={state} />
       )}
       <p className="text-center text-sm text-muted-foreground">
         All prices include VAT.

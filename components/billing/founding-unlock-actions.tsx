@@ -15,14 +15,10 @@ const FOUNDING_BUTTON =
 
 export function FoundingUnlockActions({
   state,
-  remaining,
-  cap,
   mode,
   returnTo,
 }: {
   state: Exclude<FoundingUiState, "hidden">;
-  remaining: number;
-  cap: number;
   mode: "anonymous" | "free";
   loginHref?: string;
   returnTo?: string;
@@ -81,7 +77,7 @@ export function FoundingUnlockActions({
         </Button>
       )}
       <p className="text-center text-[0.8125rem] leading-5 text-pretty text-muted-foreground">
-        {foundingPaywallPlaces(remaining, cap)}
+        {foundingPaywallPlaces()}
         {" · "}
         {FOUNDING_COPY.priceLocked}
       </p>
