@@ -1,7 +1,11 @@
 import "server-only";
 
 import { expandFilterToRawCategories } from "@/lib/categories/filter-map";
-import { isMissingCategoriesParamError, throwIfQueryError } from "@/lib/db/errors";
+import {
+  CATEGORY_FILTER_FANOUT_FALLBACK_WARN,
+  isMissingCategoriesParamError,
+  throwIfQueryError,
+} from "@/lib/db/errors";
 import type { PublicSupabaseClient } from "@/lib/db/previews";
 import type { DealExportRequest } from "@/lib/exports/request";
 import { loadCompanyProfileIdForUser } from "@/lib/matching/load";
@@ -217,6 +221,7 @@ async function listFilteredDealIds(
     if (!isMissingCategoriesParamError(error)) {
       throw error;
     }
+    console.warn(CATEGORY_FILTER_FANOUT_FALLBACK_WARN);
   }
 
   const ids: string[] = [];

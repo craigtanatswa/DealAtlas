@@ -3,7 +3,11 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { expandFilterToRawCategories } from "@/lib/categories/filter-map";
 import type { Database } from "@/lib/db/database.types";
 import { DEAL_PREVIEW_SITEMAP_PAGE_SIZE } from "@/lib/db/preview-columns";
-import { isMissingCategoriesParamError, throwIfQueryError } from "@/lib/db/errors";
+import {
+  CATEGORY_FILTER_FANOUT_FALLBACK_WARN,
+  isMissingCategoriesParamError,
+  throwIfQueryError,
+} from "@/lib/db/errors";
 import type { PublicDatabase } from "@/lib/db/public-schema";
 import { paginationSchema, parseInput, slugSchema, uuidSchema } from "@/lib/validation";
 import { z } from "zod";
@@ -241,6 +245,7 @@ export async function searchPublishedDealPreviews(
       if (!isMissingCategoriesParamError(error)) {
         throw error;
       }
+      console.warn(CATEGORY_FILTER_FANOUT_FALLBACK_WARN);
       return searchAcrossRawCategories(client, filters, rawCategories);
     }
   }

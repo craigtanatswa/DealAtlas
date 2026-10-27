@@ -19,6 +19,10 @@ export function throwIfQueryError<T>(
   return result.data;
 }
 
+/** Stable warning when multi-raw search falls back before migration 0053. */
+export const CATEGORY_FILTER_FANOUT_FALLBACK_WARN =
+  "[category-filter] p_categories RPC missing (PGRST202); using client fan-out fallback, order may differ";
+
 /**
  * True when an RPC failed because the p_categories parameter/overload is not
  * installed (older migrations). Callers use this to fall back to p_category.
