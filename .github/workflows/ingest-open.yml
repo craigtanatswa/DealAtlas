@@ -80,8 +80,8 @@ jobs:
           case "$BACKFILL_DAYS" in
             ''|*[!0-9]*) echo "backfill_days must be a positive integer" >&2; exit 1 ;;
           esac
-          if [ "$BACKFILL_DAYS" -lt 1 ] || [ "$BACKFILL_DAYS" -gt 366 ]; then
-            echo "backfill_days must be from 1 to 366" >&2
+          if [ "$BACKFILL_DAYS" -lt 1 ] || [ "$BACKFILL_DAYS" -gt 180 ]; then
+            echo "backfill_days must be from 1 to 180" >&2
             exit 1
           fi
           npm run ingest-open
@@ -106,8 +106,8 @@ jobs:
           case "$BACKFILL_DAYS" in
             ''|*[!0-9]*) echo "backfill_days must be a positive integer" >&2; exit 1 ;;
           esac
-          if [ "$BACKFILL_DAYS" -lt 1 ] || [ "$BACKFILL_DAYS" -gt 366 ]; then
-            echo "backfill_days must be from 1 to 366" >&2
+          if [ "$BACKFILL_DAYS" -lt 1 ] || [ "$BACKFILL_DAYS" -gt 180 ]; then
+            echo "backfill_days must be from 1 to 180" >&2
             exit 1
           fi
           npm run ingest-open

@@ -210,7 +210,7 @@ function publicHost(message: string): string {
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const WINDOW_MS = 7 * DAY_MS;
-const MAX_BACKFILL_DAYS = 366;
+const MAX_BACKFILL_DAYS = 180;
 const MAX_RECORDS = 10000;
 /**
  * FTS tags kept by the adapter's client-side discover filter. The API `stages`

@@ -48,7 +48,7 @@ describe("supabase migrations", () => {
   const files = listMigrations();
   const sql = files.map(readMigration).join("\n");
 
-  it("are numbered 0001-0026, 0028-0030, 0040-0043, 0046, then 0047, 0051 and 0053, leaving 0027, 0031-0039, 0044-0045, 0048-0050 and 0052 for open pull requests", () => {
+  it("are numbered 0001-0026, 0028-0030, 0040-0043, 0046, then 0047, 0051, 0053 and 0054, leaving 0027, 0031-0039, 0044-0045, 0048-0050 and 0052 for open pull requests", () => {
     expect(files).toEqual([
       "0001_extensions_and_types.sql",
       "0002_core_schema.sql",
@@ -87,7 +87,15 @@ describe("supabase migrations", () => {
       "0047_founding_cancel_ends_membership.sql",
       "0051_match_data_pro_only.sql",
       "0053_search_preview_dtos_categories.sql",
+      "0054_preview_slug_no_digit_runs.sql",
     ]);
+  });
+
+  it("0054 keeps preview_slug_is_template in lockstep with digit-run stripping", () => {
+    const m = readMigration("0054_preview_slug_no_digit_runs.sql");
+    expect(m).toContain("create or replace function private.preview_slug_is_template(");
+    expect(m).toContain(String.raw`'\d{8,}'::text`);
+    expect(m).toContain("sanitisedTitleFragment");
   });
 
   it("0053 adds a multi-raw category filter to search_preview_dtos without changing its contract", () => {

@@ -39,6 +39,14 @@ function jsonResult(url: string, body: unknown) {
 }
 
 describe("open Find a Tender ingest", () => {
+  it("hard-caps backfill at 180 days", () => {
+    const capped = openIngestWindows(NOW, 999);
+    const uncapped = openIngestWindows(NOW, 180);
+    expect(capped).toEqual(uncapped);
+    expect(capped).toHaveLength(26);
+    expect(openIngestWindows(NOW, 366)).toEqual(uncapped);
+  });
+
   it("splits a backfill into seven-day windows, newest first", () => {
     expect(openIngestWindows(NOW, 7)).toHaveLength(1);
     const windows = openIngestWindows(NOW, 8);
