@@ -147,9 +147,9 @@ For a public contract, the council must give each supplier whose tender it asses
 
 Once you're delivering, the council must pay a valid, undisputed invoice within 30 days of receiving it ([section 68](https://www.legislation.gov.uk/ukpga/2023/54/section/68)). Equivalent terms are implied into subcontracts under public contracts, so the same applies if you deliver as a subcontractor.
 
-## Track council opportunities as they appear
+## How to track council opportunities
 
-[DealAtlas Pro](/pricing) adds saved searches and alerts for new matches in your sector and area, so UK public and private tenders and opportunities for SMEs land in one place. See [how it works](/how-it-works).
+Seeing the right opportunity early is often the hardest part. DealAtlas brings these opportunities into one place, sorted by category, region, value band and closing date, with an SME suitability and bid complexity view on each one. You can browse sanitised previews free on [live opportunities](/deals), for example in [professional services](/categories/professional-services) or [education](/categories/education). When one is worth pursuing, DealAtlas Pro unlocks the buyer, the original source, contacts and documents, plus saved searches and alerts for new matches. See [how it works](/how-it-works) or [compare plans](/pricing).
 
 ## FAQ
 

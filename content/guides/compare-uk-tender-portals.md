@@ -1,5 +1,5 @@
 ---
-slug: find-a-tender-vs-contracts-finder
+slug: compare-uk-tender-portals
 published: true
 title: "Find a Tender vs Contracts Finder: what's the difference"
 description: "Find a Tender vs Contracts Finder under the Procurement Act 2023: what each service does now, 2026 thresholds, and where new notices are published."
@@ -27,11 +27,11 @@ Placeholders in {braces}.
   "@graph": [
     {
       "@type": "Article",
-      "@id": "https://www.dealatlas.uk/guides/find-a-tender-vs-contracts-finder#article",
+      "@id": "https://www.dealatlas.uk/guides/compare-uk-tender-portals#article",
       "headline": "Find a Tender vs Contracts Finder: what's the difference",
       "description": "Find a Tender vs Contracts Finder under the Procurement Act 2023: what each service does now, 2026 thresholds, and where new notices are published.",
       "inLanguage": "en-GB",
-      "mainEntityOfPage": "https://www.dealatlas.uk/guides/find-a-tender-vs-contracts-finder",
+      "mainEntityOfPage": "https://www.dealatlas.uk/guides/compare-uk-tender-portals",
       "datePublished": "2026-10-27",
       "dateModified": "2026-10-27",
       "author": {
@@ -68,13 +68,13 @@ Placeholders in {braces}.
           "@type": "ListItem",
           "position": 3,
           "name": "Find a Tender vs Contracts Finder",
-          "item": "https://www.dealatlas.uk/guides/find-a-tender-vs-contracts-finder"
+          "item": "https://www.dealatlas.uk/guides/compare-uk-tender-portals"
         }
       ]
     },
     {
       "@type": "FAQPage",
-      "@id": "https://www.dealatlas.uk/guides/find-a-tender-vs-contracts-finder#faq",
+      "@id": "https://www.dealatlas.uk/guides/compare-uk-tender-portals#faq",
       "mainEntity": [
         {
           "@type": "Question",

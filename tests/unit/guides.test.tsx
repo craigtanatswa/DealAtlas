@@ -32,7 +32,8 @@ const ORIGIN = "https://www.dealatlas.uk";
 const ROOT = path.resolve(__dirname, "../..");
 const SLUG = "how-to-win-council-contracts";
 const SLUG_2 = "how-to-find-public-sector-tenders";
-const PUBLISHED = [SLUG, SLUG_2];
+const SLUG_3 = "compare-uk-tender-portals";
+const PUBLISHED = [SLUG, SLUG_2, SLUG_3];
 const UNPUBLISHED_SLUG = "frameworks-and-dynamic-markets";
 
 function frontmatter(slug: string, published: boolean, updated: string) {
@@ -98,7 +99,11 @@ describe("guide content", () => {
       "How to find public sector tenders in the UK: where notices are published, 2026 thresholds, early signals such as pipeline notices, and how to register.",
     );
     expect(second.h1).toBe("How to find public sector tenders in the UK");
-    expect(second.updated).toBe("2026-10-19");
+    expect(second.updated).toBe("2026-10-27");
+    const third = getPublishedGuide(SLUG_3)!;
+    expect(third.published).toBe(true);
+    expect(third.path).toBe(`/guides/${SLUG_3}`);
+    expect(third.updated).toBe("2026-10-27");
   });
 
   it("drops unpublished guides from lists and lookups (404)", () => {
@@ -282,7 +287,7 @@ describe("guide #2 JSON-LD", () => {
       "@id": `${url}#article`,
       headline: "How to find public sector tenders in the UK",
       mainEntityOfPage: url,
-      dateModified: "2026-10-19",
+      dateModified: "2026-10-27",
       image: `${ORIGIN}/brand/dealatlas-logo.png`,
     });
     expect(byType("BreadcrumbList").itemListElement).toEqual([
@@ -421,12 +426,13 @@ describe("guide sitemap and robots", () => {
     const entries = guideSitemapEntries(ORIGIN, listPublishedGuides());
     expect(entries.map((entry) => [entry.url, entry.lastModified])).toEqual(
       expect.arrayContaining([
-        [`${ORIGIN}/guides`, "2026-10-19"],
-        [`${ORIGIN}/guides/${SLUG}`, "2026-10-19"],
-        [`${ORIGIN}/guides/${SLUG_2}`, "2026-10-19"],
+        [`${ORIGIN}/guides`, "2026-10-27"],
+        [`${ORIGIN}/guides/${SLUG}`, "2026-10-27"],
+        [`${ORIGIN}/guides/${SLUG_2}`, "2026-10-27"],
+        [`${ORIGIN}/guides/${SLUG_3}`, "2026-10-27"],
       ]),
     );
-    expect(entries).toHaveLength(3);
+    expect(entries).toHaveLength(4);
   });
 
   it("emits no sitemap entries when nothing is published", () => {
