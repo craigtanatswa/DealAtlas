@@ -5,6 +5,7 @@ import { DealHistorySections } from "@/components/intelligence/deal-history";
 import { DealStatusBadge } from "@/components/deals/deal-status";
 import { ExternalSourceLink } from "@/components/deals/external-source-link";
 import { MatchReasons } from "@/components/deals/match-reasons";
+import { TedAttribution } from "@/components/deals/ted-attribution";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { Heading, Text } from "@/components/layout/heading";
 import { Badge } from "@/components/ui/badge";
@@ -464,6 +465,7 @@ function ProvenanceSection({ deal }: { deal: PaidDealDto }) {
               value={deal.provenance.licenceName}
             />
           </dl>
+          <TedAttribution sourceKey={deal.source?.sourceKey} />
           <div className="flex flex-wrap gap-3">
             <ExternalSourceLink href={deal.provenance.licenceUrl}>
               Open licence
