@@ -8,7 +8,7 @@ import { deadlineKeyFact, DealStatusBadge } from "@/components/deals/deal-status
 import { OpeningAlertButton } from "@/components/deals/opening-alert";
 import { buyerSectorLabel, levelLabel } from "@/components/deals/types";
 import { Button } from "@/components/ui/button";
-import { alertsCategorySlug } from "@/lib/alerts/signup";
+import { alertsCategorySlug } from "@/lib/alerts/signup-client";
 import type { FoundingPublicCount } from "@/lib/billing/founding-ui";
 import { DISPLAY_PRICING } from "@/lib/constants";
 import {

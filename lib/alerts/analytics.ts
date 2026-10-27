@@ -1,4 +1,4 @@
-import type { AlertsOutcome } from "@/lib/alerts/signup";
+import type { AlertsOutcome } from "@/lib/alerts/signup-client";
 import type { DealCategorySlug } from "@/lib/matching/categories";
 
 export const ALERTS_EVENT_NAMES = [

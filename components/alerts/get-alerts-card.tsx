@@ -12,7 +12,7 @@ import {
   ALERTS_PENDING_MESSAGE,
   submitAlertsSignup,
   type AlertsSignupResult,
-} from "@/lib/alerts/signup";
+} from "@/lib/alerts/signup-client";
 import type { DealCategorySlug } from "@/lib/matching/categories";
 
 const EMAIL_ERROR = "Enter a valid email address.";

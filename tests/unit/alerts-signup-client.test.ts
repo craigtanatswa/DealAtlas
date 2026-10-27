@@ -4,7 +4,7 @@ import {
   ALERTS_SIGNUP_ENDPOINT,
   alertsCategorySlug,
   submitAlertsSignup,
-} from "@/lib/alerts/signup";
+} from "@/lib/alerts/signup-client";
 
 const INPUT = {
   email: "buyer@example.com",

@@ -9,7 +9,7 @@ const { captureAlertsEvent } = vi.hoisted(() => ({
 vi.mock("@/lib/alerts/analytics", () => ({ captureAlertsEvent }));
 
 import { GetAlertsCard } from "@/components/alerts/get-alerts-card";
-import { ALERTS_PENDING_MESSAGE } from "@/lib/alerts/signup";
+import { ALERTS_PENDING_MESSAGE } from "@/lib/alerts/signup-client";
 
 const fetchMock = vi.fn();
 
