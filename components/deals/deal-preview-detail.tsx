@@ -10,7 +10,6 @@ import { buyerSectorLabel, levelLabel } from "@/components/deals/types";
 import { Button } from "@/components/ui/button";
 import { alertsCategorySlug } from "@/lib/alerts/signup";
 import type { FoundingPublicCount } from "@/lib/billing/founding-ui";
-import { signupPathWithAlert } from "@/lib/auth/redirect";
 import { DISPLAY_PRICING } from "@/lib/constants";
 import {
   categoryLabel,
@@ -147,9 +146,6 @@ export function DealPreviewDetail({
     revealHref: unlock?.revealHref,
     returnTo: unlock?.returnTo,
     founding: unlock?.founding,
-    alertsHref: signedIn
-      ? "/app/alerts"
-      : signupPathWithAlert(`/deals/${deal.slug}`),
   };
   const barLabel =
     unlock?.founding?.offered && unlock.founding.remaining > 0

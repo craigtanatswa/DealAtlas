@@ -163,6 +163,9 @@ export function GetAlertsCard({
               name="email"
               autoComplete="email"
               required
+              // Safeguard: keep the email out of autocapture and replay if either is ever enabled.
+              className="ph-no-capture"
+              data-ph-mask=""
               value={email}
               onChange={(event) => setEmail(event.target.value)}
               aria-invalid={emailError ? true : undefined}

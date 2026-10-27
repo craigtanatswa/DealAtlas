@@ -46,6 +46,11 @@ describe("free discovery HTML and protected paths", () => {
     expect(findProtectedMarkerLeaks(html)).toEqual([]);
     expect(html).toContain("Get free alerts");
     expect(container.querySelector('input[name="website"]')).toBeTruthy();
+    expect(html).not.toContain("Get alerts for deals like this");
+    for (const email of Array.from(container.querySelectorAll('input[name="email"]'))) {
+      expect(email.classList.contains("ph-no-capture")).toBe(true);
+      expect(email.hasAttribute("data-ph-mask")).toBe(true);
+    }
 
     for (const input of Array.from(container.querySelectorAll("input"))) {
       expect(input.getAttribute("type")).not.toBe("hidden");
