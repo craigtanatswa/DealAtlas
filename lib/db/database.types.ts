@@ -128,6 +128,68 @@ export type Database = {
           },
         ]
       }
+      alert_email_subscriptions: {
+        Row: {
+          broad_region: string | null
+          confirm_expires_at: string | null
+          confirm_token_hash: string | null
+          confirmation_email_count: number
+          confirmed_at: string | null
+          created_at: string
+          email_normalized: string
+          id: string
+          last_confirmation_sent_at: string | null
+          main_category: string | null
+          source: string
+          status: string
+          unsubscribed_at: string | null
+          unsubscribe_token_hash: string
+          user_id: string | null
+        }
+        Insert: {
+          broad_region?: string | null
+          confirm_expires_at?: string | null
+          confirm_token_hash?: string | null
+          confirmation_email_count?: number
+          confirmed_at?: string | null
+          created_at?: string
+          email_normalized: string
+          id?: string
+          last_confirmation_sent_at?: string | null
+          main_category?: string | null
+          source?: string
+          status: string
+          unsubscribed_at?: string | null
+          unsubscribe_token_hash: string
+          user_id?: string | null
+        }
+        Update: {
+          broad_region?: string | null
+          confirm_expires_at?: string | null
+          confirm_token_hash?: string | null
+          confirmation_email_count?: number
+          confirmed_at?: string | null
+          created_at?: string
+          email_normalized?: string
+          id?: string
+          last_confirmation_sent_at?: string | null
+          main_category?: string | null
+          source?: string
+          status?: string
+          unsubscribed_at?: string | null
+          unsubscribe_token_hash?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "alert_email_subscriptions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       award_criteria: {
         Row: {
           created_at: string
@@ -3064,6 +3126,18 @@ export type Database = {
         Returns: boolean
       }
       close_founding_membership: { Args: { p_user_id: string }; Returns: undefined }
+      hit_alert_signup_rate_limit: {
+        Args: {
+          p_bucket_key: string
+          p_limit: number
+          p_window_seconds: number
+        }
+        Returns: {
+          allowed: boolean
+          remaining: number
+          reset_at: string
+        }[]
+      }
       founding_availability: { Args: never; Returns: number }
       founding_offer: { Args: never; Returns: string }
       maintain_deals_leak_index: { Args: never; Returns: undefined }
