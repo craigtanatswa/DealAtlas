@@ -32,6 +32,7 @@ export const GUIDE_CTA_TARGETS = ["deals", "signup", "pricing"] as const;
 export const KNOWN_GUIDE_SLUGS: readonly string[] = [
   "how-to-win-council-contracts",
   "how-to-find-public-sector-tenders",
+  "uk-tender-search",
 ];
 
 export function isKnownGuideSlug(value: unknown): value is string {

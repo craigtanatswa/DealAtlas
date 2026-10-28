@@ -8,6 +8,7 @@ export type EmailMessage = {
   subject: string;
   text: string;
   html: string;
+  headers?: Record<string, string>;
 };
 
 export type EmailSendResult = {
@@ -52,9 +53,23 @@ export function renderAlertDigest(input: {
   plan: Plan;
   alerts: AlertDto[];
   appUrl: string;
-}): { subject: string; text: string; html: string } {
+  unsubscribeUrl?: string | null;
+}): { subject: string; text: string; html: string; headers?: Record<string, string> } {
   const count = input.alerts.length;
   const origin = originFrom(input.appUrl);
+  const unsubscribeUrl = input.unsubscribeUrl?.trim() || null;
+  const unsubText = unsubscribeUrl
+    ? `\nUnsubscribe: ${unsubscribeUrl}`
+    : "";
+  const unsubHtml = unsubscribeUrl
+    ? `<p><a href="${escapeHtml(unsubscribeUrl)}">Unsubscribe</a></p>`
+    : "";
+  const unsubHeaders = unsubscribeUrl
+    ? {
+        "List-Unsubscribe": `<${unsubscribeUrl}>`,
+        "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+      }
+    : undefined;
   if (input.plan !== PLANS.PRO) {
     const previewLines = input.alerts
       .map((alert) => alert.previewTitle)
@@ -81,8 +96,14 @@ export function renderAlertDigest(input: {
       ${htmlItems ? `<ul>${htmlItems}</ul>` : ""}
       <p>Sign in to review matching opportunities. Join DealAtlas Pro to unlock buyer identity, original titles, and source links.</p>
       <p><a href="${escapeHtml(`${origin}/app/alerts`)}">Open alert centre</a></p>
+      ${unsubHtml}
     `.trim();
-    return { subject, text, html };
+    return {
+      subject,
+      text: `${text}${unsubText}`,
+      html,
+      headers: unsubHeaders,
+    };
   }
 
   const subject =
@@ -139,7 +160,8 @@ export function renderAlertDigest(input: {
 
   return {
     subject,
-    text,
-    html: `${brandEmailHeader(origin)}${html}<p><a href="${escapeHtml(`${origin}/app/alerts`)}">Alert centre</a></p>`,
+    text: `${text}${unsubText}`,
+    html: `${brandEmailHeader(origin)}${html}<p><a href="${escapeHtml(`${origin}/app/alerts`)}">Alert centre</a></p>${unsubHtml}`,
+    headers: unsubHeaders,
   };
 }

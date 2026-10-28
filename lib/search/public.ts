@@ -193,6 +193,13 @@ export async function countPublishedPreviewSitemapPages(
   return Math.max(1, Math.ceil(total / DEAL_PREVIEW_SITEMAP_PAGE_SIZE));
 }
 
+/** Published deal total for guide copy and sitemap-equivalent counts. Single source of truth. */
+export async function countPublishedDealsForGuides(
+  client: PublicSupabaseClient,
+): Promise<number> {
+  return countPublishedDealPreviewSitemapRows(client);
+}
+
 export type IndexablePreviewSitemapEntry = {
   slug: string;
   lastModified: string;

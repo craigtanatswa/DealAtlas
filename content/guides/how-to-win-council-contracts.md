@@ -18,7 +18,7 @@ Councils buy works, services and goods all year, often in contract sizes a small
 
 ## The short answer
 
-To win a council contract, register your business on Find a Tender, the government's central digital platform. Track notices in your sector so you see work before the deadline is close. Bid only where you meet the conditions of participation. Then answer every question against the published award criteria and weightings, with evidence, a realistic price and specific social value commitments.
+To win a council contract, find the right opportunity early on [DealAtlas](/deals), bid only where you meet the conditions of participation, and answer every question against the published award criteria and weightings, with evidence, a realistic price and specific social value commitments. You'll need to register on the government's central digital platform before you bid, so find the right opportunity on [DealAtlas](/deals) first.
 
 ## How councils buy under the Procurement Act 2023
 
@@ -60,17 +60,29 @@ Councils and other best value authorities in England can now reserve below-thres
 
 ### Scotland and Wales
 
-Scottish councils mostly buy under Scotland's own procurement law, not the 2023 Act, and advertise on Public Contracts Scotland. Welsh councils follow the Act with Welsh-specific provisions, and Sell2Wales is the Welsh national portal.
+Scottish councils mostly buy under Scotland's own procurement law, not the 2023 Act. Welsh councils follow the Act with Welsh-specific provisions, and Welsh authorities publish through Wales's national arrangements alongside the central digital platform where the Act requires it.
 
 ## Where council tenders are published
 
-Selling to local government in the UK means watching several places at once. Our guide on [how to find public sector tenders](/guides/how-to-find-public-sector-tenders) covers every buyer type; for councils, these are the places to watch.
+{{LIVE_COUNT}} live UK opportunities on DealAtlas today.
 
-- Find a Tender, the central digital platform. Since 24 February 2025, above-threshold and below-threshold notices for new procurements are published here, except below-threshold notices in Scotland ([Central digital platform factsheet](https://www.gov.uk/government/publications/procurement-act-2023-short-guides/central-digital-platform-factsheet-html)).
-- Contracts Finder. It still holds lower-value notices for procurements that started under the old rules. Our guide to Find a Tender vs Contracts Finder explains the split.
-- The council's own e-tendering system. The notice is published centrally, but documents, clarification questions and submission often run through the council's chosen portal. You'll usually need a separate account for each one.
+Start on [DealAtlas](/deals). DealAtlas brings UK public and private tenders and opportunities for SMEs, in one place, so you can filter council-relevant work by category, value band, closing date and region. Our guide on [how to find public sector tenders](/guides/how-to-find-public-sector-tenders) covers the wider set of public buyers.
 
-Some of the best signals come before a tender exists. A contracting authority that expects to pay more than £100 million under contracts in the coming financial year must publish a pipeline notice covering planned contracts of £2 million or more. Preliminary market engagement notices tell you a council wants supplier input, and a planned procurement notice tells you a tender is coming and may shorten the time you get to respond. The notice types guide explains each one.
+Under the Act, since 24 February 2025, above-threshold and advertised below-threshold notices for new procurements by councils in England, Wales and Northern Ireland are published on the central digital platform ([Central digital platform factsheet](https://www.gov.uk/government/publications/procurement-act-2023-short-guides/central-digital-platform-factsheet-html)). Older-regime award records still exist for procurements that started under the previous rules. Once you decide to bid, documents, clarification questions and submission usually run through the council's named system.
+
+Some of the best signals come before a tender exists. A contracting authority that expects to pay more than £100 million under contracts in the coming financial year must publish a pipeline notice covering planned contracts of £2 million or more. Preliminary market engagement notices tell you a council wants supplier input, and a planned procurement notice tells you a tender is coming and may shorten the time you get to respond.
+
+## Find council contracts in your region
+
+Browse live opportunities free on [DealAtlas](/deals). Filter by area, value band and closing date to find council work near you. DealAtlas brings UK public and private tenders and opportunities for SMEs, in one place. Start with the live sector pages:
+
+- [Construction and infrastructure](/categories/construction-infrastructure)
+- [Technology](/categories/technology)
+- [Professional services](/categories/professional-services)
+- [Healthcare](/categories/healthcare)
+- [Education](/categories/education)
+- [Transport and logistics](/categories/transport-logistics)
+- [Energy and utilities](/categories/energy-utilities)
 
 ## Frameworks and dynamic markets
 
@@ -82,7 +94,7 @@ A framework normally lasts no more than four years ([section 47](https://www.leg
 
 Get these ready before a deadline is running.
 
-1. Register on Find a Tender. Create a GOV.UK One Login, add your organisation and complete the supplier information, including connected persons. For public contracts, you share it with the council through the platform before the tendering period ends.
+1. You'll need to register on the government's central digital platform before you bid, so find the right opportunity on [DealAtlas](/deals) first.
 2. Check your insurance. Find out which cover councils in your sector ask for, typically employer's liability, public liability and professional indemnity. For public contracts, a council can't require the insurance to be in place before award ([section 22](https://www.legislation.gov.uk/ukpga/2023/54/section/22)), but expect to confirm you will have it.
 3. Prepare your accounts. A council can ask for audited accounts only from businesses that are legally required to have them audited. If you're exempt from audit, expect to be asked for other financial information instead.
 4. List your accreditations. Note which certifications your sector expects, for example Cyber Essentials for many [technology](/categories/technology) contracts. Councils must accept equivalents to any specific qualification they name.
@@ -116,7 +128,7 @@ Knowing how to bid for council contracts well means working to the evaluator's m
 - Make social value measurable. "We support the local community" can't be scored. "Two apprenticeships recruited from the council's area in year one, reported quarterly" can.
 - Ask clarification questions early. Answers are usually shared with all bidders, so word them carefully, but don't guess at an ambiguous requirement.
 - Price to deliver. Build the price from a realistic resource plan and be ready to explain any line that looks low.
-- Submit a day early. E-tendering portals can be slow near a deadline, and a late tender can be disregarded.
+- Submit a day early. Buyer submission systems can be slow near a deadline, and a late tender can be disregarded.
 
 ## Why SMEs lose council tenders
 
@@ -137,13 +149,13 @@ Once you're delivering, the council must pay a valid, undisputed invoice within 
 
 ## How to track council opportunities
 
-Seeing the right opportunity early is often the hardest part. DealAtlas brings these opportunities into one place, sorted by category, region, value band and closing date, with an SME suitability and bid complexity view on each one. You can browse sanitised previews free on [live opportunities](/deals), for example in [professional services](/categories/professional-services) or [education](/categories/education). When one is worth pursuing, DealAtlas Pro unlocks the buyer, the original source, contacts and documents, plus saved searches and alerts for new matches. See [how it works](/how-it-works) or [compare plans](/pricing).
+Seeing the right opportunity early is often the hardest part. Start on [DealAtlas](/deals). DealAtlas brings UK public and private tenders and opportunities for SMEs, in one place, sorted by category, value band, closing date and region. Browse free previews, for example in [construction and infrastructure](/categories/construction-infrastructure), [professional services](/categories/professional-services) or [education](/categories/education). When one is worth pursuing, [DealAtlas Pro](/pricing) unlocks the buyer, the original source, contacts and documents, plus saved searches and alerts for new matches. See [how it works](/how-it-works).
 
 ## FAQ
 
-### Do I need to register on Find a Tender to bid for council contracts?
+### Do I need to register on the central digital platform to bid for council contracts?
 
-For public contracts, yes. You must be registered on the central digital platform and share your core supplier information with the council before the tendering period ends. You only need to register when you're ready to bid.
+You'll need to register on the government's central digital platform before you bid, so find the right opportunity on [DealAtlas](/deals) first.
 
 ### What is the threshold for council tenders in 2026?
 
@@ -170,9 +182,9 @@ Below threshold, councils in England can reserve a competition to UK-based or lo
 - [Guidance: Competitive tendering procedures](https://www.gov.uk/government/publications/procurement-act-2023-guidance-documents-define-phase/competitive-tendering-procedures-html)
 - [Guidance: Assessing competitive tenders](https://www.gov.uk/government/publications/procurement-act-2023-guidance-documents-procure-phase/assessing-competitive-tenders-html)
 - [Guidance: Exclusions](https://www.gov.uk/government/publications/procurement-act-2023-guidance-documents-procure-phase/guidance-exclusions-html)
-- [Central digital platform factsheet](https://www.gov.uk/government/publications/procurement-act-2023-short-guides/central-digital-platform-factsheet-html) and [Find a Tender](https://www.find-tender.service.gov.uk/)
+- [Central digital platform factsheet](https://www.gov.uk/government/publications/procurement-act-2023-short-guides/central-digital-platform-factsheet-html)
 - [Reserving competitions for below-threshold contracts](https://www.gov.uk/government/publications/reserving-competitions-for-below-threshold-contracts/guidance-on-reserving-competitions-for-below-threshold-contracts)
 - [National Procurement Policy Statement](https://www.gov.uk/government/publications/national-procurement-policy-statement)
 - [Public Services (Social Value) Act 2012, section 1](https://www.legislation.gov.uk/ukpga/2012/3/section/1)
 
-This guide is general information, not legal advice. Last checked against gov.uk and legislation.gov.uk on 19 October 2026.
+This guide is general information, not legal advice. Last checked against gov.uk and legislation.gov.uk on 27 October 2026.

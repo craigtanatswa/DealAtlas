@@ -9178,6 +9178,151 @@ revoke select on table public.deal_matches from anon, authenticated;
 -- ============================================================================
 
 -- ============================================================================
+-- BEGIN 0052_alert_email_subscriptions.sql
+-- ============================================================================
+
+-- Free email-only alert signup (double opt-in).
+-- Subscriptions are keyed by normalised email and store only public preview
+-- attributes (main_category, broad_region). Service role only: no anon or
+-- authenticated grants. Rate-limit counters live in private.*.
+
+create table public.alert_email_subscriptions (
+  id uuid primary key default gen_random_uuid(),
+  email_normalized text not null,
+  status text not null check (status in ('pending', 'active', 'unsubscribed')),
+  main_category text,
+  broad_region text,
+  source text not null default 'deal_page',
+  user_id uuid references public.profiles(id) on delete set null,
+  confirm_token_hash text,
+  confirm_expires_at timestamptz,
+  unsubscribe_token_hash text not null,
+  confirmation_email_count integer not null default 0
+    check (confirmation_email_count >= 0),
+  last_confirmation_sent_at timestamptz,
+  created_at timestamptz not null default now(),
+  confirmed_at timestamptz,
+  unsubscribed_at timestamptz,
+  constraint alert_email_subscriptions_email_len
+    check (char_length(email_normalized) between 3 and 320)
+);
+
+create index alert_email_subscriptions_email_idx
+  on public.alert_email_subscriptions (email_normalized);
+
+create index alert_email_subscriptions_email_status_idx
+  on public.alert_email_subscriptions (email_normalized, status);
+
+create unique index alert_email_subscriptions_confirm_hash_uidx
+  on public.alert_email_subscriptions (confirm_token_hash)
+  where confirm_token_hash is not null;
+
+create unique index alert_email_subscriptions_unsub_hash_uidx
+  on public.alert_email_subscriptions (unsubscribe_token_hash);
+
+create index alert_email_subscriptions_user_idx
+  on public.alert_email_subscriptions (user_id)
+  where user_id is not null;
+
+alter table public.alert_email_subscriptions enable row level security;
+
+revoke all on table public.alert_email_subscriptions from public;
+revoke all on table public.alert_email_subscriptions from anon;
+revoke all on table public.alert_email_subscriptions from authenticated;
+-- service_role uses the admin client and bypasses RLS; keep grants minimal.
+grant select, insert, update on table public.alert_email_subscriptions to service_role;
+
+create table private.alert_signup_rate_limits (
+  bucket_key text primary key,
+  window_started_at timestamptz not null,
+  hit_count integer not null default 0 check (hit_count >= 0)
+);
+
+revoke all on table private.alert_signup_rate_limits
+  from public, anon, authenticated, service_role;
+
+create or replace function private.hit_alert_signup_rate_limit(
+  p_bucket_key text,
+  p_limit integer,
+  p_window_seconds integer
+)
+returns table (
+  allowed boolean,
+  remaining integer,
+  reset_at timestamptz
+)
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_now timestamptz := pg_catalog.now();
+  v_window interval := make_interval(secs => greatest(p_window_seconds, 1));
+  v_started timestamptz;
+  v_count integer;
+begin
+  if p_bucket_key is null or length(trim(p_bucket_key)) = 0 then
+    allowed := false;
+    remaining := 0;
+    reset_at := v_now + v_window;
+    return next;
+    return;
+  end if;
+
+  insert into private.alert_signup_rate_limits as r (bucket_key, window_started_at, hit_count)
+  values (p_bucket_key, v_now, 1)
+  on conflict (bucket_key) do update
+    set
+      window_started_at = case
+        when r.window_started_at + v_window <= v_now then v_now
+        else r.window_started_at
+      end,
+      hit_count = case
+        when r.window_started_at + v_window <= v_now then 1
+        else r.hit_count + 1
+      end
+  returning r.window_started_at, r.hit_count
+  into v_started, v_count;
+
+  allowed := v_count <= p_limit;
+  remaining := greatest(p_limit - v_count, 0);
+  reset_at := v_started + v_window;
+  return next;
+end;
+$$;
+
+revoke all on function private.hit_alert_signup_rate_limit(text, integer, integer)
+  from public, anon, authenticated;
+grant execute on function private.hit_alert_signup_rate_limit(text, integer, integer)
+  to service_role;
+
+create or replace function public.hit_alert_signup_rate_limit(
+  p_bucket_key text,
+  p_limit integer,
+  p_window_seconds integer
+)
+returns table (
+  allowed boolean,
+  remaining integer,
+  reset_at timestamptz
+)
+language sql
+security definer
+set search_path = ''
+as $$
+  select * from private.hit_alert_signup_rate_limit(p_bucket_key, p_limit, p_window_seconds);
+$$;
+
+revoke all on function public.hit_alert_signup_rate_limit(text, integer, integer)
+  from public, anon, authenticated;
+grant execute on function public.hit_alert_signup_rate_limit(text, integer, integer)
+  to service_role;
+
+-- ============================================================================
+-- END 0052_alert_email_subscriptions.sql
+-- ============================================================================
+
+-- ============================================================================
 -- BEGIN 0053_search_preview_dtos_categories.sql
 -- ============================================================================
 
@@ -9758,4 +9903,105 @@ grant execute on function public.search_deal_previews_for_profile(
 
 -- ============================================================================
 -- END 0053_search_preview_dtos_categories.sql
+-- ============================================================================
+
+-- ============================================================================
+-- BEGIN 0054_preview_slug_no_digit_runs.sql
+-- ============================================================================
+
+-- Keep private.preview_slug_is_template in lockstep with
+-- sanitisedTitleFragment + buildPreviewSlug (lib/deals/public-slug.ts).
+-- Public slugs must never carry an 8+ digit run from the title (CPV / notice
+-- ids). New suffixes are opaque non-all-digit hex (enforced in TypeScript);
+-- this function still accepts any 8-hex suffix so legacy rows can be classified.
+
+create or replace function private.preview_slug_is_template(
+  p_slug text,
+  p_title text,
+  p_deal_id uuid
+)
+returns boolean
+language sql
+immutable
+set search_path = ''
+as $$
+  select
+    hex.h is not null
+    and p_deal_id is not null
+    and hex.h <> pg_catalog.left(pg_catalog.replace(p_deal_id::text, '-'::text, ''::text), 8)
+    and p_slug = frag.f || '-'::text || hex.h
+  from (
+    select pg_catalog.lower((pg_catalog.regexp_match(p_slug, '-([0-9a-fA-F]{8})$'::text))[1]) as h
+  ) hex
+  cross join lateral (
+    select case when cleaned = ''::text then 'opportunity'::text else cleaned end as f
+    from (
+      select pg_catalog.regexp_replace(
+        pg_catalog.left(
+          pg_catalog.regexp_replace(
+            pg_catalog.regexp_replace(
+              pg_catalog.regexp_replace(
+                pg_catalog.regexp_replace(
+                  pg_catalog.normalize(pg_catalog.lower(coalesce(p_title, ''::text)), 'NFKD'::text),
+                  U&'[\0300-\036F]'::text, ''::text, 'g'::text
+                ),
+                '\d{8,}'::text, ''::text, 'g'::text
+              ),
+              '[^a-z0-9]+'::text, '-'::text, 'g'::text
+            ),
+            '^-+|-+$'::text, ''::text, 'g'::text
+          ),
+          48
+        ),
+        '-+$'::text, ''::text
+      ) as cleaned
+    ) raw
+  ) frag;
+$$;
+
+revoke all on function private.preview_slug_is_template(text, text, uuid)
+  from public, anon, authenticated, service_role;
+
+comment on function private.preview_slug_is_template(text, text, uuid) is
+  'True when slug is sanitised title fragment plus 8 hex that is not the deal-id prefix. Title fragment drops 8+ digit runs.';
+
+-- ============================================================================
+-- END 0054_preview_slug_no_digit_runs.sql
+-- ============================================================================
+
+-- ============================================================================
+-- BEGIN 0055_leak_gate_currency_codes.sql
+-- ============================================================================
+
+-- Leak gate: treat ISO 4217 currency codes as generic acronyms (mirrors
+-- GENERIC_ACRONYMS in lib/redaction/gate-vocabulary.ts). Stops TED previews
+-- quoting EUR/SEK/etc. from being held as uncommon acronyms.
+insert into private.leak_gate_terms (kind, term) values
+  ('generic_acronym', 'AUD'),
+  ('generic_acronym', 'BGN'),
+  ('generic_acronym', 'BRL'),
+  ('generic_acronym', 'CHF'),
+  ('generic_acronym', 'CNY'),
+  ('generic_acronym', 'CZK'),
+  ('generic_acronym', 'DKK'),
+  ('generic_acronym', 'EUR'),
+  ('generic_acronym', 'HKD'),
+  ('generic_acronym', 'HUF'),
+  ('generic_acronym', 'INR'),
+  ('generic_acronym', 'ISK'),
+  ('generic_acronym', 'JPY'),
+  ('generic_acronym', 'MXN'),
+  ('generic_acronym', 'NOK'),
+  ('generic_acronym', 'NZD'),
+  ('generic_acronym', 'PLN'),
+  ('generic_acronym', 'RON'),
+  ('generic_acronym', 'SEK'),
+  ('generic_acronym', 'SGD'),
+  ('generic_acronym', 'TRY'),
+  ('generic_acronym', 'USD'),
+  ('generic_acronym', 'ZAR')
+on conflict do nothing;
+
+-- ============================================================================
+-- END 0055_leak_gate_currency_codes.sql
 -- ============================================================================

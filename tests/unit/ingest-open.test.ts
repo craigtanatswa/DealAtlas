@@ -39,9 +39,26 @@ function jsonResult(url: string, body: unknown) {
 }
 
 describe("open Find a Tender ingest", () => {
-  it("splits a backfill into seven-day windows", () => {
+  it("hard-caps backfill at 180 days", () => {
+    const capped = openIngestWindows(NOW, 999);
+    const uncapped = openIngestWindows(NOW, 180);
+    expect(capped).toEqual(uncapped);
+    expect(capped).toHaveLength(26);
+    expect(openIngestWindows(NOW, 366)).toEqual(uncapped);
+  });
+
+  it("splits a backfill into seven-day windows, newest first", () => {
     expect(openIngestWindows(NOW, 7)).toHaveLength(1);
-    expect(openIngestWindows(NOW, 8)).toHaveLength(2);
+    const windows = openIngestWindows(NOW, 8);
+    expect(windows).toHaveLength(2);
+    expect(windows[0]).toEqual({
+      updatedFrom: "2026-09-09T12:00:00",
+      updatedTo: "2026-09-10T12:00:00",
+    });
+    expect(windows[1]).toEqual({
+      updatedFrom: "2026-09-02T12:00:00",
+      updatedTo: "2026-09-09T12:00:00",
+    });
   });
 
   it("logs counts only", () => {
@@ -215,7 +232,7 @@ describe("open Find a Tender ingest", () => {
 
     expect(urls).toHaveLength(1);
     expect(urls[0]).toContain("/api/1.0/ocdsReleasePackages");
-    expect(urls[0]).toContain("stages=tender");
+    expect(urls[0]).not.toContain("stages=");
     expect(urls[0]).not.toContain("/Notice/");
     expect(result.status).toBe("SUCCEEDED");
     expect(result.counts).toMatchObject({ fetched: 2, new: 2, updated: 0, failed: 0 });
@@ -232,6 +249,49 @@ describe("open Find a Tender ingest", () => {
       expect(blob).not.toContain("ocds-");
       expect(blob).not.toContain("find-tender");
     }
+  });
+
+  it("persists only tender and tenderUpdate tags from a mixed package", async () => {
+    const memory = store();
+    const tender = packageFromFixtures(["normal.json"]) as {
+      releases: Array<Record<string, unknown>>;
+    };
+    const updatePkg = packageFromFixtures(["multi-lot.json"]) as {
+      releases: Array<Record<string, unknown>>;
+    };
+    const update = structuredClone(updatePkg.releases[0]!);
+    update.tag = ["tenderUpdate"];
+    const award = packageFromFixtures(["award.json"]) as {
+      releases: Array<Record<string, unknown>>;
+    };
+    const body = {
+      releases: [...tender.releases, update, ...award.releases],
+    };
+    const urls: string[] = [];
+    const result = await runOpenFindATenderIngest({
+      store: memory,
+      now: NOW,
+      dryRun: false,
+      backfillDays: 7,
+      sleep: async () => {},
+      http: {
+        async getJson(url) {
+          urls.push(url);
+          return jsonResult(url, body);
+        },
+      },
+    });
+
+    expect(urls.every((url) => !url.includes("stages="))).toBe(true);
+    expect(result.counts).toMatchObject({ fetched: 2, new: 2, failed: 0 });
+    expect(
+      memory.rawRecords.map((record) => record.externalRecordId).sort(),
+    ).toEqual(["000001-2026", "000002-2026"]);
+    expect(
+      memory.rawRecords.some(
+        (record) => record.externalRecordId === "000004-2026",
+      ),
+    ).toBe(false);
   });
 
   it("writes nothing on a re-run and treats zero new rows as success", async () => {

@@ -25,6 +25,8 @@ const PHASE_B_ADDED_FUNCTIONS = new Set([
   "founding_offer",
   "founding_availability",
   "claim_founding_activation",
+  // 0052: free alert signup rate-limit RPC (service_role execute only).
+  "hit_alert_signup_rate_limit",
 ]);
 
 export type Acl = {
@@ -301,14 +303,27 @@ export function aclDiff(a: Acl, b: Acl): { intended: string[]; unintended: strin
     note(`function ${sig} authenticated`, fa.authenticated, fb.authenticated, revocable);
   }
   for (const table of new Set([...Object.keys(a.tables), ...Object.keys(b.tables)])) {
+    const before = a.tables[table];
+    const after = b.tables[table];
+    if (!before && after) {
+      const clientOpen = (["anon", "authenticated"] as const).some((role) =>
+        (["select", "insert", "update", "delete"] as const).some((priv) => after[role][priv]),
+      );
+      // New public tables are intended only when anon/authenticated have zero grants
+      // (service_role / security-definer routes only), e.g. 0052 alert_email_subscriptions.
+      (clientOpen ? unintended : intended).push(
+        `table ${table}: added${clientOpen ? "" : " (service_role only)"}`,
+      );
+      continue;
+    }
+    if (before && !after) {
+      unintended.push(`table ${table}: dropped`);
+      continue;
+    }
     for (const role of ["anon", "authenticated"] as const) {
       for (const priv of ["select", "insert", "update", "delete"] as const) {
-        const from = a.tables[table]?.[role]?.[priv];
-        const to = b.tables[table]?.[role]?.[priv];
-        if (from === undefined || to === undefined) {
-          if (from !== to) unintended.push(`table ${table}: ${from === undefined ? "added" : "dropped"}`);
-          continue;
-        }
+        const from = before![role][priv];
+        const to = after![role][priv];
         // 0051 revokes client SELECT on deal_matches (match data is Pro-only).
         note(`table ${table} ${role} ${priv}`, from, to, table === "deal_previews" || (table === "deal_matches" && priv === "select"));
       }
