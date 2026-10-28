@@ -72,7 +72,7 @@ describe("founding UI only receives the public count shape", () => {
         key="deal"
         mode="free"
         founding={openCount}
-        alertsHref="/app/alerts"
+       
       />,
       <UnlockPanel key="unlock" mode="free" founding={openCount} />,
       <FoundingUnlockActions
@@ -106,7 +106,7 @@ describe("founding UI only receives the public count shape", () => {
           <DealProCard
             mode="free"
             founding={founding}
-            alertsHref="/app/alerts"
+           
           />,
         ),
       ).not.toMatch(/founding member/i);
@@ -145,7 +145,6 @@ describe("founding prop types", () => {
     const deal: DealProps = {
       mode: "free",
       founding: openCount,
-      alertsHref: "/app/alerts",
     };
     const unlock: UnlockProps = { mode: "free", founding: openCount };
     const actions: ActionsProps = { founding: openCount, mode: "anonymous" };
@@ -174,7 +173,6 @@ describe("founding prop types", () => {
       mode: "free",
       // @ts-expect-error founding cannot carry a remaining count
       founding: { offered: true, sold_out: false, remaining: 1 },
-      alertsHref: "/app/alerts",
     };
     const badUnlock: UnlockProps = {
       mode: "free",

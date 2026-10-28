@@ -217,8 +217,8 @@ describe("founding checkout summary", () => {
     for (const ui of [
       <PricingPlans key="p" signedIn founding={openCount} />,
       <HomeFoundingCta key="h" signedIn founding={openCount} />,
-      <DealProCard key="d" mode="free" founding={openCount} alertsHref="/app/alerts" />,
-      <DealProCard key="a" mode="anonymous" founding={openCount} alertsHref="/signup" />,
+      <DealProCard key="d" mode="free" founding={openCount} />,
+      <DealProCard key="a" mode="anonymous" founding={openCount} />,
     ]) {
       const { unmount } = render(ui);
       const node =

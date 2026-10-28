@@ -39,7 +39,6 @@ export function DealProCard({
   revealHref,
   returnTo,
   founding,
-  alertsHref,
   idSuffix = "default",
 }: {
   mode?: "anonymous" | "free" | "pro";
@@ -47,7 +46,6 @@ export function DealProCard({
   revealHref?: string;
   returnTo?: string;
   founding?: FoundingPublicCount;
-  alertsHref: string;
   idSuffix?: string;
 }) {
   const headingId = `pro-card-heading-${idSuffix}`;
@@ -208,16 +206,6 @@ export function DealProCard({
             )}
           </>
         )}
-
-        <div className="my-4 border-t border-border" />
-
-        <Button asChild variant="outline" className="h-11 w-full">
-          <Link href={alertsHref}>
-            {mode === "anonymous"
-              ? "Get alerts for deals like this – free account"
-              : "Get alerts for deals like this"}
-          </Link>
-        </Button>
 
         {mode === "anonymous" && loginHref ? (
           <p className="mt-4 text-center text-xs text-muted-foreground">

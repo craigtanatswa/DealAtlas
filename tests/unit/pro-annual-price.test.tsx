@@ -108,12 +108,12 @@ describe("pro annual surfaces", () => {
   });
 
   it("shows the price in the sold-out annual button on a deal card", () => {
-    render(<DealProCard mode="free" founding={soldOutCount} alertsHref="/app/alerts" />);
+    render(<DealProCard mode="free" founding={soldOutCount} />);
     expectProAnnualPrice(screen.getByRole("button", { name: /Or Pro annual/ }));
   });
 
   it("shows the price in the sold-out annual link for an anonymous visitor", () => {
-    render(<DealProCard mode="anonymous" founding={soldOutCount} alertsHref="/signup" />);
+    render(<DealProCard mode="anonymous" founding={soldOutCount} />);
     expectProAnnualPrice(screen.getByRole("link", { name: /Or Pro annual/ }));
   });
 
