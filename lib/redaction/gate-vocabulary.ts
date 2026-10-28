@@ -45,6 +45,8 @@ export const GENERIC_ACRONYMS = [
   "SEN", "SEND", "SIEM", "SIP", "SLA", "SLAS", "SME", "SMES", "SOC", "SQL", "SSIP",
   "SSO", "STEM", "TUPE", "UAT", "UKAS", "UPS", "VAT", "VCSE", "VOIP", "VPN", "WAN",
   "WIFI",
+  // ISO 4217 currency codes (TED notices quote values in EUR, SEK, etc.)
+  "AUD", "BGN", "BRL", "CHF", "CNY", "CZK", "DKK", "EUR", "HKD", "HUF", "INR", "ISK", "JPY", "MXN", "NOK", "NZD", "PLN", "RON", "SEK", "SGD", "TRY", "USD", "ZAR",
 ] as const;
 
 /**
