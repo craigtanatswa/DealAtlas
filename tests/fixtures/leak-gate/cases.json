@@ -1076,6 +1076,28 @@
       },
       "expectRisk": "LOW",
       "expectCodes": []
+    },
+    {
+      "id": "currency-codes",
+      "description": "ISO currency codes are generic, not acronym leaks",
+      "preview": {
+        "title": "Road treatment units for a district council",
+        "summary": "A public body in eastern England needs road treatment units, valued at about 2 million EUR (roughly 1.7 million GBP; bids in SEK, DKK or CZK accepted)."
+      },
+      "expectRisk": "LOW",
+      "expectCodes": []
+    },
+    {
+      "id": "currency-with-buyer-name",
+      "description": "currency code does not mask a real buyer name",
+      "preview": {
+        "title": "Winter road treatment vehicles",
+        "summary": "Corrivale Fenmoor District Council needs road treatment vehicles worth 500,000 EUR."
+      },
+      "expectRisk": "HIGH",
+      "expectCodes": [
+        "BUYER_NAME"
+      ]
     }
   ]
 }
