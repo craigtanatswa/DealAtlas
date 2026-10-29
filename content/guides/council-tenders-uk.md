@@ -108,7 +108,7 @@ If you only work in certain areas, filter by region. Some deals have no region l
 
 The free preview shows the category, value band, closing date and region where one is listed. Pro adds the buyer, the source, contacts and documents, so you can decide quickly whether to bid.
 
-Pro is ~~£39/mo~~ £24.17/mo founding (£290/yr for as long as you stay subscribed, Limited places). See [pricing](/pricing) or read [how DealAtlas works](/how-it-works).
+Browse council deals free on [live opportunities](/deals), and move to [Pro](/pricing) when one is worth pursuing. See [how DealAtlas works](/how-it-works).
 
 For a wider view beyond councils, read [how to find public sector tenders](/guides/how-to-find-public-sector-tenders).
 
