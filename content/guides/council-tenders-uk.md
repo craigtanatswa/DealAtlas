@@ -29,7 +29,7 @@ You'll need to register on the government's central digital platform before you 
 
 Councils publish notices in more than one place, and each source uses its own layout and search. Checking them one by one takes time, and a short closing date leaves little room for that.
 
-DealAtlas brings local government tenders into one search. Today around 600 live deals on DealAtlas come from councils, out of {{LIVE_COUNT}} in total. You can sort and filter all of them in the same way, whichever source they came from.
+DealAtlas brings local government tenders into one search. Roughly 4 in 10 of the {{LIVE_COUNT}} live deals on DealAtlas come from councils. You can sort and filter all of them in the same way, whichever source they came from.
 
 ## What councils buy
 
