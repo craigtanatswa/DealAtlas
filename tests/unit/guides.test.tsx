@@ -62,7 +62,8 @@ const ROOT = path.resolve(__dirname, "../..");
 const SLUG = "how-to-win-council-contracts";
 const SLUG_2 = "how-to-find-public-sector-tenders";
 const SLUG_3 = "uk-tender-search";
-const PUBLISHED = [SLUG, SLUG_2, SLUG_3];
+const SLUG_4 = "council-tenders-uk";
+const PUBLISHED = [SLUG, SLUG_2, SLUG_3, SLUG_4];
 const UNPUBLISHED_SLUG = "frameworks-and-dynamic-markets";
 
 function frontmatter(slug: string, published: boolean, updated: string) {
@@ -587,13 +588,14 @@ describe("guide sitemap and robots", () => {
     const entries = guideSitemapEntries(ORIGIN, listPublishedGuides());
     expect(entries.map((entry) => [entry.url, entry.lastModified])).toEqual(
       expect.arrayContaining([
-        [`${ORIGIN}/guides`, "2026-10-27"],
+        [`${ORIGIN}/guides`, "2026-10-29"],
         [`${ORIGIN}/guides/${SLUG}`, "2026-10-19"],
         [`${ORIGIN}/guides/${SLUG_2}`, "2026-10-19"],
         [`${ORIGIN}/guides/${SLUG_3}`, "2026-10-27"],
+        [`${ORIGIN}/guides/${SLUG_4}`, "2026-10-29"],
       ]),
     );
-    expect(entries).toHaveLength(4);
+    expect(entries).toHaveLength(5);
   });
 
   it("emits no sitemap entries when nothing is published", () => {
