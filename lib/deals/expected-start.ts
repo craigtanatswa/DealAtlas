@@ -6,6 +6,8 @@
  */
 export const PIPELINE_DEAL_TYPE = "PROCUREMENT_PIPELINE";
 export const EXPECTED_START_LABEL = "Expected start";
+/** Shown when a pipeline deal has no contract start date. The deal stays published. */
+export const START_DATE_TBC = "Start date TBC";
 
 export const EXPECTED_START_BANDS = [
   "date passed",
@@ -17,7 +19,7 @@ export const EXPECTED_START_BANDS = [
 
 export type ExpectedStartBand = (typeof EXPECTED_START_BANDS)[number];
 
-const PHRASE = /^Expected start (date passed|within 3 months|in 3–6 months|in 6–12 months|in 12 months or more)$/;
+const PHRASE = /^Expected start (date passed|within 3 months|in 3–6 months|in 6–12 months|in 12 months or more)$|^Start date TBC$/;
 
 function parseDate(value: string | null | undefined): Date | null {
   if (!value) return null;
@@ -86,5 +88,5 @@ export function paidExpectedStart(input: {
   contractStartDate?: string | null;
 }): string | null {
   if (!showsExpectedStart(input)) return null;
-  return formatExpectedStart(input.contractStartDate);
+  return formatExpectedStart(input.contractStartDate) ?? START_DATE_TBC;
 }

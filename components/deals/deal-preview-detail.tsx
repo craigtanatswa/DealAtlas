@@ -9,6 +9,7 @@ import {
   EXPECTED_START_LABEL,
   expectedStartFromKeyDates,
   PIPELINE_DEAL_TYPE,
+  START_DATE_TBC,
 } from "@/lib/deals/expected-start";
 import { OpeningAlertButton } from "@/components/deals/opening-alert";
 import { buyerSectorLabel, levelLabel } from "@/components/deals/types";
@@ -128,7 +129,10 @@ export function DealPreviewDetail({
   const keyFact = expectedStart
     ? {
         label: EXPECTED_START_LABEL,
-        value: expectedStart.slice(EXPECTED_START_LABEL.length + 1),
+        value:
+          expectedStart === START_DATE_TBC
+            ? "TBC"
+            : expectedStart.slice(EXPECTED_START_LABEL.length + 1),
       }
     : deadlineKeyFact({
         status: deal.status,

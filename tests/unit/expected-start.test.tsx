@@ -15,6 +15,7 @@ import {
   formatExpectedStart,
   paidExpectedStart,
   showsExpectedStart,
+  START_DATE_TBC,
 } from "@/lib/deals/expected-start";
 import { keyDatesRemainder } from "@/lib/preview/display";
 
@@ -40,10 +41,10 @@ describe("expected start for pipeline deals", () => {
     expect(expectedStartBand("2026-01-01", NOW)).toBe("date passed");
   });
 
-  it("has no fallback when the start date is missing", () => {
+  it("shows Start date TBC when the start date is missing", () => {
     expect(expectedStartBand(null, NOW)).toBeNull();
-    expect(expectedStartBand("not a date", NOW)).toBeNull();
-    expect(paidExpectedStart({ dealType: "PROCUREMENT_PIPELINE", submissionDeadline: null, contractStartDate: null })).toBeNull();
+    expect(paidExpectedStart({ dealType: "PROCUREMENT_PIPELINE", submissionDeadline: null, contractStartDate: null })).toBe("Start date TBC");
+    expect(expectedStartFromKeyDates("Start date TBC. Contract term 3–5 years")).toBe(START_DATE_TBC);
   });
 
   it("free phrase carries no month, day or year", () => {
@@ -98,7 +99,7 @@ describe("expected start for pipeline deals", () => {
     expect(text).not.toMatch(SOURCE_WORDS);
   });
 
-  it("card keeps the current empty state with no start date", () => {
+  it("card shows Start date TBC with no start date", () => {
     const { container } = render(
       <DealCard
         deal={{
@@ -106,10 +107,11 @@ describe("expected start for pipeline deals", () => {
           status: "UPCOMING",
           dealType: "PROCUREMENT_PIPELINE",
           deadlineBand: "Upcoming / date not yet fixed",
-          keyDates: null,
+          keyDates: "Start date TBC",
         }}
       />,
     );
+    expect(container.textContent ?? "").toContain("Start date TBC");
     expect(container.textContent ?? "").not.toContain("Expected start");
   });
 });

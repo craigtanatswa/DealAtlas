@@ -21,6 +21,7 @@ import {
   expectedStartBand,
   expectedStartPhrase,
   showsExpectedStart,
+  START_DATE_TBC,
 } from "@/lib/deals/expected-start";
 import { pgTrgmSimilarity } from "@/lib/redaction/gate-normalize";
 import { DESCRIPTION_SIMILARITY_REVIEW } from "@/lib/redaction/scan";
@@ -351,7 +352,9 @@ export function composeFreePreview(
   const keyParts = [
     startBand
       ? expectedStartPhrase(startBand)
-      : deadlineBand
+      : showsExpectedStart(deal)
+        ? START_DATE_TBC
+        : deadlineBand
         ? `Closing window ${deadlineBand}`
         : null,
     duration !== "Not disclosed" ? `Contract term ${duration}` : null,

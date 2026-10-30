@@ -58,9 +58,13 @@ export function proAlertCopy(
   const deadline = payload.exactDeadline
     ? ` Deadline: ${payload.exactDeadline}.`
     : payload.expectedStart
-      ? ` Expected start: ${payload.expectedStart}.`
+      ? payload.expectedStart === "Start date TBC"
+        ? " Start date TBC."
+        : ` Expected start: ${payload.expectedStart}.`
       : "";
-  const renewal = payload.renewalDate ? ` Renewal: ${payload.renewalDate}.` : "";
+  const renewal = payload.renewalDate
+    ? ` Renewal: ${payload.renewalDate}.`
+    : "";
   const change = payload.changeType
     ? ` Change: ${payload.changeType.replaceAll("_", " ").toLowerCase()}.`
     : "";

@@ -5,6 +5,7 @@ import {
   EXPECTED_START_LABEL,
   formatExpectedStart,
   showsExpectedStart,
+  START_DATE_TBC,
 } from "@/lib/deals/expected-start";
 import { DealHistorySections } from "@/components/intelligence/deal-history";
 import { DealStatusBadge } from "@/components/deals/deal-status";
@@ -96,10 +97,10 @@ export function DealPaidDetail({
         </Heading>
         <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <SnapshotItem label="Exact value" value={value} />
-          {showsExpectedStart(deal) && formatExpectedStart(deal.contractStartDate) ? (
+          {showsExpectedStart(deal) ? (
             <SnapshotItem
               label={EXPECTED_START_LABEL}
-              value={formatExpectedStart(deal.contractStartDate)}
+              value={formatExpectedStart(deal.contractStartDate) ?? START_DATE_TBC}
             />
           ) : (
             <SnapshotItem
