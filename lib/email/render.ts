@@ -119,6 +119,8 @@ export function renderAlertDigest(input: {
       }
       if (alert.exactDeadline) {
         lines.push(`Deadline: ${alert.exactDeadline}`);
+      } else if (alert.expectedStart) {
+        lines.push(`Expected start: ${alert.expectedStart}`);
       }
       const sourceUrl = safeExternalHref(alert.sourceUrl);
       if (sourceUrl) {
@@ -139,7 +141,9 @@ export function renderAlertDigest(input: {
         alert.buyerName ? `<p>Buyer: ${escapeHtml(alert.buyerName)}</p>` : "",
         alert.exactDeadline
           ? `<p>Deadline: ${escapeHtml(alert.exactDeadline)}</p>`
-          : "",
+          : alert.expectedStart
+            ? `<p>Expected start: ${escapeHtml(alert.expectedStart)}</p>`
+            : "",
         sourceUrl
           ? `<p><a href="${escapeHtml(sourceUrl)}">Open source notice</a></p>`
           : "",

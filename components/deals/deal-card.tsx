@@ -1,6 +1,10 @@
 import Link from "next/link";
 
 import { DeadlineBand } from "@/components/deals/deadline-band";
+import {
+  expectedStartFromKeyDates,
+  PIPELINE_DEAL_TYPE,
+} from "@/lib/deals/expected-start";
 import { DealStatusBadge } from "@/components/deals/deal-status";
 import { OpeningAlertButton } from "@/components/deals/opening-alert";
 import { MatchScore } from "@/components/deals/match-score";
@@ -39,7 +43,12 @@ export function DealCard({
   const valueBand = disclosed(deal.valueBand);
   const smeFit = disclosed(levelLabel(deal.smeSuitability, ""));
   // The closing window is already shown as a band below; keep only the rest.
-  const keyDates = keyDatesRemainder(deal.keyDates, { deadlineBand: deal.deadlineBand });
+  const expectedStart =
+    deal.dealType === PIPELINE_DEAL_TYPE ? expectedStartFromKeyDates(deal.keyDates) : null;
+  const keyDates = keyDatesRemainder(deal.keyDates, {
+    deadlineBand: deal.deadlineBand,
+    expectedStart,
+  });
 
   return (
     <article
@@ -120,7 +129,13 @@ export function DealCard({
             <div>
               <dt className="sr-only">Closing</dt>
               <dd>
-                <DeadlineBand value={deal.deadlineBand} />
+                {expectedStart ? (
+                  <span className="text-[0.8125rem] leading-5 text-muted-foreground">
+                    {expectedStart}
+                  </span>
+                ) : (
+                  <DeadlineBand value={deal.deadlineBand} />
+                )}
               </dd>
             </div>
             {smeFit ? (

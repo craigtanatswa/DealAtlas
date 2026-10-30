@@ -65,7 +65,7 @@ export function distinctSpecificSector(
  */
 export function keyDatesRemainder(
   keyDates: string | null | undefined,
-  shown: { deadlineBand?: string | null; durationBand?: string | null },
+  shown: { deadlineBand?: string | null; durationBand?: string | null; expectedStart?: string | null },
 ): string | null {
   const text = disclosed(keyDates);
   if (!text) return null;
@@ -75,6 +75,7 @@ export function keyDatesRemainder(
     .filter(Boolean)
     .filter((part) => {
       if (shown.deadlineBand && same(part, `Closing window ${shown.deadlineBand}`)) return false;
+      if (shown.expectedStart && same(part, shown.expectedStart)) return false;
       if (shown.durationBand && same(part, `Contract term ${shown.durationBand}`)) return false;
       if (/^(closing window|contract term)\s+(not disclosed|undisclosed|unknown)$/i.test(part)) return false;
       return true;

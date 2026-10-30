@@ -1,6 +1,12 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 
+import {
+  EXPECTED_START_LABEL,
+  formatExpectedStart,
+  showsExpectedStart,
+  START_DATE_TBC,
+} from "@/lib/deals/expected-start";
 import { DealHistorySections } from "@/components/intelligence/deal-history";
 import { DealStatusBadge } from "@/components/deals/deal-status";
 import { ExternalSourceLink } from "@/components/deals/external-source-link";
@@ -91,10 +97,17 @@ export function DealPaidDetail({
         </Heading>
         <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <SnapshotItem label="Exact value" value={value} />
-          <SnapshotItem
-            label="Submission deadline"
-            value={formatDealDateTime(deal.submissionDeadline) ?? "Deadline TBC"}
-          />
+          {showsExpectedStart(deal) ? (
+            <SnapshotItem
+              label={EXPECTED_START_LABEL}
+              value={formatExpectedStart(deal.contractStartDate) ?? START_DATE_TBC}
+            />
+          ) : (
+            <SnapshotItem
+              label="Submission deadline"
+              value={formatDealDateTime(deal.submissionDeadline) ?? "Deadline TBC"}
+            />
+          )}
           <SnapshotItem
             label="Enquiry deadline"
             value={formatDealDateTime(deal.enquiryDeadline)}

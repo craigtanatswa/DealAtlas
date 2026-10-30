@@ -5,6 +5,12 @@ import { FoundingPriceInline } from "@/components/billing/founding-price";
 import { DealProCard } from "@/components/deals/deal-pro-card";
 import { MatchReasons } from "@/components/deals/match-reasons";
 import { deadlineKeyFact, DealStatusBadge } from "@/components/deals/deal-status";
+import {
+  EXPECTED_START_LABEL,
+  expectedStartFromKeyDates,
+  PIPELINE_DEAL_TYPE,
+  START_DATE_TBC,
+} from "@/lib/deals/expected-start";
 import { OpeningAlertButton } from "@/components/deals/opening-alert";
 import { buyerSectorLabel, levelLabel } from "@/components/deals/types";
 import { Button } from "@/components/ui/button";
@@ -118,10 +124,20 @@ export function DealPreviewDetail({
   };
   signedIn?: boolean;
 }) {
-  const keyFact = deadlineKeyFact({
-    status: deal.status,
-    deadlineBand: deal.deadlineBand,
-  });
+  const expectedStart =
+    deal.dealType === PIPELINE_DEAL_TYPE ? expectedStartFromKeyDates(deal.keyDates) : null;
+  const keyFact = expectedStart
+    ? {
+        label: EXPECTED_START_LABEL,
+        value:
+          expectedStart === START_DATE_TBC
+            ? "TBC"
+            : expectedStart.slice(EXPECTED_START_LABEL.length + 1),
+      }
+    : deadlineKeyFact({
+        status: deal.status,
+        deadlineBand: deal.deadlineBand,
+      });
   const buyerLabel = buyerSectorLabel(deal.buyerSector, deal.dealType);
   const metaParts = [
     buyerLabel ? `${buyerLabel} buyer` : null,
@@ -329,6 +345,7 @@ export function DealPreviewDetail({
                 value: keyDatesRemainder(deal.keyDates, {
                   deadlineBand: deal.deadlineBand,
                   durationBand: deal.durationBand,
+                  expectedStart,
                 }),
               },
               { label: "Stage", value: DEAL_STAGE_LABELS[deal.stage] },
