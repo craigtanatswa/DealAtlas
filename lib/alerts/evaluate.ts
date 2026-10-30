@@ -1,5 +1,6 @@
 import "server-only";
 
+import { paidExpectedStart } from "@/lib/deals/expected-start";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { Database, Json } from "@/lib/db/database.types";
@@ -216,7 +217,7 @@ async function loadCanonicalContext(
     const { data: deals, error: dealError } = await admin
       .from("deals")
       .select(
-        "id, source_title, reference, source_url, application_url, submission_deadline, exact_value_text, estimated_renewal_date, buyer_organization_id",
+        "id, source_title, reference, source_url, application_url, submission_deadline, deal_type, contract_start_date, exact_value_text, estimated_renewal_date, buyer_organization_id",
       )
       .in("id", ids);
     const dealRows = throwIfQueryError("Failed to load alert deal context", {
@@ -250,6 +251,11 @@ async function loadCanonicalContext(
         sourceUrl: safeHttpUrl(deal.source_url),
         applicationUrl: safeHttpUrl(deal.application_url),
         exactDeadline: deal.submission_deadline,
+        expectedStart: paidExpectedStart({
+          dealType: deal.deal_type,
+          submissionDeadline: deal.submission_deadline,
+          contractStartDate: deal.contract_start_date,
+        }),
         exactValue: deal.exact_value_text,
         estimatedRenewalDate: deal.estimated_renewal_date,
         buyerName: deal.buyer_organization_id
@@ -722,6 +728,7 @@ async function sendDueDigests(input: {
         delete dto.applicationUrl;
         delete dto.reference;
         delete dto.exactDeadline;
+        delete dto.expectedStart;
         delete dto.exactValue;
         delete dto.changeType;
         delete dto.renewalDate;

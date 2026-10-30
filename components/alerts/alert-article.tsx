@@ -35,6 +35,8 @@ export function AlertArticle({
       ) : null}
       {entitled && alert.exactDeadline ? (
         <p className="text-sm">Deadline: {alert.exactDeadline}</p>
+      ) : entitled && alert.expectedStart ? (
+        <p className="text-sm">Expected start: {alert.expectedStart}</p>
       ) : null}
       <div className="flex flex-wrap gap-3">
         <Button asChild>

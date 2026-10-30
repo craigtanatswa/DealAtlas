@@ -66,6 +66,7 @@ export function parseProtectedPayload(value: unknown): AlertProtectedPayload {
     applicationUrl: optionalNullableString(record.applicationUrl),
     reference: optionalNullableString(record.reference),
     exactDeadline: optionalNullableString(record.exactDeadline),
+    expectedStart: optionalNullableString(record.expectedStart),
     exactValue: optionalNullableString(record.exactValue),
     changeType: optionalNullableString(record.changeType),
     fieldName: optionalNullableString(record.fieldName),
@@ -157,6 +158,7 @@ export function toAlertDto(
     dto.applicationUrl = safeHttpUrl(payload.applicationUrl);
     dto.reference = payload.reference;
     dto.exactDeadline = payload.exactDeadline;
+    dto.expectedStart = payload.expectedStart;
     dto.exactValue = payload.exactValue;
     dto.changeType = payload.changeType;
     dto.renewalDate = payload.renewalDate;

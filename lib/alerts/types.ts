@@ -36,6 +36,7 @@ export type AlertProtectedPayload = {
   applicationUrl?: string | null;
   reference?: string | null;
   exactDeadline?: string | null;
+  expectedStart?: string | null;
   exactValue?: string | null;
   changeType?: string | null;
   fieldName?: string | null;
@@ -75,6 +76,7 @@ export type AlertProFields = {
   applicationUrl?: string | null;
   reference?: string | null;
   exactDeadline?: string | null;
+  expectedStart?: string | null;
   exactValue?: string | null;
   changeType?: string | null;
   renewalDate?: string | null;
@@ -117,6 +119,7 @@ export const ALERT_DTO_KEYS = [
   "applicationUrl",
   "reference",
   "exactDeadline",
+  "expectedStart",
   "exactValue",
   "changeType",
   "renewalDate",

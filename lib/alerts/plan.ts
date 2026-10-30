@@ -29,6 +29,7 @@ export type AlertDealContext = {
   reference?: string | null;
   exactDeadline?: string | null;
   exactValue?: string | null;
+  expectedStart?: string | null;
   estimatedRenewalDate?: string | null;
 };
 
@@ -80,6 +81,7 @@ function payloadFromContext(
     reference: context?.reference,
     exactDeadline: extra.exactDeadline ?? context?.exactDeadline,
     exactValue: context?.exactValue,
+    expectedStart: context?.expectedStart,
     renewalDate: extra.renewalDate ?? context?.estimatedRenewalDate,
     ...extra,
   };

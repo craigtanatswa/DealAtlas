@@ -57,7 +57,9 @@ export function proAlertCopy(
   const buyer = payload.buyerName ? ` Buyer: ${payload.buyerName}.` : "";
   const deadline = payload.exactDeadline
     ? ` Deadline: ${payload.exactDeadline}.`
-    : "";
+    : payload.expectedStart
+      ? ` Expected start: ${payload.expectedStart}.`
+      : "";
   const renewal = payload.renewalDate ? ` Renewal: ${payload.renewalDate}.` : "";
   const change = payload.changeType
     ? ` Change: ${payload.changeType.replaceAll("_", " ").toLowerCase()}.`

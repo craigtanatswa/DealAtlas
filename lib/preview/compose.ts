@@ -17,6 +17,11 @@ import {
   valueBandFromAmounts,
 } from "@/lib/preview/bands";
 import { broadRegionFromLocation } from "@/lib/preview/region";
+import {
+  expectedStartBand,
+  expectedStartPhrase,
+  showsExpectedStart,
+} from "@/lib/deals/expected-start";
 import { pgTrgmSimilarity } from "@/lib/redaction/gate-normalize";
 import { DESCRIPTION_SIMILARITY_REVIEW } from "@/lib/redaction/scan";
 import { wordShingleSimilarity } from "@/lib/redaction/similarity";
@@ -340,8 +345,15 @@ export function composeFreePreview(
   const commercial = commercialLines(context.awardCriteria);
 
   // Bands only. No day counts, no publication or award month.
+  const startBand = showsExpectedStart(deal)
+    ? expectedStartBand(deal.contractStartDate, context.now)
+    : null;
   const keyParts = [
-    deadlineBand ? `Closing window ${deadlineBand}` : null,
+    startBand
+      ? expectedStartPhrase(startBand)
+      : deadlineBand
+        ? `Closing window ${deadlineBand}`
+        : null,
     duration !== "Not disclosed" ? `Contract term ${duration}` : null,
   ].filter((item): item is string => Boolean(item));
 
