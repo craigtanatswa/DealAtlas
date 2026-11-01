@@ -103,6 +103,8 @@ export type LeakScanInput = {
   buyerName: string | null;
   buyerAliases: string[];
   buyerDomain: string | null;
+  /** Additional buyer domains, including private discovery candidates. */
+  buyerDomains?: string[];
   buyerWebsite?: string | null;
   buyerEmail: string | null;
   buyerPhone: string | null;
@@ -459,24 +461,25 @@ export function scanPreviewLeaks(input: LeakScanInput): LeakScanResult {
       push("BUYER_ALIAS", "REVIEW", "Preview may contain a short buyer alias", alias);
     }
   }
-  if (input.buyerName) {
-    const buyerHosts = new Set(
-      [
-        input.buyerDomain?.replace(/^www\./, "").toLowerCase() ?? null,
-        hostOf(input.buyerWebsite),
-        input.buyerEmail?.split("@")[1]?.replace(/^www\./, "").toLowerCase() ?? null,
-      ].filter((item): item is string => Boolean(item && item.length >= 4)),
-    );
-    for (const host of buyerHosts) {
-      if (allLower.includes(host)) {
-        push("BUYER_DOMAIN", "HIGH", "Preview contains a buyer domain", host);
-        continue;
-      }
-      const stem = host.split(".")[0];
-      if (stem.length >= 5 && !GENERIC_ORG.has(stem) && wordIn(allNorm, stem)) {
-        push("BUYER_DOMAIN", "HIGH", "Preview contains a buyer domain name", stem);
-      }
+  const buyerHosts = new Set(
+    [
+      input.buyerDomain?.replace(/^www\./, "").toLowerCase() ?? null,
+      ...(input.buyerDomains ?? []).map((domain) => domain.replace(/^www\./, "").toLowerCase()),
+      hostOf(input.buyerWebsite),
+      input.buyerEmail?.split("@")[1]?.replace(/^www\./, "").toLowerCase() ?? null,
+    ].filter((item): item is string => Boolean(item && item.length >= 4)),
+  );
+  for (const host of buyerHosts) {
+    if (allLower.includes(host)) {
+      push("BUYER_DOMAIN", "HIGH", "Preview contains a buyer domain", host);
+      continue;
     }
+    const stem = host.split(".")[0];
+    if (stem.length >= 5 && !GENERIC_ORG.has(stem) && wordIn(allNorm, stem)) {
+      push("BUYER_DOMAIN", "HIGH", "Preview contains a buyer domain name", stem);
+    }
+  }
+  if (input.buyerName) {
     for (const word of new Set(leakTokens(input.buyerName))) {
       if (isDistinctiveNameToken(word) && wordIn(allNorm, word)) {
         push("BUYER_TOKEN", word.length >= 5 ? "HIGH" : "REVIEW", "Preview contains part of the buyer name", word);

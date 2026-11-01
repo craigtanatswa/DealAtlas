@@ -13,6 +13,21 @@ export function mapPrivateDealType(input: {
   framework?: string | null;
 }): DealType {
   const kind = normalize(input.opportunityKind);
+  if (
+    kind.includes("supplier onboarding") ||
+    kind.includes("supplier registration") ||
+    kind.includes("vendor registration") ||
+    kind.includes("become a supplier")
+  ) {
+    return "SUPPLIER_ONBOARDING";
+  }
+  if (
+    kind === "itt" ||
+    kind.includes("invitation to tender") ||
+    kind.includes("invitation_to_tender")
+  ) {
+    return "ITT";
+  }
   if (kind === "rfq" || kind.includes("quotation")) {
     return "RFQ";
   }

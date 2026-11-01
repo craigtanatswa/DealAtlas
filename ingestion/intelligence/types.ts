@@ -95,6 +95,10 @@ export type IntelligenceContext = {
   documentsCount: number;
   now: Date;
   noticeIdentifiers: string[];
+  /** Private discovery identity that must never reach a preview DTO. */
+  privateBuyerNames?: string[];
+  privateBuyerDomains?: string[];
+  privateSourceUrl?: string | null;
 };
 
 export function contextFromCandidate(input: {

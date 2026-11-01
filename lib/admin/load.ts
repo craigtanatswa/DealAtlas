@@ -51,6 +51,7 @@ const SOURCE_COLUMNS = [
   "robots_checked_at",
   "terms_checked_at",
   "compliance_notes",
+  "discovery_method",
   "last_success_at",
   "consecutive_failures",
   "created_at",
@@ -277,6 +278,7 @@ function mapSource(row: SourceRow): AdminSourceRow {
     reuseStatus: row.reuse_status,
     accessMethod: row.access_method,
     scrapingPermitted: row.scraping_permitted,
+    discoveryMethod: row.discovery_method,
   });
   const ingest = ingestionReadiness({
     sourceKey: row.source_key,
@@ -307,6 +309,7 @@ function mapSource(row: SourceRow): AdminSourceRow {
     robotsCheckedAt: row.robots_checked_at,
     termsCheckedAt: row.terms_checked_at,
     complianceNotes: row.compliance_notes,
+    discoveryMethod: row.discovery_method,
     lastSuccessAt: row.last_success_at,
     consecutiveFailures: row.consecutive_failures,
     createdAt: row.created_at,

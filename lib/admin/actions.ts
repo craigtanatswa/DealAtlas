@@ -5,12 +5,16 @@ import { revalidatePath } from "next/cache";
 import { requireAdminAction } from "@/lib/admin/access";
 import { AdminAccessError, AdminMutationError } from "@/lib/admin/errors";
 import {
+  addDiscoveryKeyword,
+  approveOpportunityCandidate,
   holdPreviewUnpublished,
   mergeOrganizations,
   publishPreviewIfLow,
   regenerateDealPreview,
+  rejectOpportunityCandidate,
   releasePreviewHold,
   reprocessRawRecord,
+  setDiscoveryKeywordEnabled,
   retryDocumentJob,
   retryMatchJob,
   runManualSourceIngestion,
@@ -266,5 +270,78 @@ export async function retryDocumentJobAction(
     await retryDocumentJob({ actorId, documentId });
     revalidateAdmin(["/admin/data-quality"]);
     return { error: null, success: "Document marked pending for reprocessing." };
+  });
+}
+
+export async function approveOpportunityCandidateAction(
+  _previous: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  return withAdminAction(async (actorId) => {
+    const candidateId = parseAdminIdParam(formString(formData, "candidateId"));
+    if (!candidateId) {
+      return { error: "That candidate could not be approved.", success: null };
+    }
+    await approveOpportunityCandidate({ actorId, candidateId });
+    revalidateAdmin([
+      "/admin/discovery",
+      "/admin/discovery/candidates",
+      `/admin/discovery/candidates/${candidateId}`,
+    ]);
+    return { error: null, success: "Candidate approved." };
+  });
+}
+
+export async function rejectOpportunityCandidateAction(
+  _previous: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  return withAdminAction(async (actorId) => {
+    const candidateId = parseAdminIdParam(formString(formData, "candidateId"));
+    if (!candidateId) {
+      return { error: "That candidate could not be rejected.", success: null };
+    }
+    await rejectOpportunityCandidate({
+      actorId,
+      candidateId,
+      reason: formString(formData, "reason"),
+    });
+    revalidateAdmin([
+      "/admin/discovery",
+      "/admin/discovery/candidates",
+      `/admin/discovery/candidates/${candidateId}`,
+    ]);
+    return { error: null, success: "Candidate rejected." };
+  });
+}
+
+export async function addDiscoveryKeywordAction(
+  _previous: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  return withAdminAction(async (actorId) => {
+    const keyword = formString(formData, "keyword");
+    await addDiscoveryKeyword({ actorId, keyword });
+    revalidateAdmin(["/admin/discovery", "/admin/discovery/keywords"]);
+    return { error: null, success: "Keyword added." };
+  });
+}
+
+export async function setDiscoveryKeywordEnabledAction(
+  _previous: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  return withAdminAction(async (actorId) => {
+    const keywordId = parseAdminIdParam(formString(formData, "keywordId"));
+    if (!keywordId) {
+      return { error: "That keyword could not be updated.", success: null };
+    }
+    const enabled = formFlag(formData, "enabled");
+    await setDiscoveryKeywordEnabled({ actorId, keywordId, enabled });
+    revalidateAdmin(["/admin/discovery", "/admin/discovery/keywords"]);
+    return {
+      error: null,
+      success: enabled ? "Keyword enabled." : "Keyword disabled.",
+    };
   });
 }

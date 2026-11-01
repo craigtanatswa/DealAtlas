@@ -13,6 +13,8 @@ export type SourceEnableInput = {
   reuseStatus: ReuseStatus;
   accessMethod: AccessMethod;
   scrapingPermitted: boolean;
+  /** Configured generic discovery sources do not need a registered adapter. */
+  discoveryMethod?: string | null;
 };
 
 export function sourceEnableBlockReason(source: SourceEnableInput): string | null {
@@ -27,6 +29,7 @@ export function sourceEnableBlockReason(source: SourceEnableInput): string | nul
   }
 
   if (
+    !source.discoveryMethod &&
     source.sourceKey &&
     !listRegisteredSourceKeys().includes(source.sourceKey)
   ) {

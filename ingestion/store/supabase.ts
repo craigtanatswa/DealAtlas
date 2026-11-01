@@ -99,6 +99,18 @@ function mapSource(row: SourceRow): DataSourceRecord {
     complianceNotes: row.compliance_notes,
     lastSuccessAt: row.last_success_at,
     consecutiveFailures: row.consecutive_failures,
+    discoveryMethod: row.discovery_method,
+    parserType: row.parser_type,
+    parserConfig: (row.parser_config ?? {}) as Record<string, unknown>,
+    country: row.country,
+    industry: row.industry,
+    crawlFrequencyMinutes: row.crawl_frequency_minutes,
+    lastError: row.last_error,
+    opportunitiesDiscovered: row.opportunities_discovered,
+    reliabilityScore: row.reliability_score,
+    autoPublish: row.auto_publish,
+    autoPublishMinConfidence: row.auto_publish_min_confidence,
+    marketSector: row.market_sector,
   };
 }
 

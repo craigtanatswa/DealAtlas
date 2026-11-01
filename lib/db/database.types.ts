@@ -970,17 +970,29 @@ export type Database = {
         Row: {
           access_method: Database["public"]["Enums"]["access_method"]
           api_url: string | null
+          auto_publish: boolean
+          auto_publish_min_confidence: number
           base_url: string | null
           compliance_notes: string | null
           consecutive_failures: number
+          country: string
+          crawl_frequency_minutes: number
           created_at: string
+          discovery_method: Database["public"]["Enums"]["discovery_method"] | null
           enabled: boolean
           id: string
+          industry: string | null
+          last_error: string | null
           last_success_at: string | null
           licence_name: string | null
           licence_url: string | null
+          market_sector: Database["public"]["Enums"]["market_sector"]
           name: string
+          opportunities_discovered: number
+          parser_config: Json
+          parser_type: string | null
           rate_limit_per_minute: number | null
+          reliability_score: number
           reuse_status: Database["public"]["Enums"]["reuse_status"]
           robots_checked_at: string | null
           schedule_expression: string | null
@@ -994,17 +1006,28 @@ export type Database = {
         Insert: {
           access_method: Database["public"]["Enums"]["access_method"]
           api_url?: string | null
+          auto_publish?: boolean
+          auto_publish_min_confidence?: number
           base_url?: string | null
           compliance_notes?: string | null
           consecutive_failures?: number
+          country?: string
+          crawl_frequency_minutes?: number
           created_at?: string
+          discovery_method?: Database["public"]["Enums"]["discovery_method"] | null
           enabled?: boolean
           id?: string
+          industry?: string | null
+          last_error?: string | null
           last_success_at?: string | null
           licence_name?: string | null
           licence_url?: string | null
           name: string
+          opportunities_discovered?: number
+          parser_config?: Json
+          parser_type?: string | null
           rate_limit_per_minute?: number | null
+          reliability_score?: number
           reuse_status?: Database["public"]["Enums"]["reuse_status"]
           robots_checked_at?: string | null
           schedule_expression?: string | null
@@ -1018,17 +1041,28 @@ export type Database = {
         Update: {
           access_method?: Database["public"]["Enums"]["access_method"]
           api_url?: string | null
+          auto_publish?: boolean
+          auto_publish_min_confidence?: number
           base_url?: string | null
           compliance_notes?: string | null
           consecutive_failures?: number
+          country?: string
+          crawl_frequency_minutes?: number
           created_at?: string
+          discovery_method?: Database["public"]["Enums"]["discovery_method"] | null
           enabled?: boolean
           id?: string
+          industry?: string | null
+          last_error?: string | null
           last_success_at?: string | null
           licence_name?: string | null
           licence_url?: string | null
           name?: string
+          opportunities_discovered?: number
+          parser_config?: Json
+          parser_type?: string | null
           rate_limit_per_minute?: number | null
+          reliability_score?: number
           reuse_status?: Database["public"]["Enums"]["reuse_status"]
           robots_checked_at?: string | null
           schedule_expression?: string | null
@@ -1040,6 +1074,257 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      deal_source_links: {
+        Row: {
+          candidate_id: string | null
+          created_at: string
+          deal_id: string
+          id: string
+          link_type: string
+          normalized_url: string
+          source_id: string
+          url: string
+        }
+        Insert: {
+          candidate_id?: string | null
+          created_at?: string
+          deal_id: string
+          id?: string
+          link_type?: string
+          normalized_url: string
+          source_id: string
+          url: string
+        }
+        Update: {
+          candidate_id?: string | null
+          created_at?: string
+          deal_id?: string
+          id?: string
+          link_type?: string
+          normalized_url?: string
+          source_id?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_source_links_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "opportunity_candidates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_source_links_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_source_links_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "data_sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      discovered_source_candidates: {
+        Row: {
+          confidence: number
+          content_hash: string | null
+          created_at: string
+          discovered_at: string
+          domain: string | null
+          id: string
+          matched_keywords: string[]
+          normalized_url: string
+          published_at: string | null
+          raw_payload: Json | null
+          source_id: string
+          status: Database["public"]["Enums"]["candidate_status"]
+          title: string | null
+          updated_at: string
+          url: string
+        }
+        Insert: {
+          confidence?: number
+          content_hash?: string | null
+          created_at?: string
+          discovered_at?: string
+          domain?: string | null
+          id?: string
+          matched_keywords?: string[]
+          normalized_url: string
+          published_at?: string | null
+          raw_payload?: Json | null
+          source_id: string
+          status?: Database["public"]["Enums"]["candidate_status"]
+          title?: string | null
+          updated_at?: string
+          url: string
+        }
+        Update: {
+          confidence?: number
+          content_hash?: string | null
+          created_at?: string
+          discovered_at?: string
+          domain?: string | null
+          id?: string
+          matched_keywords?: string[]
+          normalized_url?: string
+          published_at?: string | null
+          raw_payload?: Json | null
+          source_id?: string
+          status?: Database["public"]["Enums"]["candidate_status"]
+          title?: string | null
+          updated_at?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "discovered_source_candidates_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "data_sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      discovery_keywords: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          id: string
+          keyword: string
+          match_count: number
+          normalized_keyword: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          keyword: string
+          match_count?: number
+          normalized_keyword: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          keyword?: string
+          match_count?: number
+          normalized_keyword?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      opportunity_candidates: {
+        Row: {
+          buyer_domain: string | null
+          buyer_name: string | null
+          confidence: number
+          content_hash: string
+          created_at: string
+          deadline: string | null
+          dedupe_key: string
+          discovered_candidate_id: string | null
+          extraction: Json
+          id: string
+          is_private: boolean
+          market_sector: Database["public"]["Enums"]["market_sector"]
+          merged_deal_id: string | null
+          opportunity_type: Database["public"]["Enums"]["deal_type"] | null
+          raw_record_id: string | null
+          reject_reason: string | null
+          source_id: string
+          status: Database["public"]["Enums"]["candidate_status"]
+          summary: string | null
+          title: string | null
+          updated_at: string
+          url: string
+        }
+        Insert: {
+          buyer_domain?: string | null
+          buyer_name?: string | null
+          confidence?: number
+          content_hash: string
+          created_at?: string
+          deadline?: string | null
+          dedupe_key: string
+          discovered_candidate_id?: string | null
+          extraction?: Json
+          id?: string
+          is_private?: boolean
+          market_sector?: Database["public"]["Enums"]["market_sector"]
+          merged_deal_id?: string | null
+          opportunity_type?: Database["public"]["Enums"]["deal_type"] | null
+          raw_record_id?: string | null
+          reject_reason?: string | null
+          source_id: string
+          status?: Database["public"]["Enums"]["candidate_status"]
+          summary?: string | null
+          title?: string | null
+          updated_at?: string
+          url: string
+        }
+        Update: {
+          buyer_domain?: string | null
+          buyer_name?: string | null
+          confidence?: number
+          content_hash?: string
+          created_at?: string
+          deadline?: string | null
+          dedupe_key?: string
+          discovered_candidate_id?: string | null
+          extraction?: Json
+          id?: string
+          is_private?: boolean
+          market_sector?: Database["public"]["Enums"]["market_sector"]
+          merged_deal_id?: string | null
+          opportunity_type?: Database["public"]["Enums"]["deal_type"] | null
+          raw_record_id?: string | null
+          reject_reason?: string | null
+          source_id?: string
+          status?: Database["public"]["Enums"]["candidate_status"]
+          summary?: string | null
+          title?: string | null
+          updated_at?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "opportunity_candidates_discovered_candidate_id_fkey"
+            columns: ["discovered_candidate_id"]
+            isOneToOne: false
+            referencedRelation: "discovered_source_candidates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opportunity_candidates_merged_deal_id_fkey"
+            columns: ["merged_deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opportunity_candidates_raw_record_id_fkey"
+            columns: ["raw_record_id"]
+            isOneToOne: false
+            referencedRelation: "raw_records"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opportunity_candidates_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "data_sources"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       deal_classifications: {
         Row: {
@@ -3304,6 +3589,7 @@ export type Database = {
         | "OPEN_FRAMEWORK"
         | "DYNAMIC_MARKET"
         | "OTHER"
+      candidate_status: "PENDING_REVIEW" | "APPROVED" | "REJECTED" | "DUPLICATE" | "EXPIRED"
       deal_stage: "EARLY" | "PLANNING" | "LIVE" | "AWARD" | "CONTRACT" | "ENDED"
       deal_status:
         | "UPCOMING"
@@ -3333,6 +3619,10 @@ export type Database = {
         | "CONTRACT_RENEWAL"
         | "AWARD"
         | "GRANT"
+        | "ITT"
+        | "SUPPLIER_ONBOARDING"
+        | "OTHER"
+      discovery_method: "RSS" | "HTML" | "JSON"
       ingestion_status:
         | "QUEUED"
         | "RUNNING"
@@ -3341,6 +3631,7 @@ export type Database = {
         | "FAILED"
         | "SKIPPED"
       leakage_risk: "LOW" | "REVIEW" | "HIGH"
+      market_sector: "PUBLIC" | "PRIVATE" | "MIXED"
       organization_role:
         | "BUYER"
         | "LEAD_BUYER"
@@ -3535,6 +3826,13 @@ export const Constants = {
       app_role: ["USER", "ADMIN"],
       billing_event_status: ["RECEIVED", "PROCESSED", "IGNORED", "FAILED"],
       billing_interval: ["MONTHLY", "ANNUAL"],
+      candidate_status: [
+        "PENDING_REVIEW",
+        "APPROVED",
+        "REJECTED",
+        "DUPLICATE",
+        "EXPIRED",
+      ],
       buyer_sector: [
         "PUBLIC",
         "PRIVATE",
@@ -3551,6 +3849,7 @@ export const Constants = {
         "OTHER",
       ],
       deal_stage: ["EARLY", "PLANNING", "LIVE", "AWARD", "CONTRACT", "ENDED"],
+      discovery_method: ["RSS", "HTML", "JSON"],
       deal_status: [
         "UPCOMING",
         "OPEN",
@@ -3580,6 +3879,9 @@ export const Constants = {
         "CONTRACT_RENEWAL",
         "AWARD",
         "GRANT",
+        "ITT",
+        "SUPPLIER_ONBOARDING",
+        "OTHER",
       ],
       ingestion_status: [
         "QUEUED",
@@ -3590,6 +3892,7 @@ export const Constants = {
         "SKIPPED",
       ],
       leakage_risk: ["LOW", "REVIEW", "HIGH"],
+      market_sector: ["PUBLIC", "PRIVATE", "MIXED"],
       organization_role: [
         "BUYER",
         "LEAD_BUYER",

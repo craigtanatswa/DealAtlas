@@ -145,12 +145,20 @@ select ok(not has_table_privilege('anon', 'public.organizations', 'select'), 'an
 select ok(not has_table_privilege('anon', 'public.notices', 'select'), 'anon cannot select notices');
 select ok(not has_table_privilege('anon', 'public.documents', 'select'), 'anon cannot select documents');
 select ok(not has_table_privilege('anon', 'public.data_sources', 'select'), 'anon cannot select data_sources');
+select ok(not has_table_privilege('anon', 'public.discovery_keywords', 'select'), 'anon cannot select discovery_keywords');
+select ok(not has_table_privilege('anon', 'public.discovered_source_candidates', 'select'), 'anon cannot select discovered_source_candidates');
+select ok(not has_table_privilege('anon', 'public.opportunity_candidates', 'select'), 'anon cannot select opportunity_candidates');
+select ok(not has_table_privilege('anon', 'public.deal_source_links', 'select'), 'anon cannot select deal_source_links');
 
 select ok(not has_table_privilege('authenticated', 'public.deals', 'select'), 'authenticated cannot select deals');
 select ok(not has_table_privilege('authenticated', 'public.organizations', 'select'), 'authenticated cannot select organizations');
 select ok(not has_table_privilege('authenticated', 'public.notices', 'select'), 'authenticated cannot select notices');
 select ok(not has_table_privilege('authenticated', 'public.documents', 'select'), 'authenticated cannot select documents');
 select ok(not has_table_privilege('authenticated', 'public.data_sources', 'select'), 'authenticated cannot select data_sources');
+select ok(not has_table_privilege('authenticated', 'public.discovery_keywords', 'select'), 'authenticated cannot select discovery_keywords');
+select ok(not has_table_privilege('authenticated', 'public.discovered_source_candidates', 'select'), 'authenticated cannot select discovered_source_candidates');
+select ok(not has_table_privilege('authenticated', 'public.opportunity_candidates', 'select'), 'authenticated cannot select opportunity_candidates');
+select ok(not has_table_privilege('authenticated', 'public.deal_source_links', 'select'), 'authenticated cannot select deal_source_links');
 select ok(not has_table_privilege('authenticated', 'public.subscriptions', 'select'), 'authenticated cannot select subscriptions');
 select ok(not has_table_privilege('authenticated', 'public.billing_events', 'select'), 'authenticated cannot select billing_events');
 select ok(not has_table_privilege('authenticated', 'public.alerts', 'select'), 'authenticated cannot select alerts');
