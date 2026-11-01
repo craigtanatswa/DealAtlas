@@ -48,7 +48,7 @@ describe("supabase migrations", () => {
   const files = listMigrations();
   const sql = files.map(readMigration).join("\n");
 
-  it("are numbered 0001-0026, 0028-0030, 0040-0043, 0045-0047, 0049, 0051-0056, leaving 0027, 0031-0039, 0044, 0048 and 0050 for open pull requests", () => {
+  it("are numbered 0001-0026, 0028-0030, 0040-0043, 0045-0047, 0049, 0051-0056 and 0058, leaving 0027, 0031-0039, 0044, 0048, 0050 and 0057 for open pull requests", () => {
     expect(files).toEqual([
       "0001_extensions_and_types.sql",
       "0002_core_schema.sql",
@@ -93,6 +93,7 @@ describe("supabase migrations", () => {
       "0054_preview_slug_no_digit_runs.sql",
       "0055_leak_gate_currency_codes.sql",
       "0056_private_discovery_stage1.sql",
+      "0058_enable_devolved_portals_private_buyers.sql",
     ]);
   });
 

@@ -25,7 +25,7 @@ export function sell2WalesSourceRecord(
     licenceUrl: SELL2WALES_LICENCE_URL,
     reuseStatus: "OPEN_LICENSE",
     scrapingPermitted: false,
-    enabled: false,
+    enabled: true,
     scheduleExpression: "0 */6 * * *",
     rateLimitPerMinute: 10,
     robotsCheckedAt: "2026-10-14T00:00:00.000Z",

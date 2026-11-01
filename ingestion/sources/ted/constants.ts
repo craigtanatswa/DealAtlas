@@ -33,6 +33,13 @@ export const TED_FETCH_POLICY: AllowedFetchPolicy = {
 };
 
 /**
+ * Buyer legal types that cover entities with special or exclusive rights
+ * (for example private utilities) and bodies running contracts subsidised by
+ * a contracting authority.
+ */
+export const TED_PRIVATE_BUYER_LEGAL_TYPES = ["spec-rights-entity", "org-sub"] as const;
+
+/**
  * Expert-search fields that keep a notice in the UK-SME set.
  * `publication-date` is the ingest window, not an eligibility rule.
  *
@@ -41,7 +48,8 @@ export const TED_FETCH_POLICY: AllowedFetchPolicy = {
  * - procedure-type: procedures with a public call. `neg-wo-call` is out.
  *   Design contests are included via notice-type even when procedure-type
  *   is absent.
- * - submission-language: ENG, so a UK SME can submit in English.
+ * - submission-language: ENG, so a UK SME can submit in English, unless
+ *   buyer-legal-type is one of the private types.
  * - deadline-receipt-request: receipt of tenders, requests to participate,
  *   or expressions of interest. The query uses today (UTC); each row is
  *   dropped unless that instant is still in the future.
@@ -118,6 +126,7 @@ export const TED_SEARCH_FIELDS = [
   "buyer-country",
   "buyer-city",
   "buyer-internet-address",
+  "buyer-legal-type",
   "classification-cpv",
   "deadline-receipt-request",
   "place-of-performance",

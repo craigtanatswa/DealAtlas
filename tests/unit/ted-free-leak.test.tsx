@@ -9,6 +9,10 @@ import { DealPreviewDetail } from "@/components/deals/deal-preview-detail";
 import { DealProCard } from "@/components/deals/deal-pro-card";
 import { DealSearchResults } from "@/components/deals/deal-search-results";
 import { UnlockPanel } from "@/components/deals/unlock-panel";
+import { runIngestion } from "@/ingestion/core/pipeline";
+import { createTedAdapter } from "@/ingestion/sources/ted/adapter";
+import { tedSourceRecord } from "@/ingestion/sources/ted/seed";
+import { createMemoryIngestionStore } from "@/ingestion/store/memory";
 import { toPublicDealPreview, type PreviewDtoFields } from "@/lib/search/dto";
 
 afterEach(cleanup);
@@ -173,6 +177,111 @@ describe("TED attribution source boundary", () => {
       const source = fs.readFileSync(file, "utf8");
       expect(source, relative).not.toContain("ted-attribution");
       expect(source, relative).not.toContain("TED_SOURCE_KEY");
+    }
+  });
+});
+
+const TED_NOW = new Date("2026-10-14T12:00:00.000Z");
+
+function privateTedNotice(): Record<string, unknown> {
+  const page = JSON.parse(
+    fs.readFileSync(
+      path.join(process.cwd(), "tests/fixtures/ingestion/ted/open.json"),
+      "utf8",
+    ),
+  ) as { notices: Record<string, unknown>[] };
+  return { ...page.notices[0], "buyer-legal-type": ["org-sub"] };
+}
+
+describe("private TED buyers stay out of the free preview", () => {
+  it("shows only the country and hides the buyer, domain, URL and reference", async () => {
+    const store = createMemoryIngestionStore({
+      sources: [tedSourceRecord({ id: "source-ted" })],
+    });
+    const adapter = createTedAdapter({
+      now: () => TED_NOW,
+      http: {
+        async getJson() {
+          throw new Error("TED search is POST");
+        },
+        async postJson(url) {
+          return {
+            url,
+            status: 200,
+            contentType: "application/json",
+            body: {
+              notices: [privateTedNotice()],
+              totalNoticeCount: 1,
+            },
+            rawText: "{}",
+          };
+        },
+      },
+    });
+    const result = await runIngestion({
+      sourceKey: "ted",
+      store,
+      adapter,
+      now: TED_NOW,
+      limit: 1,
+      triggerType: "TEST",
+      updatedFrom: "2026-10-07T00:00:00",
+      updatedTo: "2026-10-14T00:00:00",
+    });
+
+    expect(result.counters.new).toBe(1);
+    const deal = store.deals[0]!;
+    expect(deal.buyerSector).toBe("PRIVATE");
+    expect(deal.exactLocationText).toBe("Sweden");
+    expect(deal.exactLocationText).not.toContain("Stockholm");
+
+    const preview = store.previews[0]!;
+    const dto = toPublicDealPreview({
+      slug: preview.slug,
+      preview_title: preview.previewTitle,
+      preview_summary: preview.previewSummary,
+      deal_type: preview.dealType,
+      buyer_sector: preview.buyerSector,
+      stage: preview.stage,
+      status: preview.status,
+      main_category: preview.mainCategory,
+      broad_region: preview.broadRegion,
+      value_band: preview.valueBand,
+      deadline_band: preview.deadlineBand,
+      duration_band: preview.durationBand,
+      sme_suitability: preview.smeSuitability,
+      bid_complexity: preview.bidComplexity,
+      competition_level: preview.competitionLevel,
+      requirements_preview: preview.requirementsPreview,
+      relevance_tags: preview.relevanceTags,
+      freshness_label: preview.freshnessLabel,
+    });
+    const html = [
+      render(<DealPreviewDetail deal={dto} />).container.innerHTML,
+      render(
+        <DealSearchResults
+          filters={{ page: 1, limit: 20 }}
+          result={{
+            items: [{ preview: dto, match: null }],
+            total: 1,
+            page: 1,
+            pageSize: 20,
+          }}
+        />,
+      ).container.innerHTML,
+    ].join("\n");
+    const blob = `${JSON.stringify(dto)}\n${html}`;
+
+    expect(dto.buyerSector).toBe("PRIVATE");
+    for (const marker of [
+      "Canary Municipal Works",
+      "canary-buyer.example",
+      "ted.europa.eu",
+      "REF-CANARY-42",
+      "999111-2026",
+      "Stockholm",
+    ]) {
+      expect(blob).not.toContain(marker);
     }
   });
 });

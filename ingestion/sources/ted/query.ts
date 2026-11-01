@@ -1,6 +1,7 @@
 import {
   TED_COMPETITION_NOTICE_TYPES,
   TED_OPEN_PROCEDURE_TYPES,
+  TED_PRIVATE_BUYER_LEGAL_TYPES,
   TED_SEARCH_FIELDS,
   TED_UK_SME_PLACES,
 } from "@/ingestion/sources/ted/constants";
@@ -16,10 +17,11 @@ export function buildTedExpertQuery(window: TedSearchWindow): string {
   const notices = TED_COMPETITION_NOTICE_TYPES.join(" ");
   const procedures = TED_OPEN_PROCEDURE_TYPES.join(" ");
   const places = TED_UK_SME_PLACES.join(" ");
+  const privateLegalTypes = TED_PRIVATE_BUYER_LEGAL_TYPES.join(" ");
   const parts = [
     `notice-type IN (${notices})`,
     `(procedure-type IN (${procedures}) OR notice-type = cn-desg)`,
-    "submission-language = ENG",
+    `(submission-language = ENG OR buyer-legal-type IN (${privateLegalTypes}))`,
     `deadline-receipt-request >= ${window.deadlineOn}`,
     `place-of-performance IN (${places})`,
   ];
