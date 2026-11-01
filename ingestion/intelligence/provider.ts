@@ -3,7 +3,8 @@ export type LanguageModelPurpose =
   | "preview_summary"
   | "intelligence_summary"
   | "buyer_need"
-  | "ideal_supplier";
+  | "ideal_supplier"
+  | "opportunity_extraction";
 
 export type LanguageModelRequest = {
   purpose: LanguageModelPurpose;

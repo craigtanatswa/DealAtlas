@@ -30,6 +30,18 @@ export type DataSourceRecord = {
   complianceNotes: string | null;
   lastSuccessAt: string | null;
   consecutiveFailures: number;
+  discoveryMethod?: Database["public"]["Enums"]["discovery_method"] | null;
+  parserType?: string | null;
+  parserConfig?: Record<string, unknown>;
+  country?: string;
+  industry?: string | null;
+  crawlFrequencyMinutes?: number;
+  lastError?: string | null;
+  opportunitiesDiscovered?: number;
+  reliabilityScore?: number | null;
+  autoPublish?: boolean;
+  autoPublishMinConfidence?: number;
+  marketSector?: Database["public"]["Enums"]["market_sector"];
 };
 
 export type IngestionRunRecord = {

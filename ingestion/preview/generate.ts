@@ -113,13 +113,14 @@ export function leakScanInputFromContext(
     extraReferences: lots
       .map((lot) => lot.sourceLotId)
       .filter((item): item is string => Boolean(item)),
-    sourceUrl: deal.sourceUrl,
+    sourceUrl: context.privateSourceUrl ?? deal.sourceUrl,
     applicationUrl: deal.applicationUrl,
     sourceName: context.source.name,
     sourceKey: context.source.sourceKey,
     buyerName: buyer?.canonicalName ?? null,
-    buyerAliases: context.buyerAliases,
-    buyerDomain: buyer?.domain ?? null,
+    buyerAliases: [...context.buyerAliases, ...(context.privateBuyerNames ?? [])],
+    buyerDomain: buyer?.domain ?? context.privateBuyerDomains?.[0] ?? null,
+    buyerDomains: context.privateBuyerDomains,
     buyerWebsite: buyer?.website ?? null,
     buyerEmail: buyer?.email ?? null,
     buyerPhone: buyer?.phone ?? null,

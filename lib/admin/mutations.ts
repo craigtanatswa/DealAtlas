@@ -1,15 +1,22 @@
 import "server-only";
 
+import { canIngestSource } from "@/ingestion/core/compliance";
 import { persistCandidate } from "@/ingestion/core/persist";
 import { runIngestion } from "@/ingestion/core/pipeline";
+import {
+  createDiscoverySourceAdapter,
+  createSupabaseDiscoveryStore,
+  runDiscoverySource,
+} from "@/ingestion/discovery";
 import { contextFromPersisted } from "@/ingestion/intelligence/types";
 import { persistIntelligenceAndPreview } from "@/ingestion/preview/publish";
 import { getSourceAdapter } from "@/ingestion/sources/registry";
 import { createSupabaseIngestionStore } from "@/ingestion/store/supabase";
-import type { RawRecordRow } from "@/ingestion/store/types";
+import type { DataSourceRecord, RawRecordRow } from "@/ingestion/store/types";
 import { recordAdminAudit } from "@/lib/admin/audit";
 import { AdminMutationError } from "@/lib/admin/errors";
 import { canPublishPreview } from "@/lib/admin/preview-policy";
+import { autoPublishMayPublish, candidateApprovedForPublish } from "@/lib/deals/publish-gate";
 import { ADMIN_INGEST_LIMIT } from "@/lib/admin/paths";
 import { sourceEnableBlockReason } from "@/lib/admin/source-enable";
 import { throwIfQueryError } from "@/lib/db/errors";
@@ -28,7 +35,7 @@ async function loadSourceForEnable(sourceId: string) {
   const { data, error } = await admin()
     .from("data_sources")
     .select(
-      "id, source_key, name, reuse_status, access_method, scraping_permitted, enabled, licence_name, licence_url, terms_url",
+      "id, source_key, name, reuse_status, access_method, scraping_permitted, enabled, licence_name, licence_url, terms_url, discovery_method",
     )
     .eq("id", sourceId)
     .maybeSingle();
@@ -54,6 +61,7 @@ export async function setSourceEnabled(input: {
       reuseStatus: source.reuse_status,
       accessMethod: source.access_method,
       scrapingPermitted: source.scraping_permitted,
+      discoveryMethod: source.discovery_method,
     });
     if (blocked) {
       throw new AdminMutationError("SOURCE_ENABLE_BLOCKED", blocked);
@@ -251,10 +259,321 @@ export async function mergeOrganizations(input: {
   });
 }
 
+async function runManualDiscoveryIngestion(input: {
+  actorId: string;
+  sourceId: string;
+  source: DataSourceRecord;
+}): Promise<{ status: string; runId: string | null; reason?: string }> {
+  const ingestion = store();
+  const discoveryStore = createSupabaseDiscoveryStore(admin());
+  try {
+    const source = input.source;
+    const compliance = canIngestSource({
+      sourceKey: source.sourceKey,
+      enabled: source.enabled,
+      reuseStatus: source.reuseStatus,
+      accessMethod: source.accessMethod,
+      scrapingPermitted: source.scrapingPermitted,
+      licenceName: source.licenceName,
+      licenceUrl: source.licenceUrl,
+      termsUrl: source.termsUrl,
+    });
+    if (!compliance.allowed) {
+      throw new AdminMutationError("SOURCE_INGEST_BLOCKED", compliance.reason);
+    }
+    const { data: keywordRows, error: keywordError } = await admin()
+      .from("discovery_keywords")
+      .select("keyword, enabled")
+      .eq("enabled", true);
+    const keywords = throwIfQueryError("Load discovery keywords", {
+      data: keywordRows ?? [],
+      error: keywordError,
+    });
+    const adapter = createDiscoverySourceAdapter({
+      id: source.id,
+      sourceKey: source.sourceKey,
+      name: source.name,
+      baseUrl: source.baseUrl,
+      apiUrl: source.apiUrl,
+      accessMethod: source.accessMethod,
+      reuseStatus: source.reuseStatus,
+      scrapingPermitted: source.scrapingPermitted,
+      discoveryMethod: source.discoveryMethod ?? null,
+      parserType: source.parserType ?? null,
+      parserConfig: source.parserConfig ?? {},
+      rateLimitPerMinute: source.rateLimitPerMinute,
+      autoPublish: source.autoPublish ?? false,
+      autoPublishMinConfidence: source.autoPublishMinConfidence ?? 90,
+    });
+
+    const result = await runDiscoverySource({
+      source,
+      adapter,
+      store: discoveryStore,
+      keywords,
+      limit: ADMIN_INGEST_LIMIT,
+      persistDeal: async (draft, candidate) => {
+        const now = new Date();
+        const raw = await ingestion.insertRawRecord({
+          sourceId: source.id,
+          ingestionRunId: null,
+          externalRecordId: candidate.externalPrimaryId,
+          sourceUrl: draft.normalizedUrl,
+          publishedAt: now.toISOString(),
+          fetchedAt: now.toISOString(),
+          contentHash: draft.contentHash,
+          contentType: "text/html",
+          rawPayload: {
+            discovery: draft.rawPayload ?? null,
+            extraction: draft,
+          },
+          parserVersion: "discovery-v1.0.0",
+        });
+        const persisted = await persistCandidate({
+          store: ingestion,
+          source,
+          raw: raw.record,
+          candidate,
+          now,
+        });
+        const context = await contextFromPersisted({
+          store: ingestion,
+          deal: persisted.deal,
+          now,
+        });
+        if (context) {
+          context.privateBuyerNames = draft.buyerName ? [draft.buyerName] : [];
+          context.privateBuyerDomains = draft.buyerDomain ? [draft.buyerDomain] : [];
+          context.privateSourceUrl = draft.normalizedUrl;
+          await persistIntelligenceAndPreview({
+            store: ingestion,
+            context,
+            publication: "preserve",
+          });
+        }
+        return persisted.deal.id;
+      },
+    });
+
+    for (const candidate of result.candidatesStored) {
+      if (!candidate.mergedDealId) {
+        continue;
+      }
+      const { error } = await admin()
+        .from("deal_source_links")
+        .upsert(
+          {
+            deal_id: candidate.mergedDealId,
+            source_id: source.id,
+            candidate_id: candidate.id,
+            url: candidate.url,
+            normalized_url: candidate.normalizedUrl,
+            link_type: "DISCOVERED",
+          },
+          { onConflict: "source_id,normalized_url" },
+        );
+      throwIfQueryError("Link discovery candidate to deal", { data: true, error });
+    }
+
+    await recordAdminAudit({
+      actorId: input.actorId,
+      action: "discovery.run",
+      entityType: "data_source",
+      entityId: input.sourceId,
+      summary: `Discovery run for ${source.sourceKey}: ${result.candidates} candidates, ${result.rejected} rejected, ${result.duplicates} duplicates`,
+      metadata: {
+        discovered: result.discovered,
+        candidates: result.candidates,
+        rejected: result.rejected,
+        duplicates: result.duplicates,
+        errors: result.errors,
+      },
+    });
+    return {
+      status: result.errors === 0 ? "SUCCEEDED" : result.candidates > 0 ? "PARTIAL" : "FAILED",
+      runId: null,
+      reason: result.reason,
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Discovery failed.";
+    await recordAdminAudit({
+      actorId: input.actorId,
+      action: "discovery.run_failed",
+      entityType: "data_source",
+      entityId: input.sourceId,
+      summary: `Discovery failed for ${input.source.sourceKey}: ${message}`,
+    });
+    throw new AdminMutationError("DISCOVERY_FAILED", message);
+  }
+}
+
+export async function approveOpportunityCandidate(input: {
+  actorId: string;
+  candidateId: string;
+}): Promise<void> {
+  const { data, error } = await admin()
+    .from("opportunity_candidates")
+    .select("id, source_id, status, confidence, opportunity_type, merged_deal_id")
+    .eq("id", input.candidateId)
+    .maybeSingle();
+  const candidate = throwIfQueryError("Load opportunity candidate", { data, error });
+  if (!candidate) {
+    throw new AdminMutationError("NOT_FOUND", "That candidate does not exist.");
+  }
+  const approved = candidateApprovedForPublish({
+    status: "APPROVED",
+    opportunityType: candidate.opportunity_type,
+    confidence: candidate.confidence,
+  });
+  if (!approved.allowed) {
+    throw new AdminMutationError("CANDIDATE_NOT_PUBLISHABLE", approved.reason ?? "Cannot approve.");
+  }
+
+  const { error: updateError } = await admin()
+    .from("opportunity_candidates")
+    .update({
+      status: "APPROVED",
+      reject_reason: null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", input.candidateId);
+  throwIfQueryError("Approve opportunity candidate", { data: true, error: updateError });
+
+  const source = await store().getSourceById(candidate.source_id);
+  if (source && candidate.merged_deal_id) {
+    const auto = autoPublishMayPublish({
+      candidate: {
+        status: "APPROVED",
+        opportunityType: candidate.opportunity_type,
+        confidence: candidate.confidence,
+      },
+      source: {
+        enabled: source.enabled,
+        reuseStatus: source.reuseStatus,
+        scrapingPermitted: source.scrapingPermitted,
+        autoPublish: source.autoPublish ?? false,
+        autoPublishMinConfidence: source.autoPublishMinConfidence ?? 90,
+      },
+    });
+    if (auto.allowed) {
+      try {
+        await publishPreviewIfLow({ actorId: input.actorId, dealId: candidate.merged_deal_id });
+      } catch {
+        await recordAdminAudit({
+          actorId: input.actorId,
+          action: "discovery.auto_publish_blocked",
+          entityType: "opportunity_candidate",
+          entityId: input.candidateId,
+          summary: "Auto-publish was blocked by the preview gate.",
+        });
+      }
+    }
+  }
+
+  await recordAdminAudit({
+    actorId: input.actorId,
+    action: "discovery.approve",
+    entityType: "opportunity_candidate",
+    entityId: input.candidateId,
+    summary: `Approved discovery candidate ${input.candidateId}`,
+    metadata: { dealId: candidate.merged_deal_id },
+  });
+}
+
+export async function rejectOpportunityCandidate(input: {
+  actorId: string;
+  candidateId: string;
+  reason: string;
+}): Promise<void> {
+  const { data, error } = await admin()
+    .from("opportunity_candidates")
+    .update({
+      status: "REJECTED",
+      reject_reason: input.reason.trim().slice(0, 500) || "Rejected by admin",
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", input.candidateId)
+    .select("id")
+    .maybeSingle();
+  throwIfQueryError("Reject opportunity candidate", { data, error });
+  if (!data) {
+    throw new AdminMutationError("NOT_FOUND", "That candidate does not exist.");
+  }
+  await recordAdminAudit({
+    actorId: input.actorId,
+    action: "discovery.reject",
+    entityType: "opportunity_candidate",
+    entityId: input.candidateId,
+    summary: `Rejected discovery candidate ${input.candidateId}`,
+  });
+}
+
+export async function addDiscoveryKeyword(input: {
+  actorId: string;
+  keyword: string;
+}): Promise<void> {
+  const keyword = input.keyword.replace(/\s+/g, " ").trim();
+  if (keyword.length < 2 || keyword.length > 120) {
+    throw new AdminMutationError("INVALID_KEYWORD", "Keywords must be 2-120 characters.");
+  }
+  const normalized = keyword
+    .normalize("NFKD")
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const { error } = await admin().from("discovery_keywords").insert({
+    keyword,
+    normalized_keyword: normalized,
+  });
+  if (error?.code === "23505") {
+    throw new AdminMutationError("DUPLICATE_KEYWORD", "That keyword already exists.");
+  }
+  throwIfQueryError("Add discovery keyword", { data: true, error });
+  await recordAdminAudit({
+    actorId: input.actorId,
+    action: "discovery.keyword_add",
+    entityType: "discovery_keyword",
+    summary: `Added discovery keyword ${keyword}`,
+    metadata: { keyword },
+  });
+}
+
+export async function setDiscoveryKeywordEnabled(input: {
+  actorId: string;
+  keywordId: string;
+  enabled: boolean;
+}): Promise<void> {
+  const { data, error } = await admin()
+    .from("discovery_keywords")
+    .update({ enabled: input.enabled, updated_at: new Date().toISOString() })
+    .eq("id", input.keywordId)
+    .select("keyword")
+    .maybeSingle();
+  throwIfQueryError("Update discovery keyword", { data, error });
+  if (!data) {
+    throw new AdminMutationError("NOT_FOUND", "That keyword does not exist.");
+  }
+  await recordAdminAudit({
+    actorId: input.actorId,
+    action: input.enabled ? "discovery.keyword_enable" : "discovery.keyword_disable",
+    entityType: "discovery_keyword",
+    entityId: input.keywordId,
+    summary: `${input.enabled ? "Enabled" : "Disabled"} discovery keyword ${data.keyword}`,
+  });
+}
+
 export async function runManualSourceIngestion(input: {
   actorId: string;
   sourceId: string;
 }): Promise<{ status: string; runId: string | null; reason?: string }> {
+  const sourceRecord = await store().getSourceById(input.sourceId);
+  if (!sourceRecord) {
+    throw new AdminMutationError("NOT_FOUND", "That source does not exist.");
+  }
+  if (sourceRecord.discoveryMethod) {
+    return runManualDiscoveryIngestion({ ...input, source: sourceRecord });
+  }
   const source = await loadSourceForEnable(input.sourceId);
   try {
     const adapter = getSourceAdapter(source.source_key);

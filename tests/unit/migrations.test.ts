@@ -48,7 +48,7 @@ describe("supabase migrations", () => {
   const files = listMigrations();
   const sql = files.map(readMigration).join("\n");
 
-  it("are numbered 0001-0026, 0028-0030, 0040-0043, 0045-0047, 0049, 0051-0055, leaving 0027, 0031-0039, 0044, 0048 and 0050 for open pull requests", () => {
+  it("are numbered 0001-0026, 0028-0030, 0040-0043, 0045-0047, 0049, 0051-0056, leaving 0027, 0031-0039, 0044, 0048 and 0050 for open pull requests", () => {
     expect(files).toEqual([
       "0001_extensions_and_types.sql",
       "0002_core_schema.sql",
@@ -92,6 +92,7 @@ describe("supabase migrations", () => {
       "0053_search_preview_dtos_categories.sql",
       "0054_preview_slug_no_digit_runs.sql",
       "0055_leak_gate_currency_codes.sql",
+      "0056_private_discovery_stage1.sql",
     ]);
   });
 
@@ -468,6 +469,29 @@ describe("supabase migrations", () => {
     expect(sql).toContain("Cloudflare/WAF");
     expect(sql).toContain("electronic reproduction");
     expect(sql).not.toMatch(/disable row level security/i);
+  });
+
+  it("0056 adds private discovery candidates behind approval and RLS gates", () => {
+    const body = readMigration("0056_private_discovery_stage1.sql");
+    for (const table of [
+      "discovery_keywords",
+      "discovered_source_candidates",
+      "opportunity_candidates",
+      "deal_source_links",
+    ]) {
+      expect(body).toContain(`create table public.${table}`);
+      expect(body).toContain(`alter table public.${table} enable row level security`);
+      expect(body).toContain(`revoke all on table public.${table} from public, anon, authenticated`);
+    }
+    expect(body).toContain("discovery_method public.discovery_method");
+    expect(body).toContain("market_sector public.market_sector");
+    expect(body).toContain("auto_publish boolean not null default false");
+    expect(body).toContain("auto_publish_min_confidence integer not null default 90");
+    expect(body).toContain("enforce_discovery_candidate_publish_gate");
+    expect(body).toContain("'SUPPLIER_ONBOARDING'::public.deal_type");
+    expect(body).toContain("'APPROVED'::public.candidate_status");
+    expect(body).not.toMatch(/grant .* to (anon|authenticated)/);
+    expect(body).not.toMatch(/disable row level security/i);
   });
 
   it("keep the combined schema file in sync with migrations", () => {
