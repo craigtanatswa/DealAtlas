@@ -71,6 +71,51 @@ export default async function AdminDiscoveryPage() {
         <AdminStatCard label="Duplicates / expired" value={overview.counts.DUPLICATE + overview.counts.EXPIRED} />
       </section>
 
+      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <AdminStatCard
+          label="Search queries this month"
+          value={`${overview.metrics.searchQueriesUsedMonth} / ${overview.metrics.searchQueryCap}`}
+        />
+        <AdminStatCard
+          label="LLM calls this month"
+          value={`${overview.metrics.llmCallsUsedMonth} / ${overview.metrics.llmCallCap}`}
+        />
+        <AdminStatCard
+          label="Blocked domains"
+          value={overview.metrics.blockedDomains.length}
+          tone={overview.metrics.blockedDomains.length > 0 ? "warning" : "default"}
+        />
+        <AdminStatCard
+          label="Expired candidates"
+          value={overview.metrics.expiredCount}
+        />
+      </section>
+
+      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="rounded-lg border border-border bg-card px-4 py-3">
+          <h2 className="text-sm font-semibold">Candidates by method</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Search {overview.metrics.candidatesByMethod.SEARCH} · Crawl {overview.metrics.candidatesByMethod.CRAWL} · Unknown {overview.metrics.candidatesByMethod.UNKNOWN}
+          </p>
+        </div>
+        <div className="rounded-lg border border-border bg-card px-4 py-3">
+          <h2 className="text-sm font-semibold">Sources by health</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Healthy {overview.metrics.sourcesByHealth.healthy} · Degraded {overview.metrics.sourcesByHealth.degraded} · Down {overview.metrics.sourcesByHealth.down} · Disabled {overview.metrics.sourcesByHealth.disabled}
+          </p>
+        </div>
+        <div className="rounded-lg border border-border bg-card px-4 py-3 sm:col-span-2">
+          <h2 className="text-sm font-semibold">Top blocked domains</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {overview.metrics.blockedDomains.length === 0
+              ? "No blocked discoveries this month."
+              : overview.metrics.blockedDomains
+                  .map((item) => `${item.domain} (${item.count})`)
+                  .join(" · ")}
+          </p>
+        </div>
+      </section>
+
       <section>
         <h2 className="mb-3 text-lg font-semibold">Discovery sources</h2>
         {overview.sources.length === 0 ? (
@@ -84,6 +129,7 @@ export default async function AdminDiscoveryPage() {
               <TableRow>
                 <TableHead>Source</TableHead>
                 <TableHead>Method</TableHead>
+                <TableHead>Health</TableHead>
                 <TableHead>Enabled</TableHead>
                 <TableHead>Auto-publish</TableHead>
                 <TableHead>Candidates</TableHead>
@@ -104,6 +150,21 @@ export default async function AdminDiscoveryPage() {
                     ) : null}
                   </TableCell>
                   <TableCell>{source.discoveryMethod ?? "—"}</TableCell>
+                  <TableCell>
+                    <Badge
+                      variant={
+                        source.health === "healthy"
+                          ? "success"
+                          : source.health === "degraded"
+                            ? "warning"
+                            : source.health === "down"
+                              ? "destructive"
+                              : "outline"
+                      }
+                    >
+                      {source.health}
+                    </Badge>
+                  </TableCell>
                   <TableCell>
                     <Badge variant={source.enabled ? "success" : "outline"}>
                       {source.enabled ? "Enabled" : "Disabled"}

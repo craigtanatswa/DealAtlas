@@ -27,6 +27,8 @@ export function createSupabaseDiscoveryStore(client: Client): DiscoveryStore {
             matched_keywords: input.matchedKeywords,
             content_hash: input.contentHash,
             raw_payload: input.rawPayload as Database["public"]["Tables"]["discovered_source_candidates"]["Insert"]["raw_payload"],
+            discovery_channel: input.discoveryChannel ?? undefined,
+            blocked_reason: input.blockedReason ?? null,
             updated_at: new Date().toISOString(),
           },
           { onConflict: "source_id,normalized_url" },
