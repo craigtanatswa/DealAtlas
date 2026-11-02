@@ -108,7 +108,9 @@ function decodeEntities(html: string): string {
 }
 
 function visibleText(html: string): string {
-  return decodeEntities(html.replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ");
+  return decodeEntities(html.replace(/<[^>]+>/g, " "))
+    .replace(/\s+([,.;:!?])/g, "$1")
+    .replace(/\s+/g, " ");
 }
 
 describe("guide content", () => {
@@ -124,18 +126,18 @@ describe("guide content", () => {
     const second = getPublishedGuide(SLUG_2)!;
     expect(second.published).toBe(true);
     expect(second.path).toBe(`/guides/${SLUG_2}`);
-    expect(second.title).toBe("How to find public sector tenders in the UK (2026 guide)");
+    expect(second.title).toBe("How to find public sector and government tenders in the UK");
     expect(second.description).toBe(
-      "How to find public sector tenders in the UK: where notices are published, 2026 thresholds, early signals such as pipeline notices, and how to register.",
+      "How to find public sector and government tenders in the UK: where notices are published, 2026 thresholds, early pipeline signals, and search them on DealAtlas.",
     );
     expect(second.h1).toBe("How to find public sector tenders in the UK");
-    expect(second.updated).toBe("2026-10-19");
+    expect(second.updated).toBe("2026-11-02");
     const third = getPublishedGuide(SLUG_3)!;
     expect(third.published).toBe(true);
     expect(third.path).toBe(`/guides/${SLUG_3}`);
-    expect(third.title).toBe("Why one hub beats checking scattered UK tender sources");
-    expect(third.h1).toBe("Why one searchable hub beats checking scattered UK tender sources");
-    expect(third.updated).toBe("2026-10-27");
+    expect(third.title).toBe("UK tender search: find UK tenders in one place");
+    expect(third.h1).toBe("UK tender search: find UK tenders in one place");
+    expect(third.updated).toBe("2026-11-02");
   });
 
   it("drops unpublished guides from lists and lookups (404)", () => {
@@ -412,7 +414,7 @@ describe("guide JSON-LD", () => {
       name: string;
       acceptedAnswer: { "@type": string; text: string };
     }>;
-    expect(faq).toHaveLength(5);
+    expect(faq).toHaveLength(6);
     const html = renderToStaticMarkup(
       <GuideMarkdown blocks={guide.blocks} publishedGuidePaths={publishedGuidePaths()} />,
     );
@@ -426,7 +428,7 @@ describe("guide JSON-LD", () => {
       expect(visible).toContain(item.acceptedAnswer.text);
       expect(source).toContain(`### ${item.name}\n\n${item.acceptedAnswer.text}\n`);
     }
-    expect(faq[0].name).toBe("Do I need to register on the central digital platform to bid for council contracts?");
+    expect(faq[0].name).toBe("What rules govern council procurement in the UK?");
   });
 
   it("lists published guides on the index", () => {
@@ -447,7 +449,7 @@ describe("guide #2 JSON-LD", () => {
       "@id": `${url}#article`,
       headline: "How to find public sector tenders in the UK",
       mainEntityOfPage: url,
-      dateModified: "2026-10-19",
+      dateModified: "2026-11-02",
       image: `${ORIGIN}/brand/dealatlas-logo.png`,
     });
     expect(byType("BreadcrumbList").itemListElement).toEqual([
@@ -465,6 +467,7 @@ describe("guide #2 JSON-LD", () => {
     expect(faq.map((item) => item.name)).toEqual([
       "Where are UK public sector tenders published?",
       "How do I search UK public sector tenders in one place?",
+      "Where can I find government tenders in the UK?",
       "Are older-regime notices still published after the Procurement Act 2023?",
       "What is the threshold for advertising a public contract in 2026?",
       "How can I find out about tenders before they are published?",
@@ -588,10 +591,10 @@ describe("guide sitemap and robots", () => {
     const entries = guideSitemapEntries(ORIGIN, listPublishedGuides());
     expect(entries.map((entry) => [entry.url, entry.lastModified])).toEqual(
       expect.arrayContaining([
-        [`${ORIGIN}/guides`, "2026-10-29"],
-        [`${ORIGIN}/guides/${SLUG}`, "2026-10-19"],
-        [`${ORIGIN}/guides/${SLUG_2}`, "2026-10-19"],
-        [`${ORIGIN}/guides/${SLUG_3}`, "2026-10-27"],
+        [`${ORIGIN}/guides`, "2026-11-02"],
+        [`${ORIGIN}/guides/${SLUG}`, "2026-11-02"],
+        [`${ORIGIN}/guides/${SLUG_2}`, "2026-11-02"],
+        [`${ORIGIN}/guides/${SLUG_3}`, "2026-11-02"],
         [`${ORIGIN}/guides/${SLUG_4}`, "2026-10-29"],
       ]),
     );
