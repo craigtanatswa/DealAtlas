@@ -8,6 +8,7 @@ import {
   createSupabaseDiscoveryStore,
   runDiscoverySource,
 } from "@/ingestion/discovery";
+import { createLanguageModelProvider } from "@/ingestion/intelligence";
 import { contextFromPersisted } from "@/ingestion/intelligence/types";
 import { persistIntelligenceAndPreview } from "@/ingestion/preview/publish";
 import { getSourceAdapter } from "@/ingestion/sources/registry";
@@ -310,6 +311,7 @@ async function runManualDiscoveryIngestion(input: {
       source,
       adapter,
       store: discoveryStore,
+      provider: createLanguageModelProvider(process.env),
       keywords,
       limit: ADMIN_INGEST_LIMIT,
       persistDeal: async (draft, candidate) => {

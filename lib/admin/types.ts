@@ -287,11 +287,33 @@ export type AdminDiscoverySourceRow = {
   opportunitiesDiscovered: number;
   reliabilityScore: number | null;
   lastError: string | null;
+  health: "healthy" | "degraded" | "down" | "disabled";
   candidateCount: number;
+};
+
+export type AdminDiscoveryMetrics = {
+  searchQueriesUsedMonth: number;
+  searchQueryCap: number;
+  llmCallsUsedMonth: number;
+  llmCallCap: number;
+  candidatesByMethod: {
+    SEARCH: number;
+    CRAWL: number;
+    UNKNOWN: number;
+  };
+  blockedDomains: Array<{ domain: string; count: number }>;
+  sourcesByHealth: {
+    healthy: number;
+    degraded: number;
+    down: number;
+    disabled: number;
+  };
+  expiredCount: number;
 };
 
 export type AdminDiscoveryOverview = {
   counts: Record<Database["public"]["Enums"]["candidate_status"], number>;
+  metrics: AdminDiscoveryMetrics;
   sources: AdminDiscoverySourceRow[];
   recent: AdminDiscoveryCandidateRow[];
   keywords: AdminDiscoveryKeywordRow[];

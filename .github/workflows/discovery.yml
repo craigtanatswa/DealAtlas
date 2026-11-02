@@ -1,0 +1,54 @@
+name: Private discovery
+
+on:
+  workflow_dispatch:
+    inputs:
+      job:
+        description: Discovery job to run
+        type: choice
+        options:
+          - discover
+          - expiry
+          - health
+        default: discover
+
+concurrency:
+  group: dealatlas-discovery-${{ github.event.inputs.job }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  run:
+    name: Run private discovery job
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+      SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+      DEALATLAS_SEARCH_PROVIDER: ${{ secrets.DEALATLAS_SEARCH_PROVIDER }}
+      DEALATLAS_SEARCH_API_KEY: ${{ secrets.DEALATLAS_SEARCH_API_KEY }}
+      DEALATLAS_SEARCH_MAX_QUERIES_PER_RUN: ${{ secrets.DEALATLAS_SEARCH_MAX_QUERIES_PER_RUN }}
+      DEALATLAS_LLM_API_KEY: ${{ secrets.DEALATLAS_LLM_API_KEY }}
+      DEALATLAS_LLM_BASE_URL: ${{ secrets.DEALATLAS_LLM_BASE_URL }}
+      DEALATLAS_LLM_MODEL: ${{ secrets.DEALATLAS_LLM_MODEL }}
+      DEALATLAS_LLM_MAX_CALLS_PER_RUN: ${{ secrets.DEALATLAS_LLM_MAX_CALLS_PER_RUN }}
+    steps:
+      - name: Check out
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run discovery job
+        run: npm run job -- --job "${{ inputs.job }}" --mode live
