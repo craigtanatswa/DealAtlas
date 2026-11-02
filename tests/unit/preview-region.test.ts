@@ -7,9 +7,10 @@ import {
 } from "@/lib/preview/region";
 
 describe("countryRegion", () => {
-  it("maps two-letter country codes to country names", () => {
+  it("maps two-letter country codes to country names or Europe (other)", () => {
     expect(countryRegion("SE")).toBe("Sweden");
-    expect(countryRegion("EL")).toBe("Greece");
+    expect(countryRegion("DE")).toBe("Germany");
+    expect(countryRegion("EL")).toBe("Europe (other)");
   });
 
   it("rejects codes that are not ISO alpha-2", () => {

@@ -249,14 +249,35 @@ export const COUNTRY_REGIONS: Record<string, string> = {
   CH: "Switzerland",
 };
 
-export const COUNTRY_REGION_NAMES = [...new Set(Object.values(COUNTRY_REGIONS))].sort();
+export const EUROPE_OTHER = "Europe (other)";
+
+// Anti-bypass: a country with few open notices would let a free user narrow a search to
+// one or two deals. Bucketed: LI, IS, MT, LU, CY (always) plus every country with <=5 open TED notices in prod on
+// 2026-11-02 (open notices by buyer country: PT 1, RO 1, AT 2, SK 2, IT 3, GR 3, LT 4, HR 4, PL 5, CY 5; BG, HU, IS,
+// LI, NO, CH 0; MT 50 and LU 10 bucketed regardless). Named countries that day: SI 6, CZ 7, FR 7, LV 8, DK 8, FI 8,
+// NL 10, EE 12, SE 20, DE 24, BE 26, ES 33, IE 140. Revisit by hand; never compute at runtime.
+export const LOW_VOLUME_COUNTRIES = new Set([
+  "AT", "BG", "CH", "CY", "EL", "GR", "HR", "HU", "IS", "IT",
+  "LI", "LT", "LU", "MT", "NO", "PL", "PT", "RO", "SK",
+]);
+
+export const COUNTRY_REGION_NAMES = [
+  ...new Set(
+    Object.entries(COUNTRY_REGIONS)
+      .filter(([code]) => !LOW_VOLUME_COUNTRIES.has(code))
+      .map(([, name]) => name),
+  ),
+  EUROPE_OTHER,
+].sort();
 
 /** Every value allowed in broad_region: UK NUTS1 regions plus country names. */
 export const PUBLISHABLE_REGIONS: readonly string[] = [...BROAD_REGIONS, ...COUNTRY_REGION_NAMES];
 
 export function countryRegion(code: string | null | undefined): string | null {
   const key = (code ?? "").trim().toUpperCase();
-  return key.length === 2 ? (COUNTRY_REGIONS[key] ?? null) : null;
+  if (key.length !== 2) return null;
+  if (LOW_VOLUME_COUNTRIES.has(key)) return EUROPE_OTHER;
+  return COUNTRY_REGIONS[key] ?? null;
 }
 
 const NUTS1_NAMES = new Set(Object.values(NUTS1_REGIONS));

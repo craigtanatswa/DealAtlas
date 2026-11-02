@@ -746,7 +746,7 @@ begin
        'East Midlands', 'West Midlands', 'Yorkshire and the Humber', 'North West England',
        'North East England', 'Scotland', 'Wales', 'Northern Ireland', 'Remote',
        -- Country-level regions (TED); lib/preview/region.ts COUNTRY_REGIONS.
-       'Austria', 'Belgium', 'Bulgaria', 'Croatia', 'Cyprus', 'Czechia', 'Denmark', 'Estonia', 'Finland', 'France', 'Germany', 'Greece', 'Hungary', 'Iceland', 'Ireland', 'Italy', 'Latvia', 'Liechtenstein', 'Lithuania', 'Luxembourg', 'Malta', 'Netherlands', 'Norway', 'Poland', 'Portugal', 'Romania', 'Slovakia', 'Slovenia', 'Spain', 'Sweden', 'Switzerland'
+       'Belgium', 'Czechia', 'Denmark', 'Estonia', 'Europe (other)', 'Finland', 'France', 'Germany', 'Ireland', 'Latvia', 'Netherlands', 'Slovenia', 'Spain', 'Sweden'
      ]) then
     return query select 'BROAD_REGION'::text, 'HIGH'::public.leakage_risk, left(btrim(p_broad_region), 120);
   end if;
@@ -888,7 +888,7 @@ as $$
       'Wales',
       'Northern Ireland',
       'Remote',
-      'Austria', 'Belgium', 'Bulgaria', 'Croatia', 'Cyprus', 'Czechia', 'Denmark', 'Estonia', 'Finland', 'France', 'Germany', 'Greece', 'Hungary', 'Iceland', 'Ireland', 'Italy', 'Latvia', 'Liechtenstein', 'Lithuania', 'Luxembourg', 'Malta', 'Netherlands', 'Norway', 'Poland', 'Portugal', 'Romania', 'Slovakia', 'Slovenia', 'Spain', 'Sweden', 'Switzerland'
+      'Belgium', 'Czechia', 'Denmark', 'Estonia', 'Europe (other)', 'Finland', 'France', 'Germany', 'Ireland', 'Latvia', 'Netherlands', 'Slovenia', 'Spain', 'Sweden'
     ]::text[] as regions,
       array[
       'Closing window Closing today',
