@@ -284,6 +284,7 @@ export async function persistCandidate(options: {
   if (linked.deal) {
     deal = await store.updateDeal(linked.deal.id, {
       ...dealFields,
+      ...keepKnownStatusAndDeadline(linked.deal, dealFields),
       firstPublishedAt: linked.deal.firstPublishedAt ?? dealFields.firstPublishedAt,
       sourceCount: Math.max(linked.deal.sourceCount, 1),
     });
@@ -682,4 +683,21 @@ export async function persistCandidate(options: {
   }
 
   return { outcome, deal, noticeId: notice.id, lotIds };
+}
+
+/**
+ * An update release never nulls out a known deadline and never drops a
+ * classified status back to UNCLASSIFIED.
+ */
+export function keepKnownStatusAndDeadline(
+  existing: Pick<DealRecord, "status" | "submissionDeadline">,
+  incoming: Pick<DealRecord, "status" | "submissionDeadline">,
+): Pick<DealRecord, "status" | "submissionDeadline"> {
+  return {
+    submissionDeadline: incoming.submissionDeadline ?? existing.submissionDeadline,
+    status:
+      incoming.status === "UNCLASSIFIED" && existing.status !== "UNCLASSIFIED"
+        ? existing.status
+        : incoming.status,
+  };
 }

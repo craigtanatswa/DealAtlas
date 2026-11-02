@@ -209,3 +209,112 @@ export function isBelowNuts1Place(word: string): boolean {
   }
   return CITY_REGIONS.some((entry) => entry.pattern.test(token));
 }
+
+/**
+ * Country-level regions for European notices (TED). Mapped from the ISO
+ * 3166-1 alpha-2 code only; nothing finer than the country is ever shown.
+ */
+export const COUNTRY_REGIONS: Record<string, string> = {
+  AT: "Austria",
+  BE: "Belgium",
+  BG: "Bulgaria",
+  HR: "Croatia",
+  CY: "Cyprus",
+  CZ: "Czechia",
+  DK: "Denmark",
+  EE: "Estonia",
+  FI: "Finland",
+  FR: "France",
+  DE: "Germany",
+  GR: "Greece",
+  EL: "Greece",
+  HU: "Hungary",
+  IE: "Ireland",
+  IT: "Italy",
+  LV: "Latvia",
+  LT: "Lithuania",
+  LU: "Luxembourg",
+  MT: "Malta",
+  NL: "Netherlands",
+  PL: "Poland",
+  PT: "Portugal",
+  RO: "Romania",
+  SK: "Slovakia",
+  SI: "Slovenia",
+  ES: "Spain",
+  SE: "Sweden",
+  IS: "Iceland",
+  LI: "Liechtenstein",
+  NO: "Norway",
+  CH: "Switzerland",
+};
+
+export const EUROPE_OTHER = "Europe (other)";
+
+// Anti-bypass: a country with few open notices would let a free user narrow a search to
+// one or two deals. Bucketed: LI, IS, MT, LU, CY (always) plus every country with <=5 open TED notices in prod on
+// 2026-11-02 (open notices by buyer country: PT 1, RO 1, AT 2, SK 2, IT 3, GR 3, LT 4, HR 4, PL 5, CY 5; BG, HU, IS,
+// LI, NO, CH 0; MT 50 and LU 10 bucketed regardless). Named countries that day: SI 6, CZ 7, FR 7, LV 8, DK 8, FI 8,
+// NL 10, EE 12, SE 20, DE 24, BE 26, ES 33, IE 140. Revisit by hand; never compute at runtime.
+export const LOW_VOLUME_COUNTRIES = new Set([
+  "AT", "BG", "CH", "CY", "EL", "GR", "HR", "HU", "IS", "IT",
+  "LI", "LT", "LU", "MT", "NO", "PL", "PT", "RO", "SK",
+]);
+
+export const COUNTRY_REGION_NAMES = [
+  ...new Set(
+    Object.entries(COUNTRY_REGIONS)
+      .filter(([code]) => !LOW_VOLUME_COUNTRIES.has(code))
+      .map(([, name]) => name),
+  ),
+  EUROPE_OTHER,
+].sort();
+
+/** Every value allowed in broad_region: UK NUTS1 regions plus country names. */
+export const PUBLISHABLE_REGIONS: readonly string[] = [...BROAD_REGIONS, ...COUNTRY_REGION_NAMES];
+
+export function countryRegion(code: string | null | undefined): string | null {
+  const key = (code ?? "").trim().toUpperCase();
+  if (key.length !== 2) return null;
+  if (LOW_VOLUME_COUNTRIES.has(key)) return EUROPE_OTHER;
+  return COUNTRY_REGIONS[key] ?? null;
+}
+
+const NUTS1_NAMES = new Set(Object.values(NUTS1_REGIONS));
+
+/**
+ * NUTS1/ITL1 region derived from a UK buyer address. The address fields are
+ * read here and only the derived region name is returned; the postcode, town
+ * and street never leave this function.
+ */
+export function buyerAddressRegion(
+  buyer: { region?: string | null; postcode?: string | null; countryCode?: string | null } | null | undefined,
+): BroadRegion | null {
+  if (!buyer) return null;
+  const country = (buyer.countryCode ?? "GB").trim().toUpperCase();
+  if (country !== "GB" && country !== "UK") return null;
+  const fromRegion = broadRegionFromLocation([buyer.region]);
+  if (fromRegion && NUTS1_NAMES.has(fromRegion)) return fromRegion;
+  const fromPostcode = buyer.postcode ? postcodeRegion(buyer.postcode) : null;
+  return fromPostcode && NUTS1_NAMES.has(fromPostcode) ? fromPostcode : null;
+}
+
+const TED_SOURCE_KEY = "ted";
+const FIND_A_TENDER_SOURCE_KEY = "find-a-tender";
+
+/** The single region value stored on a preview. */
+export function previewRegion(input: {
+  sourceKey?: string | null;
+  locationParts: Array<string | null | undefined>;
+  buyer?: { region?: string | null; postcode?: string | null; countryCode?: string | null } | null;
+}): string | null {
+  if (input.sourceKey === TED_SOURCE_KEY) {
+    return countryRegion(input.buyer?.countryCode);
+  }
+  const fromLocation = broadRegionFromLocation(input.locationParts);
+  if (fromLocation) return fromLocation;
+  if (input.sourceKey === FIND_A_TENDER_SOURCE_KEY) {
+    return buyerAddressRegion(input.buyer);
+  }
+  return null;
+}

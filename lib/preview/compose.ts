@@ -16,7 +16,7 @@ import {
   durationBandFromDates,
   valueBandFromAmounts,
 } from "@/lib/preview/bands";
-import { broadRegionFromLocation } from "@/lib/preview/region";
+import { previewRegion } from "@/lib/preview/region";
 import { pgTrgmSimilarity } from "@/lib/redaction/gate-normalize";
 import { DESCRIPTION_SIMILARITY_REVIEW } from "@/lib/redaction/scan";
 import { wordShingleSimilarity } from "@/lib/redaction/similarity";
@@ -279,10 +279,11 @@ export function composeFreePreview(
     4,
   );
   const sectorNoun = sectorOrganisationNoun(deal.buyerSector as BuyerSector);
-  const region = broadRegionFromLocation([
-    deal.exactLocationText,
-    ...lots.map((lot) => lot.exactLocationText),
-  ]);
+  const region = previewRegion({
+    sourceKey: context.source?.sourceKey,
+    locationParts: [deal.exactLocationText, ...lots.map((lot) => lot.exactLocationText)],
+    buyer,
+  });
   const subject = goods[0] || (deal.mainCategory && !/^(goods|services|works)$/i.test(deal.mainCategory)
     ? deal.mainCategory
     : "Commercial capability");

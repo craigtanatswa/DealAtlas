@@ -3,7 +3,7 @@ import * as cheerio from "cheerio";
 import { FREE_ALERT_DTO_KEYS } from "@/lib/alerts/types";
 import { DEAL_CATEGORY_CATALOG } from "@/lib/matching/categories";
 import { DEADLINE_BANDS, DURATION_BANDS, VALUE_BANDS } from "@/lib/preview/bands";
-import { BROAD_REGIONS } from "@/lib/preview/region";
+import { PUBLISHABLE_REGIONS } from "@/lib/preview/region";
 import { PUBLIC_PREVIEW_DTO_KEYS } from "@/lib/search/dto";
 import { indexableCategoryLandings } from "@/lib/seo/category-landings";
 
@@ -88,7 +88,7 @@ export function dtoAssertions(
   const badKeys: string[] = [];
   const badValues: string[] = [];
   const cats = new Set<unknown>(DEAL_CATEGORY_CATALOG.map((c) => c.name));
-  const regions = new Set<unknown>([...BROAD_REGIONS, null]);
+  const regions = new Set<unknown>([...PUBLISHABLE_REGIONS, null]);
   const valueBands = new Set<unknown>([...VALUE_BANDS, null]);
   const deadlineBands = new Set<unknown>([...DEADLINE_BANDS, null]);
   const durationBands = new Set<unknown>([...DURATION_BANDS, null]);
