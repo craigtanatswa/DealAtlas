@@ -63,7 +63,8 @@ const SLUG = "how-to-win-council-contracts";
 const SLUG_2 = "how-to-find-public-sector-tenders";
 const SLUG_3 = "uk-tender-search";
 const SLUG_4 = "council-tenders-uk";
-const PUBLISHED = [SLUG, SLUG_2, SLUG_3, SLUG_4];
+const SLUG_5 = "transport-logistics-tenders-uk";
+const PUBLISHED = [SLUG, SLUG_2, SLUG_3, SLUG_4, SLUG_5];
 const UNPUBLISHED_SLUG = "frameworks-and-dynamic-markets";
 
 function frontmatter(slug: string, published: boolean, updated: string) {
@@ -588,14 +589,15 @@ describe("guide sitemap and robots", () => {
     const entries = guideSitemapEntries(ORIGIN, listPublishedGuides());
     expect(entries.map((entry) => [entry.url, entry.lastModified])).toEqual(
       expect.arrayContaining([
-        [`${ORIGIN}/guides`, "2026-10-29"],
+        [`${ORIGIN}/guides`, "2026-11-02"],
         [`${ORIGIN}/guides/${SLUG}`, "2026-10-19"],
         [`${ORIGIN}/guides/${SLUG_2}`, "2026-10-19"],
         [`${ORIGIN}/guides/${SLUG_3}`, "2026-10-27"],
         [`${ORIGIN}/guides/${SLUG_4}`, "2026-10-29"],
+        [`${ORIGIN}/guides/${SLUG_5}`, "2026-11-02"],
       ]),
     );
-    expect(entries).toHaveLength(5);
+    expect(entries).toHaveLength(6);
   });
 
   it("emits no sitemap entries when nothing is published", () => {
@@ -623,5 +625,31 @@ describe("guide analytics", () => {
     for (const source of files) {
       expect(source).not.toMatch(/gtag|dataLayer|publicAnalyticsContext|previewSlug|dealId/);
     }
+  });
+});
+
+describe("guide markdown strikethrough", () => {
+  it("parses ~~text~~ as a del node", () => {
+    expect(parseInline("was ~~£39/mo~~ now")).toEqual([
+      { type: "text", value: "was " },
+      { type: "del", children: [{ type: "text", value: "£39/mo" }] },
+      { type: "text", value: " now" },
+    ]);
+  });
+
+  it("renders ~~text~~ as <del>", () => {
+    const html = renderToStaticMarkup(
+      <GuideMarkdown blocks={parseMarkdown("Price: ~~£39/mo~~ **£24.17/mo**")} publishedGuidePaths={new Set()} />,
+    );
+    expect(html).toContain("<del>£39/mo</del>");
+    expect(html).not.toContain("~~");
+  });
+
+  it("keeps HTML inside ~~ ~~ escaped", () => {
+    const html = renderToStaticMarkup(
+      <GuideMarkdown blocks={parseMarkdown("~~<script>alert(1)</script>~~")} publishedGuidePaths={new Set()} />,
+    );
+    expect(html).toContain("<del>&lt;script&gt;alert(1)&lt;/script&gt;</del>");
+    expect(html).not.toContain("<script>");
   });
 });

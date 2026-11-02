@@ -11,6 +11,7 @@ export type Inline =
   | { type: "text"; value: string }
   | { type: "strong"; children: Inline[] }
   | { type: "em"; children: Inline[] }
+  | { type: "del"; children: Inline[] }
   | { type: "code"; value: string }
   | { type: "link"; href: string; children: Inline[] };
 
@@ -74,6 +75,14 @@ export function parseInline(source: string): Inline[] {
       flush();
       out.push({ type: "strong", children: parseInline(strong[1]) });
       index += strong[0].length;
+      continue;
+    }
+
+    const del = /^~~([^~]+)~~/.exec(rest);
+    if (del) {
+      flush();
+      out.push({ type: "del", children: parseInline(del[1]) });
+      index += del[0].length;
       continue;
     }
 
