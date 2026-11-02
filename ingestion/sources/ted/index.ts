@@ -11,6 +11,6 @@ export {
   TED_WINDOW_FIELD,
 } from "@/ingestion/sources/ted/constants";
 export { createTedAdapter } from "@/ingestion/sources/ted/adapter";
-export { parseTedNotice, parseTedRaw } from "@/ingestion/sources/ted/parse";
+export { parseTedNotice, parseTedRaw, tedBuyerSector } from "@/ingestion/sources/ted/parse";
 export { buildTedExpertQuery } from "@/ingestion/sources/ted/query";
 export { tedSourceRecord } from "@/ingestion/sources/ted/seed";

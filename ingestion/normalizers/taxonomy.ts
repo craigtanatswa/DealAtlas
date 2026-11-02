@@ -37,6 +37,15 @@ export function categoryFromCpv(
 export function buyerSectorFromClassifications(
   schemes: Array<{ scheme?: string | null; id?: string | null; description?: string | null }>,
 ): BuyerSector {
+  const privateUtility = schemes.some(
+    (item) =>
+      item.scheme?.trim().toLowerCase() === "uk_ca_type" &&
+      item.id?.trim().toLowerCase() === "privateutility",
+  );
+  if (privateUtility) {
+    return "PRIVATE";
+  }
+
   const blob = schemes
     .map((item) => `${item.id ?? ""} ${item.description ?? ""}`.toLowerCase())
     .join(" ");

@@ -19,6 +19,24 @@ describe("Find a Tender OCDS parse", () => {
     expect(candidate.valueMaxExVat).toBe(250000);
   });
 
+  it("maps a UK_CA_TYPE private utility buyer to PRIVATE", () => {
+    const payload = readFindATenderFixture("normal.json") as {
+      releases: Array<{
+        parties: Array<{ details?: { classifications?: unknown[] } }>;
+      }>;
+    };
+    const buyer = payload.releases[0]?.parties[0];
+    buyer.details = {
+      ...buyer.details,
+      classifications: [
+        { scheme: "UK_CA_TYPE", id: "privateUtility", description: "Private utility" },
+      ],
+    };
+
+    const [candidate] = parseFindATenderRaw(payload, NOW);
+    expect(candidate.buyerSector).toBe("PRIVATE");
+  });
+
   it("keeps lots as first-class records", () => {
     const [candidate] = parseFindATenderRaw(
       readFindATenderFixture("multi-lot.json"),

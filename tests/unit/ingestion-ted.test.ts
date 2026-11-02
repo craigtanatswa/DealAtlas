@@ -8,11 +8,17 @@ import { runIngestion } from "@/ingestion/core/pipeline";
 import { createTedAdapter } from "@/ingestion/sources/ted/adapter";
 import {
   TED_ELIGIBILITY_FIELDS,
+  TED_PRIVATE_BUYER_LEGAL_TYPES,
   TED_REQUEST_LIMIT,
   TED_REQUEST_WINDOW_MS,
   TED_SEARCH_API,
+  TED_SEARCH_FIELDS,
 } from "@/ingestion/sources/ted/constants";
-import { parseTedNotice, parseTedRaw } from "@/ingestion/sources/ted/parse";
+import {
+  parseTedNotice,
+  parseTedRaw,
+  tedBuyerSector,
+} from "@/ingestion/sources/ted/parse";
 import { buildTedExpertQuery } from "@/ingestion/sources/ted/query";
 import { tedSourceRecord } from "@/ingestion/sources/ted/seed";
 import { createMemoryIngestionStore } from "@/ingestion/store/memory";
@@ -62,8 +68,14 @@ describe("TED expert query", () => {
       expect(query).toContain(field);
     }
     expect(query).toContain("publication-date >= 20261007");
-    expect(query).toContain("submission-language = ENG");
+    expect(query).toContain("publication-date <= 20261014");
+    expect(query).toContain(
+      "(submission-language = ENG OR buyer-legal-type IN (spec-rights-entity org-sub))",
+    );
     expect(query).toContain("deadline-receipt-request >= 20261014");
+    expect(query).toContain("notice-type IN (");
+    expect(query).toContain("(procedure-type IN (");
+    expect(query).toContain("place-of-performance IN (");
     expect(query).toContain("cn-standard");
     expect(query).toContain("cn-desg");
     expect(query).toContain("anyw-eea");
@@ -72,6 +84,35 @@ describe("TED expert query", () => {
     expect(query).not.toContain("GBR");
     expect(TED_REQUEST_LIMIT).toBeLessThanOrEqual(10);
     expect(TED_REQUEST_WINDOW_MS).toBeGreaterThanOrEqual(60_000);
+  });
+
+  it("uses the private buyer legal types from the shared constant", () => {
+    const query = buildTedExpertQuery({ deadlineOn: "20261014" });
+    expect(TED_PRIVATE_BUYER_LEGAL_TYPES).toEqual([
+      "spec-rights-entity",
+      "org-sub",
+    ]);
+    expect(TED_SEARCH_FIELDS).toContain("buyer-legal-type");
+    expect(query).toContain(
+      `(submission-language = ENG OR buyer-legal-type IN (${TED_PRIVATE_BUYER_LEGAL_TYPES.join(" ")}))`,
+    );
+  });
+});
+
+describe("TED buyer sector", () => {
+  it("marks private legal types as PRIVATE", () => {
+    expect(tedBuyerSector("spec-rights-entity")).toBe("PRIVATE");
+    expect(tedBuyerSector(" ORG-SUB ")).toBe("PRIVATE");
+    expect(tedBuyerSector(["pub-undert", "org-sub"])).toBe("PRIVATE");
+    expect(tedBuyerSector([["spec-rights-entity"]])).toBe("PRIVATE");
+  });
+
+  it("leaves public and missing legal types as PUBLIC", () => {
+    expect(tedBuyerSector("pub-undert")).toBe("PUBLIC");
+    expect(tedBuyerSector("body-pl")).toBe("PUBLIC");
+    expect(tedBuyerSector(undefined)).toBe("PUBLIC");
+    expect(tedBuyerSector(null)).toBe("PUBLIC");
+    expect(tedBuyerSector([])).toBe("PUBLIC");
   });
 });
 
@@ -87,6 +128,12 @@ describe("TED notice parse", () => {
     expect(candidate?.documents).toHaveLength(1);
     expect(candidate?.exactLocationText).toBe("Sweden");
     expect(candidate?.reference).toBe("REF-CANARY-42");
+
+    const [privateCandidate] = parseTedRaw(
+      { notice: { ...readOpenNotice(), "buyer-legal-type": ["org-sub"] } },
+      NOW,
+    );
+    expect(privateCandidate?.buyerSector).toBe("PRIVATE");
 
     const closed = {
       ...readOpenNotice(),
