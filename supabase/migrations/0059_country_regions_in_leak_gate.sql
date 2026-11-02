@@ -794,8 +794,6 @@ grant execute on function private.preview_leak_findings(uuid, text, text, text, 
 comment on function private.preview_leak_findings(uuid, text, text, text, jsonb, text[], text) is
   'Preview leak gate v2 findings. Tokens can contain protected values; service-role/admin only.';
 
-create or replace function private.detect_preview_leakage(
-
 create or replace function private.preview_dto_requirements(p jsonb)
 returns jsonb
 language sql
