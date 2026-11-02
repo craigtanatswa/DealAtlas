@@ -1,5 +1,6 @@
 import { IngestionError } from "@/ingestion/core/errors";
 import type { CanonicalCandidate } from "@/ingestion/core/types";
+import { sectorFromCpv, sectorFromText } from "@/lib/deals/buyer-taxonomy";
 import type { DealStage, DealStatus, DealType } from "@/lib/search/filters";
 
 import { GCA_BUYER_NAME, gcaAgreementUrl } from "@/ingestion/sources/gca/constants";
@@ -106,6 +107,9 @@ export function gcaCandidate(input: {
     },
   ];
   const description = input.description ? stripHtml(input.description) : null;
+  const cpvSector = sectorFromCpv(input.cpvCode);
+  const sector =
+    cpvSector !== "OTHER" ? cpvSector : sectorFromText(input.category);
   return {
     sourceKey: input.sourceKey,
     ocid: `da-${input.sourceKey}-${rm}`,
@@ -119,6 +123,8 @@ export function gcaCandidate(input: {
     applicationUrl: null,
     dealType: input.mapped.dealType,
     buyerSector: "PUBLIC",
+    buyerType: "PUBLIC",
+    sector,
     stage: input.mapped.stage,
     status: input.mapped.status,
     mainCategory: blank(input.category),

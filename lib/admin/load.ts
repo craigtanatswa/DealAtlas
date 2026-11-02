@@ -14,6 +14,8 @@ import { monitoringConfigured } from "@/lib/monitoring";
 import { isSourceStale } from "@/lib/jobs/schedule";
 import type {
   AdminBillingEventRow,
+  AdminBuyerTypeCount,
+  AdminBuyerTypeSectorCount,
   AdminDashboard,
   AdminDealListRow,
   AdminDedupCandidate,
@@ -28,6 +30,7 @@ import type {
   AdminPreviewRunRow,
   AdminRawRecordRow,
   AdminRunRow,
+  AdminSectorCount,
   AdminSourceRow,
 } from "@/lib/admin/types";
 import type { LeakFinding } from "@/lib/redaction/scan";
@@ -451,6 +454,7 @@ export async function loadAdminDashboard(): Promise<AdminDashboard> {
     recentAudit,
     enabledSourceRows,
     recentJobRows,
+    taxonomyCountRows,
   ] = await Promise.all([
     countExact(() =>
       admin().from("data_sources").select("source_key", { count: "exact", head: true }),
@@ -555,6 +559,7 @@ export async function loadAdminDashboard(): Promise<AdminDashboard> {
       )
       .order("started_at", { ascending: false })
       .limit(8),
+    admin().rpc("admin_deal_taxonomy_counts"),
   ]);
 
   const runResult = throwIfQueryError("Failed to load recent runs", {
@@ -592,6 +597,33 @@ export async function loadAdminDashboard(): Promise<AdminDashboard> {
       }> | null) ?? [],
     error: recentJobRows.error,
   });
+  const taxonomyRows = throwIfQueryError("Failed to load deal taxonomy counts", {
+    data:
+      (taxonomyCountRows.data as Array<{
+        buyer_type: Database["public"]["Enums"]["buyer_type"];
+        sector: Database["public"]["Enums"]["deal_sector"];
+        deal_count: number;
+      }> | null) ?? [],
+    error: taxonomyCountRows.error,
+  });
+  const buyerTypeTotals = new Map<
+    Database["public"]["Enums"]["buyer_type"],
+    number
+  >();
+  const sectorTotals = new Map<Database["public"]["Enums"]["deal_sector"], number>();
+  const taxonomyBreakdown: AdminBuyerTypeSectorCount[] = taxonomyRows.map((row) => {
+    const count = Number(row.deal_count);
+    buyerTypeTotals.set(row.buyer_type, (buyerTypeTotals.get(row.buyer_type) ?? 0) + count);
+    sectorTotals.set(row.sector, (sectorTotals.get(row.sector) ?? 0) + count);
+    return { buyerType: row.buyer_type, sector: row.sector, count };
+  });
+  const buyerTypeCounts: AdminBuyerTypeCount[] = [...buyerTypeTotals.entries()]
+    .map(([buyerType, count]) => ({ buyerType, count }))
+    .sort((left, right) => right.count - left.count);
+  const sectorCounts: AdminSectorCount[] = [...sectorTotals.entries()]
+    .map(([sector, count]) => ({ sector, count }))
+    .sort((left, right) => right.count - left.count);
+
   const staleSources = enabledSources.filter((row) =>
     isSourceStale({
       enabled: row.enabled,
@@ -640,6 +672,11 @@ export async function loadAdminDashboard(): Promise<AdminDashboard> {
     failedMatchJobs,
     failedDocuments,
     billingErrors,
+    buyerTypeCounts,
+    sectorCounts,
+    buyerTypeSectorCounts: taxonomyBreakdown,
+    dealsByBuyerType: buyerTypeCounts,
+    dealsByBuyerTypeSector: taxonomyBreakdown,
     emailConfigured: emailProviderConfigured(),
     monitoringConfigured: monitoringConfigured(),
     recentRuns: runResult.map((row) => mapRun(row, sources.get(row.source_id))),

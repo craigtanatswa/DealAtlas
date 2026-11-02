@@ -11,6 +11,10 @@ import {
   generatePreviewDraft,
   leakScanInputFromContext,
 } from "@/ingestion/preview/generate";
+import {
+  buyerTypeFromLegacySector,
+  sectorFromLegacySector,
+} from "@/lib/deals/buyer-taxonomy";
 import { buildPreviewSlug, isTemplatePreviewSlug } from "@/lib/deals/public-slug";
 import { scanPreviewLeaks } from "@/lib/redaction/scan";
 import type {
@@ -116,6 +120,15 @@ export async function persistIntelligenceAndPreview(options: {
     previewSummary: draft.previewSummary,
     dealType: context.deal.dealType,
     buyerSector: context.deal.buyerSector,
+    buyerType:
+      context.deal.buyerType ??
+      buyerTypeFromLegacySector(context.deal.buyerSector),
+    sector:
+      context.deal.sector ??
+      sectorFromLegacySector(
+        context.deal.buyerSector,
+        context.deal.mainCategory,
+      ),
     stage: context.deal.stage,
     status: context.deal.status,
     mainCategory: context.deal.mainCategory,

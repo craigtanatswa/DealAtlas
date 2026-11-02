@@ -1,3 +1,4 @@
+import type { BuyerType, DealSector } from "@/lib/deals/buyer-taxonomy";
 import type { Database } from "@/lib/db/database.types";
 
 import type {
@@ -104,6 +105,8 @@ export type DealRecord = {
   buyerOrganizationId: string | null;
   dealType: Database["public"]["Enums"]["deal_type"];
   buyerSector: Database["public"]["Enums"]["buyer_sector"];
+  buyerType?: BuyerType;
+  sector?: DealSector;
   stage: Database["public"]["Enums"]["deal_stage"];
   status: Database["public"]["Enums"]["deal_status"];
   mainCategory: string | null;
@@ -240,6 +243,8 @@ export type DealPreviewRecord = {
   previewSummary: string;
   dealType: DealRecord["dealType"];
   buyerSector: DealRecord["buyerSector"];
+  buyerType?: BuyerType;
+  sector?: DealSector;
   stage: DealRecord["stage"];
   status: DealRecord["status"];
   mainCategory: string | null;

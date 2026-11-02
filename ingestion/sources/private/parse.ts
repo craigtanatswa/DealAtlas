@@ -1,5 +1,6 @@
 import { parseInput } from "@/lib/validation";
 
+import { sectorFromText } from "@/lib/deals/buyer-taxonomy";
 import type { CanonicalCandidate } from "@/ingestion/core/types";
 import { IngestionError } from "@/ingestion/core/errors";
 import {
@@ -161,6 +162,7 @@ export function buildPrivateCandidate(
           framework,
         });
   const buyerSector = mapPrivateBuyerSector({ funding, sector, client });
+  const dealSector = sectorFromText(sector ?? client);
   const stage = mapPrivateDealStage({ procurementStage, schemeStatus });
   const status = mapPrivateDealStatus({
     procurementStage,
@@ -191,6 +193,8 @@ export function buildPrivateCandidate(
     applicationUrl: null,
     dealType,
     buyerSector,
+    buyerType: "PRIVATE",
+    sector: dealSector,
     stage,
     status,
     mainCategory: sector,

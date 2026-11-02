@@ -102,6 +102,8 @@ describe("private Find a Tender buyers stay out of the free preview", () => {
       preview_summary: preview.previewSummary,
       deal_type: preview.dealType,
       buyer_sector: preview.buyerSector,
+      buyer_type: preview.buyerType,
+      sector: preview.sector,
       stage: preview.stage,
       status: preview.status,
       main_category: preview.mainCategory,
@@ -133,6 +135,8 @@ describe("private Find a Tender buyers stay out of the free preview", () => {
     const blob = `${JSON.stringify(dto)}\n${html}`;
 
     expect(dto.buyerSector).toBe("PRIVATE");
+    expect(dto.buyerType).toBe("PRIVATE");
+    expect(dto.sector).toBe("UTILITIES");
     for (const marker of [
       "Example City Council",
       "example-council.gov.uk",

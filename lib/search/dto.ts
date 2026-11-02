@@ -1,6 +1,14 @@
 import type { DealCardData, SuitabilityLevel } from "@/components/deals/types";
 import type { BuyerSector } from "@/lib/constants";
 import { BUYER_SECTORS } from "@/lib/constants";
+import {
+  BUYER_TYPES,
+  DEAL_SECTORS,
+  buyerTypeFromLegacySector,
+  sectorFromLegacySector,
+  type BuyerType,
+  type DealSector,
+} from "@/lib/deals/buyer-taxonomy";
 import type { DealPreviewSearchRow } from "@/lib/db/previews";
 import type { SafeMatchView } from "@/lib/matching/types";
 import {
@@ -24,6 +32,8 @@ export const PUBLIC_PREVIEW_DTO_KEYS = [
   "previewSummary",
   "dealType",
   "buyerSector",
+  "buyerType",
+  "sector",
   "stage",
   "status",
   "mainCategory",
@@ -55,6 +65,8 @@ export type PublicDealPreview = {
   previewSummary: string;
   dealType: DealType;
   buyerSector: BuyerSector;
+  buyerType: BuyerType;
+  sector: DealSector;
   stage: DealStage;
   status: DealStatus;
   mainCategory: string | null;
@@ -141,6 +153,24 @@ function parseBuyerSector(value: unknown): BuyerSector {
   return "OTHER";
 }
 
+function parseBuyerType(value: unknown, legacy: BuyerSector): BuyerType {
+  if (typeof value === "string" && (BUYER_TYPES as readonly string[]).includes(value)) {
+    return value as BuyerType;
+  }
+  return buyerTypeFromLegacySector(legacy);
+}
+
+function parseDealSector(
+  value: unknown,
+  legacy: BuyerSector,
+  category: string | null,
+): DealSector {
+  if (typeof value === "string" && (DEAL_SECTORS as readonly string[]).includes(value)) {
+    return value as DealSector;
+  }
+  return sectorFromLegacySector(legacy, category);
+}
+
 /** Sanitised preview fields shared by every preview DTO RPC. */
 export type PreviewDtoFields = Pick<
   DealPreviewSearchRow,
@@ -162,7 +192,8 @@ export type PreviewDtoFields = Pick<
   | "requirements_preview"
   | "relevance_tags"
   | "freshness_label"
->;
+> &
+  Partial<Pick<DealPreviewSearchRow, "buyer_type" | "sector">>;
 
 export function toPublicDealPreview(row: PreviewDtoFields): PublicDealPreview {
   return {
@@ -171,6 +202,15 @@ export function toPublicDealPreview(row: PreviewDtoFields): PublicDealPreview {
     previewSummary: row.preview_summary,
     dealType: parseEnum(row.deal_type, DEAL_TYPES, "PUBLIC_TENDER"),
     buyerSector: parseBuyerSector(row.buyer_sector),
+    buyerType: parseBuyerType(
+      row.buyer_type,
+      parseBuyerSector(row.buyer_sector),
+    ),
+    sector: parseDealSector(
+      row.sector,
+      parseBuyerSector(row.buyer_sector),
+      row.main_category,
+    ),
     stage: parseEnum(row.stage, DEAL_STAGES, "LIVE"),
     status: parseEnum(row.status, DEAL_STATUSES, "OPEN"),
     mainCategory: row.main_category,

@@ -3,6 +3,10 @@ import { writeInBatches } from "@/ingestion/store/write-batch";
 import type { Database, Json } from "@/lib/db/database.types";
 
 import { normalizeTitle } from "@/ingestion/normalizers/text";
+import {
+  buyerTypeFromLegacySector,
+  sectorFromLegacySector,
+} from "@/lib/deals/buyer-taxonomy";
 import { textHasReferenceToken } from "@/ingestion/sources/gca/link";
 import type {
   AwardRecord,
@@ -146,6 +150,8 @@ function mapDeal(row: DealRow): DealRecord {
     buyerOrganizationId: row.buyer_organization_id,
     dealType: row.deal_type,
     buyerSector: row.buyer_sector,
+    buyerType: row.buyer_type,
+    sector: row.sector,
     stage: row.stage,
     status: row.status,
     mainCategory: row.main_category,
@@ -198,6 +204,8 @@ function mapPreview(row: PreviewRow): DealPreviewRecord {
     previewSummary: row.preview_summary,
     dealType: row.deal_type,
     buyerSector: row.buyer_sector,
+    buyerType: row.buyer_type,
+    sector: row.sector,
     stage: row.stage,
     status: row.status,
     mainCategory: row.main_category,
@@ -331,6 +339,10 @@ function dealInsert(deal: Parameters<IngestionStore["createDeal"]>[0]) {
     buyer_organization_id: deal.buyerOrganizationId,
     deal_type: deal.dealType,
     buyer_sector: deal.buyerSector,
+    buyer_type:
+      deal.buyerType ?? buyerTypeFromLegacySector(deal.buyerSector),
+    sector:
+      deal.sector ?? sectorFromLegacySector(deal.buyerSector, deal.mainCategory),
     stage: deal.stage,
     status: deal.status,
     main_category: deal.mainCategory,
@@ -510,6 +522,11 @@ export function createSupabaseIngestionStore(
             preview_summary: input.previewSummary,
             deal_type: input.dealType,
             buyer_sector: input.buyerSector,
+            buyer_type:
+              input.buyerType ?? buyerTypeFromLegacySector(input.buyerSector),
+            sector:
+              input.sector ??
+              sectorFromLegacySector(input.buyerSector, input.mainCategory),
             stage: input.stage,
             status: input.status,
             main_category: input.mainCategory,
@@ -1090,6 +1107,8 @@ export function createSupabaseIngestionStore(
       }
       if (patch.dealType !== undefined) update.deal_type = patch.dealType;
       if (patch.buyerSector !== undefined) update.buyer_sector = patch.buyerSector;
+      if (patch.buyerType !== undefined) update.buyer_type = patch.buyerType;
+      if (patch.sector !== undefined) update.sector = patch.sector;
       if (patch.stage !== undefined) update.stage = patch.stage;
       if (patch.status !== undefined) update.status = patch.status;
       if (patch.mainCategory !== undefined) update.main_category = patch.mainCategory;

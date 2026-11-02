@@ -31,6 +31,8 @@ const CANONICAL_DEAL_COLUMNS = [
   "buyer_organization_id",
   "deal_type",
   "buyer_sector",
+  "buyer_type",
+  "sector",
   "stage",
   "status",
   "main_category",

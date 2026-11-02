@@ -59,6 +59,8 @@ function freeChannelBlob(store: Awaited<ReturnType<typeof ingest>>): string {
     preview_summary: preview.previewSummary,
     deal_type: preview.dealType,
     buyer_sector: preview.buyerSector,
+    buyer_type: preview.buyerType,
+    sector: preview.sector,
     stage: preview.stage,
     status: preview.status,
     main_category: preview.mainCategory,
@@ -127,6 +129,20 @@ describe("free channels stay high information and low identifiability", () => {
       expect(blob).not.toContain("45233100");
       expect(blob).not.toMatch(/£\d{1,3}(?:,\d{3})+/);
     }
+  });
+
+  it("exposes buyer type and sector without buyer identity", async () => {
+    const store = await ingest("normal.json");
+    const blob = freeChannelBlob(store).toLowerCase();
+    expect(blob).toContain('"buyertype"');
+    expect(blob).toContain('"sector"');
+    expect(blob).not.toContain(
+      (
+        store.organizations.find(
+          (org) => org.id === store.deals[0]!.buyerOrganizationId,
+        )?.canonicalName ?? "no-buyer"
+      ).toLowerCase(),
+    );
   });
 
   it("shows the CPV division, banded dates and value, and no day count or month", async () => {

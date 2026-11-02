@@ -48,7 +48,7 @@ describe("supabase migrations", () => {
   const files = listMigrations();
   const sql = files.map(readMigration).join("\n");
 
-  it("are numbered 0001-0026, 0028-0030, 0040-0043, 0045-0047, 0049, 0051-0058, leaving 0027, 0031-0039, 0044, 0048 and 0050 for open pull requests", () => {
+  it("are numbered 0001-0026, 0028-0030, 0040-0043, 0045-0047, 0049, 0051-0058, 0060, leaving 0027, 0031-0039, 0044, 0048, 0050 and 0059 for open pull requests", () => {
     expect(files).toEqual([
       "0001_extensions_and_types.sql",
       "0002_core_schema.sql",
@@ -95,6 +95,7 @@ describe("supabase migrations", () => {
       "0056_private_discovery_stage1.sql",
       "0057_private_discovery_stage2.sql",
       "0058_enable_devolved_portals_private_buyers.sql",
+      "0060_buyer_type_private_public.sql",
     ]);
   });
 
@@ -506,6 +507,60 @@ describe("supabase migrations", () => {
     expect(body).toContain("on conflict (kind, term) do nothing");
     expect(body).not.toMatch(/grant .* to (anon|authenticated)/);
     expect(body).not.toMatch(/disable row level security/i);
+  });
+
+  it("0060 adds buyer_type, deal_sector, backfill and taxonomy RPCs", () => {
+    const body = readMigration("0060_buyer_type_private_public.sql");
+    expect(body).toContain("create type public.buyer_type as enum ('PUBLIC', 'PRIVATE')");
+    for (const sector of [
+      "UTILITIES",
+      "HEALTHCARE",
+      "EDUCATION",
+      "CONSTRUCTION_INFRASTRUCTURE",
+      "TRANSPORT",
+      "TECHNOLOGY",
+      "DEFENCE_SECURITY",
+      "FACILITIES_PROPERTY",
+      "PROFESSIONAL_SERVICES",
+      "ENVIRONMENT_WASTE",
+      "HOUSING",
+      "SOCIAL_CARE",
+      "FOOD_CATERING",
+      "MANUFACTURING_EQUIPMENT",
+      "CHARITY_NONPROFIT",
+      "OTHER",
+    ]) {
+      expect(body, sector).toContain(`'${sector}'`);
+    }
+    expect(body).toContain("add column buyer_type public.buyer_type");
+    expect(body).toContain("add column sector public.deal_sector");
+    expect(body).toContain("alter column buyer_type set not null");
+    expect(body).toContain("alter column sector set not null");
+    expect(body).toContain("raise exception 'deals have null buyer_type or sector after backfill'");
+    expect(body).toContain("raise exception 'deal_previews have null buyer_type or sector after backfill'");
+    expect(body).toContain("'privateutility'");
+    expect(body).toContain("rr.raw_payload::text like '%' || to_jsonb(d.ocid)::text || '%'");
+    expect(body).toContain("buyer-legal-type");
+    expect(body).toContain("like 'org-sub%'");
+    expect(body).toContain("is_this_project_programme_drawing_on_public_or_private_funds");
+    expect(body).toContain("discovery_method");
+    expect(body).toContain("opportunity_candidates");
+    expect(body).toContain("'NONPROFIT'::public.buyer_sector");
+    expect(body).toContain("'CHARITY_NONPROFIT'::public.deal_sector");
+    expect(body).toContain("create function public.admin_deal_taxonomy_counts()");
+    expect(body).toContain("grant execute on function public.admin_deal_taxonomy_counts()");
+    expect(body).toContain("buyer_type public.buyer_type");
+    expect(body).toContain("sector public.deal_sector");
+    for (const fn of [
+      "get_preview_dto_by_slug",
+      "get_preview_dto_by_deal_id",
+      "list_saved_deal_previews",
+      "search_preview_dtos",
+      "search_deal_previews",
+      "search_deal_previews_for_profile",
+    ]) {
+      expect(body).toContain(`create function public.${fn}(`);
+    }
   });
 
   it("keep the combined schema file in sync with migrations", () => {

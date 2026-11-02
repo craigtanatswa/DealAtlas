@@ -1,5 +1,9 @@
 import { randomUUID } from "node:crypto";
 
+import {
+  buyerTypeFromLegacySector,
+  sectorFromLegacySector,
+} from "@/lib/deals/buyer-taxonomy";
 import { previewSlugHash } from "@/lib/deals/public-slug";
 
 import { normalizeTitle } from "@/ingestion/normalizers/text";
@@ -192,8 +196,17 @@ export function createMemoryIngestionStore(seed?: {
     async upsertDealPreview(input) {
       const index = state.previews.findIndex((item) => item.dealId === input.dealId);
       const held = index >= 0 && state.previews[index].unpublishedByAdmin === true;
-      const saved: typeof input = {
+      const deal = state.deals.find((item) => item.id === input.dealId);
+      const saved: DealPreviewRecord = {
         ...input,
+        buyerType:
+          input.buyerType ??
+          deal?.buyerType ??
+          buyerTypeFromLegacySector(input.buyerSector),
+        sector:
+          input.sector ??
+          deal?.sector ??
+          sectorFromLegacySector(input.buyerSector, input.mainCategory),
         unpublishedByAdmin: held,
         isPublished: input.isPublished && !held && input.leakageRisk === "LOW",
       };
@@ -448,6 +461,11 @@ export function createMemoryIngestionStore(seed?: {
     async createDeal(input) {
       const deal: DealRecord = {
         ...input,
+        buyerType:
+          input.buyerType ?? buyerTypeFromLegacySector(input.buyerSector),
+        sector:
+          input.sector ??
+          sectorFromLegacySector(input.buyerSector, input.mainCategory),
         id: input.id ?? randomUUID(),
         firstDiscoveredAt: input.firstDiscoveredAt ?? new Date().toISOString(),
         sourceCount: input.sourceCount ?? 1,
