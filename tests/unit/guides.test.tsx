@@ -49,7 +49,6 @@ import {
   GUIDE_CTA_TARGET_ATTR,
   guideCtaClickProperties,
   guideCtaTarget,
-  guideCtaViewProperties,
 } from "@/lib/analytics/guide-cta";
 import { sanitizeClientEvent } from "@/lib/analytics/sanitize";
 import { serializeJsonLd } from "@/lib/seo/json-ld";
@@ -555,71 +554,10 @@ describe("guide CTA analytics", () => {
     expect(guideCtaClickProperties(null, `/guides/${SLUG}`)).toBeNull();
   });
 
-  it.each(PUBLISHED)("builds guide_cta_viewed for %s with only slug, position and target", (slug) => {
-    const element = fakeLink({
-      [GUIDE_CTA_TARGET_ATTR]: "signup",
-      [GUIDE_CTA_POSITION_ATTR]: "after_answer",
-    });
-    const properties = guideCtaViewProperties(element, `/guides/${slug}`);
-    expect(properties).toEqual({
-      guide_slug: slug,
-      position: "after_answer",
-      target: "signup",
-    });
-    const sanitized = sanitizeClientEvent(
-      {
-        event: "guide_cta_viewed",
-        properties: {
-          token: "phc_TestKey0123456789abcdef",
-          distinct_id: "0190a1b2-c3d4-4e5f-8a9b-0c1d2e3f4a5b",
-          $current_url: `${ORIGIN}/guides/${slug}`,
-          ...properties!,
-          buyer_name: "CANARY BUYER NEVER FREE",
-          deal_url: `${ORIGIN}/deals/canary-deal-a1b2c3`,
-        },
-      },
-      { origin: ORIGIN },
-    );
-    expect(sanitized?.properties).toMatchObject(properties!);
-    expect(JSON.stringify(sanitized)).not.toMatch(/CANARY|canary-deal|buyer_name|deal_url/);
-  });
-
-  it("sends no guide_cta_viewed off guide pages or for unlisted values", () => {
-    const element = fakeLink({
-      [GUIDE_CTA_TARGET_ATTR]: "signup",
-      [GUIDE_CTA_POSITION_ATTR]: "after_answer",
-    });
-    expect(guideCtaViewProperties(element, "/deals/some-deal-ab12")).toBeNull();
-    expect(guideCtaViewProperties(element, `/guides/${UNPUBLISHED_SLUG}`)).toBeNull();
-    expect(
-      guideCtaViewProperties(
-        fakeLink({
-          [GUIDE_CTA_TARGET_ATTR]: "canary-target",
-          [GUIDE_CTA_POSITION_ATTR]: "after_answer",
-        }),
-        `/guides/${SLUG}`,
-      ),
-    ).toBeNull();
-    expect(
-      guideCtaViewProperties(
-        fakeLink({
-          [GUIDE_CTA_TARGET_ATTR]: "signup",
-          [GUIDE_CTA_POSITION_ATTR]: "canary-position",
-        }),
-        `/guides/${SLUG}`,
-      ),
-    ).toBeNull();
-    expect(guideCtaViewProperties(null, `/guides/${SLUG}`)).toBeNull();
-  });
-
-  it("wires the click and view listeners in the PostHog client", () => {
+  it("wires the click listener in the PostHog client", () => {
     const source = fs.readFileSync(path.join(ROOT, "components/analytics/posthog-analytics.tsx"), "utf8");
     expect(source).toContain('"guide_cta_clicked"');
     expect(source).toContain("guideCtaClickProperties");
-    expect(source).toContain('"guide_cta_viewed"');
-    expect(source).toContain("guideCtaViewProperties");
-    expect(source).toContain("IntersectionObserver");
-    expect(source).toContain("threshold: 0.5");
   });
 });
 
