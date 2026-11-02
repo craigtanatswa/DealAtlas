@@ -1132,10 +1132,12 @@ export type Database = {
       }
       discovered_source_candidates: {
         Row: {
+          blocked_reason: string | null
           confidence: number
           content_hash: string | null
           created_at: string
           discovered_at: string
+          discovery_channel: string
           domain: string | null
           id: string
           matched_keywords: string[]
@@ -1149,10 +1151,12 @@ export type Database = {
           url: string
         }
         Insert: {
+          blocked_reason?: string | null
           confidence?: number
           content_hash?: string | null
           created_at?: string
           discovered_at?: string
+          discovery_channel?: string
           domain?: string | null
           id?: string
           matched_keywords?: string[]
@@ -1166,10 +1170,12 @@ export type Database = {
           url: string
         }
         Update: {
+          blocked_reason?: string | null
           confidence?: number
           content_hash?: string | null
           created_at?: string
           discovered_at?: string
+          discovery_channel?: string
           domain?: string | null
           id?: string
           matched_keywords?: string[]

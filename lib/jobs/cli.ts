@@ -7,6 +7,9 @@ export const JOB_NAMES = [
   "publish-eligible",
   "unpublish-stale",
   "publish-alert",
+  "discover",
+  "expiry",
+  "health",
 ] as const;
 
 export type JobName = (typeof JOB_NAMES)[number];
@@ -142,6 +145,7 @@ const PARTIAL_FAIL_JOBS = new Set<string>([
   "publish-eligible",
   "unpublish-stale",
   "publish-alert",
+  "discover",
 ]);
 
 export function jobProcessShouldFail(

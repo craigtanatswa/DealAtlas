@@ -4,6 +4,7 @@ import type { DealType } from "@/lib/search/filters";
 export type DiscoveryMethod = Database["public"]["Enums"]["discovery_method"];
 export type CandidateStatus = Database["public"]["Enums"]["candidate_status"];
 export type MarketSector = Database["public"]["Enums"]["market_sector"];
+export type DiscoveryChannel = "SEARCH" | "CRAWL";
 
 export type DiscoveryKeyword = {
   id: string;
@@ -118,6 +119,8 @@ export type DiscoveryStore = {
     matchedKeywords: string[];
     contentHash: string;
     rawPayload: unknown;
+    discoveryChannel?: DiscoveryChannel | null;
+    blockedReason?: string | null;
   }): Promise<{ id: string }>;
   findByDedupe(
     sourceId: string,
