@@ -10,6 +10,7 @@ import {
   recordPageView,
 } from "@/lib/analytics/attribution";
 import { buildPostHogClientConfig } from "@/lib/analytics/config";
+import { registerAnalyticsOptOutHandler } from "@/lib/analytics/consent";
 import { isCheckoutAnalyticsPlan } from "@/lib/analytics/events";
 import {
   GUIDE_CTA_LINK_SELECTOR,
@@ -61,6 +62,21 @@ function checkoutPlanFromSubmit(event: SubmitEvent): string | null {
 export function PostHogAnalytics({ apiKey }: { apiKey: string }) {
   const pathname = usePathname();
   const consented = useAnalyticsConsent();
+
+  useEffect(
+    () =>
+      registerAnalyticsOptOutHandler(() => {
+        void clientPromise?.then((posthog) => posthog?.opt_out_capturing());
+      }),
+    [],
+  );
+
+  useEffect(() => {
+    if (!consented) {
+      return;
+    }
+    void clientPromise?.then((posthog) => posthog?.opt_in_capturing());
+  }, [consented]);
 
   useEffect(() => {
     if (!consented) {

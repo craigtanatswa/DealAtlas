@@ -40,7 +40,7 @@ describe("server analytics events", () => {
       uuid: expect.stringMatching(/^[0-9a-f-]{36}$/),
       properties: {
         first_touch_landing_path: "/deals/[deal]",
-        first_touch_referrer_domain: "google.com",
+        first_touch_referrer_domain: "google",
         first_touch_guide_cta: { position: "after_answer", target: "signup" },
         utm_source: "newsletter",
         utm_medium: "email",
@@ -48,7 +48,7 @@ describe("server analytics events", () => {
       },
       setOnce: {
         first_touch_landing_path: "/deals/[deal]",
-        first_touch_referrer_domain: "google.com",
+        first_touch_referrer_domain: "google",
         first_touch_guide_cta: { position: "after_answer", target: "signup" },
       },
     });
@@ -59,9 +59,12 @@ describe("server analytics events", () => {
   });
 
   it.each([
-    ["https://www.google.com/search?q=CANARY+BUYER", "google.com"],
-    ["https://www.bing.co.uk:8443/path?q=1#top", "bing.co.uk"],
-    ["www.linkedin.com/feed/?trk=CANARY", "linkedin.com"],
+    ["https://www.google.com/search?q=CANARY+BUYER", "google"],
+    ["https://www.bing.com:8443/path?q=1#top", "bing"],
+    ["www.linkedin.com/feed/?trk=CANARY", "linkedin"],
+    ["portal.example-council.gov.uk", "other"],
+    ["www.google.com", "google"],
+    ["buyer-portal.example.gov.uk", "other"],
     ["https://www.dealatlas.uk/deals/canary-deal-a1b2c3?q=x", "direct"],
     ["https://app.dealatlas.uk/deals/canary-deal-a1b2c3", "direct"],
     ["", "direct"],
@@ -76,6 +79,23 @@ describe("server analytics events", () => {
     const serialised = JSON.stringify(event);
     for (const forbidden of ["/search", "?q=", "CANARY", "trk=", "/deals/", "#top", "8443"]) {
       expect(serialised).not.toContain(forbidden);
+    }
+  });
+
+  it("re-buckets raw hostname inputs on the server before user_signed_up and $set_once", () => {
+    const cases: Array<[string, string]> = [
+      ["www.google.com", "google"],
+      ["portal.example-council.gov.uk", "other"],
+      ["buyer-portal.example-tenders.gov.uk", "other"],
+    ];
+    for (const [referrer, expected] of cases) {
+      const event = buildUserSignedUpEvent({
+        userId: USER,
+        read: reader({ [ATTRIBUTION_FIELDS.firstTouchReferrerDomain]: referrer }),
+      });
+      expect(event!.properties.first_touch_referrer_domain, referrer).toBe(expected);
+      expect(event!.setOnce!.first_touch_referrer_domain, referrer).toBe(expected);
+      expect(JSON.stringify(event), referrer).not.toContain(referrer);
     }
   });
 
@@ -150,7 +170,7 @@ describe("server analytics events", () => {
     });
     expect(event!.properties).toEqual({
       first_touch_landing_path: "/deals/[deal]",
-      first_touch_referrer_domain: "portal.example.gov.uk",
+      first_touch_referrer_domain: "other",
       first_touch_guide_cta: { position: "after_answer", target: "signup" },
       signup_source_guide: "uk-tender-search",
       utm_source: "newsletter",
@@ -167,6 +187,7 @@ describe("server analytics events", () => {
       "?buyer",
       "#contacts",
       "canary-deal",
+      "portal.example",
     ]) {
       expect(serialised).not.toContain(forbidden);
     }

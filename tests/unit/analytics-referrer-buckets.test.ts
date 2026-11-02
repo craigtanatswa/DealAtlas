@@ -77,7 +77,7 @@ describe("referrer buckets", () => {
     expect(cleanReferrer("", ORIGIN)).toEqual({ referrer: "$direct", domain: "$direct" });
   });
 
-  it("keeps a first-touch hostname for the new field and buckets the legacy field", () => {
+  it("buckets both first-touch and legacy referrer fields and never stores a hostname", () => {
     resetAttributionForTests();
     resetAnalyticsConsentForTests();
 
@@ -96,10 +96,8 @@ describe("referrer buckets", () => {
       origin: ORIGIN,
     });
     const values = attributionFormValues();
-    expect(values[ATTRIBUTION_FIELDS.firstTouchReferrerDomain]).toBe(
-      "portal.example-council.gov.uk",
-    );
-    expect(JSON.stringify(values)).not.toMatch(/\/notice|12345/);
+    expect(values[ATTRIBUTION_FIELDS.firstTouchReferrerDomain]).toBe("other");
+    expect(JSON.stringify(values)).not.toMatch(/\/notice|12345|portal/);
 
     const tampered = buildUserSignedUpEvent({
       userId: "6b0a3d5e-1c2f-4a8b-9d7e-0f1a2b3c4d5e",
@@ -108,11 +106,9 @@ describe("referrer buckets", () => {
           ? "https://portal.example-council.gov.uk/notice/12345"
           : undefined,
     });
-    expect(tampered?.properties.first_touch_referrer_domain).toBe(
-      "portal.example-council.gov.uk",
-    );
+    expect(tampered?.properties.first_touch_referrer_domain).toBe("other");
     expect(tampered?.properties.first_referrer_domain).toBe("other");
-    expect(JSON.stringify(tampered)).not.toMatch(/\/notice|12345/);
+    expect(JSON.stringify(tampered)).not.toMatch(/\/notice|12345|portal/);
 
     resetAnalyticsConsentForTests();
     resetAttributionForTests();

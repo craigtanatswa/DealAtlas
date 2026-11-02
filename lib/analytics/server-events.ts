@@ -11,6 +11,8 @@ import {
   type ServerEventName,
 } from "@/lib/analytics/events";
 import {
+  FIRST_TOUCH_DIRECT,
+  OTHER_REFERRER,
   cleanReferrerDomain,
   cleanUtmValue,
   firstTouchReferrerDomain,
@@ -154,7 +156,13 @@ export function buildUserSignedUpEvent(input: {
   const oldReferrer = read(ATTRIBUTION_FIELDS.firstReferrerDomain);
   const referrerSource = newReferrer ?? oldReferrer;
   if (referrerSource !== undefined && referrerSource !== null) {
-    const domain = firstTouchReferrerDomain(referrerSource);
+    const firstTouch = firstTouchReferrerDomain(referrerSource);
+    // Re-bucket on the server too: even a tampered raw hostname must never
+    // reach PostHog properties or $set_once.
+    const domain =
+      firstTouch === FIRST_TOUCH_DIRECT
+        ? FIRST_TOUCH_DIRECT
+        : (cleanReferrerDomain(firstTouch) ?? OTHER_REFERRER);
     properties.first_touch_referrer_domain = domain;
     setOnce.first_touch_referrer_domain = domain;
     if (newReferrer === undefined || newReferrer === null) {

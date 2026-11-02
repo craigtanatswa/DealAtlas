@@ -64,7 +64,7 @@ describe("analytics consent and first-touch storage", () => {
 
     const values = attributionFormValues();
     expect(values[ATTRIBUTION_FIELDS.firstTouchLandingPath]).toBe("/deals/[deal]");
-    expect(values[ATTRIBUTION_FIELDS.firstTouchReferrerDomain]).toBe("google.com");
+    expect(values[ATTRIBUTION_FIELDS.firstTouchReferrerDomain]).toBe("google");
     expect(values[ATTRIBUTION_FIELDS.signupSourceGuide]).toBe(GUIDE);
     expect(values[ATTRIBUTION_FIELDS.firstTouchGuideCtaPosition]).toBe("after_answer");
     expect(values[ATTRIBUTION_FIELDS.firstTouchGuideCtaTarget]).toBe("signup");
@@ -124,7 +124,7 @@ describe("analytics consent and first-touch storage", () => {
     expect(JSON.stringify(values)).not.toContain(DEAL_SLUG);
   });
 
-  it("stores a hostname only and treats same-site referrers as direct", () => {
+  it("stores a referrer bucket only and treats same-site referrers as direct", () => {
     setAnalyticsConsent(true);
     recordLanding({
       href: `${ORIGIN}/deals/${DEAL_SLUG}?notice=NTC-998877`,
@@ -132,12 +132,21 @@ describe("analytics consent and first-touch storage", () => {
       origin: ORIGIN,
     });
     let stored = readLocalValue(ANALYTICS_FIRST_TOUCH_STORAGE_KEY) ?? "";
-    for (const forbidden of [DEAL_SLUG, "NTC-998877", "CANARY", "/notices", "?buyer", "utm_source"]) {
+    for (const forbidden of [
+      DEAL_SLUG,
+      "NTC-998877",
+      "CANARY",
+      "/notices",
+      "?buyer",
+      "utm_source",
+      "portal",
+      "example.gov.uk",
+    ]) {
       expect(stored).not.toContain(forbidden);
     }
     expect(JSON.parse(stored)).toMatchObject({
       landingPath: "/deals/[deal]",
-      referrerDomain: "portal.example.gov.uk",
+      referrerDomain: "other",
     });
 
     resetAttributionForTests();
@@ -152,6 +161,29 @@ describe("analytics consent and first-touch storage", () => {
       referrerDomain: "direct",
     });
     expect(stored).not.toContain(DEAL_SLUG);
+  });
+
+  it.each([
+    [
+      "https://www.example-council.gov.uk/notices/NTC-100001?buyer=CANARY",
+      "council",
+    ],
+    [
+      "https://portal.example-tenders.gov.uk/notice/NTC-100002?buyer=CANARY",
+      "portal",
+    ],
+  ])("buckets buyer and tender-portal referrers %s as other", (referrer, canary) => {
+    setAnalyticsConsent(true);
+    recordLanding({
+      href: `${ORIGIN}/pricing`,
+      referrer,
+      origin: ORIGIN,
+    });
+
+    const stored = readLocalValue(ANALYTICS_FIRST_TOUCH_STORAGE_KEY) ?? "";
+    expect(JSON.parse(stored)).toMatchObject({ referrerDomain: "other" });
+    expect(stored).not.toContain(canary);
+    expect(stored).not.toContain("NTC-1000");
   });
 
   it("ignores CTA values that are not allowlisted", () => {

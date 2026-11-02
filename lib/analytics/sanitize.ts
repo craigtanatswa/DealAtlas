@@ -61,7 +61,7 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{
 const UTM_VALUE_PATTERN = /^[A-Za-z0-9._+\- ]{1,100}$/;
 const HOSTNAME_PATTERN = /^(?=.{1,253}$)[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*$/;
 const DIRECT = "$direct";
-const FIRST_TOUCH_DIRECT = "direct";
+export const FIRST_TOUCH_DIRECT = "direct";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -290,23 +290,31 @@ function isSameSiteHost(host: string, origin: string | undefined): boolean {
 }
 
 /**
- * First-touch referrers keep only a hostname (without www) or "direct".
- * Paths, queries, fragments and full URLs never leave this function.
+ * First-touch referrers keep only a bucket label or "direct". Paths, queries,
+ * fragments and full URLs never leave this function, and an external hostname
+ * is never returned.
  */
 export function firstTouchReferrerDomain(value: unknown, origin?: string): string {
   if (typeof value !== "string") {
     return FIRST_TOUCH_DIRECT;
   }
   const trimmed = value.trim();
-  if (!trimmed || trimmed === DIRECT || trimmed === FIRST_TOUCH_DIRECT || trimmed.startsWith("/")) {
+  if (!trimmed || trimmed.startsWith("/")) {
     return FIRST_TOUCH_DIRECT;
+  }
+  const lower = trimmed.toLowerCase();
+  if (lower === DIRECT || lower === FIRST_TOUCH_DIRECT) {
+    return FIRST_TOUCH_DIRECT;
+  }
+  if (isReferrerBucket(lower)) {
+    return lower === DIRECT ? FIRST_TOUCH_DIRECT : lower;
   }
   let url: URL;
   try {
-    url = new URL(trimmed);
+    url = new URL(lower);
   } catch {
     try {
-      url = new URL(`https://${trimmed}`);
+      url = new URL(`https://${lower}`);
     } catch {
       return FIRST_TOUCH_DIRECT;
     }
@@ -318,7 +326,7 @@ export function firstTouchReferrerDomain(value: unknown, origin?: string): strin
   if (!HOSTNAME_PATTERN.test(host) || isSameSiteHost(host, origin)) {
     return FIRST_TOUCH_DIRECT;
   }
-  return host;
+  return referrerBucketForHost(host);
 }
 
 function isClientEventName(value: unknown): value is ClientEventName {
