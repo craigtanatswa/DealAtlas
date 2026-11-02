@@ -4,7 +4,7 @@ import {
   valueBandFromAmounts,
 } from "@/lib/preview/bands";
 import { composeFreePreview, encodePreviewDetails } from "@/lib/preview/compose";
-import { broadRegionFromLocation } from "@/lib/preview/region";
+import { previewRegion } from "@/lib/preview/region";
 import {
   scanPreviewLeaks,
   type LeakScanInput,
@@ -176,10 +176,14 @@ function assembleDraft(
     relevanceTags: tags,
   };
   const scan = scanPreviewLeaks(leakInput(context, draft));
-  const region = broadRegionFromLocation([
-    context.deal.exactLocationText,
-    ...context.lots.map((lot) => lot.exactLocationText),
-  ]);
+  const region = previewRegion({
+    sourceKey: context.source?.sourceKey,
+    locationParts: [
+      context.deal.exactLocationText,
+      ...context.lots.map((lot) => lot.exactLocationText),
+    ],
+    buyer: context.buyer,
+  });
   return {
     previewTitle: draft.previewTitle,
     previewSummary: draft.previewSummary,

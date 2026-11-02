@@ -209,3 +209,91 @@ export function isBelowNuts1Place(word: string): boolean {
   }
   return CITY_REGIONS.some((entry) => entry.pattern.test(token));
 }
+
+/**
+ * Country-level regions for European notices (TED). Mapped from the ISO
+ * 3166-1 alpha-2 code only; nothing finer than the country is ever shown.
+ */
+export const COUNTRY_REGIONS: Record<string, string> = {
+  AT: "Austria",
+  BE: "Belgium",
+  BG: "Bulgaria",
+  HR: "Croatia",
+  CY: "Cyprus",
+  CZ: "Czechia",
+  DK: "Denmark",
+  EE: "Estonia",
+  FI: "Finland",
+  FR: "France",
+  DE: "Germany",
+  GR: "Greece",
+  EL: "Greece",
+  HU: "Hungary",
+  IE: "Ireland",
+  IT: "Italy",
+  LV: "Latvia",
+  LT: "Lithuania",
+  LU: "Luxembourg",
+  MT: "Malta",
+  NL: "Netherlands",
+  PL: "Poland",
+  PT: "Portugal",
+  RO: "Romania",
+  SK: "Slovakia",
+  SI: "Slovenia",
+  ES: "Spain",
+  SE: "Sweden",
+  IS: "Iceland",
+  LI: "Liechtenstein",
+  NO: "Norway",
+  CH: "Switzerland",
+};
+
+export const COUNTRY_REGION_NAMES = [...new Set(Object.values(COUNTRY_REGIONS))].sort();
+
+/** Every value allowed in broad_region: UK NUTS1 regions plus country names. */
+export const PUBLISHABLE_REGIONS: readonly string[] = [...BROAD_REGIONS, ...COUNTRY_REGION_NAMES];
+
+export function countryRegion(code: string | null | undefined): string | null {
+  const key = (code ?? "").trim().toUpperCase();
+  return key.length === 2 ? (COUNTRY_REGIONS[key] ?? null) : null;
+}
+
+const NUTS1_NAMES = new Set(Object.values(NUTS1_REGIONS));
+
+/**
+ * NUTS1/ITL1 region derived from a UK buyer address. The address fields are
+ * read here and only the derived region name is returned; the postcode, town
+ * and street never leave this function.
+ */
+export function buyerAddressRegion(
+  buyer: { region?: string | null; postcode?: string | null; countryCode?: string | null } | null | undefined,
+): BroadRegion | null {
+  if (!buyer) return null;
+  const country = (buyer.countryCode ?? "GB").trim().toUpperCase();
+  if (country !== "GB" && country !== "UK") return null;
+  const fromRegion = broadRegionFromLocation([buyer.region]);
+  if (fromRegion && NUTS1_NAMES.has(fromRegion)) return fromRegion;
+  const fromPostcode = buyer.postcode ? postcodeRegion(buyer.postcode) : null;
+  return fromPostcode && NUTS1_NAMES.has(fromPostcode) ? fromPostcode : null;
+}
+
+const TED_SOURCE_KEY = "ted";
+const FIND_A_TENDER_SOURCE_KEY = "find-a-tender";
+
+/** The single region value stored on a preview. */
+export function previewRegion(input: {
+  sourceKey?: string | null;
+  locationParts: Array<string | null | undefined>;
+  buyer?: { region?: string | null; postcode?: string | null; countryCode?: string | null } | null;
+}): string | null {
+  if (input.sourceKey === TED_SOURCE_KEY) {
+    return countryRegion(input.buyer?.countryCode);
+  }
+  const fromLocation = broadRegionFromLocation(input.locationParts);
+  if (fromLocation) return fromLocation;
+  if (input.sourceKey === FIND_A_TENDER_SOURCE_KEY) {
+    return buyerAddressRegion(input.buyer);
+  }
+  return null;
+}
