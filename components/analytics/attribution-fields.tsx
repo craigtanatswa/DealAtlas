@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 
+import { useAnalyticsConsent } from "@/hooks/use-analytics-consent";
 import { ATTRIBUTION_FIELDS, attributionFormValues } from "@/lib/analytics/attribution";
 
 const FIELD_NAMES = Object.values(ATTRIBUTION_FIELDS);
@@ -13,16 +14,17 @@ const FIELD_NAMES = Object.values(ATTRIBUTION_FIELDS);
  */
 export function AnalyticsAttributionFields({ enabled }: { enabled: boolean }) {
   const container = useRef<HTMLSpanElement>(null);
+  const consented = useAnalyticsConsent();
 
   useEffect(() => {
     if (!enabled || !container.current) {
       return;
     }
-    const values = attributionFormValues();
+    const values = consented ? attributionFormValues() : {};
     for (const input of container.current.querySelectorAll<HTMLInputElement>("input")) {
       input.value = values[input.name] ?? "";
     }
-  }, [enabled]);
+  }, [consented, enabled]);
 
   if (!enabled) {
     return null;

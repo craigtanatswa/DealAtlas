@@ -219,6 +219,65 @@ describe("fail-closed before_send allowlist", () => {
     ).toBeNull();
   });
 
+  it("validates guide_cta_viewed and strips every other property", () => {
+    const page = `${ORIGIN}/guides/how-to-win-council-contracts`;
+    const ok = sanitizeClientEvent(
+      sdkEvent(
+        {
+          $current_url: page,
+          guide_slug: "how-to-win-council-contracts",
+          position: "after_answer",
+          target: "signup",
+          cta_position: "end",
+          buyer_name: "CANARY BUYER NEVER FREE",
+          deal_url: `${ORIGIN}/deals/${SLUG}?notice=NTC-998877`,
+          deal_id: DEAL_ID,
+        },
+        "guide_cta_viewed",
+      ),
+      { origin: ORIGIN },
+    );
+    expect(ok).not.toBeNull();
+    expect(ok!.properties).toMatchObject({
+      guide_slug: "how-to-win-council-contracts",
+      position: "after_answer",
+      target: "signup",
+    });
+    expect(ok!.properties.cta_position).toBeUndefined();
+    const serialised = JSON.stringify(ok);
+    for (const forbidden of [SLUG, DEAL_ID, "CANARY", "NTC-998877", "deal_url", "deal_id", "buyer_name"]) {
+      expect(serialised).not.toContain(forbidden);
+    }
+
+    for (const bad of [
+      { guide_slug: "how-to-win-council-contracts", position: "canary", target: "signup" },
+      { guide_slug: "how-to-win-council-contracts", position: "mid", target: "canary" },
+      { guide_slug: SLUG, position: "mid", target: "deals" },
+      { guide_slug: "how-to-win-council-contracts", target: "signup" },
+      { position: "mid", target: "deals" },
+    ]) {
+      const result = sanitizeClientEvent(
+        sdkEvent({ $current_url: page, ...bad }, "guide_cta_viewed"),
+        { origin: ORIGIN },
+      );
+      expect(result, JSON.stringify(bad)).toBeNull();
+    }
+
+    const wrongPage = sanitizeClientEvent(
+      sdkEvent(
+        {
+          $current_url: `${ORIGIN}/deals/${SLUG}`,
+          guide_slug: "how-to-win-council-contracts",
+          position: "mid",
+          target: "deals",
+        },
+        "guide_cta_viewed",
+      ),
+      { origin: ORIGIN },
+    );
+    expect(wrongPage).toBeNull();
+  });
+
   it("is idempotent (the proxy re-runs it on already-clean events)", () => {
     const once = sanitizeClientEvent(sdkEvent(), { origin: ORIGIN });
     const twice = sanitizeClientEvent(once, { origin: ORIGIN });

@@ -22,8 +22,11 @@ import {
   signupFormSchema,
 } from "@/lib/auth/schemas";
 import { getProfileForUser } from "@/lib/auth/profile";
+import { ANALYTICS_CONSENT_FIELD } from "@/lib/analytics/attribution";
+import { isAnalyticsConsentGranted } from "@/lib/analytics/consent";
 import { captureServerEvent } from "@/lib/analytics/server";
 import { buildUserSignedUpEvent } from "@/lib/analytics/server-events";
+import { ANALYTICS_CONSENT_COOKIE } from "@/lib/analytics/storage-keys";
 import { getAuthUser } from "@/lib/auth/session";
 import { mapAuthError, type ActionState } from "@/lib/auth/messages";
 import {
@@ -138,8 +141,14 @@ export async function signUpAction(
   }
 
   // A repeat sign-up for an existing email returns a user with no identities;
-  // only a newly created account is counted.
-  if (data.user && (data.user.identities?.length ?? 0) > 0) {
+  // only a newly created account is counted, and only with analytics consent.
+  const analyticsConsent = (await cookies()).get(ANALYTICS_CONSENT_COOKIE)?.value;
+  const formConsent = formData.get(ANALYTICS_CONSENT_FIELD);
+  if (
+    data.user &&
+    (data.user.identities?.length ?? 0) > 0 &&
+    (isAnalyticsConsentGranted(analyticsConsent) || isAnalyticsConsentGranted(formConsent))
+  ) {
     await captureServerEvent(
       buildUserSignedUpEvent({
         userId: data.user.id,
