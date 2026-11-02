@@ -46,6 +46,8 @@ function renderInline(nodes: Inline[], options: RenderOptions, keyPrefix = "i"):
         );
       case "em":
         return <em key={key}>{renderInline(node.children, options, key)}</em>;
+      case "del":
+        return <del key={key}>{renderInline(node.children, options, key)}</del>;
       case "link": {
         const children = renderInline(node.children, options, key);
         if (isUnpublishedGuideLink(node.href, options)) {
