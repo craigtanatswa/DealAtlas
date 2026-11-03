@@ -7,6 +7,7 @@ import {
 } from "@/ingestion/core/http";
 import { runIngestion } from "@/ingestion/core/pipeline";
 import { defaultSleep } from "@/ingestion/core/retry";
+import { createPublicContractsScotlandFetch } from "@/ingestion/core/tls";
 import { createContractsFinderAdapter } from "@/ingestion/sources/contracts-finder/adapter";
 import {
   CONTRACTS_FINDER_FETCH_POLICY,
@@ -59,6 +60,16 @@ import { createGcaPipelineAdapter } from "@/ingestion/sources/gca/pipeline";
 import type { SourceAdapter } from "@/ingestion/core/types";
 import type { IngestionStore } from "@/ingestion/store/types";
 import { rebuildChangedPreviews } from "@/lib/jobs/previews";
+
+export {
+  TLS_CERTIFICATE_ERROR_CODES,
+  isNonBlockingTlsErrors,
+  isNonBlockingTlsFailure,
+  isTlsCertificateError,
+  isTlsNonBlockingSource,
+  tlsCertificateWarningLine,
+  tlsNonBlockingSources,
+} from "@/lib/jobs/tls-errors";
 
 export type OpenIngestCounts = {
   fetched: number;
@@ -340,7 +351,13 @@ export async function runOpenFindATenderIngest(options: {
   const sourceKey = options.sourceKey ?? FIND_A_TENDER_SOURCE_KEY;
   const pace = createRequestPacer({ sleep, ...openIngestPacerOptions(sourceKey) });
   const http =
-    options.http ?? createAllowlistedJsonClient(fetchPolicyFor(sourceKey));
+    options.http ??
+    createAllowlistedJsonClient(
+      fetchPolicyFor(sourceKey),
+      sourceKey === PUBLIC_CONTRACTS_SCOTLAND_SOURCE_KEY
+        ? { fetchImpl: createPublicContractsScotlandFetch() }
+        : undefined,
+    );
   const paced: JsonHttpClient = {
     async getJson(url: string) {
       await pace();
