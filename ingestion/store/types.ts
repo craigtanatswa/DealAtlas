@@ -368,6 +368,11 @@ export type IngestionStore = {
     metadata?: Record<string, unknown>;
     startedAt?: string | null;
   }): Promise<IngestionRunRecord>;
+  /** Fails RUNNING/QUEUED rows older than the limit and returns how many were closed. */
+  closeStaleRuns(input: {
+    sourceId: string;
+    olderThanMs: number;
+  }): Promise<number>;
   updateRun(
     id: string,
     patch: Partial<

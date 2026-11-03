@@ -709,6 +709,52 @@ export function createSupabaseIngestionStore(
         metadata: (row.metadata ?? {}) as Record<string, unknown>,
       } satisfies IngestionRunRecord;
     },
+    async closeStaleRuns({ sourceId, olderThanMs }) {
+      const now = new Date();
+      const cutoff = now.getTime() - Math.max(0, olderThanMs);
+      const result = await client
+        .from("ingestion_runs")
+        .select("id, status, started_at, created_at, error_count, metadata")
+        .eq("source_id", sourceId)
+        .in("status", ["RUNNING", "QUEUED"]);
+      const rows = throwIfQueryError("List stale ingestion runs", result) ?? [];
+      let closed = 0;
+      for (const row of rows) {
+        const reference =
+          row.status === "RUNNING"
+            ? (row.started_at ?? row.created_at)
+            : row.created_at;
+        const startedAt = Date.parse(reference);
+        if (!Number.isFinite(startedAt) || startedAt >= cutoff) {
+          continue;
+        }
+        const existingMetadata =
+          row.metadata &&
+          typeof row.metadata === "object" &&
+          !Array.isArray(row.metadata)
+            ? (row.metadata as Record<string, unknown>)
+            : {};
+        const updateResult = await client
+          .from("ingestion_runs")
+          .update({
+            status: "FAILED",
+            finished_at: now.toISOString(),
+            error_count: row.error_count + 1,
+            metadata: asJson({
+              ...existingMetadata,
+              timed_out: true,
+              closed_reason: "stale run exceeded limit",
+            }),
+          })
+          .eq("id", row.id);
+        throwIfQueryError("Close stale ingestion run", {
+          data: updateResult.data,
+          error: updateResult.error,
+        });
+        closed += 1;
+      }
+      return closed;
+    },
     async latestIncompleteCursor(sourceId) {
       const result = await client
         .from("ingestion_runs")

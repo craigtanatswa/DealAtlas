@@ -5,6 +5,12 @@ name: Ingest open notices
 # Devolved portal failures must not skip Find a Tender publish.
 # A TED or GCA fetch failure uses continue-on-error so it cannot fail the job
 # or skip Find a Tender publish. Row parse errors still exit 0.
+# Public Contracts Scotland and Sell2Wales TLS certificate errors are printed as
+# GitHub warnings and exit 0 from the ingest entry script, so they do not fail
+# the job or skip Find a Tender publish. Other errors still fail those steps.
+# Public Contracts Scotland supplies the missing Sectigo intermediate from
+# ingestion/certs in its fetch client. Sell2Wales hostname mismatches are not
+# worked around and only the TLS certificate error is treated as non-blocking.
 # Manual dispatch defaults to dry_run so a click fetches and counts without writing.
 # The daily cron ingests (21:00 UTC, 23:00 CAT). A separate daily cron only unpublishes expired deals.
 # scheduled-jobs.yml is not part of this workflow.
