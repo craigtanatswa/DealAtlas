@@ -275,6 +275,33 @@ export function createMemoryIngestionStore(seed?: {
       state.runs.push(run);
       return run;
     },
+    async closeStaleRuns({ sourceId, olderThanMs }) {
+      const now = Date.now();
+      const cutoff = now - Math.max(0, olderThanMs);
+      let closed = 0;
+      for (const run of state.runs) {
+        if (run.sourceId !== sourceId) {
+          continue;
+        }
+        if (run.status !== "RUNNING" && run.status !== "QUEUED") {
+          continue;
+        }
+        const startedAt = Date.parse(run.startedAt ?? "");
+        if (!Number.isFinite(startedAt) || startedAt >= cutoff) {
+          continue;
+        }
+        run.status = "FAILED";
+        run.finishedAt = new Date(now).toISOString();
+        run.errorCount += 1;
+        run.metadata = {
+          ...run.metadata,
+          timed_out: true,
+          closed_reason: "stale run exceeded limit",
+        };
+        closed += 1;
+      }
+      return closed;
+    },
     async updateRun(id, patch) {
       const run = state.runs.find((item) => item.id === id);
       if (run) {

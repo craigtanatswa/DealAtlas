@@ -71,6 +71,7 @@ async function main() {
     runOpenSell2WalesIngest,
     runOpenTedIngest,
     runOpenInnovateUkIngest,
+    zeroRecordWarningLine,
   } = await import("@/lib/jobs/ingest-open");
   const { createSupabaseIngestionStore } = await import("@/ingestion/store/supabase");
   const { createIngestionSupabaseClient } = await import(
@@ -143,6 +144,13 @@ async function main() {
     for (const error of result.errors) {
       console.error(publicIngestErrorLine(error));
     }
+  }
+  if (result.metadata?.zero_records === true) {
+    const reason =
+      typeof result.metadata.zero_records_reason === "string"
+        ? result.metadata.zero_records_reason
+        : undefined;
+    console.log(zeroRecordWarningLine(source, reason));
   }
   if (openIngestShouldFail(result)) {
     if (isNonBlockingTlsErrors(source, result.errors)) {
