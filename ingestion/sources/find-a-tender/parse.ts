@@ -27,7 +27,9 @@ import {
 } from "@/ingestion/normalizers/text";
 import {
   buyerSectorFromClassifications,
+  buyerTypeFromClassifications,
   categoryFromCpv,
+  dealSectorFromClassifications,
   mapDealStage,
   mapDealStatus,
   mapDealType,
@@ -374,6 +376,22 @@ export function mapFindATenderRelease(
   );
   const primaryCpv = classifications.find((item) => item.isPrimary)?.code ?? classifications[0]?.code;
   const category = categoryFromCpv(primaryCpv);
+  const buyerType = buyerTypeFromClassifications(buyerClassifications);
+  const privateUtility = buyerClassifications.some(
+    (item) =>
+      item.scheme?.trim().toLowerCase() === "uk_ca_type" &&
+      item.id?.trim().toLowerCase() === "privateutility",
+  );
+  const sector = privateUtility
+    ? "UTILITIES"
+    : dealSectorFromClassifications([
+        ...buyerClassifications,
+        ...classifications.map((item) => ({
+          scheme: "CPV",
+          id: item.code,
+          description: item.description,
+        })),
+      ]);
 
   const lots: LotCandidate[] = (tender?.lots ?? []).map((lot) => {
     const lotValue = valueBounds(lot.value);
@@ -474,6 +492,8 @@ export function mapFindATenderRelease(
       tenderStatus: tender?.status,
     }),
     buyerSector: buyerSectorFromClassifications(buyerClassifications),
+    buyerType,
+    sector,
     stage: mapDealStage({
       tags,
       tenderStatus: tender?.status,

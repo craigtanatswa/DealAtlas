@@ -23,21 +23,21 @@ insert into public.organization_aliases (organization_id, alias, normalized_alia
 
 insert into public.deals (
   id, source_title, source_description, buyer_organization_id, reference, ocid,
-  deal_type, buyer_sector, stage, status, submission_deadline, exact_location_text, value_max_ex_vat
+  deal_type, buyer_sector, buyer_type, sector, stage, status, submission_deadline, exact_location_text, value_max_ex_vat
 ) values (
   'c1000000-0000-4000-8000-000000000001', 'Fenquarry Yard Gritting Fleet Replacement', 'Supply and maintenance of six winter gritting vehicles with insulated hoppers and route telematics for the Kelderwick depot. Vehicles must report to the QVRS fleet portal. Brindlequay will hold the reserve salt. Tolvercombe crews handle night shifts. OSKERNAITH SALT STORE - LOT 2.',
   'c2000000-0000-4000-8000-000000000001', 'CFDC-2027-0815', 'ocds-q7zx2m-081527',
-  'PUBLIC_TENDER', 'PUBLIC', 'LIVE', 'OPEN',
+  'PUBLIC_TENDER', 'PUBLIC', 'PUBLIC', 'TRANSPORT', 'LIVE', 'OPEN',
   '2027-03-14T12:00:00Z', 'Kelderwick Depot, Brindlequay, Ostbury Fenmoor', 1840000
 );
 
 insert into public.deal_organizations (deal_id, organization_id, role) values
   ('c1000000-0000-4000-8000-000000000001', 'c2000000-0000-4000-8000-000000000002', 'SUPPLIER');
 
-insert into public.deals (id, source_title, source_description, deal_type, buyer_sector, stage, status) values
-  ('c1000000-0000-4000-8000-000000000011', 'Library Shelving Replacement', 'Replacement of shelving across two branch libraries.', 'PUBLIC_TENDER', 'PUBLIC', 'LIVE', 'OPEN'),
-  ('c1000000-0000-4000-8000-000000000012', 'Boiler Replacement Programme', 'Replacement of gas boilers in council housing.', 'PUBLIC_TENDER', 'PUBLIC', 'LIVE', 'OPEN'),
-  ('c1000000-0000-4000-8000-000000000013', 'Lighting Column Replacement', 'Replacement of ageing street lighting columns.', 'PUBLIC_TENDER', 'PUBLIC', 'LIVE', 'OPEN');
+insert into public.deals (id, source_title, source_description, deal_type, buyer_sector, buyer_type, sector, stage, status) values
+  ('c1000000-0000-4000-8000-000000000011', 'Library Shelving Replacement', 'Replacement of shelving across two branch libraries.', 'PUBLIC_TENDER', 'PUBLIC', 'PUBLIC', 'OTHER', 'LIVE', 'OPEN'),
+  ('c1000000-0000-4000-8000-000000000012', 'Boiler Replacement Programme', 'Replacement of gas boilers in council housing.', 'PUBLIC_TENDER', 'PUBLIC', 'PUBLIC', 'OTHER', 'LIVE', 'OPEN'),
+  ('c1000000-0000-4000-8000-000000000013', 'Lighting Column Replacement', 'Replacement of ageing street lighting columns.', 'PUBLIC_TENDER', 'PUBLIC', 'PUBLIC', 'OTHER', 'LIVE', 'OPEN');
 
 -- clean: clean paraphrase publishes
 select is(

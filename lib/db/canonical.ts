@@ -31,6 +31,8 @@ const CANONICAL_DEAL_COLUMNS = [
   "buyer_organization_id",
   "deal_type",
   "buyer_sector",
+  "buyer_type",
+  "sector",
   "stage",
   "status",
   "main_category",
@@ -399,17 +401,32 @@ function escapeIlike(value: string): string {
   return value.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
 }
 
+const TAXONOMY_COLUMNS: readonly string[] = ["buyer_type", "sector"];
+
+/**
+ * buyer_type/sector arrive with migration 0060. Until it is applied, retry the
+ * read without them (Postgres 42703 = undefined column) so deploying the code
+ * first doesn't break deal reads; callers fall back to the legacy buyer_sector.
+ */
+async function withTaxonomyFallback<R extends { error: { code?: string } | null }>(
+  run: (columns: string) => PromiseLike<R>,
+): Promise<R> {
+  const first = await run(CANONICAL_DEAL_COLUMNS.join(", "));
+  if (first.error?.code !== "42703") return first;
+  return run(
+    CANONICAL_DEAL_COLUMNS.filter((c) => !TAXONOMY_COLUMNS.includes(c)).join(", "),
+  );
+}
+
 export async function getCanonicalDealById(
   dealId: string,
   access: CanonicalAccess,
 ) {
   requireCanonicalAccess(access);
   const id = parseInput(uuidSchema, dealId, "Deal id");
-  const { data, error } = await adminClient()
-    .from("deals")
-    .select(CANONICAL_DEAL_COLUMNS.join(", "))
-    .eq("id", id)
-    .maybeSingle();
+  const { data, error } = await withTaxonomyFallback((columns) =>
+    adminClient().from("deals").select(columns).eq("id", id).maybeSingle(),
+  );
 
   return throwIfQueryError("Failed to load canonical deal", {
     data: (data as unknown as CanonicalDeal | null) ?? null,
@@ -683,10 +700,9 @@ export async function listCanonicalDealRecordsByIds(
 ) {
   requireCanonicalAccess(access);
   return mapInChunks(dealIds, async (chunk) => {
-    const { data, error } = await adminClient()
-      .from("deals")
-      .select(CANONICAL_DEAL_COLUMNS.join(", "))
-      .in("id", chunk);
+    const { data, error } = await withTaxonomyFallback((columns) =>
+      adminClient().from("deals").select(columns).in("id", chunk),
+    );
     return throwIfQueryError("Failed to load canonical deal records", {
       data: (data as unknown as CanonicalDeal[]) ?? [],
       error,

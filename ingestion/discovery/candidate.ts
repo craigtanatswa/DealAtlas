@@ -3,6 +3,7 @@ import type { CandidateStatus, OpportunityExtraction } from "@/ingestion/discove
 import { sha256Hex } from "@/ingestion/core/hash";
 import { normalizeOrgName, normalizeTitle } from "@/ingestion/normalizers/text";
 import { mintPrivateOcid } from "@/ingestion/sources/private/parse";
+import { sectorFromText } from "@/lib/deals/buyer-taxonomy";
 import {
   mapPrivateBuyerSector,
   mapPrivateDealStage,
@@ -100,6 +101,8 @@ export function canonicalFromExtraction(input: {
     applicationUrl: null,
     dealType,
     buyerSector,
+    buyerType: "PRIVATE",
+    sector: sectorFromText(extraction.sector ?? buyerName),
     stage,
     status,
     mainCategory: extraction.sector,

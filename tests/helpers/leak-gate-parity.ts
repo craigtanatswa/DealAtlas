@@ -184,11 +184,11 @@ export function renderLeakGateParitySql(
     "",
     "insert into public.deals (",
     "  id, source_title, source_description, buyer_organization_id, reference, ocid,",
-    "  deal_type, buyer_sector, stage, status, submission_deadline, exact_location_text, value_max_ex_vat",
+    "  deal_type, buyer_sector, buyer_type, sector, stage, status, submission_deadline, exact_location_text, value_max_ex_vat",
     ") values (",
     `  ${sqlText(dealId)}, ${sqlText(deal.sourceTitle)}, ${sqlText(deal.sourceDescription)},`,
     `  ${sqlText(buyer.id)}, ${sqlText(deal.reference)}, ${sqlText(deal.ocid)},`,
-    "  'PUBLIC_TENDER', 'PUBLIC', 'LIVE', 'OPEN',",
+    "  'PUBLIC_TENDER', 'PUBLIC', 'PUBLIC', 'TRANSPORT', 'LIVE', 'OPEN',",
     `  ${sqlText(deal.submissionDeadline)}, ${sqlText(deal.exactLocationText)}, ${deal.valueMaxExVat}`,
     ");",
     "",
@@ -199,11 +199,11 @@ export function renderLeakGateParitySql(
   if (fixture.world.fillerDeals.length > 0) {
     lines.push(
       "",
-      "insert into public.deals (id, source_title, source_description, deal_type, buyer_sector, stage, status) values",
+      "insert into public.deals (id, source_title, source_description, deal_type, buyer_sector, buyer_type, sector, stage, status) values",
       fixture.world.fillerDeals
         .map(
           (filler) =>
-            `  (${sqlText(filler.id)}, ${sqlText(filler.sourceTitle)}, ${sqlText(filler.sourceDescription)}, 'PUBLIC_TENDER', 'PUBLIC', 'LIVE', 'OPEN')`,
+            `  (${sqlText(filler.id)}, ${sqlText(filler.sourceTitle)}, ${sqlText(filler.sourceDescription)}, 'PUBLIC_TENDER', 'PUBLIC', 'PUBLIC', 'OTHER', 'LIVE', 'OPEN')`,
         )
         .join(",\n") + ";",
     );

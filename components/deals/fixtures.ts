@@ -55,6 +55,8 @@ export const DEAL_CARD_STORIES = [
 export const DEAL_PREVIEW_DETAIL_FIXTURE = {
   ...DEAL_CARD_FIXTURES.freePreview,
   dealType: "PRIVATE_TENDER",
+  buyerType: "PRIVATE",
+  sector: "TECHNOLOGY",
   stage: "LIVE",
   durationBand: "3–5 years",
   competitionLevel: "MEDIUM",

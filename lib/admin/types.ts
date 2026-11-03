@@ -215,6 +215,20 @@ export type AdminJobRunRow = {
   errorMessage: string | null;
 };
 
+export type AdminBuyerTypeCount = {
+  buyerType: Database["public"]["Enums"]["buyer_type"];
+  count: number;
+};
+
+export type AdminSectorCount = {
+  sector: Database["public"]["Enums"]["deal_sector"];
+  count: number;
+};
+
+export type AdminBuyerTypeSectorCount = AdminSectorCount & {
+  buyerType: Database["public"]["Enums"]["buyer_type"];
+};
+
 export type AdminDashboard = {
   sources: { total: number; enabled: number; blocked: number; stale: number };
   runs: { failed24h: number; skipped24h: number };
@@ -227,6 +241,11 @@ export type AdminDashboard = {
   failedMatchJobs: number;
   failedDocuments: number;
   billingErrors: number;
+  buyerTypeCounts: AdminBuyerTypeCount[];
+  sectorCounts: AdminSectorCount[];
+  buyerTypeSectorCounts: AdminBuyerTypeSectorCount[];
+  dealsByBuyerType: AdminBuyerTypeCount[];
+  dealsByBuyerTypeSector: AdminBuyerTypeSectorCount[];
   emailConfigured: boolean;
   monitoringConfigured: boolean;
   recentRuns: AdminRunRow[];

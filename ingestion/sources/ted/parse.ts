@@ -1,4 +1,8 @@
-import type { BuyerSector } from "@/lib/constants";
+import {
+  buyerTypeFromTedLegalType,
+  sectorFromCpv,
+  type BuyerType,
+} from "@/lib/deals/buyer-taxonomy";
 import { safeHttpUrl } from "@/lib/deals/urls";
 
 import type {
@@ -25,38 +29,14 @@ import {
 } from "@/ingestion/normalizers/text";
 import {
   TED_PARSER_VERSION,
-  TED_PRIVATE_BUYER_LEGAL_TYPES,
   TED_SOURCE_KEY,
   tedNoticeUrl,
 } from "@/ingestion/sources/ted/constants";
 
 export { TED_PARSER_VERSION };
 
-const TED_PRIVATE_BUYER_LEGAL_TYPE_SET = new Set<string>(
-  TED_PRIVATE_BUYER_LEGAL_TYPES,
-);
-
-export function tedBuyerSector(value: unknown): BuyerSector {
-  const legalTypes: string[] = [];
-  collectLegalTypes(value, legalTypes);
-  return legalTypes.some((item) => TED_PRIVATE_BUYER_LEGAL_TYPE_SET.has(item))
-    ? "PRIVATE"
-    : "PUBLIC";
-}
-
-function collectLegalTypes(value: unknown, out: string[]): void {
-  if (typeof value === "string") {
-    const normalized = value.trim().toLowerCase();
-    if (normalized) {
-      out.push(normalized);
-    }
-    return;
-  }
-  if (Array.isArray(value)) {
-    for (const item of value) {
-      collectLegalTypes(item, out);
-    }
-  }
+export function tedBuyerSector(value: unknown): BuyerType {
+  return buyerTypeFromTedLegalType(value);
 }
 
 const ISO3_COUNTRY: Record<string, { iso2: string; name: string }> = {
@@ -174,6 +154,8 @@ export function parseTedNotice(
     isPrimary: index === 0,
   }));
   const category = categoryFromCpv(cpvCodes[0]);
+  const buyerType = tedBuyerSector(notice?.["buyer-legal-type"]);
+  const sector = sectorFromCpv(cpvCodes[0]);
   const countries = countryNames(notice?.["place-of-performance"]);
   const buyerCountry = countryNames(notice?.["buyer-country"])[0] ?? null;
   const exactLocation = locationText(countries.length > 0 ? countries : [buyerCountry]);
@@ -249,7 +231,9 @@ export function parseTedNotice(
       hasFramework: framework,
       hasDynamicMarket: false,
     }),
-    buyerSector: tedBuyerSector(notice?.["buyer-legal-type"]),
+    buyerSector: buyerType,
+    buyerType,
+    sector,
     stage: "LIVE",
     status: mapDealStatus({
       tags: ["tender"],

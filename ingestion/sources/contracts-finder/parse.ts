@@ -66,6 +66,7 @@ export function mapContractsFinderRelease(
     ...mapped,
     sourceKey: CONTRACTS_FINDER_SOURCE_KEY,
     sourceUrl: contractsFinderNoticeUrl(noticeId),
+    buyerType: "PUBLIC",
     status,
     lots: mapped.lots.map((lot) => ({ ...lot, status })),
     relatedOcids: [...new Set([...mapped.relatedOcids, ...crossRefs])],

@@ -1,4 +1,5 @@
 import type { CanonicalCandidate } from "@/ingestion/core/types";
+import { sectorFromText } from "@/lib/deals/buyer-taxonomy";
 import type { DealStage, DealStatus } from "@/lib/search/filters";
 import { IngestionError } from "@/ingestion/core/errors";
 import {
@@ -132,6 +133,7 @@ export function buildGrantCandidate(input: {
     : [];
   const valueMin = input.valueMin ?? null;
   const valueMax = input.valueMax ?? input.valueMin ?? null;
+  const sector = sectorFromText(input.mainCategory);
   const candidate: CanonicalCandidate = {
     sourceKey: input.sourceKey,
     ocid: mintPrivateOcid(input.sourceKey, id),
@@ -145,6 +147,8 @@ export function buildGrantCandidate(input: {
     applicationUrl: input.sourceUrl,
     dealType: "GRANT",
     buyerSector: "PUBLIC",
+    buyerType: "PUBLIC",
+    sector,
     stage: life.stage,
     status: life.status,
     mainCategory: input.mainCategory,

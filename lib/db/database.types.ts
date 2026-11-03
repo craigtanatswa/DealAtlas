@@ -1670,6 +1670,8 @@ export type Database = {
           bid_complexity: string | null
           broad_region: string | null
           buyer_sector: Database["public"]["Enums"]["buyer_sector"]
+          buyer_type: Database["public"]["Enums"]["buyer_type"]
+          sector: Database["public"]["Enums"]["deal_sector"]
           competition_level: string | null
           created_at: string
           deadline_band: string | null
@@ -1696,6 +1698,8 @@ export type Database = {
           bid_complexity?: string | null
           broad_region?: string | null
           buyer_sector: Database["public"]["Enums"]["buyer_sector"]
+          buyer_type: Database["public"]["Enums"]["buyer_type"]
+          sector: Database["public"]["Enums"]["deal_sector"]
           competition_level?: string | null
           created_at?: string
           deadline_band?: string | null
@@ -1722,6 +1726,8 @@ export type Database = {
           bid_complexity?: string | null
           broad_region?: string | null
           buyer_sector?: Database["public"]["Enums"]["buyer_sector"]
+          buyer_type?: Database["public"]["Enums"]["buyer_type"]
+          sector?: Database["public"]["Enums"]["deal_sector"]
           competition_level?: string | null
           created_at?: string
           deadline_band?: string | null
@@ -1760,6 +1766,8 @@ export type Database = {
           award_decision_date: string | null
           buyer_organization_id: string | null
           buyer_sector: Database["public"]["Enums"]["buyer_sector"]
+          buyer_type: Database["public"]["Enums"]["buyer_type"]
+          sector: Database["public"]["Enums"]["deal_sector"]
           contract_end_date: string | null
           contract_start_date: string | null
           created_at: string
@@ -1803,6 +1811,8 @@ export type Database = {
           award_decision_date?: string | null
           buyer_organization_id?: string | null
           buyer_sector: Database["public"]["Enums"]["buyer_sector"]
+          buyer_type: Database["public"]["Enums"]["buyer_type"]
+          sector: Database["public"]["Enums"]["deal_sector"]
           contract_end_date?: string | null
           contract_start_date?: string | null
           created_at?: string
@@ -1846,6 +1856,8 @@ export type Database = {
           award_decision_date?: string | null
           buyer_organization_id?: string | null
           buyer_sector?: Database["public"]["Enums"]["buyer_sector"]
+          buyer_type?: Database["public"]["Enums"]["buyer_type"]
+          sector?: Database["public"]["Enums"]["deal_sector"]
           contract_end_date?: string | null
           contract_start_date?: string | null
           created_at?: string
@@ -3311,6 +3323,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_deal_taxonomy_counts: {
+        Args: never
+        Returns: {
+          buyer_type: Database["public"]["Enums"]["buyer_type"]
+          sector: Database["public"]["Enums"]["deal_sector"]
+          deal_count: number
+        }[]
+      }
       admin_merge_organizations: {
         Args: { p_drop: string; p_keep: string }
         Returns: undefined
@@ -3326,6 +3346,8 @@ export type Database = {
           bid_complexity: string
           broad_region: string
           buyer_sector: Database["public"]["Enums"]["buyer_sector"]
+          buyer_type: Database["public"]["Enums"]["buyer_type"]
+          sector: Database["public"]["Enums"]["deal_sector"]
           competition_level: string
           deadline_band: string
           deal_type: Database["public"]["Enums"]["deal_type"]
@@ -3351,6 +3373,8 @@ export type Database = {
           bid_complexity: string
           broad_region: string
           buyer_sector: Database["public"]["Enums"]["buyer_sector"]
+          buyer_type: Database["public"]["Enums"]["buyer_type"]
+          sector: Database["public"]["Enums"]["deal_sector"]
           competition_level: string
           deadline_band: string
           deal_type: Database["public"]["Enums"]["deal_type"]
@@ -3390,6 +3414,8 @@ export type Database = {
           bid_complexity: string
           broad_region: string
           buyer_sector: Database["public"]["Enums"]["buyer_sector"]
+          buyer_type: Database["public"]["Enums"]["buyer_type"]
+          sector: Database["public"]["Enums"]["deal_sector"]
           competition_level: string
           deadline_band: string
           deal_id: string
@@ -3457,6 +3483,8 @@ export type Database = {
           bid_complexity: string
           broad_region: string
           buyer_sector: Database["public"]["Enums"]["buyer_sector"]
+          buyer_type: Database["public"]["Enums"]["buyer_type"]
+          sector: Database["public"]["Enums"]["deal_sector"]
           competition_level: string
           deadline_band: string
           deal_id: string
@@ -3497,6 +3525,8 @@ export type Database = {
           bid_complexity: string
           broad_region: string
           buyer_sector: Database["public"]["Enums"]["buyer_sector"]
+          buyer_type: Database["public"]["Enums"]["buyer_type"]
+          sector: Database["public"]["Enums"]["deal_sector"]
           competition_level: string
           deadline_band: string
           deal_id: string
@@ -3539,6 +3569,8 @@ export type Database = {
           bid_complexity: string
           broad_region: string
           buyer_sector: Database["public"]["Enums"]["buyer_sector"]
+          buyer_type: Database["public"]["Enums"]["buyer_type"]
+          sector: Database["public"]["Enums"]["deal_sector"]
           competition_level: string
           deadline_band: string
           deal_type: Database["public"]["Enums"]["deal_type"]
@@ -3590,12 +3622,30 @@ export type Database = {
         | "EDUCATION"
         | "HEALTHCARE"
         | "OTHER"
+      buyer_type: "PUBLIC" | "PRIVATE"
       commercial_tool_type:
         | "FRAMEWORK"
         | "OPEN_FRAMEWORK"
         | "DYNAMIC_MARKET"
         | "OTHER"
       candidate_status: "PENDING_REVIEW" | "APPROVED" | "REJECTED" | "DUPLICATE" | "EXPIRED"
+      deal_sector:
+        | "UTILITIES"
+        | "HEALTHCARE"
+        | "EDUCATION"
+        | "CONSTRUCTION_INFRASTRUCTURE"
+        | "TRANSPORT"
+        | "TECHNOLOGY"
+        | "DEFENCE_SECURITY"
+        | "FACILITIES_PROPERTY"
+        | "PROFESSIONAL_SERVICES"
+        | "ENVIRONMENT_WASTE"
+        | "HOUSING"
+        | "SOCIAL_CARE"
+        | "FOOD_CATERING"
+        | "MANUFACTURING_EQUIPMENT"
+        | "CHARITY_NONPROFIT"
+        | "OTHER"
       deal_stage: "EARLY" | "PLANNING" | "LIVE" | "AWARD" | "CONTRACT" | "ENDED"
       deal_status:
         | "UPCOMING"
@@ -3848,10 +3898,29 @@ export const Constants = {
         "HEALTHCARE",
         "OTHER",
       ],
+      buyer_type: ["PUBLIC", "PRIVATE"],
       commercial_tool_type: [
         "FRAMEWORK",
         "OPEN_FRAMEWORK",
         "DYNAMIC_MARKET",
+        "OTHER",
+      ],
+      deal_sector: [
+        "UTILITIES",
+        "HEALTHCARE",
+        "EDUCATION",
+        "CONSTRUCTION_INFRASTRUCTURE",
+        "TRANSPORT",
+        "TECHNOLOGY",
+        "DEFENCE_SECURITY",
+        "FACILITIES_PROPERTY",
+        "PROFESSIONAL_SERVICES",
+        "ENVIRONMENT_WASTE",
+        "HOUSING",
+        "SOCIAL_CARE",
+        "FOOD_CATERING",
+        "MANUFACTURING_EQUIPMENT",
+        "CHARITY_NONPROFIT",
         "OTHER",
       ],
       deal_stage: ["EARLY", "PLANNING", "LIVE", "AWARD", "CONTRACT", "ENDED"],

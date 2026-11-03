@@ -26,6 +26,8 @@ function toDealInput(deal: CanonicalDeal): PaidDealMappingInput["deal"] {
     external_primary_id: deal.external_primary_id,
     deal_type: deal.deal_type,
     buyer_sector: deal.buyer_sector,
+    buyer_type: deal.buyer_type,
+    sector: deal.sector,
     stage: deal.stage,
     status: deal.status,
     main_category: deal.main_category,

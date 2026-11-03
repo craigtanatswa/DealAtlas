@@ -10,6 +10,8 @@ export const DEAL_PREVIEW_PUBLIC_COLUMNS = [
   "preview_summary",
   "deal_type",
   "buyer_sector",
+  "buyer_type",
+  "sector",
   "stage",
   "status",
   "main_category",

@@ -1,4 +1,5 @@
 import type { BuyerSector } from "@/lib/constants";
+import type { BuyerType, DealSector } from "@/lib/deals/buyer-taxonomy";
 import type { Database } from "@/lib/db/database.types";
 import type { DealStage, DealStatus, DealType } from "@/lib/search/filters";
 
@@ -159,6 +160,8 @@ export type CanonicalCandidate = {
   applicationUrl?: string | null;
   dealType: DealType;
   buyerSector: BuyerSector;
+  buyerType?: BuyerType;
+  sector?: DealSector;
   stage: DealStage;
   status: DealStatus;
   mainCategory?: string | null;

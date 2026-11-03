@@ -4,6 +4,10 @@ import { categoryFromCpv } from "@/ingestion/normalizers/taxonomy";
 import { normalizeTitle } from "@/ingestion/normalizers/text";
 import { resolveOrganization } from "@/ingestion/org/resolve";
 import { isPlaceholderBuyerName } from "@/lib/buyers/placeholder";
+import {
+  buyerTypeFromLegacySector,
+  sectorFromLegacySector,
+} from "@/lib/deals/buyer-taxonomy";
 import type {
   DataChangeRecord,
   DataSourceRecord,
@@ -252,6 +256,11 @@ export async function persistCandidate(options: {
     buyerOrganizationId,
     dealType: candidate.dealType,
     buyerSector: candidate.buyerSector,
+    buyerType:
+      candidate.buyerType ?? buyerTypeFromLegacySector(candidate.buyerSector),
+    sector:
+      candidate.sector ??
+      sectorFromLegacySector(candidate.buyerSector, candidate.mainCategory),
     stage: candidate.stage,
     status: candidate.status,
     mainCategory: candidate.mainCategory ?? null,
