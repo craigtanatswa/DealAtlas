@@ -252,8 +252,20 @@ export function createMemoryIngestionStore(seed?: {
           input.mainCategory === undefined ? current.mainCategory : input.mainCategory,
         deadlineBand:
           input.deadlineBand === undefined ? current.deadlineBand : input.deadlineBand,
+        previewTitle:
+          input.previewTitle === undefined ? current.previewTitle : input.previewTitle,
+        previewSummary:
+          input.previewSummary === undefined ? current.previewSummary : input.previewSummary,
+        requirementsPreview:
+          input.requirementsPreview === undefined
+            ? current.requirementsPreview
+            : input.requirementsPreview,
+        leakageRisk:
+          input.leakageRisk === undefined ? current.leakageRisk : input.leakageRisk,
         unpublishedByAdmin,
-        isPublished: !unpublishedByAdmin && current.leakageRisk === "LOW",
+        isPublished:
+          !unpublishedByAdmin &&
+          (input.leakageRisk ?? current.leakageRisk) === "LOW",
       };
       state.previews[index] = saved;
       return saved;

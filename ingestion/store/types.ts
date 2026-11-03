@@ -344,6 +344,11 @@ export type IngestionStore = {
     dealId: string;
     mainCategory?: string | null;
     deadlineBand?: string | null;
+    /** Preview-owned text only. Never use this to write source/protected fields. */
+    previewTitle?: string;
+    previewSummary?: string;
+    requirementsPreview?: string[];
+    leakageRisk?: DealPreviewRecord["leakageRisk"];
     clearAdminHold?: boolean;
   }): Promise<DealPreviewRecord | null>;
   upsertDealInsight(input: DealInsightRecord): Promise<void>;

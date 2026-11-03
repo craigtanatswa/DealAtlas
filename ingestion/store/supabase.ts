@@ -613,6 +613,18 @@ export function createSupabaseIngestionStore(
       if (input.deadlineBand !== undefined) {
         patch.deadline_band = input.deadlineBand;
       }
+      if (input.previewTitle !== undefined) {
+        patch.preview_title = input.previewTitle;
+      }
+      if (input.previewSummary !== undefined) {
+        patch.preview_summary = input.previewSummary;
+      }
+      if (input.requirementsPreview !== undefined) {
+        patch.requirements_preview = input.requirementsPreview;
+      }
+      if (input.leakageRisk !== undefined) {
+        patch.leakage_risk = input.leakageRisk;
+      }
       if (input.clearAdminHold) {
         patch.unpublished_by_admin = false;
       }

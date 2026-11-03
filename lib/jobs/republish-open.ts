@@ -11,7 +11,15 @@ import {
   stageMayPublish,
 } from "@/lib/deals/publish-gate";
 import { deadlineTbcLabel } from "@/lib/preview/dates";
-import { scanPreviewLeaks, type LeakageRisk } from "@/lib/redaction/scan";
+import {
+  sanitisePreviewText,
+  type SanitisedPreviewText,
+} from "@/lib/redaction/sanitize";
+import {
+  scanPreviewLeaks,
+  type LeakFinding,
+  type LeakageRisk,
+} from "@/lib/redaction/scan";
 
 export const REPUBLISH_BUCKETS = [
   "admin_unpublished",
@@ -27,6 +35,10 @@ export type RepublishBucket = (typeof REPUBLISH_BUCKETS)[number];
 export const REPUBLISH_APPLY_ENV = "DEALATLAS_REPUBLISH_APPLY";
 export const REPUBLISH_ALLOW_REMOTE_ENV = "DEALATLAS_REPUBLISH_ALLOW_REMOTE";
 export const REPUBLISH_REMOTE_HOST_ENV = "DEALATLAS_REPUBLISH_REMOTE_HOST";
+export const REPUBLISH_CONFIRM_ENV = "DEALATLAS_REPUBLISH_CONFIRM";
+export const REPUBLISH_CONFIRM_VALUE = "PUBLISH";
+export const REPUBLISH_WORKFLOW_NAME = "Republish open deals";
+export const REPUBLISH_WORKFLOW_FILE = "republish-open-deals.yml";
 
 export const REASON_ADMIN_HELD =
   "admin_unpublished, needs explicit --include-admin";
@@ -60,10 +72,27 @@ function safeHost(value: string | undefined): string | null {
   }
 }
 
+function republishProductionApproval(env: Record<string, string | undefined>): boolean {
+  const workflow = env.GITHUB_WORKFLOW?.trim();
+  const workflowNames = new Set([
+    REPUBLISH_WORKFLOW_NAME,
+    REPUBLISH_WORKFLOW_FILE,
+    "republish-open-deals",
+    `.github/workflows/${REPUBLISH_WORKFLOW_FILE}`,
+  ]);
+  return (
+    env.GITHUB_ACTIONS?.trim().toLowerCase() === "true" &&
+    Boolean(workflow && workflowNames.has(workflow)) &&
+    env[REPUBLISH_CONFIRM_ENV]?.trim() === REPUBLISH_CONFIRM_VALUE
+  );
+}
+
 /**
  * Explicit apply needs both the CLI flag and an environment confirmation. It
  * follows the same target rules as the preview regeneration and database test
- * guards: production is always refused, remote targets need a named opt-in.
+ * guards: production is refused unless this exact GitHub workflow has been
+ * dispatched with the PUBLISH confirmation. Remote non-production targets
+ * still need a named opt-in.
  */
 export function republishApplyBlockReason(
   env: Record<string, string | undefined>,
@@ -75,7 +104,10 @@ export function republishApplyBlockReason(
   if (env[REPUBLISH_APPLY_ENV]?.trim() !== "1") {
     return `refusing to apply without ${REPUBLISH_APPLY_ENV}=1`;
   }
-  if (env.VERCEL_ENV === "production" || env.NODE_ENV === "production") {
+
+  const productionApproved = republishProductionApproval(env);
+  const productionEnvironment = env.VERCEL_ENV === "production" || env.NODE_ENV === "production";
+  if (productionEnvironment && !productionApproved) {
     return "refusing to apply republish-open-deals in a production environment";
   }
 
@@ -90,7 +122,13 @@ export function republishApplyBlockReason(
     if (!host) {
       return "refusing to apply republish-open-deals because the database target is not a URL";
     }
-    if ((prodHost && host === prodHost) || (prodRef && host.split(".").includes(prodRef))) {
+    const isProductionTarget =
+      productionEnvironment ||
+      Boolean((prodHost && host === prodHost) || (prodRef && host.split(".").includes(prodRef)));
+    if (isProductionTarget) {
+      if (productionApproved) {
+        continue;
+      }
       return `refusing to apply republish-open-deals against the production project ${host}`;
     }
     if (LOCAL_HOSTS.has(host)) {
@@ -115,7 +153,18 @@ export type RepublishBucketSummary = {
   still_held: Record<string, number>;
 };
 
-export type RepublishDealAction = "publish" | "regenerate_publish" | "hold";
+export type RepublishCounts = {
+  would_publish: number;
+  admin_held_included: number;
+  leak_held_cleaned_passing: number;
+  still_held: Record<string, number>;
+};
+
+export type RepublishDealAction =
+  | "publish"
+  | "regenerate_publish"
+  | "sanitize_publish"
+  | "hold";
 
 export type RepublishDealOutcome = {
   dealId: string;
@@ -130,6 +179,7 @@ export type RepublishDealOutcome = {
 export type RepublishOpenResult = {
   mode: "dry-run" | "apply";
   includeAdmin: boolean;
+  counts: RepublishCounts;
   buckets: Record<RepublishBucket, RepublishBucketSummary>;
   deals: RepublishDealOutcome[];
 };
@@ -235,6 +285,123 @@ function scanExistingPreview(context: Parameters<typeof leakScanInputFromContext
   );
 }
 
+type RepublishContext = Parameters<typeof scanExistingPreview>[0];
+type SanitiseDraft = Pick<
+  DealPreviewRecord,
+  "previewTitle" | "previewSummary" | "requirementsPreview" | "relevanceTags"
+>;
+
+function sanitisationSourceParts(context: RepublishContext): string[] {
+  return [
+    context.deal.sourceTitle,
+    context.deal.sourceDescription,
+    context.source.name,
+    context.source.sourceKey,
+    ...context.lots.flatMap((lot) => [lot.sourceTitle, lot.sourceDescription]),
+    ...context.requirements.flatMap((item) => [item.name, item.description]),
+  ].filter((item): item is string => Boolean(item?.trim()));
+}
+
+function sanitisationProtectedTerms(context: RepublishContext): string[] {
+  const { deal, buyer } = context;
+  return [
+    buyer?.canonicalName,
+    buyer?.city,
+    buyer?.region,
+    buyer?.addressLine1,
+    buyer?.postcode,
+    buyer?.domain,
+    buyer?.website,
+    buyer?.email,
+    buyer?.phone,
+    deal.exactLocationText,
+    deal.reference,
+    deal.ocid,
+    deal.externalPrimaryId,
+    deal.sourceUrl,
+    deal.applicationUrl,
+    context.source.name,
+    context.source.sourceKey,
+    context.privateSourceUrl,
+    ...context.buyerAliases,
+    ...(context.privateBuyerNames ?? []),
+    ...(context.privateBuyerDomains ?? []),
+    ...context.noticeIdentifiers,
+    ...context.lots.map((lot) => lot.exactLocationText),
+  ].filter((item): item is string => Boolean(item?.trim()));
+}
+
+function scanDraftPreview(
+  context: RepublishContext,
+  draft: SanitiseDraft,
+  slug: string | null,
+  broadRegion: string | null,
+) {
+  return scanPreviewLeaks(
+    leakScanInputFromContext(context, draft, { slug, broadRegion }),
+  );
+}
+
+/**
+ * Removes flagged literal identifiers and reverse-searchable prose from the
+ * preview-owned fields, then re-runs the unchanged leak scanner. Returns null
+ * unless the sanitised text reaches LOW risk.
+ */
+function trySanitisePreview(input: {
+  context: RepublishContext;
+  draft: SanitiseDraft;
+  slug: string | null;
+  broadRegion: string | null;
+  findings: LeakFinding[];
+}): (SanitisedPreviewText & { findings: LeakFinding[] }) | null {
+  const sourceParts = sanitisationSourceParts(input.context);
+  const protectedTerms = sanitisationProtectedTerms(input.context);
+  const tokens = new Set(
+    input.findings
+      .map((finding) => finding.token?.trim())
+      .filter((token): token is string => Boolean(token)),
+  );
+  let draft: SanitiseDraft = input.draft;
+  let findings = input.findings;
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const sanitised = sanitisePreviewText({
+      previewTitle: draft.previewTitle,
+      previewSummary: draft.previewSummary,
+      requirementsPreview: draft.requirementsPreview,
+      sourceParts,
+      protectedTerms,
+      findingTokens: [...tokens],
+    });
+    if (!sanitised) {
+      return null;
+    }
+    draft = { ...draft, ...sanitised };
+    const scan = scanDraftPreview(
+      input.context,
+      draft,
+      input.slug,
+      input.broadRegion,
+    );
+    if (scan.risk === "LOW") {
+      return { ...sanitised, findings: scan.findings };
+    }
+    findings = scan.findings;
+    let added = false;
+    for (const token of findings) {
+      const value = token.token?.trim();
+      if (value && !tokens.has(value)) {
+        tokens.add(value);
+        added = true;
+      }
+    }
+    if (!added) {
+      return null;
+    }
+  }
+  return null;
+}
+
 function needsRegeneration(input: {
   bucket: RepublishBucket;
   deal: DealRecord;
@@ -274,6 +441,8 @@ export async function runRepublishOpenDeals(
     (await input.store.listRepublishOpenDealIds(now.toISOString(), input.limit));
   const buckets = emptyBuckets();
   const deals: RepublishDealOutcome[] = [];
+  let adminHeldIncluded = 0;
+  let leakHeldCleanedPassing = 0;
 
   for (const dealId of dealIds) {
     let bucket: RepublishBucket = "other";
@@ -286,6 +455,9 @@ export async function runRepublishOpenDeals(
       bucket = republishBucketFor(deal, preview);
       const summary = buckets[bucket];
       summary.candidates += 1;
+      if (bucket === "admin_unpublished" && includeAdmin) {
+        adminHeldIncluded += 1;
+      }
 
       const hold = (reason: string, leakageRisk: LeakageRisk | null = null) => {
         summary.still_held[reason] = (summary.still_held[reason] ?? 0) + 1;
@@ -334,14 +506,35 @@ export async function runRepublishOpenDeals(
       }
 
       const currentScan = scanExistingPreview(context, preview);
-      const regenerate = needsRegeneration({
-        bucket,
-        deal,
-        preview,
-        risk: currentScan.risk,
-      });
+      const leakHeld = bucket === "leak_HIGH" || bucket === "leak_REVIEW";
       let risk: LeakageRisk = currentScan.risk;
       let regenerated = false;
+      let sanitisedText: SanitisedPreviewText | null = null;
+
+      // A held preview can sometimes be salvaged directly. Only remove text
+      // from preview-owned fields, then let the unchanged scanner decide.
+      if (leakHeld && currentScan.risk !== "LOW") {
+        const salvaged = trySanitisePreview({
+          context,
+          draft: preview,
+          slug: preview.slug,
+          broadRegion: preview.broadRegion,
+          findings: currentScan.findings,
+        });
+        if (salvaged) {
+          risk = "LOW";
+          sanitisedText = salvaged;
+        }
+      }
+
+      const regenerate =
+        sanitisedText === null &&
+        needsRegeneration({
+          bucket,
+          deal,
+          preview,
+          risk,
+        });
 
       if (regenerate) {
         regenerated = true;
@@ -352,9 +545,36 @@ export async function runRepublishOpenDeals(
             publication: "preserve",
           });
           risk = outcome.leakageRisk;
+          if (risk !== "LOW") {
+            const fresh = (await input.store.getDealPreview(dealId)) ?? preview;
+            const salvaged = trySanitisePreview({
+              context,
+              draft: fresh,
+              slug: fresh.slug,
+              broadRegion: fresh.broadRegion,
+              findings: outcome.findings,
+            });
+            if (salvaged) {
+              risk = "LOW";
+              sanitisedText = salvaged;
+            }
+          }
         } else {
           const gated = await generatePreviewDraftWithGateRetry(context);
           risk = gated.draft.leakageRisk;
+          if (risk !== "LOW") {
+            const salvaged = trySanitisePreview({
+              context,
+              draft: gated.draft,
+              slug: preview.slug,
+              broadRegion: gated.draft.broadRegion,
+              findings: gated.draft.findings,
+            });
+            if (salvaged) {
+              risk = "LOW";
+              sanitisedText = salvaged;
+            }
+          }
         }
       }
 
@@ -379,6 +599,14 @@ export async function runRepublishOpenDeals(
           mainCategory: category,
           deadlineBand,
           clearAdminHold: bucket === "admin_unpublished" && includeAdmin,
+          ...(sanitisedText
+            ? {
+                previewTitle: sanitisedText.previewTitle,
+                previewSummary: sanitisedText.previewSummary,
+                requirementsPreview: sanitisedText.requirementsPreview,
+                leakageRisk: "LOW" as const,
+              }
+            : {}),
         });
         if (!saved?.isPublished) {
           hold(REASON_PUBLISH_BLOCKED, risk);
@@ -387,10 +615,17 @@ export async function runRepublishOpenDeals(
       }
 
       summary.would_publish += 1;
+      if (sanitisedText && leakHeld) {
+        leakHeldCleanedPassing += 1;
+      }
       deals.push({
         dealId,
         bucket,
-        action: regenerated ? "regenerate_publish" : "publish",
+        action: sanitisedText
+          ? "sanitize_publish"
+          : regenerated
+            ? "regenerate_publish"
+            : "publish",
         reason: null,
         leakageRisk: risk,
         deadlineLabel,
@@ -412,9 +647,25 @@ export async function runRepublishOpenDeals(
     }
   }
 
+  const stillHeld: Record<string, number> = {};
+  for (const bucket of REPUBLISH_BUCKETS) {
+    for (const [reason, count] of Object.entries(buckets[bucket].still_held)) {
+      stillHeld[reason] = (stillHeld[reason] ?? 0) + count;
+    }
+  }
+
   return {
     mode: apply ? "apply" : "dry-run",
     includeAdmin,
+    counts: {
+      would_publish: REPUBLISH_BUCKETS.reduce(
+        (total, bucket) => total + buckets[bucket].would_publish,
+        0,
+      ),
+      admin_held_included: adminHeldIncluded,
+      leak_held_cleaned_passing: leakHeldCleanedPassing,
+      still_held: stillHeld,
+    },
     buckets,
     deals,
   };

@@ -1,0 +1,95 @@
+name: Republish open deals
+
+# Manual recovery job for open, in-date, unpublished previews.
+# Dry-run is the default and makes no writes. Apply requires the literal PUBLISH
+# confirmation; the script additionally requires DEALATLAS_REPUBLISH_APPLY=1 and
+# verifies GITHUB_ACTIONS, this workflow name and the confirmation before it
+# permits a production target.
+# scheduled-jobs.yml is not part of this workflow.
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Dry-run counts and makes no writes; apply writes and publishes.
+        type: choice
+        options:
+          - dry-run
+          - apply
+        default: dry-run
+      include_admin:
+        description: Also republish previews held by an admin
+        type: boolean
+        default: false
+      confirm:
+        description: Type PUBLISH to allow apply mode
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dealatlas-republish-open-deals
+  cancel-in-progress: false
+
+jobs:
+  republish:
+    name: Republish open deals
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 60
+    env:
+      NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+      SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+    steps:
+      - name: Check out
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      - name: Republish open deals
+        env:
+          MODE: ${{ inputs.mode }}
+          INCLUDE_ADMIN: ${{ inputs.include_admin }}
+          CONFIRM: ${{ inputs.confirm }}
+          DEALATLAS_REPUBLISH_CONFIRM: ${{ inputs.confirm }}
+        run: |
+          set -euo pipefail
+          case "$MODE" in
+            dry-run|apply) ;;
+            *) echo "mode must be dry-run or apply" >&2; exit 1 ;;
+          esac
+          case "${INCLUDE_ADMIN:-}" in
+            true|false|"") ;;
+            *) echo "include_admin must be true or false" >&2; exit 1 ;;
+          esac
+          if [ "$MODE" = "apply" ]; then
+            if [ "${CONFIRM:-}" != "PUBLISH" ]; then
+              echo 'apply mode requires confirm=PUBLISH' >&2
+              exit 1
+            fi
+            export DEALATLAS_REPUBLISH_APPLY=1
+            export DEALATLAS_REPUBLISH_CONFIRM=PUBLISH
+            # The dispatch target is production. Declare it so the script can
+            # recognise the project before the GitHub confirmation is checked.
+            export DEALATLAS_PROD_SUPABASE_URL="${NEXT_PUBLIC_SUPABASE_URL:-}"
+            if [ "${INCLUDE_ADMIN:-}" = "true" ]; then
+              npm run republish-open-deals -- --apply --include-admin
+            else
+              npm run republish-open-deals -- --apply
+            fi
+          elif [ "${INCLUDE_ADMIN:-}" = "true" ]; then
+            npm run republish-open-deals -- --include-admin
+          else
+            npm run republish-open-deals
+          fi

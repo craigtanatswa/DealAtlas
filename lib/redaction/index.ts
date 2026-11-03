@@ -7,3 +7,8 @@ export {
   type LeakageRisk,
 } from "@/lib/redaction/scan";
 export { trigramSimilarity } from "@/lib/redaction/similarity";
+export {
+  sanitisePreviewText,
+  type SanitisePreviewTextInput,
+  type SanitisedPreviewText,
+} from "@/lib/redaction/sanitize";
