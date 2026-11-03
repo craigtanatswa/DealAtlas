@@ -9,8 +9,10 @@ import {
 } from "@/lib/auth/redirect";
 import { parseEmailOtpType } from "@/lib/auth/otp";
 import { OAUTH_NEXT_COOKIE, PASSWORD_RESET_COOKIE } from "@/lib/auth/cookies";
+import { isAnalyticsConsentGranted } from "@/lib/analytics/consent";
 import { captureServerEvent } from "@/lib/analytics/server";
 import { buildUserSignedUpEvent } from "@/lib/analytics/server-events";
+import { ANALYTICS_CONSENT_COOKIE } from "@/lib/analytics/storage-keys";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 const NEW_ACCOUNT_WINDOW_MS = 60_000;
@@ -103,8 +105,11 @@ export async function GET(request: NextRequest) {
     if (error) {
       return errorRedirect(request, "auth_callback_failed");
     }
-    if (data.user && isNewGoogleAccount(data.user)) {
-      // OAuth sign-ups carry no first-touch fields (nothing is stored client-side).
+    if (
+      data.user &&
+      isNewGoogleAccount(data.user) &&
+      isAnalyticsConsentGranted(cookieStore.get(ANALYTICS_CONSENT_COOKIE)?.value)
+    ) {
       await captureServerEvent(buildUserSignedUpEvent({ userId: data.user.id }));
     }
   } else if (tokenHash && type) {

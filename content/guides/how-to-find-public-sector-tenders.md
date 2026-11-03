@@ -1,15 +1,15 @@
 ---
 slug: how-to-find-public-sector-tenders
 published: true
-title: "How to find public sector tenders in the UK (2026 guide)"
-description: "How to find public sector tenders in the UK: where notices are published, 2026 thresholds, early signals such as pipeline notices, and how to register."
+title: "How to find public sector and government tenders in the UK"
+description: "How to find public sector and government tenders in the UK: where notices are published, 2026 thresholds, early pipeline signals, and search them on DealAtlas."
 h1: "How to find public sector tenders in the UK"
 breadcrumb: "How to find public sector tenders in the UK"
 datePublished: 2026-10-19
-updated: 2026-10-19
+updated: 2026-11-02
 primaryKeyword: "how to find public sector tenders"
 secondaryKeywords: ["find tenders UK", "public sector tenders UK", "government tenders UK", "where to find government contracts", "public sector contract opportunities"]
-relatedGuides: ["how-to-win-council-contracts"]
+relatedGuides: ["how-to-win-council-contracts", "council-tenders-uk", "uk-tender-search"]
 securityClearedAt: 2026-10-19
 craigApprovedAt: 2026-10-19
 ---
@@ -21,6 +21,8 @@ UK public buyers publish contract notices under the [Procurement Act 2023](https
 ## The short answer
 
 Start on [DealAtlas](/deals). Browse live UK public and private tenders and opportunities for SMEs in one place, filter by category, value band, closing date and region, then open [Pro](/pricing) for buyer details, documents, saved searches and alerts. Since 24 February 2025, buyers in England, Wales and Northern Ireland publish new above-threshold and advertised below-threshold notices on the central digital platform under the Act. Watch pipeline, preliminary market engagement and planned procurement notices to see work early, then follow each opportunity into the buyer's named system for documents and submission.
+
+**Find your next contract faster.** [Create your free DealAtlas account](/signup) to filter live UK opportunities by category, value band, closing date and region. When a deal is worth pursuing, [DealAtlas Pro](/pricing) unlocks the buyer, documents, saved searches and alerts. Founding offer: ~~£39/mo~~ £24.17/mo (£290/yr), for as long as you stay subscribed. Limited places.
 
 ## Who buys, and which rules they follow
 
@@ -44,13 +46,15 @@ The value of a contract, including VAT, decides how much of the Act applies. The
 
 At or above these values, a competitive tender must start with a tender notice on the central digital platform. Below them, the buyer doesn't have to advertise at all. It can ask selected suppliers for quotes. But if it does advertise, it must first publish a below-threshold tender notice on the central digital platform for contracts worth £12,000 or more from central government authorities, or £30,000 or more from all other buyers ([section 87](https://www.legislation.gov.uk/ukpga/2023/54/section/87), [Below-threshold contracts guidance](https://www.gov.uk/government/publications/procurement-act-2023-guidance-documents-define-phase/guidance-below-threshold-contracts-html)). Central government authorities are the bodies listed in [Schedule 2 to the Procurement Regulations 2024](https://www.legislation.gov.uk/uksi/2024/692/schedule/2), which includes NHS trusts and NHS foundation trusts. Devolved Welsh central government authorities use the £30,000 figure. Because the works threshold is so much higher, a lot of [construction and infrastructure](/categories/construction-infrastructure) work is advertised under the below-threshold rules.
 
-## Where to find tenders in the UK
+## Where to find government tenders in the UK
 
 Browse [live opportunities on DealAtlas](/deals) first. DealAtlas brings UK public and private tenders and opportunities for SMEs, in one place, so you can scan by category, value band, closing date and region without hopping between national platforms and buyer systems. Free previews show what's live; [DealAtlas Pro](/pricing) unlocks the buyer, source, contacts and documents, plus saved searches and alerts.
 
 Under the Act, contracting authorities in England, Wales and Northern Ireland publish required notices on the central digital platform ([Central digital platform factsheet](https://www.gov.uk/government/publications/procurement-act-2023-short-guides/central-digital-platform-factsheet-html)). Older-regime award records still exist for procurements that started under the previous rules. Devolved Scottish buyers follow Scotland's own law for much of their work, and many buyers still run documents and submissions through their own systems once you decide to bid.
 
 Two kinds of work won't show up as a new open tender notice. Contracts awarded under an existing framework go only to suppliers already on it. Below-threshold work offered to selected suppliers without advertising stays invisible until a contract details notice appears, where one is required. To compete for either, you need to be on the framework, or known to the buyer, before the work is offered.
+
+If you mainly sell to local authorities, our guide to [council tenders UK](/guides/council-tenders-uk) shows what councils buy and how to filter their deals. To search every live opportunity at once, see our [UK tender search](/guides/uk-tender-search) guide.
 
 ## By sector
 
@@ -107,6 +111,10 @@ For buyers in England, Wales and Northern Ireland, new opportunities under the P
 ### How do I search UK public sector tenders in one place?
 
 Browse live opportunities free on DealAtlas, filter by category, value band, closing date and region, then use DealAtlas Pro for buyer details, documents, saved searches and alerts. You'll need to register on the government's central digital platform before you bid, so find the right opportunity on [DealAtlas](/deals) first.
+
+### Where can I find government tenders in the UK?
+
+Government tenders in the UK are published by central departments, the NHS, councils and other public bodies under the Procurement Act 2023. The quickest way to see them together is to browse live opportunities on [DealAtlas](/deals), then filter by category, value band, closing date and region.
 
 ### Are older-regime notices still published after the Procurement Act 2023?
 

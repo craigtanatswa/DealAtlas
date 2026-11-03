@@ -1,4 +1,4 @@
-import { BROAD_REGIONS } from "@/lib/preview/region";
+import { PUBLISHABLE_REGIONS } from "@/lib/preview/region";
 import {
   BROAD_LOCATION_TERMS,
   GENERIC_ACRONYMS,
@@ -675,7 +675,7 @@ export function scanPreviewLeaks(input: LeakScanInput): LeakScanResult {
 
   // broad_region is shown verbatim on cards, so it must be one of the fixed regions.
   const region = input.broadRegion?.trim();
-  if (region && !(BROAD_REGIONS as readonly string[]).includes(region)) {
+  if (region && !PUBLISHABLE_REGIONS.includes(region)) {
     push("BROAD_REGION", "HIGH", "Preview region is not a listed broad region", region);
   }
 

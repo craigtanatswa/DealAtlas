@@ -59,6 +59,28 @@ describe("free discovery HTML and protected paths", () => {
 
 const FTS_NOW = new Date("2026-09-10T12:00:00.000Z");
 
+function findATenderBuyerAddressPackage() {
+  const payload = readFindATenderFixture("normal.json") as {
+    releases: Array<{
+      tender: { items: Array<{ deliveryAddresses?: unknown }> };
+      parties: Array<{ address?: Record<string, unknown> }>;
+    }>;
+  };
+  const release = payload.releases[0]!;
+  release.parties[0]!.address = {
+    streetAddress: "1 Canary Street",
+    locality: "Manchester",
+    region: null,
+    postalCode: "M1 1AA",
+    country: "GB",
+    countryName: "United Kingdom",
+  };
+  for (const item of release.tender.items) {
+    delete item.deliveryAddresses;
+  }
+  return payload;
+}
+
 function privateFindATenderPackage() {
   const payload = readFindATenderFixture("normal.json") as {
     releases: Array<{
@@ -74,6 +96,75 @@ function privateFindATenderPackage() {
   };
   return payload;
 }
+
+describe("Find a Tender free region from the buyer address", () => {
+  it("uses the postcode region without exposing the buyer address", async () => {
+    const store = createMemoryIngestionStore({
+      sources: [findATenderSourceRecord({ id: "source-fat" })],
+    });
+    const adapter = createFindATenderAdapter({
+      http: createFixtureHttpClient(() => findATenderBuyerAddressPackage()),
+      now: () => FTS_NOW,
+    });
+    await runIngestion({
+      sourceKey: "find-a-tender",
+      store,
+      adapter,
+      now: FTS_NOW,
+      limit: 1,
+      triggerType: "TEST",
+    });
+
+    const deal = store.deals[0]!;
+    expect(deal.exactLocationText).toBeNull();
+    const buyer = store.organizations[0]!;
+    expect(buyer.postcode).toBe("M1 1AA");
+    expect(buyer.city).toBe("Manchester");
+    expect(buyer.addressLine1).toBe("1 Canary Street");
+
+    const preview = store.previews[0]!;
+    expect(preview.broadRegion).toBe("North West England");
+    const dto = toPublicDealPreview({
+      slug: preview.slug,
+      preview_title: preview.previewTitle,
+      preview_summary: preview.previewSummary,
+      deal_type: preview.dealType,
+      buyer_sector: preview.buyerSector,
+      stage: preview.stage,
+      status: preview.status,
+      main_category: preview.mainCategory,
+      broad_region: preview.broadRegion,
+      value_band: preview.valueBand,
+      deadline_band: preview.deadlineBand,
+      duration_band: preview.durationBand,
+      sme_suitability: preview.smeSuitability,
+      bid_complexity: preview.bidComplexity,
+      competition_level: preview.competitionLevel,
+      requirements_preview: preview.requirementsPreview,
+      relevance_tags: preview.relevanceTags,
+      freshness_label: preview.freshnessLabel,
+    });
+    const html = [
+      render(<DealPreviewDetail deal={dto} />).container.innerHTML,
+      render(
+        <DealSearchResults
+          filters={{ page: 1, limit: 20 }}
+          result={{
+            items: [{ preview: dto, match: null }],
+            total: 1,
+            page: 1,
+            pageSize: 20,
+          }}
+        />,
+      ).container.innerHTML,
+    ].join("\n");
+    const blob = `${JSON.stringify(dto)}\n${html}`;
+
+    for (const marker of ["M1 1AA", "M1", "Manchester", "Canary Street"]) {
+      expect(blob).not.toContain(marker);
+    }
+  });
+});
 
 describe("private Find a Tender buyers stay out of the free preview", () => {
   it("hides the buyer, domain, source URL and reference", async () => {

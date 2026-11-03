@@ -67,11 +67,23 @@ describe("mapDealStatus", () => {
     ).toBe("CLOSED");
   });
 
-  it("marks a tender with no deadline UNCLASSIFIED", () => {
+  it("maps an active tender with no deadline to OPEN", () => {
     expect(
       mapDealStatus({
         tags: ["tenderAmendment"],
         tenderStatus: "active",
+        submissionDeadline: null,
+        now,
+        hasAwards: false,
+      }),
+    ).toBe("OPEN");
+  });
+
+  it("marks a tender with no deadline and no status UNCLASSIFIED", () => {
+    expect(
+      mapDealStatus({
+        tags: ["tender"],
+        tenderStatus: null,
         submissionDeadline: null,
         now,
         hasAwards: false,

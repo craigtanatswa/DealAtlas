@@ -46,6 +46,47 @@ describe("Find a Tender OCDS parse", () => {
     expect(candidate.dealType).toBe("FRAMEWORK");
   });
 
+  it("uses the earliest lot deadline when the tender has no tenderPeriod", () => {
+    const payload = readFindATenderFixture("normal.json") as {
+      releases: Array<{
+        tender: {
+          tenderPeriod?: { endDate?: string };
+          lots: Array<{
+            id: string;
+            title?: string;
+            tenderPeriod?: { endDate?: string };
+          }>;
+        };
+      }>;
+    };
+    const release = structuredClone(payload.releases[0]!);
+    delete release.tender.tenderPeriod;
+    const [lot] = release.tender.lots;
+    release.tender.lots = [
+      {
+        ...lot!,
+        id: "LOT-EARLY",
+        title: "Early lot",
+        tenderPeriod: { endDate: "2026-10-20T12:00:00Z" },
+      },
+      {
+        ...lot!,
+        id: "LOT-LATE",
+        title: "Late lot",
+        tenderPeriod: { endDate: "2026-11-15T12:00:00Z" },
+      },
+    ];
+
+    const [candidate] = parseFindATenderRaw({ releases: [release] }, NOW);
+
+    expect(candidate.submissionDeadline).toBe("2026-10-20T12:00:00.000Z");
+    expect(candidate.lots.map((item) => item.submissionDeadline)).toEqual([
+      "2026-10-20T12:00:00.000Z",
+      "2026-11-15T12:00:00.000Z",
+    ]);
+    expect(candidate.status).toBe("OPEN");
+  });
+
   it("maps withdrawn notices and awards/contracts when present", () => {
     const [withdrawn] = parseFindATenderRaw(
       readFindATenderFixture("withdrawn.json"),

@@ -1,8 +1,17 @@
+"use client";
+
 import Script from "next/script";
 
+import { useAnalyticsConsent } from "@/hooks/use-analytics-consent";
 import type { MeasurementConfig } from "@/lib/seo/analytics";
 
 export function MeasurementScripts({ config }: { config: MeasurementConfig }) {
+  const consented = useAnalyticsConsent();
+
+  if (!consented) {
+    return null;
+  }
+
   if (config.gtmId) {
     return (
       <Script

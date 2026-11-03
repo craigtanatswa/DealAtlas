@@ -214,6 +214,11 @@ export function mapDealStatus(input: {
     return "OPEN";
   }
 
+  // A live tender notice with no dated deadline is still open.
+  if (tenderNotice && status === "active") {
+    return "OPEN";
+  }
+
   const planningNotice =
     status === "planned" || tags.some((tag) => PLANNING_TAGS.has(tag));
   const futureTender = instant(input.futureTenderDate);

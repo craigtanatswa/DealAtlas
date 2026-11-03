@@ -6,10 +6,10 @@ description: "How to win council contracts under the Procurement Act 2023: the 2
 h1: "How to win council contracts: a practical guide for SMEs"
 breadcrumb: "How to win council contracts"
 datePublished: 2026-10-19
-updated: 2026-10-19
+updated: 2026-11-02
 primaryKeyword: "how to win council contracts"
-secondaryKeywords: ["council tenders for small businesses", "how to bid for council contracts", "local authority tenders UK", "selling to local government UK"]
-relatedGuides: ["how-to-find-public-sector-tenders"]
+secondaryKeywords: ["council tenders for small businesses", "how to bid for council contracts", "local authority tenders UK", "selling to local government UK", "council procurement"]
+relatedGuides: ["how-to-find-public-sector-tenders", "council-tenders-uk"]
 securityClearedAt: 2026-10-19
 craigApprovedAt: 2026-10-19
 ---
@@ -20,9 +20,11 @@ Councils buy works, services and goods all year, often in contract sizes a small
 
 To win a council contract, find the right opportunity early on [DealAtlas](/deals), bid only where you meet the conditions of participation, and answer every question against the published award criteria and weightings, with evidence, a realistic price and specific social value commitments. You'll need to register on the government's central digital platform before you bid, so find the right opportunity on [DealAtlas](/deals) first.
 
+**Find your next contract faster.** [Create your free DealAtlas account](/signup) to filter live UK opportunities by category, value band, closing date and region. When a deal is worth pursuing, [DealAtlas Pro](/pricing) unlocks the buyer, documents, saved searches and alerts. Founding offer: ~~£39/mo~~ £24.17/mo (£290/yr), for as long as you stay subscribed. Limited places.
+
 ## How councils buy under the Procurement Act 2023
 
-The Act and the Procurement Regulations 2024 set the rules for most public buyers in England, Wales and Northern Ireland, councils included. The estimated value of a contract, including VAT, decides how much of the Act applies.
+The Act and the Procurement Regulations 2024 set the rules for most public buyers in England, Wales and Northern Ireland, so they govern council procurement too. The estimated value of a contract, including VAT, decides how much of the Act applies.
 
 ### The thresholds that matter for councils
 
@@ -66,7 +68,7 @@ Scottish councils mostly buy under Scotland's own procurement law, not the 2023 
 
 {{LIVE_COUNT}} live UK opportunities on DealAtlas today.
 
-Start on [DealAtlas](/deals). DealAtlas brings UK public and private tenders and opportunities for SMEs, in one place, so you can filter council-relevant work by category, value band, closing date and region. Our guide on [how to find public sector tenders](/guides/how-to-find-public-sector-tenders) covers the wider set of public buyers.
+Start on [DealAtlas](/deals). DealAtlas brings UK public and private tenders and opportunities for SMEs, in one place, so you can filter council-relevant work by category, value band, closing date and region. To see what councils are buying right now, read our guide to [council tenders UK](/guides/council-tenders-uk). Our guide on [how to find public sector tenders](/guides/how-to-find-public-sector-tenders) covers the wider set of public buyers.
 
 Under the Act, since 24 February 2025, above-threshold and advertised below-threshold notices for new procurements by councils in England, Wales and Northern Ireland are published on the central digital platform ([Central digital platform factsheet](https://www.gov.uk/government/publications/procurement-act-2023-short-guides/central-digital-platform-factsheet-html)). Older-regime award records still exist for procurements that started under the previous rules. Once you decide to bid, documents, clarification questions and submission usually run through the council's named system.
 
@@ -152,6 +154,10 @@ Once you're delivering, the council must pay a valid, undisputed invoice within 
 Seeing the right opportunity early is often the hardest part. Start on [DealAtlas](/deals). DealAtlas brings UK public and private tenders and opportunities for SMEs, in one place, sorted by category, value band, closing date and region. Browse free previews, for example in [construction and infrastructure](/categories/construction-infrastructure), [professional services](/categories/professional-services) or [education](/categories/education). When one is worth pursuing, [DealAtlas Pro](/pricing) unlocks the buyer, the original source, contacts and documents, plus saved searches and alerts for new matches. See [how it works](/how-it-works).
 
 ## FAQ
+
+### What rules govern council procurement in the UK?
+
+In England, Wales and Northern Ireland, council procurement follows the Procurement Act 2023 and the Procurement Regulations 2024, which have applied to new procurements since 24 February 2025. Scottish councils mostly follow Scotland's own procurement law.
 
 ### Do I need to register on the central digital platform to bid for council contracts?
 

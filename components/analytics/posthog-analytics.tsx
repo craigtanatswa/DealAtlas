@@ -3,10 +3,20 @@
 import { usePathname } from "next/navigation";
 import { useEffect } from "react";
 
-import { recordLanding, recordPageView } from "@/lib/analytics/attribution";
+import { useAnalyticsConsent } from "@/hooks/use-analytics-consent";
+import {
+  recordGuideCtaClick,
+  recordLanding,
+  recordPageView,
+} from "@/lib/analytics/attribution";
 import { buildPostHogClientConfig } from "@/lib/analytics/config";
+import { registerAnalyticsOptOutHandler } from "@/lib/analytics/consent";
 import { isCheckoutAnalyticsPlan } from "@/lib/analytics/events";
-import { guideCtaClickProperties } from "@/lib/analytics/guide-cta";
+import {
+  GUIDE_CTA_LINK_SELECTOR,
+  guideCtaClickProperties,
+  guideCtaViewProperties,
+} from "@/lib/analytics/guide-cta";
 
 type PostHogClient = (typeof import("posthog-js/dist/module.slim.no-external"))["default"];
 
@@ -51,8 +61,27 @@ function checkoutPlanFromSubmit(event: SubmitEvent): string | null {
  */
 export function PostHogAnalytics({ apiKey }: { apiKey: string }) {
   const pathname = usePathname();
+  const consented = useAnalyticsConsent();
+
+  useEffect(
+    () =>
+      registerAnalyticsOptOutHandler(() => {
+        void clientPromise?.then((posthog) => posthog?.opt_out_capturing());
+      }),
+    [],
+  );
 
   useEffect(() => {
+    if (!consented) {
+      return;
+    }
+    void clientPromise?.then((posthog) => posthog?.opt_in_capturing());
+  }, [consented]);
+
+  useEffect(() => {
+    if (!consented) {
+      return;
+    }
     recordLanding({
       href: window.location.href,
       referrer: document.referrer,
@@ -78,6 +107,7 @@ export function PostHogAnalytics({ apiKey }: { apiKey: string }) {
       if (!properties) {
         return;
       }
+      recordGuideCtaClick(properties.cta_position, properties.cta_target);
       void loadClient(apiKey).then((posthog) => {
         posthog?.capture("guide_cta_clicked", properties, { send_instantly: true });
       });
@@ -88,14 +118,49 @@ export function PostHogAnalytics({ apiKey }: { apiKey: string }) {
       document.removeEventListener("submit", onSubmit, true);
       document.removeEventListener("click", onClick, true);
     };
-  }, [apiKey]);
+  }, [apiKey, consented]);
 
   useEffect(() => {
+    if (!consented) {
+      return;
+    }
     recordPageView(pathname);
     void loadClient(apiKey).then((posthog) => {
       posthog?.capture("$pageview");
     });
-  }, [apiKey, pathname]);
+  }, [apiKey, consented, pathname]);
+
+  useEffect(() => {
+    if (!consented || typeof IntersectionObserver === "undefined") {
+      return;
+    }
+    const seen = new WeakSet<Element>();
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (!entry.isIntersecting || entry.intersectionRatio < 0.5 || seen.has(entry.target)) {
+            continue;
+          }
+          seen.add(entry.target);
+          const properties = guideCtaViewProperties(
+            entry.target as Element,
+            window.location.pathname,
+          );
+          if (!properties) {
+            continue;
+          }
+          void loadClient(apiKey).then((posthog) => {
+            posthog?.capture("guide_cta_viewed", properties, { send_instantly: true });
+          });
+        }
+      },
+      { threshold: 0.5 },
+    );
+    for (const element of document.querySelectorAll(GUIDE_CTA_LINK_SELECTOR)) {
+      observer.observe(element);
+    }
+    return () => observer.disconnect();
+  }, [apiKey, consented, pathname]);
 
   return null;
 }

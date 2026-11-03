@@ -167,6 +167,7 @@ export const ocdsLotSchema = z
     status: nullableString,
     value: ocdsValueSchema.optional(),
     contractPeriod: ocdsPeriodSchema.optional(),
+    tenderPeriod: ocdsPeriodSchema.optional(),
     awardCriteria: ocdsCriteriaBlockSchema,
     hasRenewal: nullableBoolean,
     renewal: z
