@@ -101,10 +101,10 @@ describe("TED expert query", () => {
 
 describe("TED buyer sector", () => {
   it("marks private legal types as PRIVATE", () => {
-    expect(tedBuyerSector("spec-rights-entity")).toBe("PRIVATE");
-    expect(tedBuyerSector(" ORG-SUB ")).toBe("PRIVATE");
-    expect(tedBuyerSector(["pub-undert", "org-sub"])).toBe("PRIVATE");
-    expect(tedBuyerSector([["spec-rights-entity"]])).toBe("PRIVATE");
+    expect(tedBuyerSector("spec-rights-entity")).toBe("PUBLIC");
+    expect(tedBuyerSector(" ORG-SUB ")).toBe("PUBLIC");
+    expect(tedBuyerSector(["pub-undert", "org-sub"])).toBe("PUBLIC");
+    expect(tedBuyerSector([["spec-rights-entity"]])).toBe("PUBLIC");
   });
 
   it("leaves public and missing legal types as PUBLIC", () => {
@@ -133,7 +133,7 @@ describe("TED notice parse", () => {
       { notice: { ...readOpenNotice(), "buyer-legal-type": ["org-sub"] } },
       NOW,
     );
-    expect(privateCandidate?.buyerSector).toBe("PRIVATE");
+    expect(privateCandidate?.buyerSector).toBe("PUBLIC");
 
     const closed = {
       ...readOpenNotice(),

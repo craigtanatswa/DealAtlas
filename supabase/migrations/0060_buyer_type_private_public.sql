@@ -189,19 +189,11 @@ with fts as (
   group by n.deal_id
 ),
 ted as (
-  select n.deal_id
+  -- TED notices are EU public procurement notices: always PUBLIC.
+  select distinct n.deal_id
   from public.notices n
   join public.data_sources s on s.id = n.source_id
-  join public.raw_records rr on rr.id = n.raw_record_id
-  cross join lateral jsonb_path_query(rr.raw_payload, '$.**."buyer-legal-type"') legal
-  cross join lateral jsonb_path_query(legal, '$.**') item
   where s.source_key = 'ted'
-    and jsonb_typeof(item) = 'string'
-    and (
-      lower(item #>> '{}') = 'spec-rights-entity'
-      or lower(item #>> '{}') like 'org-sub%'
-    )
-  group by n.deal_id
 ),
 ukip as (
   select
@@ -247,7 +239,7 @@ computed as (
       when coalesce(f.private_utility, false) then 'PRIVATE'::public.buyer_type
       when u.funding ~ '\mpublic\M' then 'PUBLIC'::public.buyer_type
       when u.funding ~ '\mprivate\M' then 'PRIVATE'::public.buyer_type
-      when t.deal_id is not null then 'PRIVATE'::public.buyer_type
+      when t.deal_id is not null then 'PUBLIC'::public.buyer_type
       when pd.deal_id is not null then 'PRIVATE'::public.buyer_type
       when d.buyer_sector in ('PRIVATE'::public.buyer_sector, 'NONPROFIT'::public.buyer_sector)
         then 'PRIVATE'::public.buyer_type
@@ -298,6 +290,50 @@ set buyer_type = d.buyer_type,
     sector = d.sector
 from public.deals d
 where d.id = dp.deal_id;
+
+-- Top level is Private or Public only: fold legacy buyer_sector values that
+-- are really sectors (TED PRIVATE, UTILITY) into the buyer type.
+update public.deals d
+set buyer_sector = d.buyer_type::text::public.buyer_sector
+where d.buyer_sector = 'UTILITY'::public.buyer_sector
+   or (d.buyer_sector = 'PRIVATE'::public.buyer_sector and d.buyer_type = 'PUBLIC'::public.buyer_type);
+
+update public.deal_previews dp
+set buyer_sector = d.buyer_sector
+from public.deals d
+where d.id = dp.deal_id
+  and dp.buyer_sector is distinct from d.buyer_sector
+  and (dp.buyer_sector = 'UTILITY'::public.buyer_sector
+       or dp.buyer_sector = 'PRIVATE'::public.buyer_sector);
+
+update public.deal_previews dp
+set buyer_sector = coalesce(dp.buyer_type, 'PUBLIC'::public.buyer_type)::text::public.buyer_sector
+where dp.buyer_sector = 'UTILITY'::public.buyer_sector;
+
+create or replace function private.fold_utility_buyer_sector()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  if new.buyer_sector = 'UTILITY'::public.buyer_sector then
+    new.buyer_sector := coalesce(new.buyer_type, 'PUBLIC'::public.buyer_type)::text::public.buyer_sector;
+  end if;
+  return new;
+end;
+$$;
+
+revoke all on function private.fold_utility_buyer_sector() from public, anon, authenticated;
+
+drop trigger if exists fold_utility_buyer_sector on public.deals;
+create trigger fold_utility_buyer_sector
+  before insert or update of buyer_sector, buyer_type on public.deals
+  for each row execute function private.fold_utility_buyer_sector();
+
+drop trigger if exists fold_utility_buyer_sector on public.deal_previews;
+create trigger fold_utility_buyer_sector
+  before insert or update of buyer_sector, buyer_type on public.deal_previews
+  for each row execute function private.fold_utility_buyer_sector();
 
 do $$
 begin

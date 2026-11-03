@@ -78,7 +78,7 @@ describe("buyer taxonomy", () => {
     expect(buyerTypeFromFunding("")).toBeNull();
   });
 
-  it("maps every TED org-sub variant", () => {
+  it("defaults TED legal types to PUBLIC unless clearly private", () => {
     for (const value of [
       "spec-rights-entity",
       "org-sub",
@@ -86,11 +86,15 @@ describe("buyer taxonomy", () => {
       "org-sub-ra",
       "org-sub-la",
       ["pub-undert", "ORG-SUB"],
+      "pub-undert",
+      "cga",
+      "body-pl",
+      "grp-p-aut",
+      "eu-ins-bod-ag",
+      null,
     ]) {
-      expect(buyerTypeFromTedLegalType(value)).toBe("PRIVATE");
-    }
-    for (const value of ["pub-undert", "cga", "body-pl", null]) {
       expect(buyerTypeFromTedLegalType(value)).toBe("PUBLIC");
     }
+    expect(buyerTypeFromTedLegalType("private")).toBe("PRIVATE");
   });
 });

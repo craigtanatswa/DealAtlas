@@ -231,7 +231,7 @@ describe("private TED buyers stay out of the free preview", () => {
 
     expect(result.counters.new).toBe(1);
     const deal = store.deals[0]!;
-    expect(deal.buyerSector).toBe("PRIVATE");
+    expect(deal.buyerSector).toBe("PUBLIC");
     expect(deal.exactLocationText).toBe("Sweden");
     expect(deal.exactLocationText).not.toContain("Stockholm");
 
@@ -272,7 +272,7 @@ describe("private TED buyers stay out of the free preview", () => {
     ].join("\n");
     const blob = `${JSON.stringify(dto)}\n${html}`;
 
-    expect(dto.buyerSector).toBe("PRIVATE");
+    expect(dto.buyerSector).toBe("PUBLIC");
     for (const marker of [
       "Canary Municipal Works",
       "canary-buyer.example",

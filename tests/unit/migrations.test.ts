@@ -540,8 +540,9 @@ describe("supabase migrations", () => {
     expect(body).toContain("raise exception 'deal_previews have null buyer_type or sector after backfill'");
     expect(body).toContain("'privateutility'");
     expect(body).toContain("rr.raw_payload::text like '%' || to_jsonb(d.ocid)::text || '%'");
-    expect(body).toContain("buyer-legal-type");
-    expect(body).toContain("like 'org-sub%'");
+    expect(body).toContain("when t.deal_id is not null then 'PUBLIC'::public.buyer_type");
+    expect(body).toContain("buyer_sector = 'UTILITY'::public.buyer_sector");
+    expect(body).toContain("create trigger fold_utility_buyer_sector");
     expect(body).toContain("is_this_project_programme_drawing_on_public_or_private_funds");
     expect(body).toContain("discovery_method");
     expect(body).toContain("opportunity_candidates");

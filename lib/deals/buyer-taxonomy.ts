@@ -199,12 +199,19 @@ export function buyerTypeFromUkCaType(
   return privateUtility ? "PRIVATE" : "PUBLIC";
 }
 
+/**
+ * TED notices are EU public procurement notices, so the buyer is PUBLIC.
+ * eForms legal types `spec-rights-entity` (special or exclusive rights,
+ * mostly state-owned utilities) and `org-sub*` (contracts subsidised by a
+ * contracting authority) are not clearly private, so they stay PUBLIC too.
+ * Only an explicit private marker flips the result.
+ */
+export const TED_CLEARLY_PRIVATE_LEGAL_TYPES: readonly string[] = ["private", "private-body"];
+
 export function buyerTypeFromTedLegalType(value: unknown): BuyerType {
   const legalTypes: string[] = [];
   collectStrings(value, legalTypes);
-  return legalTypes.some(
-    (item) => item === "spec-rights-entity" || item.startsWith("org-sub"),
-  )
+  return legalTypes.some((item) => TED_CLEARLY_PRIVATE_LEGAL_TYPES.includes(item))
     ? "PRIVATE"
     : "PUBLIC";
 }
