@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { X509Certificate } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
@@ -7,7 +8,6 @@ import { Agent } from "undici";
 import { describe, expect, it } from "vitest";
 
 import {
-  PUBLIC_CONTRACTS_SCOTLAND_INTERMEDIATE_CERT_PATH,
   createPublicContractsScotlandFetch,
   createTlsAgent,
   createTlsFetch,
@@ -125,9 +125,11 @@ describe("non-blocking TLS sources", () => {
 describe("Public Contracts Scotland TLS agent", () => {
   it("reads the saved Sectigo intermediate", () => {
     const pem = readPublicContractsScotlandIntermediateCert();
-    expect(PUBLIC_CONTRACTS_SCOTLAND_INTERMEDIATE_CERT_PATH).toContain(
-      "sectigo-public-server-authentication-ca-dv-r36.pem",
+    const onDisk = readFileSync(
+      "ingestion/certs/sectigo-public-server-authentication-ca-dv-r36.pem",
+      "utf8",
     );
+    expect(pem.trim()).toBe(onDisk.trim());
     expect(pem).toContain("-----BEGIN CERTIFICATE-----");
     expect(new X509Certificate(pem).subject).toContain(
       "CN=Sectigo Public Server Authentication CA DV R36",
