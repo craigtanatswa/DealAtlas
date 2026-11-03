@@ -57,10 +57,23 @@ function rpc(name: string, json: unknown = {}, extra: Partial<RequestSpec> = {})
 }
 
 /** Rows normalised for cross-phase comparison: stable order, no volatile fields. */
+// 0060 adds these non-identifying taxonomy keys to every preview DTO. They are
+// checked by exact_keys/value_domains, and excluded from the phase A vs B
+// snapshot comparison (B-LOCK-05, B-XPH-01), which otherwise must stay identical.
+const PHASE_B_ADDED_DTO_KEYS = new Set(["buyer_type", "sector"]);
+
 function normalise(o: ProbeOutcome): unknown {
   if (!Array.isArray(o.json)) return o.json;
   return (o.json as Array<Record<string, unknown>>)
-    .map((r) => JSON.stringify(Object.fromEntries(Object.entries(r).sort(([a], [b]) => a.localeCompare(b)))))
+    .map((r) =>
+      JSON.stringify(
+        Object.fromEntries(
+          Object.entries(r)
+            .filter(([k]) => !PHASE_B_ADDED_DTO_KEYS.has(k))
+            .sort(([a], [b]) => a.localeCompare(b)),
+        ),
+      ),
+    )
     .sort();
 }
 
