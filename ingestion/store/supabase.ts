@@ -1,4 +1,5 @@
 import { DatabaseQueryError, throwIfQueryError } from "@/lib/db/errors";
+import { REPUBLISH_OPEN_STATUSES } from "@/lib/deals/publish-gate";
 import { writeInBatches } from "@/ingestion/store/write-batch";
 import type { Database, Json } from "@/lib/db/database.types";
 
@@ -453,6 +454,55 @@ export function createSupabaseIngestionStore(
       }
       return missing;
     },
+    async listRepublishOpenDealIds(nowIso, limit = 5000) {
+      const cap = Math.min(5000, Math.max(1, Math.floor(limit)));
+      const statuses = [...REPUBLISH_OPEN_STATUSES] as Database["public"]["Enums"]["deal_status"][];
+      const dealIds: string[] = [];
+      let after: string | null = null;
+      for (let page = 0; page < 20 && dealIds.length < cap; page += 1) {
+        let query = client
+          .from("deals")
+          .select("id")
+          .in("status", statuses)
+          .or(`submission_deadline.gte.${nowIso},submission_deadline.is.null`)
+          .order("id", { ascending: true })
+          .limit(Math.min(1000, cap));
+        if (after) {
+          query = query.gt("id", after);
+        }
+        const rows = throwIfQueryError(
+          "List republish open deals",
+          await query,
+        ) ?? [];
+        if (rows.length === 0) break;
+        for (const row of rows) {
+          dealIds.push(row.id);
+        }
+        after = rows[rows.length - 1]?.id ?? null;
+        if (rows.length < 1000 || !after) break;
+      }
+
+      const candidates: string[] = [];
+      for (let index = 0; index < dealIds.length && candidates.length < cap; index += PREVIEW_ID_IN_CHUNK) {
+        const chunk = dealIds.slice(index, index + PREVIEW_ID_IN_CHUNK);
+        const previews = throwIfQueryError(
+          "List republish preview states",
+          await client
+            .from("deal_previews")
+            .select("deal_id")
+            .in("deal_id", chunk)
+            .eq("is_published", false),
+        ) ?? [];
+        const unpublished = new Set(previews.map((preview) => preview.deal_id));
+        for (const id of chunk) {
+          if (unpublished.has(id)) {
+            candidates.push(id);
+            if (candidates.length >= cap) break;
+          }
+        }
+      }
+      return candidates.sort().slice(0, cap);
+    },
     async listPreviewRebuildDealIds(options) {
       const limit = options?.limit ?? 100;
       let query = client
@@ -534,6 +584,29 @@ export function createSupabaseIngestionStore(
         .select("*")
         .single();
       return mapPreview(requireRow("Upsert deal preview", result));
+    },
+    async publishDealPreview(input) {
+      const patch: Database["public"]["Tables"]["deal_previews"]["Update"] = {
+        is_published: true,
+        updated_at: new Date().toISOString(),
+      };
+      if (input.mainCategory !== undefined) {
+        patch.main_category = input.mainCategory;
+      }
+      if (input.deadlineBand !== undefined) {
+        patch.deadline_band = input.deadlineBand;
+      }
+      if (input.clearAdminHold) {
+        patch.unpublished_by_admin = false;
+      }
+      const result = await client
+        .from("deal_previews")
+        .update(patch)
+        .eq("deal_id", input.dealId)
+        .select("*")
+        .maybeSingle();
+      const row = throwIfQueryError("Publish deal preview", result);
+      return row ? mapPreview(row) : null;
     },
     async upsertDealInsight(input) {
       const result = await client.from("deal_insights").upsert(

@@ -1,6 +1,8 @@
+import { DEADLINE_TBC_LABEL } from "@/lib/preview/dates";
 import type { DealStatus } from "@/lib/search/filters";
 
 const LONDON = "Europe/London";
+const TBC_LABEL = /TBC$/i;
 
 const BAND_WITHIN = /^Within (\d+) days$/;
 
@@ -62,6 +64,14 @@ function monthYear(date: Date) {
 
 function bandPhrase(status: DealStatus, band: string | null | undefined): DeadlineCopy {
   const value = band?.trim() || null;
+  if (value && TBC_LABEL.test(value)) {
+    return {
+      text: value,
+      datetime: null,
+      tone: "muted",
+      keyFact: { label: "Deadline", value },
+    };
+  }
   if (status === "UPCOMING") {
     const announced = !value || value === "Upcoming / date not yet fixed";
     const text = announced
@@ -82,10 +92,10 @@ function bandPhrase(status: DealStatus, band: string | null | undefined): Deadli
   }
   if (!value || value === "Upcoming / date not yet fixed") {
     return {
-      text: "Deadline TBC",
+      text: DEADLINE_TBC_LABEL,
       datetime: null,
       tone: "muted",
-      keyFact: { label: "Deadline", value: "Deadline TBC" },
+      keyFact: { label: "Deadline", value: DEADLINE_TBC_LABEL },
     };
   }
   const text =

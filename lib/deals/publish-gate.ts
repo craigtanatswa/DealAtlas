@@ -2,6 +2,14 @@
 
 export const PUBLISHABLE_REUSE = ["OPEN_LICENSE", "PERMISSION_GRANTED", "UNKNOWN"] as const;
 
+/** Statuses considered by the explicit republish-open-deals operator job. */
+export const REPUBLISH_OPEN_STATUSES = [
+  "OPEN",
+  "ACTIVE",
+  "CLOSING_SOON",
+  "UPCOMING",
+] as const;
+
 export function sourceMayPublish(source: { enabled: boolean; reuseStatus: string }): boolean {
   return (
     source.enabled &&

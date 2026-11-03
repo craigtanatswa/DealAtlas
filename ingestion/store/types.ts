@@ -319,12 +319,28 @@ export type IngestionStore = {
   }): Promise<string[]>;
   /** Deals with no preview row, oldest id first, at most `limit` (capped at 500). */
   listDealIdsMissingPreview(limit?: number): Promise<string[]>;
+  /**
+   * Unpublished previews for live-ish deals whose deadline is null or in the
+   * future. Used by the explicit republish-open-deals CLI only.
+   */
+  listRepublishOpenDealIds(nowIso: string, limit?: number): Promise<string[]>;
   getDealById(id: string): Promise<DealRecord | null>;
   getDealPreview(dealId: string): Promise<DealPreviewRecord | null>;
   previewSlugInUse(slug: string, dealId: string): Promise<boolean>;
   retirePreviewSlug(slug: string): Promise<void>;
   maintainDealsLeakIndex(): Promise<void>;
   upsertDealPreview(input: DealPreviewRecord): Promise<DealPreviewRecord>;
+  /**
+   * Flip a preview live after the caller has run the LOW leak gate. The
+   * database trigger remains the final authority. `clearAdminHold` is only
+   * used by an explicit operator opt-in.
+   */
+  publishDealPreview(input: {
+    dealId: string;
+    mainCategory?: string | null;
+    deadlineBand?: string | null;
+    clearAdminHold?: boolean;
+  }): Promise<DealPreviewRecord | null>;
   upsertDealInsight(input: DealInsightRecord): Promise<void>;
   getDealInsight(dealId: string): Promise<DealInsightRecord | null>;
   insertPreviewGenerationRun(
