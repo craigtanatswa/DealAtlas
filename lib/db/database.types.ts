@@ -3443,14 +3443,6 @@ export type Database = {
         Returns: boolean
       }
       close_founding_membership: { Args: { p_user_id: string }; Returns: undefined }
-      deal_is_publish_denylisted: {
-        Args: { p_deal_id: string }
-        Returns: boolean
-      }
-      deal_preview_slug_is_retired: {
-        Args: { p_deal_id: string }
-        Returns: boolean
-      }
       hit_alert_signup_rate_limit: {
         Args: {
           p_bucket_key: string
