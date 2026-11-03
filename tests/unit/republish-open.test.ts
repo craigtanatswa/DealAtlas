@@ -13,9 +13,15 @@ import {
 import {
   FALLBACK_CATEGORY,
   REASON_ADMIN_HELD,
+  REASON_DENYLIST,
+  REASON_DENYLIST_OR_RETIRED,
+  REASON_RETIRED_SLUG,
+  REPUBLISH_WORKFLOW_FILE,
+  REPUBLISH_WORKFLOW_NAME,
   republishApplyBlockReason,
   runRepublishOpenDeals,
 } from "@/lib/jobs/republish-open";
+import { scanPreviewLeaks, type LeakScanInput } from "@/lib/redaction/scan";
 
 const forceLeak = vi.hoisted(() => new Set<string>());
 
@@ -364,6 +370,109 @@ describe("republish open deals", () => {
     expect(preview.isPublished).toBe(true);
   });
 
+  it("holds a denylisted deal in dry-run and apply", async () => {
+    const store = storeWith();
+    const id = await seedDeal(store);
+    seedPreview(store, id);
+    store.publishDenylistDealIds.push(id);
+
+    const dry = await runRepublishOpenDeals({ store, now: NOW, env: {} });
+    expect(dry.counts.would_publish).toBe(0);
+    expect(dry.counts.still_held).toEqual({ [REASON_DENYLIST]: 1 });
+
+    const applied = await runRepublishOpenDeals({
+      store,
+      apply: true,
+      now: NOW,
+      env: APPLY_ENV,
+    });
+    expect(applied.counts.would_publish).toBe(0);
+    expect(applied.counts.still_held).toEqual({ [REASON_DENYLIST]: 1 });
+    expect(previewFor(store, id).isPublished).toBe(false);
+  });
+
+  it("holds a deal whose current preview slug was retired", async () => {
+    const store = storeWith();
+    const id = await seedDeal(store);
+    const preview = seedPreview(store, id);
+    await store.retirePreviewSlug(preview.slug);
+
+    const dry = await runRepublishOpenDeals({ store, now: NOW, env: {} });
+    expect(dry.counts.would_publish).toBe(0);
+    expect(dry.counts.still_held).toEqual({ [REASON_RETIRED_SLUG]: 1 });
+
+    const applied = await runRepublishOpenDeals({
+      store,
+      apply: true,
+      now: NOW,
+      env: APPLY_ENV,
+    });
+    expect(applied.counts.would_publish).toBe(0);
+    expect(applied.counts.still_held).toEqual({ [REASON_RETIRED_SLUG]: 1 });
+    expect(previewFor(store, id).isPublished).toBe(false);
+  });
+
+  it("holds a deal when the publish gate leaves the row unpublished", async () => {
+    const store = storeWith();
+    const id = await seedDeal(store);
+    seedPreview(store, id);
+    store.publishDealPreview = async () => {
+      const preview = previewFor(store, id);
+      return { ...preview, isPublished: false };
+    };
+
+    const result = await runRepublishOpenDeals({
+      store,
+      apply: true,
+      now: NOW,
+      env: APPLY_ENV,
+    });
+
+    expect(result.counts.would_publish).toBe(0);
+    expect(result.counts.still_held).toEqual({ [REASON_DENYLIST_OR_RETIRED]: 1 });
+    expect(result.deals[0]?.reason).toBe(REASON_DENYLIST_OR_RETIRED);
+    expect(previewFor(store, id).isPublished).toBe(false);
+  });
+
+  it("holds a deal when the publish gate rejects the write", async () => {
+    const store = storeWith();
+    const id = await seedDeal(store);
+    seedPreview(store, id);
+    store.publishDealPreview = async () => {
+      throw new Error("publish denylist");
+    };
+
+    const result = await runRepublishOpenDeals({
+      store,
+      apply: true,
+      now: NOW,
+      env: APPLY_ENV,
+    });
+
+    expect(result.counts.would_publish).toBe(0);
+    expect(result.counts.still_held).toEqual({ [REASON_DENYLIST_OR_RETIRED]: 1 });
+    expect(result.deals[0]?.reason).toBe(REASON_DENYLIST_OR_RETIRED);
+  });
+
+  it("logs one id-and-reason audit line per applied deal", async () => {
+    const store = storeWith();
+    const id = await seedDeal(store);
+    seedPreview(store, id);
+    const lines: string[] = [];
+
+    const result = await runRepublishOpenDeals({
+      store,
+      apply: true,
+      now: NOW,
+      env: APPLY_ENV,
+      auditLog: (line) => lines.push(line),
+    });
+
+    expect(result.counts.would_publish).toBe(1);
+    expect(lines).toEqual([`republish applied deal_id=${id} reason=eligible`]);
+    expect(lines[0]).not.toContain(DEFAULT_TITLE);
+  });
+
   it("refuses apply without the explicit environment confirmation", () => {
     expect(republishApplyBlockReason({}, true)).toMatch(
       /DEALATLAS_REPUBLISH_APPLY/,
@@ -379,5 +488,158 @@ describe("republish open deals", () => {
         true,
       ),
     ).toMatch(/production/);
+  });
+
+  it("allows a production apply only from the confirmed GitHub workflow", () => {
+    const prod = {
+      DEALATLAS_REPUBLISH_APPLY: "1",
+      NEXT_PUBLIC_SUPABASE_URL: "https://abcdefgh.supabase.co",
+      DEALATLAS_PROD_SUPABASE_URL: "https://abcdefgh.supabase.co",
+    };
+    expect(republishApplyBlockReason(prod, true)).toMatch(/production/);
+    expect(
+      republishApplyBlockReason(
+        {
+          ...prod,
+          GITHUB_ACTIONS: "true",
+          GITHUB_WORKFLOW: "some-other-workflow",
+          DEALATLAS_REPUBLISH_CONFIRM: "PUBLISH",
+        },
+        true,
+      ),
+    ).toMatch(/production/);
+    expect(
+      republishApplyBlockReason(
+        {
+          ...prod,
+          GITHUB_ACTIONS: "true",
+          GITHUB_WORKFLOW: REPUBLISH_WORKFLOW_NAME,
+          DEALATLAS_REPUBLISH_CONFIRM: "publish",
+        },
+        true,
+      ),
+    ).toMatch(/production/);
+    const approved = {
+      ...prod,
+      GITHUB_ACTIONS: "true",
+      GITHUB_WORKFLOW: REPUBLISH_WORKFLOW_NAME,
+      GITHUB_REF: "refs/heads/main",
+      GITHUB_EVENT_NAME: "workflow_dispatch",
+      DEALATLAS_REPUBLISH_CONFIRM: "PUBLISH",
+    };
+    expect(republishApplyBlockReason(approved, true)).toBeNull();
+    expect(
+      republishApplyBlockReason(
+        {
+          ...approved,
+          GITHUB_WORKFLOW: REPUBLISH_WORKFLOW_FILE,
+        },
+        true,
+      ),
+    ).toBeNull();
+    expect(
+      republishApplyBlockReason(
+        {
+          ...approved,
+          GITHUB_REF: "refs/heads/release",
+        },
+        true,
+      ),
+    ).toMatch(/production/);
+    expect(
+      republishApplyBlockReason(
+        {
+          ...approved,
+          GITHUB_EVENT_NAME: "push",
+        },
+        true,
+      ),
+    ).toMatch(/production/);
+  });
+
+  it("cleans buyer names and URLs from a leak-held preview before publishing", async () => {
+    const store = storeWith();
+    const id = await seedDeal(store);
+    seedPreview(store, id, {
+      leakageRisk: "HIGH",
+      previewTitle: "Facilities public tender for Example City Council",
+      previewSummary:
+        "Example City Council is procuring facilities. Apply at https://example.gov.uk/Notice/123456-2026 or email buyer@example.gov.uk.",
+    });
+
+    const dry = await runRepublishOpenDeals({ store, now: NOW, env: {} });
+    expect(dry.counts.would_publish).toBe(1);
+    expect(dry.counts.leak_held_cleaned_passing).toBe(1);
+    expect(dry.counts.still_held).toEqual({});
+    expect(dry.deals[0]?.action).toBe("sanitize_publish");
+
+    const applied = await runRepublishOpenDeals({
+      store,
+      apply: true,
+      now: NOW,
+      env: APPLY_ENV,
+    });
+    expect(applied.counts.would_publish).toBe(1);
+
+    const preview = previewFor(store, id);
+    expect(preview.isPublished).toBe(true);
+    expect(preview.leakageRisk).toBe("LOW");
+    const combined = `${preview.previewTitle} ${preview.previewSummary}`;
+    expect(combined).not.toContain("Example City Council");
+    expect(combined).not.toContain("https://");
+    expect(combined).not.toContain("buyer@example.gov.uk");
+    expect(combined).not.toContain("123456-2026");
+  });
+
+  it("keeps an uncleanable leak-held preview held", async () => {
+    const store = storeWith();
+    const id = await seedDeal(store);
+    seedPreview(store, id, {
+      leakageRisk: "HIGH",
+      previewTitle: "Example City Council",
+      previewSummary: "https://example.gov.uk/Notice/123456-2026",
+    });
+    forceLeak.add(id);
+
+    const result = await runRepublishOpenDeals({
+      store,
+      apply: true,
+      now: NOW,
+      env: APPLY_ENV,
+    });
+
+    expect(result.counts.would_publish).toBe(0);
+    expect(result.counts.leak_held_cleaned_passing).toBe(0);
+    expect(result.counts.still_held).toEqual({ leak_HIGH: 1 });
+    expect(previewFor(store, id).isPublished).toBe(false);
+  });
+
+  it("does not change the leak-check rules for raw text", () => {
+    const raw: LeakScanInput = {
+      previewTitle: "Facilities public tender",
+      previewSummary:
+        "Example City Council is procuring facilities at https://example.gov.uk/Notice/123456-2026",
+      requirementsPreview: [],
+      sourceTitle: "Facilities notice",
+      sourceDescription: null,
+      ocid: null,
+      reference: null,
+      externalPrimaryId: null,
+      sourceUrl: null,
+      applicationUrl: null,
+      sourceName: null,
+      sourceKey: null,
+      buyerName: "Example City Council",
+      buyerAliases: [],
+      buyerDomain: "example.gov.uk",
+      buyerEmail: null,
+      buyerPhone: null,
+      exactValueText: null,
+      valueMinExVat: null,
+      valueMaxExVat: null,
+      submissionDeadline: null,
+      exactLocationText: null,
+    };
+    expect(scanPreviewLeaks(raw).risk).toBe("HIGH");
   });
 });

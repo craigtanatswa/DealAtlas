@@ -332,6 +332,18 @@ export type IngestionStore = {
   getDealById(id: string): Promise<DealRecord | null>;
   getDealPreview(dealId: string): Promise<DealPreviewRecord | null>;
   previewSlugInUse(slug: string, dealId: string): Promise<boolean>;
+  /**
+   * True when the private publish denylist names this deal. The memory store
+   * models this for unit tests; the Supabase store returns false because the
+   * database publish gate enforces the denylist.
+   */
+  isDealPublishDenylisted(dealId: string): Promise<boolean>;
+  /**
+   * True when this deal's current preview slug is in retired_preview_slugs.
+   * The memory store models this for unit tests; the Supabase store returns
+   * false because the database publish gate enforces retired slugs.
+   */
+  isDealPreviewSlugRetired(dealId: string): Promise<boolean>;
   retirePreviewSlug(slug: string): Promise<void>;
   maintainDealsLeakIndex(): Promise<void>;
   upsertDealPreview(input: DealPreviewRecord): Promise<DealPreviewRecord>;
@@ -344,6 +356,11 @@ export type IngestionStore = {
     dealId: string;
     mainCategory?: string | null;
     deadlineBand?: string | null;
+    /** Preview-owned text only. Never use this to write source/protected fields. */
+    previewTitle?: string;
+    previewSummary?: string;
+    requirementsPreview?: string[];
+    leakageRisk?: DealPreviewRecord["leakageRisk"];
     clearAdminHold?: boolean;
   }): Promise<DealPreviewRecord | null>;
   upsertDealInsight(input: DealInsightRecord): Promise<void>;

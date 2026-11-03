@@ -553,6 +553,16 @@ export function createSupabaseIngestionStore(
       const rows = throwIfQueryError("Check preview slug", result);
       return (rows?.length ?? 0) > 0;
     },
+    async isDealPublishDenylisted() {
+      // private.publish_denylist is not exposed to the API roles. The publish
+      // trigger is the authority; it refuses to flip a denylisted row live.
+      return false;
+    },
+    async isDealPreviewSlugRetired() {
+      // private.retired_preview_slugs is not exposed to the API roles. The
+      // publish trigger refuses to flip a row live when its slug hash is retired.
+      return false;
+    },
     async retirePreviewSlug(slug) {
       const result = await client.rpc("retire_preview_slug", { p_slug: slug });
       throwIfQueryError("Retire preview slug", result);
@@ -612,6 +622,18 @@ export function createSupabaseIngestionStore(
       }
       if (input.deadlineBand !== undefined) {
         patch.deadline_band = input.deadlineBand;
+      }
+      if (input.previewTitle !== undefined) {
+        patch.preview_title = input.previewTitle;
+      }
+      if (input.previewSummary !== undefined) {
+        patch.preview_summary = input.previewSummary;
+      }
+      if (input.requirementsPreview !== undefined) {
+        patch.requirements_preview = input.requirementsPreview;
+      }
+      if (input.leakageRisk !== undefined) {
+        patch.leakage_risk = input.leakageRisk;
       }
       if (input.clearAdminHold) {
         patch.unpublished_by_admin = false;

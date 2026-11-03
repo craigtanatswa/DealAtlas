@@ -80,6 +80,7 @@ export type MemoryIngestionState = {
   insights: DealInsightRecord[];
   previewRuns: PreviewGenerationRunRecord[];
   retiredSlugHashes: string[];
+  publishDenylistDealIds: string[];
 };
 
 export function createMemoryIngestionStore(seed?: {
@@ -118,6 +119,7 @@ export function createMemoryIngestionStore(seed?: {
     insights: [],
     previewRuns: [],
     retiredSlugHashes: [],
+    publishDenylistDealIds: [],
   };
 
   const store: IngestionStore & MemoryIngestionState = {
@@ -208,6 +210,15 @@ export function createMemoryIngestionStore(seed?: {
     async previewSlugInUse(slug, dealId) {
       return state.previews.some((item) => item.slug === slug && item.dealId !== dealId);
     },
+    async isDealPublishDenylisted(dealId) {
+      return state.publishDenylistDealIds.includes(dealId);
+    },
+    async isDealPreviewSlugRetired(dealId) {
+      const preview = state.previews.find((item) => item.dealId === dealId);
+      return Boolean(
+        preview && state.retiredSlugHashes.includes(previewSlugHash(preview.slug)),
+      );
+    },
     async retirePreviewSlug(slug) {
       const hash = previewSlugHash(slug);
       if (!state.retiredSlugHashes.includes(hash)) state.retiredSlugHashes.push(hash);
@@ -252,8 +263,20 @@ export function createMemoryIngestionStore(seed?: {
           input.mainCategory === undefined ? current.mainCategory : input.mainCategory,
         deadlineBand:
           input.deadlineBand === undefined ? current.deadlineBand : input.deadlineBand,
+        previewTitle:
+          input.previewTitle === undefined ? current.previewTitle : input.previewTitle,
+        previewSummary:
+          input.previewSummary === undefined ? current.previewSummary : input.previewSummary,
+        requirementsPreview:
+          input.requirementsPreview === undefined
+            ? current.requirementsPreview
+            : input.requirementsPreview,
+        leakageRisk:
+          input.leakageRisk === undefined ? current.leakageRisk : input.leakageRisk,
         unpublishedByAdmin,
-        isPublished: !unpublishedByAdmin && current.leakageRisk === "LOW",
+        isPublished:
+          !unpublishedByAdmin &&
+          (input.leakageRisk ?? current.leakageRisk) === "LOW",
       };
       state.previews[index] = saved;
       return saved;
