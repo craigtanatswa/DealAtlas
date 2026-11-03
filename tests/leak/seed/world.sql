@@ -347,10 +347,10 @@ create function pg_temp.preview(
 ) returns void
 language sql as $$
   insert into public.deal_previews
-    (deal_id, slug, preview_title, preview_summary, deal_type, buyer_sector, buyer_type, sector, stage, status, main_category,
+    (deal_id, slug, preview_title, preview_summary, deal_type, buyer_sector, stage, status, main_category,
      broad_region, value_band, deadline_band, duration_band, sme_suitability, bid_complexity, competition_level,
      requirements_preview, relevance_tags, freshness_label, leakage_risk, is_published, unpublished_by_admin)
-  select d.id, p_slug, p_title, p_summary, d.deal_type, d.buyer_sector, d.buyer_type, d.sector, d.stage, d.status, d.main_category,
+  select d.id, p_slug, p_title, p_summary, d.deal_type, d.buyer_sector, d.stage, d.status, d.main_category,
          p_region, p_value_band, 'More than 30 days', '1–2 years', 'HIGH', 'MEDIUM', 'UNKNOWN',
          p_requirements, p_tags, 'Open opportunity', p_risk, p_published, p_admin_hold
   from public.deals d where d.id = pg_temp.deal_id(p_row)
