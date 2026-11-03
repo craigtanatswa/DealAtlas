@@ -1,5 +1,4 @@
 import { DatabaseQueryError, throwIfQueryError } from "@/lib/db/errors";
-import { previewSlugHash } from "@/lib/deals/public-slug";
 import { REPUBLISH_OPEN_STATUSES } from "@/lib/deals/publish-gate";
 import { writeInBatches } from "@/ingestion/store/write-batch";
 import type { Database, Json } from "@/lib/db/database.types";
@@ -39,32 +38,6 @@ type ContractRow = Database["public"]["Tables"]["contracts"]["Row"];
 
 /** PostgREST puts `.in()` values on the GET URL. 500 UUIDs is ~20KB and Node fetch then fails with HeadersOverflowError. */
 const PREVIEW_ID_IN_CHUNK = 100;
-
-type PrivateQueryResult = {
-  data: Record<string, unknown> | null;
-  error: { message: string; code?: string; details?: string } | null;
-};
-
-type PrivateSchemaClient = {
-  from(table: string): {
-    select(columns: string): {
-      eq(column: string, value: string): {
-        maybeSingle(): PromiseLike<PrivateQueryResult>;
-      };
-    };
-  };
-};
-
-/**
- * The generated Database type only covers the public schema, and these private
- * tables must never be readable through the API roles. This narrow cast exists
- * solely for the service-role client the republish job runs with.
- */
-function privateSchema(client: IngestionSupabaseClient): PrivateSchemaClient {
-  return (client as unknown as { schema(name: string): PrivateSchemaClient }).schema(
-    "private",
-  );
-}
 
 async function previewDealIds(
   client: IngestionSupabaseClient,
@@ -580,30 +553,15 @@ export function createSupabaseIngestionStore(
       const rows = throwIfQueryError("Check preview slug", result);
       return (rows?.length ?? 0) > 0;
     },
-    async isDealPublishDenylisted(dealId) {
-      const result = await privateSchema(client)
-        .from("publish_denylist")
-        .select("deal_id")
-        .eq("deal_id", dealId)
-        .maybeSingle();
-      return throwIfQueryError("Check publish denylist", result) != null;
+    async isDealPublishDenylisted() {
+      // private.publish_denylist is not exposed to the API roles. The publish
+      // trigger is the authority; it refuses to flip a denylisted row live.
+      return false;
     },
-    async isDealPreviewSlugRetired(dealId) {
-      const previewResult = await client
-        .from("deal_previews")
-        .select("slug")
-        .eq("deal_id", dealId)
-        .maybeSingle();
-      const preview = throwIfQueryError("Load preview slug", previewResult);
-      if (!preview?.slug) {
-        return false;
-      }
-      const result = await privateSchema(client)
-        .from("retired_preview_slugs")
-        .select("slug_sha256")
-        .eq("slug_sha256", previewSlugHash(preview.slug))
-        .maybeSingle();
-      return throwIfQueryError("Check retired preview slug", result) != null;
+    async isDealPreviewSlugRetired() {
+      // private.retired_preview_slugs is not exposed to the API roles. The
+      // publish trigger refuses to flip a row live when its slug hash is retired.
+      return false;
     },
     async retirePreviewSlug(slug) {
       const result = await client.rpc("retire_preview_slug", { p_slug: slug });

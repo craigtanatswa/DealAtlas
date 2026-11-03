@@ -14,6 +14,7 @@ import {
   FALLBACK_CATEGORY,
   REASON_ADMIN_HELD,
   REASON_DENYLIST,
+  REASON_DENYLIST_OR_RETIRED,
   REASON_RETIRED_SLUG,
   REPUBLISH_WORKFLOW_FILE,
   REPUBLISH_WORKFLOW_NAME,
@@ -409,6 +410,48 @@ describe("republish open deals", () => {
     expect(applied.counts.would_publish).toBe(0);
     expect(applied.counts.still_held).toEqual({ [REASON_RETIRED_SLUG]: 1 });
     expect(previewFor(store, id).isPublished).toBe(false);
+  });
+
+  it("holds a deal when the publish gate leaves the row unpublished", async () => {
+    const store = storeWith();
+    const id = await seedDeal(store);
+    seedPreview(store, id);
+    store.publishDealPreview = async () => {
+      const preview = previewFor(store, id);
+      return { ...preview, isPublished: false };
+    };
+
+    const result = await runRepublishOpenDeals({
+      store,
+      apply: true,
+      now: NOW,
+      env: APPLY_ENV,
+    });
+
+    expect(result.counts.would_publish).toBe(0);
+    expect(result.counts.still_held).toEqual({ [REASON_DENYLIST_OR_RETIRED]: 1 });
+    expect(result.deals[0]?.reason).toBe(REASON_DENYLIST_OR_RETIRED);
+    expect(previewFor(store, id).isPublished).toBe(false);
+  });
+
+  it("holds a deal when the publish gate rejects the write", async () => {
+    const store = storeWith();
+    const id = await seedDeal(store);
+    seedPreview(store, id);
+    store.publishDealPreview = async () => {
+      throw new Error("publish denylist");
+    };
+
+    const result = await runRepublishOpenDeals({
+      store,
+      apply: true,
+      now: NOW,
+      env: APPLY_ENV,
+    });
+
+    expect(result.counts.would_publish).toBe(0);
+    expect(result.counts.still_held).toEqual({ [REASON_DENYLIST_OR_RETIRED]: 1 });
+    expect(result.deals[0]?.reason).toBe(REASON_DENYLIST_OR_RETIRED);
   });
 
   it("logs one id-and-reason audit line per applied deal", async () => {

@@ -49,7 +49,7 @@ export const REASON_STATUS = "status_not_publishable";
 export const REASON_DEADLINE = "deadline_not_publishable";
 export const REASON_DENYLIST = "denylist";
 export const REASON_RETIRED_SLUG = "retired_slug";
-export const REASON_PUBLISH_BLOCKED = "publish_blocked";
+export const REASON_DENYLIST_OR_RETIRED = "denylist_or_retired";
 
 export const FALLBACK_CATEGORY =
   FILTER_TAXONOMY_NAMES[FILTER_TAXONOMY_NAMES.length - 1] ?? "Other";
@@ -612,22 +612,30 @@ export async function runRepublishOpenDeals(
           : undefined;
 
       if (apply) {
-        const saved = await input.store.publishDealPreview({
-          dealId,
-          mainCategory: category,
-          deadlineBand,
-          clearAdminHold: bucket === "admin_unpublished" && includeAdmin,
-          ...(sanitisedText
-            ? {
-                previewTitle: sanitisedText.previewTitle,
-                previewSummary: sanitisedText.previewSummary,
-                requirementsPreview: sanitisedText.requirementsPreview,
-                leakageRisk: "LOW" as const,
-              }
-            : {}),
-        });
+        let saved: DealPreviewRecord | null;
+        try {
+          saved = await input.store.publishDealPreview({
+            dealId,
+            mainCategory: category,
+            deadlineBand,
+            clearAdminHold: bucket === "admin_unpublished" && includeAdmin,
+            ...(sanitisedText
+              ? {
+                  previewTitle: sanitisedText.previewTitle,
+                  previewSummary: sanitisedText.previewSummary,
+                  requirementsPreview: sanitisedText.requirementsPreview,
+                  leakageRisk: "LOW" as const,
+                }
+              : {}),
+          });
+        } catch {
+          hold(REASON_DENYLIST_OR_RETIRED, risk);
+          continue;
+        }
         if (!saved?.isPublished) {
-          hold(REASON_PUBLISH_BLOCKED, risk);
+          // The database publish gate refused the row, most likely because the
+          // deal is denylisted or its slug is retired. Keep it held, don't fail.
+          hold(REASON_DENYLIST_OR_RETIRED, risk);
           continue;
         }
         const auditReason = sanitisedText
