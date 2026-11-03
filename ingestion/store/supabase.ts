@@ -553,6 +553,18 @@ export function createSupabaseIngestionStore(
       const rows = throwIfQueryError("Check preview slug", result);
       return (rows?.length ?? 0) > 0;
     },
+    async isDealPublishDenylisted(dealId) {
+      const result = await client.rpc("deal_is_publish_denylisted", {
+        p_deal_id: dealId,
+      });
+      return throwIfQueryError("Check publish denylist", result) === true;
+    },
+    async isDealPreviewSlugRetired(dealId) {
+      const result = await client.rpc("deal_preview_slug_is_retired", {
+        p_deal_id: dealId,
+      });
+      return throwIfQueryError("Check retired preview slug", result) === true;
+    },
     async retirePreviewSlug(slug) {
       const result = await client.rpc("retire_preview_slug", { p_slug: slug });
       throwIfQueryError("Retire preview slug", result);

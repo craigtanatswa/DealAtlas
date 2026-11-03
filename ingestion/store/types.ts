@@ -332,6 +332,10 @@ export type IngestionStore = {
   getDealById(id: string): Promise<DealRecord | null>;
   getDealPreview(dealId: string): Promise<DealPreviewRecord | null>;
   previewSlugInUse(slug: string, dealId: string): Promise<boolean>;
+  /** True when the private publish denylist names this deal. Service-role only. */
+  isDealPublishDenylisted(dealId: string): Promise<boolean>;
+  /** True when this deal's current preview slug is in retired_preview_slugs. */
+  isDealPreviewSlugRetired(dealId: string): Promise<boolean>;
   retirePreviewSlug(slug: string): Promise<void>;
   maintainDealsLeakIndex(): Promise<void>;
   upsertDealPreview(input: DealPreviewRecord): Promise<DealPreviewRecord>;

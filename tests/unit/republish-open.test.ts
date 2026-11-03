@@ -13,6 +13,8 @@ import {
 import {
   FALLBACK_CATEGORY,
   REASON_ADMIN_HELD,
+  REASON_DENYLIST,
+  REASON_RETIRED_SLUG,
   REPUBLISH_WORKFLOW_FILE,
   REPUBLISH_WORKFLOW_NAME,
   republishApplyBlockReason,
@@ -367,6 +369,67 @@ describe("republish open deals", () => {
     expect(preview.isPublished).toBe(true);
   });
 
+  it("holds a denylisted deal in dry-run and apply", async () => {
+    const store = storeWith();
+    const id = await seedDeal(store);
+    seedPreview(store, id);
+    store.publishDenylistDealIds.push(id);
+
+    const dry = await runRepublishOpenDeals({ store, now: NOW, env: {} });
+    expect(dry.counts.would_publish).toBe(0);
+    expect(dry.counts.still_held).toEqual({ [REASON_DENYLIST]: 1 });
+
+    const applied = await runRepublishOpenDeals({
+      store,
+      apply: true,
+      now: NOW,
+      env: APPLY_ENV,
+    });
+    expect(applied.counts.would_publish).toBe(0);
+    expect(applied.counts.still_held).toEqual({ [REASON_DENYLIST]: 1 });
+    expect(previewFor(store, id).isPublished).toBe(false);
+  });
+
+  it("holds a deal whose current preview slug was retired", async () => {
+    const store = storeWith();
+    const id = await seedDeal(store);
+    const preview = seedPreview(store, id);
+    await store.retirePreviewSlug(preview.slug);
+
+    const dry = await runRepublishOpenDeals({ store, now: NOW, env: {} });
+    expect(dry.counts.would_publish).toBe(0);
+    expect(dry.counts.still_held).toEqual({ [REASON_RETIRED_SLUG]: 1 });
+
+    const applied = await runRepublishOpenDeals({
+      store,
+      apply: true,
+      now: NOW,
+      env: APPLY_ENV,
+    });
+    expect(applied.counts.would_publish).toBe(0);
+    expect(applied.counts.still_held).toEqual({ [REASON_RETIRED_SLUG]: 1 });
+    expect(previewFor(store, id).isPublished).toBe(false);
+  });
+
+  it("logs one id-and-reason audit line per applied deal", async () => {
+    const store = storeWith();
+    const id = await seedDeal(store);
+    seedPreview(store, id);
+    const lines: string[] = [];
+
+    const result = await runRepublishOpenDeals({
+      store,
+      apply: true,
+      now: NOW,
+      env: APPLY_ENV,
+      auditLog: (line) => lines.push(line),
+    });
+
+    expect(result.counts.would_publish).toBe(1);
+    expect(lines).toEqual([`republish applied deal_id=${id} reason=eligible`]);
+    expect(lines[0]).not.toContain(DEFAULT_TITLE);
+  });
+
   it("refuses apply without the explicit environment confirmation", () => {
     expect(republishApplyBlockReason({}, true)).toMatch(
       /DEALATLAS_REPUBLISH_APPLY/,
@@ -413,28 +476,42 @@ describe("republish open deals", () => {
         true,
       ),
     ).toMatch(/production/);
+    const approved = {
+      ...prod,
+      GITHUB_ACTIONS: "true",
+      GITHUB_WORKFLOW: REPUBLISH_WORKFLOW_NAME,
+      GITHUB_REF: "refs/heads/main",
+      GITHUB_EVENT_NAME: "workflow_dispatch",
+      DEALATLAS_REPUBLISH_CONFIRM: "PUBLISH",
+    };
+    expect(republishApplyBlockReason(approved, true)).toBeNull();
     expect(
       republishApplyBlockReason(
         {
-          ...prod,
-          GITHUB_ACTIONS: "true",
-          GITHUB_WORKFLOW: REPUBLISH_WORKFLOW_NAME,
-          DEALATLAS_REPUBLISH_CONFIRM: "PUBLISH",
-        },
-        true,
-      ),
-    ).toBeNull();
-    expect(
-      republishApplyBlockReason(
-        {
-          ...prod,
-          GITHUB_ACTIONS: "true",
+          ...approved,
           GITHUB_WORKFLOW: REPUBLISH_WORKFLOW_FILE,
-          DEALATLAS_REPUBLISH_CONFIRM: "PUBLISH",
         },
         true,
       ),
     ).toBeNull();
+    expect(
+      republishApplyBlockReason(
+        {
+          ...approved,
+          GITHUB_REF: "refs/heads/release",
+        },
+        true,
+      ),
+    ).toMatch(/production/);
+    expect(
+      republishApplyBlockReason(
+        {
+          ...approved,
+          GITHUB_EVENT_NAME: "push",
+        },
+        true,
+      ),
+    ).toMatch(/production/);
   });
 
   it("cleans buyer names and URLs from a leak-held preview before publishing", async () => {

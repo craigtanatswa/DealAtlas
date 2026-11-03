@@ -80,6 +80,7 @@ export type MemoryIngestionState = {
   insights: DealInsightRecord[];
   previewRuns: PreviewGenerationRunRecord[];
   retiredSlugHashes: string[];
+  publishDenylistDealIds: string[];
 };
 
 export function createMemoryIngestionStore(seed?: {
@@ -118,6 +119,7 @@ export function createMemoryIngestionStore(seed?: {
     insights: [],
     previewRuns: [],
     retiredSlugHashes: [],
+    publishDenylistDealIds: [],
   };
 
   const store: IngestionStore & MemoryIngestionState = {
@@ -207,6 +209,15 @@ export function createMemoryIngestionStore(seed?: {
     },
     async previewSlugInUse(slug, dealId) {
       return state.previews.some((item) => item.slug === slug && item.dealId !== dealId);
+    },
+    async isDealPublishDenylisted(dealId) {
+      return state.publishDenylistDealIds.includes(dealId);
+    },
+    async isDealPreviewSlugRetired(dealId) {
+      const preview = state.previews.find((item) => item.dealId === dealId);
+      return Boolean(
+        preview && state.retiredSlugHashes.includes(previewSlugHash(preview.slug)),
+      );
     },
     async retirePreviewSlug(slug) {
       const hash = previewSlugHash(slug);

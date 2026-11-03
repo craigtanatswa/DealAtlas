@@ -47,6 +47,8 @@ export const REASON_NO_SOURCE_CONTEXT = "no_source_context";
 export const REASON_SOURCE = "source_not_publishable";
 export const REASON_STATUS = "status_not_publishable";
 export const REASON_DEADLINE = "deadline_not_publishable";
+export const REASON_DENYLIST = "denylist";
+export const REASON_RETIRED_SLUG = "retired_slug";
 export const REASON_PUBLISH_BLOCKED = "publish_blocked";
 
 export const FALLBACK_CATEGORY =
@@ -83,6 +85,8 @@ function republishProductionApproval(env: Record<string, string | undefined>): b
   return (
     env.GITHUB_ACTIONS?.trim().toLowerCase() === "true" &&
     Boolean(workflow && workflowNames.has(workflow)) &&
+    env.GITHUB_REF?.trim() === "refs/heads/main" &&
+    env.GITHUB_EVENT_NAME?.trim() === "workflow_dispatch" &&
     env[REPUBLISH_CONFIRM_ENV]?.trim() === REPUBLISH_CONFIRM_VALUE
   );
 }
@@ -193,6 +197,8 @@ export type RepublishOpenOptions = {
   limit?: number;
   /** When set, only inspect these deals instead of the default database query. */
   dealIds?: string[];
+  /** Apply-mode audit sink. One line per published deal, never source text. */
+  auditLog?: (line: string) => void;
 };
 
 function emptyBuckets(): Record<RepublishBucket, RepublishBucketSummary> {
@@ -583,6 +589,18 @@ export async function runRepublishOpenDeals(
         continue;
       }
 
+      // The database publish gate also refuses denylisted deals and deals whose
+      // current slug has already been retired. Check both with the service-role
+      // store methods before any publish attempt so dry-run counts match apply.
+      if (await input.store.isDealPublishDenylisted(dealId)) {
+        hold(REASON_DENYLIST);
+        continue;
+      }
+      if (await input.store.isDealPreviewSlugRetired(dealId)) {
+        hold(REASON_RETIRED_SLUG);
+        continue;
+      }
+
       const category = fallbackCategoryFor(deal, preview);
       const deadlineLabel = deal.submissionDeadline
         ? null
@@ -612,6 +630,14 @@ export async function runRepublishOpenDeals(
           hold(REASON_PUBLISH_BLOCKED, risk);
           continue;
         }
+        const auditReason = sanitisedText
+          ? "sanitised_leak_held"
+          : regenerated
+            ? "regenerated"
+            : "eligible";
+        (input.auditLog ?? console.log)(
+          `republish applied deal_id=${dealId} reason=${auditReason}`,
+        );
       }
 
       summary.would_publish += 1;
