@@ -5,6 +5,7 @@ import {
   sectorFromLegacySector,
 } from "@/lib/deals/buyer-taxonomy";
 import { previewSlugHash } from "@/lib/deals/public-slug";
+import { REPUBLISH_OPEN_STATUSES } from "@/lib/deals/publish-gate";
 
 import { normalizeTitle } from "@/ingestion/normalizers/text";
 import { textHasReferenceToken } from "@/ingestion/sources/gca/link";
@@ -179,6 +180,25 @@ export function createMemoryIngestionStore(seed?: {
         .filter((id) => afterId == null || id > afterId)
         .slice(0, limit);
     },
+    async listRepublishOpenDealIds(nowIso, limit = 5000) {
+      const now = Date.parse(nowIso);
+      const statuses = new Set<string>(REPUBLISH_OPEN_STATUSES);
+      return state.deals
+        .filter((deal) => statuses.has(deal.status))
+        .filter(
+          (deal) =>
+            deal.submissionDeadline == null ||
+            Date.parse(deal.submissionDeadline) >= now,
+        )
+        .filter((deal) =>
+          state.previews.some(
+            (preview) => preview.dealId === deal.id && !preview.isPublished,
+          ),
+        )
+        .map((deal) => deal.id)
+        .sort()
+        .slice(0, Math.max(0, Math.floor(limit)));
+    },
     async getDealById(id) {
       return state.deals.find((item) => item.id === id) ?? null;
     },
@@ -215,6 +235,27 @@ export function createMemoryIngestionStore(seed?: {
       } else {
         state.previews.push(saved);
       }
+      return saved;
+    },
+    async publishDealPreview(input) {
+      const index = state.previews.findIndex((item) => item.dealId === input.dealId);
+      if (index < 0) {
+        return null;
+      }
+      const current = state.previews[index];
+      const unpublishedByAdmin = input.clearAdminHold
+        ? false
+        : current.unpublishedByAdmin === true;
+      const saved: DealPreviewRecord = {
+        ...current,
+        mainCategory:
+          input.mainCategory === undefined ? current.mainCategory : input.mainCategory,
+        deadlineBand:
+          input.deadlineBand === undefined ? current.deadlineBand : input.deadlineBand,
+        unpublishedByAdmin,
+        isPublished: !unpublishedByAdmin && current.leakageRisk === "LOW",
+      };
+      state.previews[index] = saved;
       return saved;
     },
     async upsertDealInsight(input) {
