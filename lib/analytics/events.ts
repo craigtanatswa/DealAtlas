@@ -67,5 +67,11 @@ export const UTM_KEYS = [
 ] as const;
 export type UtmKey = (typeof UTM_KEYS)[number];
 
-/** user_signed_up carries only these three UTM fields. */
-export const SIGNUP_UTM_KEYS = ["utm_source", "utm_medium", "utm_campaign"] as const;
+/** user_signed_up and first-touch persistence carry these UTM fields. */
+export const SIGNUP_UTM_KEYS = [
+  "utm_source",
+  "utm_medium",
+  "utm_campaign",
+  "utm_term",
+  "utm_content",
+] as const;

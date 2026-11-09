@@ -8,24 +8,38 @@ import { INGEST_RATE_LIMIT } from "@/lib/analytics/ingest-proxy";
 const TOKEN = "phc_TestKey0123456789abcdef";
 const ORIGIN = "http://localhost:3311";
 
-function ingestRequestFor(ip: string, event: unknown) {
+const NORMAL_USER_AGENT =
+  "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36";
+
+function ingestRequestFor(ip: string, event: unknown, userAgent: string | null = NORMAL_USER_AGENT) {
   const body = JSON.stringify([event]);
+  const headers: Record<string, string> = {
+    "content-type": "application/json",
+    "x-forwarded-for": ip,
+  };
+  if (userAgent !== null) {
+    headers["user-agent"] = userAgent;
+  }
   return new NextRequest(`${ORIGIN}/ingest/e`, {
     method: "POST",
-    headers: { "content-type": "application/json", "x-forwarded-for": ip },
+    headers,
     body,
   });
 }
 
-function ingestRequest(ip: string) {
-  return ingestRequestFor(ip, {
-    event: "$pageview",
-    properties: {
-      token: TOKEN,
-      distinct_id: "019a0c1e-9a4d-7c8e-8b1f-2d6e5a7c9b10",
-      $current_url: `${ORIGIN}/pricing`,
+function ingestRequest(ip: string, userAgent: string | null = NORMAL_USER_AGENT) {
+  return ingestRequestFor(
+    ip,
+    {
+      event: "$pageview",
+      properties: {
+        token: TOKEN,
+        distinct_id: "019a0c1e-9a4d-7c8e-8b1f-2d6e5a7c9b10",
+        $current_url: `${ORIGIN}/pricing`,
+      },
     },
-  });
+    userAgent,
+  );
 }
 
 function guideCtaViewedEvent(properties: Record<string, unknown>) {
@@ -121,6 +135,42 @@ describe("/ingest route rate limit", () => {
     const rejected = await POST(ingestRequestFor("203.0.113.81", invalid), params);
     expect(rejected.status).toBe(200);
     expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it("skips forwarding when the request has no, empty or bot user agent", async () => {
+    vi.stubEnv("DEALATLAS_ANALYTICS_UPSTREAM", "upstream");
+    const fetchImpl = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ status: 1 }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchImpl);
+    const { POST } = await import("@/app/ingest/[...path]/route");
+
+    const noUserAgent = await POST(ingestRequest("203.0.113.90", null), params);
+    expect(noUserAgent.status).toBe(200);
+    expect(fetchImpl).not.toHaveBeenCalled();
+
+    const emptyUserAgent = await POST(ingestRequest("203.0.113.91", ""), params);
+    expect(emptyUserAgent.status).toBe(200);
+    expect(fetchImpl).not.toHaveBeenCalled();
+
+    for (const [index, userAgent] of [
+      "   ",
+      "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
+      "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/141.0.0.0 Safari/537.36",
+      "Mozilla/5.0 (compatible; SemrushBot/7~bl; +http://www.semrush.com/bot.html)",
+      "facebookexternalhit/1.1",
+    ].entries()) {
+      const response = await POST(ingestRequest(`203.0.113.${92 + index}`, userAgent as string), params);
+      expect(response.status, userAgent).toBe(200);
+      expect(fetchImpl, userAgent).not.toHaveBeenCalled();
+    }
+
+    const normal = await POST(ingestRequest("203.0.113.99"), params);
+    expect(normal.status).toBe(200);
+    expect(fetchImpl).toHaveBeenCalledOnce();
   });
 
   it("stays a 404 when analytics is disabled", async () => {

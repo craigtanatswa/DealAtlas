@@ -9,6 +9,7 @@ import {
   recordLanding,
   recordPageView,
 } from "@/lib/analytics/attribution";
+import { isAutomationTraffic } from "@/lib/analytics/bot";
 import { buildPostHogClientConfig } from "@/lib/analytics/config";
 import { registerAnalyticsOptOutHandler } from "@/lib/analytics/consent";
 import { isCheckoutAnalyticsPlan } from "@/lib/analytics/events";
@@ -24,6 +25,14 @@ let clientPromise: Promise<PostHogClient | null> | null = null;
 
 function loadClient(apiKey: string): Promise<PostHogClient | null> {
   if (!clientPromise) {
+    // Never initialise or capture from headless/bot traffic: the SDK is not
+    // even imported, so automation cannot create a PostHog session.
+    if (
+      typeof navigator !== "undefined" &&
+      isAutomationTraffic({ userAgent: navigator.userAgent, webdriver: navigator.webdriver })
+    ) {
+      return Promise.resolve(null);
+    }
     clientPromise = import("posthog-js/dist/module.slim.no-external")
       .then(({ default: posthog }) => {
         posthog.init(apiKey, buildPostHogClientConfig(window.location.origin));

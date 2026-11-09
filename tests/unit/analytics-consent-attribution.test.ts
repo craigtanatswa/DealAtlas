@@ -48,13 +48,13 @@ describe("analytics consent and first-touch storage", () => {
     setAnalyticsConsent(true);
 
     recordLanding({
-      href: `${ORIGIN}/deals/${DEAL_SLUG}?buyer=CANARY&notice=NTC-998877#apply`,
+      href: `${ORIGIN}/deals/${DEAL_SLUG}?buyer=CANARY&notice=NTC-998877&utm_source=newsletter&utm_medium=email&utm_campaign=oct-launch&utm_term=council+tenders&utm_content=hero+cta#apply`,
       referrer: "https://www.google.com/search?q=CANARY+BUYER",
       origin: ORIGIN,
     });
     // Later page views must not replace the first touch.
     recordLanding({
-      href: `${ORIGIN}/pricing`,
+      href: `${ORIGIN}/pricing?utm_term=late&utm_content=banner`,
       referrer: "https://www.bing.com/search?q=CANARY",
       origin: ORIGIN,
     });
@@ -68,11 +68,26 @@ describe("analytics consent and first-touch storage", () => {
     expect(values[ATTRIBUTION_FIELDS.signupSourceGuide]).toBe(GUIDE);
     expect(values[ATTRIBUTION_FIELDS.firstTouchGuideCtaPosition]).toBe("after_answer");
     expect(values[ATTRIBUTION_FIELDS.firstTouchGuideCtaTarget]).toBe("signup");
+    expect(values[ATTRIBUTION_FIELDS.utm_source]).toBe("newsletter");
+    expect(values[ATTRIBUTION_FIELDS.utm_medium]).toBe("email");
+    expect(values[ATTRIBUTION_FIELDS.utm_campaign]).toBe("oct-launch");
+    expect(values[ATTRIBUTION_FIELDS.utm_term]).toBe("council tenders");
+    expect(values[ATTRIBUTION_FIELDS.utm_content]).toBe("hero cta");
+    expect(JSON.stringify(values)).not.toMatch(/email@|buyer|deal_url|deal_id/);
 
     const stored = readLocalValue(ANALYTICS_FIRST_TOUCH_STORAGE_KEY) ?? "";
     for (const forbidden of [DEAL_SLUG, "CANARY", "NTC-998877", "/search", "?q=", "bing"]) {
       expect(stored).not.toContain(forbidden);
     }
+    expect(JSON.parse(stored)).toMatchObject({
+      utm: {
+        utm_source: "newsletter",
+        utm_medium: "email",
+        utm_campaign: "oct-launch",
+        utm_term: "council tenders",
+        utm_content: "hero cta",
+      },
+    });
   });
 
   it("starts first touch at the consent page when consent comes later", () => {
@@ -85,7 +100,7 @@ describe("analytics consent and first-touch storage", () => {
 
     setAnalyticsConsent(true);
     startFirstTouchAfterConsent({
-      href: `${ORIGIN}/guides/${GUIDE}?utm_source=late&utm_campaign=consent`,
+      href: `${ORIGIN}/guides/${GUIDE}?utm_source=late&utm_campaign=consent&utm_term=late+term&utm_content=late+content`,
       origin: ORIGIN,
     });
 
@@ -94,7 +109,19 @@ describe("analytics consent and first-touch storage", () => {
     expect(values[ATTRIBUTION_FIELDS.firstTouchReferrerDomain]).toBe("direct");
     expect(values[ATTRIBUTION_FIELDS.utm_source]).toBe("late");
     expect(values[ATTRIBUTION_FIELDS.utm_campaign]).toBe("consent");
+    expect(values[ATTRIBUTION_FIELDS.utm_term]).toBe("late term");
+    expect(values[ATTRIBUTION_FIELDS.utm_content]).toBe("late content");
     expect(values[ATTRIBUTION_FIELDS.signupSourceGuide]).toBe(GUIDE);
+    expect(Object.keys(values).sort()).toEqual([
+      ATTRIBUTION_FIELDS.consent,
+      ATTRIBUTION_FIELDS.firstTouchLandingPath,
+      ATTRIBUTION_FIELDS.firstTouchReferrerDomain,
+      ATTRIBUTION_FIELDS.signupSourceGuide,
+      ATTRIBUTION_FIELDS.utm_campaign,
+      ATTRIBUTION_FIELDS.utm_content,
+      ATTRIBUTION_FIELDS.utm_source,
+      ATTRIBUTION_FIELDS.utm_term,
+    ].sort());
 
     const stored = readLocalValue(ANALYTICS_FIRST_TOUCH_STORAGE_KEY) ?? "";
     expect(stored).not.toContain(DEAL_SLUG);

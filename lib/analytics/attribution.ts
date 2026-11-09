@@ -25,6 +25,8 @@ export const ATTRIBUTION_FIELDS = {
   utm_source: "analytics_utm_source",
   utm_medium: "analytics_utm_medium",
   utm_campaign: "analytics_utm_campaign",
+  utm_term: "analytics_utm_term",
+  utm_content: "analytics_utm_content",
   signupSourceGuide: "analytics_signup_source_guide",
 } as const;
 
