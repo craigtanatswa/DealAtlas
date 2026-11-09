@@ -150,6 +150,9 @@ jobs:
 
       - name: Ingest open Sell2Wales notices
         id: sell2wales
+        # TLS certificate warnings already exit 0; this keeps an unexpected
+        # Sell2Wales failure from blocking Find a Tender publish.
+        continue-on-error: true
         if: always() && steps.ingest.outcome != 'cancelled'
         env:
           DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'false' }}
@@ -316,7 +319,9 @@ jobs:
           INGEST_OK: ${{ steps.ingest.outcome == 'success' && '1' || '0' }}
           CONTRACTS_FINDER_OK: ${{ steps.contracts_finder.outcome == 'success' && '1' || '0' }}
           PUBLIC_CONTRACTS_SCOTLAND_OK: ${{ steps.public_contracts_scotland.outcome == 'success' && '1' || '0' }}
+          PUBLIC_CONTRACTS_SCOTLAND_WARNINGS: ${{ steps.public_contracts_scotland.outputs.warnings }}
           SELL2WALES_OK: ${{ steps.sell2wales.outcome == 'success' && '1' || '0' }}
+          SELL2WALES_WARNINGS: ${{ steps.sell2wales.outputs.warnings }}
           FIND_A_GRANT_OK: ${{ steps.find_a_grant.outcome == 'success' && '1' || '0' }}
           INNOVATE_UK_OK: ${{ steps.innovate_uk.outcome == 'success' && '1' || '0' }}
           GCA_AGREEMENTS_OK: ${{ steps.gca_agreements.outcome == 'success' && '1' || '0' }}

@@ -1,10 +1,13 @@
 import fs from "node:fs";
 
 import {
+  buildTlsWarning,
   isNonBlockingTlsErrors,
   isNonBlockingTlsFailure,
   isTlsCertificateError,
+  isTlsNonBlockingSource,
   tlsCertificateWarningLine,
+  tlsWarningLine,
 } from "@/lib/jobs/tls-errors";
 import { loadEnvFiles } from "./load-env";
 
@@ -31,6 +34,13 @@ function emit(line: string) {
   const output = process.env.GITHUB_OUTPUT;
   if (output) {
     fs.appendFileSync(output, `counts=${line}\n`);
+  }
+}
+
+function emitOutput(name: string, value: string) {
+  const output = process.env.GITHUB_OUTPUT;
+  if (output) {
+    fs.appendFileSync(output, `${name}=${value}\n`);
   }
 }
 
@@ -71,7 +81,7 @@ async function main() {
     runOpenSell2WalesIngest,
     runOpenTedIngest,
     runOpenInnovateUkIngest,
-    zeroRecordWarningLine,
+    zeroRecordNoticeLine,
   } = await import("@/lib/jobs/ingest-open");
   const { createSupabaseIngestionStore } = await import("@/ingestion/store/supabase");
   const { createIngestionSupabaseClient } = await import(
@@ -140,6 +150,13 @@ async function main() {
     fs.writeFileSync(statePath, JSON.stringify(ids));
   }
   emit(openIngestLogLine(result.counts));
+  if (result.warnings?.length) {
+    for (const warning of result.warnings) {
+      console.log(tlsWarningLine(source, warning));
+    }
+    emitOutput("warnings", JSON.stringify(result.warnings));
+    emitOutput("has_warnings", "1");
+  }
   if (result.status !== "SKIPPED") {
     for (const error of result.errors) {
       console.error(publicIngestErrorLine(error));
@@ -150,23 +167,38 @@ async function main() {
       typeof result.metadata.zero_records_reason === "string"
         ? result.metadata.zero_records_reason
         : undefined;
-    console.log(zeroRecordWarningLine(source, reason));
+    console.log(zeroRecordNoticeLine(source, reason));
   }
-  if (openIngestShouldFail(result)) {
-    if (isNonBlockingTlsErrors(source, result.errors)) {
+  const hasTlsWarnings = (result.warnings?.length ?? 0) > 0;
+  const tlsNonBlocking =
+    isTlsNonBlockingSource(source) &&
+    (hasTlsWarnings || isNonBlockingTlsErrors(source, result.errors));
+  if (tlsNonBlocking) {
+    if (!hasTlsWarnings) {
       const tlsError =
-        result.errors.find((error) => isTlsCertificateError(error)) ?? result.errors[0];
-      console.log(tlsCertificateWarningLine(source, tlsError));
-    } else {
-      process.exitCode = 1;
+        result.errors.find((error) => isTlsCertificateError(error)) ??
+        result.errors[0];
+      if (tlsError) {
+        console.log(tlsCertificateWarningLine(source, tlsError));
+      }
     }
+    process.exitCode = 0;
+  } else if (openIngestShouldFail(result)) {
+    process.exitCode = 1;
   }
 }
 
 main().catch(async (err: unknown) => {
   const source = (process.env.OPEN_INGEST_SOURCE ?? "find-a-tender").trim();
   if (isNonBlockingTlsFailure(source, err)) {
-    console.log(tlsCertificateWarningLine(source, err));
+    const warning = buildTlsWarning(err, { at: new Date() });
+    if (warning) {
+      console.log(tlsWarningLine(source, warning));
+      emitOutput("warnings", JSON.stringify([warning]));
+      emitOutput("has_warnings", "1");
+    } else {
+      console.log(tlsCertificateWarningLine(source, err));
+    }
     process.exitCode = 0;
     return;
   }

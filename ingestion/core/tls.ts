@@ -73,3 +73,143 @@ export function createTlsFetch(): typeof fetch {
 
 export const createPublicContractsScotlandAgent = createTlsAgent;
 export const createPublicContractsScotlandFetch = createTlsFetch;
+
+const TLS_CODE_PREFIXES = [
+  "ERR_TLS_",
+  "CERT_",
+  "UNABLE_TO_VERIFY_",
+  "DEPTH_ZERO",
+  "SELF_SIGNED",
+] as const;
+
+const TLS_CODE_MESSAGE_PATTERN =
+  /\b(?:ERR_TLS_[A-Z0-9_]+|CERT_[A-Z0-9_]+|UNABLE_TO_VERIFY_[A-Z0-9_]+|DEPTH_ZERO[A-Z0-9_]*|SELF_SIGNED[A-Z0-9_]*|UNABLE_TO_GET_ISSUER_CERT_LOCALLY)\b/;
+
+export type TlsErrorClassification = {
+  tlsCode: string;
+  /** Snake-case alias so callers can copy the value straight into run metadata. */
+  tls_code: string;
+  message: string;
+  host: string | null;
+};
+
+export type TlsWarning = {
+  code: "TLS_CERT_ERROR";
+  tls_code: string;
+  host: string;
+  message: string;
+  at: string;
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+export function isTlsCode(value: string): boolean {
+  return (
+    value === "UNABLE_TO_GET_ISSUER_CERT_LOCALLY" ||
+    TLS_CODE_PREFIXES.some((prefix) => value.startsWith(prefix))
+  );
+}
+
+function tlsCodeInMessage(value: string): string | null {
+  return TLS_CODE_MESSAGE_PATTERN.exec(value)?.[0] ?? null;
+}
+
+function hostFromText(value: string): string | null {
+  const url = /https?:\/\/\S+/i.exec(value);
+  if (url) {
+    try {
+      return new URL(url[0]).hostname;
+    } catch {
+      // Fall through to the bare hostname check below.
+    }
+  }
+  return /\b(?:[a-z0-9-]+\.)+[a-z]{2,}\b/i.exec(value)?.[0] ?? null;
+}
+
+/**
+ * Walks an Error and its cause chain for a TLS certificate code. Only known
+ * certificate error families classify as TLS; ordinary network failures do not.
+ */
+export function classifyTlsError(error: unknown): TlsErrorClassification | null {
+  const seen = new Set<unknown>();
+  let current: unknown = error;
+  let tlsCode: string | null = null;
+  let message = "";
+  let host: string | null = null;
+
+  for (let depth = 0; depth < 10 && current != null; depth += 1) {
+    if (typeof current === "string") {
+      tlsCode ??= tlsCodeInMessage(current);
+      if (!message && current.trim()) {
+        message = current.trim();
+      }
+      host ??= hostFromText(current);
+      break;
+    }
+    if (!isRecord(current) || seen.has(current)) {
+      break;
+    }
+    seen.add(current);
+
+    for (const key of ["code", "errno"] as const) {
+      const value = current[key];
+      if (typeof value === "string" && isTlsCode(value)) {
+        tlsCode ??= value;
+      }
+    }
+    for (const key of ["host", "hostname"] as const) {
+      const value = current[key];
+      if (typeof value === "string" && value.trim()) {
+        host ??= value.trim();
+      }
+    }
+    const value = current.message;
+    if (typeof value === "string" && value.trim()) {
+      if (!message) {
+        message = value.trim();
+      }
+      tlsCode ??= tlsCodeInMessage(value);
+      host ??= hostFromText(value);
+    }
+
+    current = current.cause;
+  }
+
+  if (!tlsCode) {
+    return null;
+  }
+  return {
+    tlsCode,
+    tls_code: tlsCode,
+    message: message || tlsCode,
+    host,
+  };
+}
+
+/** Returns a metadata-safe warning for a TLS failure, or null for any other error. */
+export function buildTlsWarning(
+  error: unknown,
+  options: { host?: string | null; at?: string | Date } = {},
+): TlsWarning | null {
+  const classified = classifyTlsError(error);
+  if (!classified) {
+    return null;
+  }
+  const at =
+    typeof options.at === "string"
+      ? options.at
+      : (options.at ?? new Date()).toISOString();
+  return {
+    code: "TLS_CERT_ERROR",
+    tls_code: classified.tls_code,
+    host: options.host?.trim() || classified.host || "unknown-host",
+    message: classified.message,
+    at,
+  };
+}
+
+export function isTlsCertificateError(error: unknown): boolean {
+  return classifyTlsError(error) !== null;
+}

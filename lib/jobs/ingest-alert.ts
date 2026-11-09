@@ -14,6 +14,32 @@ function numericFlag(value: string | undefined): 0 | 1 {
   return value === "1" ? 1 : 0;
 }
 
+function warningCount(value: string | undefined): number {
+  const raw = value?.trim();
+  if (!raw) {
+    return 0;
+  }
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (parsed == null) {
+      return 0;
+    }
+    if (Array.isArray(parsed)) {
+      return parsed.length;
+    }
+    if (typeof parsed === "string") {
+      return parsed.trim() ? 1 : 0;
+    }
+    if (typeof parsed === "object") {
+      return 1;
+    }
+    return parsed ? 1 : 0;
+  } catch {
+    // A plain marker such as "TLS_CERT_ERROR" still counts as one warning.
+  }
+  return 1;
+}
+
 function pickCounts(countsJson: string | undefined, prefix: string): Record<string, number> {
   let parsed: unknown = null;
   if (countsJson?.trim()) {
@@ -38,7 +64,9 @@ export function ingestAlertBody(input: {
   ingestOk?: string;
   contractsFinderOk?: string;
   publicContractsScotlandOk?: string;
+  publicContractsScotlandWarnings?: string;
   sell2WalesOk?: string;
+  sell2WalesWarnings?: string;
   tedOk?: string;
   findAGrantOk?: string;
   innovateUkOk?: string;
@@ -48,7 +76,7 @@ export function ingestAlertBody(input: {
   unpublishOk?: string;
   publishOk?: string;
 }): string {
-  return JSON.stringify({
+  const body: Record<string, unknown> = {
     ...pickCounts(input.ingestCountsJson, ""),
     ...pickCounts(input.buildCountsJson, "build_"),
     ingest_ok: numericFlag(input.ingestOk),
@@ -63,7 +91,16 @@ export function ingestAlertBody(input: {
     build_ok: numericFlag(input.buildOk),
     unpublish_ok: numericFlag(input.unpublishOk),
     publish_ok: numericFlag(input.publishOk),
-  });
+  };
+  if (warningCount(input.publicContractsScotlandWarnings) > 0) {
+    body.public_contracts_scotland_ok = 0;
+    body.public_contracts_scotland_status = "warning";
+  }
+  if (warningCount(input.sell2WalesWarnings) > 0) {
+    body.sell2wales_ok = 0;
+    body.sell2wales_status = "warning";
+  }
+  return JSON.stringify(body);
 }
 
 export async function sendIngestAlert(options: {
@@ -75,7 +112,9 @@ export async function sendIngestAlert(options: {
   ingestOk?: string;
   contractsFinderOk?: string;
   publicContractsScotlandOk?: string;
+  publicContractsScotlandWarnings?: string;
   sell2WalesOk?: string;
+  sell2WalesWarnings?: string;
   tedOk?: string;
   findAGrantOk?: string;
   innovateUkOk?: string;

@@ -1,4 +1,5 @@
 import { asIngestionError, IngestionError } from "@/ingestion/core/errors";
+import { buildTlsWarning, type TlsWarning } from "@/ingestion/core/tls";
 import {
   assertCanIngestSource,
   canIngestSource,
@@ -85,6 +86,24 @@ function emptyCounters(): IngestionCounters {
   };
 }
 
+function hostFromSource(source: DataSourceRecord): string | null {
+  for (const value of [source.apiUrl, source.baseUrl]) {
+    if (!value) {
+      continue;
+    }
+    try {
+      return new URL(value).hostname;
+    } catch {
+      // Try the next configured URL.
+    }
+  }
+  return null;
+}
+
+function tlsWarningError(warning: TlsWarning): string {
+  return `${warning.code} ${warning.tls_code}: ${warning.message}`;
+}
+
 function toComplianceInput(source: DataSourceRecord) {
   return {
     sourceKey: source.sourceKey,
@@ -127,6 +146,7 @@ export async function runIngestion(
   const now = options.now ?? new Date();
   const counters = emptyCounters();
   const errors: IngestionRunResult["errors"] = [];
+  const warnings: TlsWarning[] = [];
   const source = await options.store.getSourceByKey(options.sourceKey);
 
   if (!source) {
@@ -136,6 +156,16 @@ export async function runIngestion(
       code: "SOURCE_NOT_FOUND",
     });
   }
+
+  const recordTlsWarning = (error: unknown): void => {
+    const warning = buildTlsWarning(error, {
+      host: hostFromSource(source),
+      at: now.toISOString(),
+    });
+    if (warning) {
+      warnings.push(warning);
+    }
+  };
 
   if (!options.dryRun) {
     await options.store.closeStaleRuns({
@@ -278,6 +308,7 @@ export async function runIngestion(
           throw timeoutError;
         }
         const ingestionError = asIngestionError(error, "discover");
+        recordTlsWarning(error);
         counters.errorCount += 1;
         errors.push({
           stage: ingestionError.stage,
@@ -520,6 +551,7 @@ export async function runIngestion(
             throw timeoutError;
           }
           const ingestionError = asIngestionError(error, "record");
+          recordTlsWarning(error);
           counters.errorCount += 1;
           errors.push({
             externalRecordId: item.externalRecordId,
@@ -611,13 +643,19 @@ export async function runIngestion(
           duplicatesLinked: counters.duplicatesLinked,
           previewsPublished: counters.previewsPublished,
           previewsBlocked: counters.previewsBlocked,
+          ...(warnings.length > 0 ? { warnings } : {}),
           ...outcomeMetadata,
         },
       });
 
+      const tlsWarning = warnings[0];
+      const failed = status === "FAILED";
       await options.store.updateSource(source.id, {
-        lastSuccessAt: status === "FAILED" ? source.lastSuccessAt : new Date().toISOString(),
-        consecutiveFailures: status === "FAILED" ? source.consecutiveFailures + 1 : 0,
+        lastSuccessAt:
+          failed || tlsWarning ? source.lastSuccessAt : new Date().toISOString(),
+        consecutiveFailures:
+          failed || tlsWarning ? source.consecutiveFailures + 1 : 0,
+        ...(tlsWarning ? { lastError: tlsWarningError(tlsWarning) } : {}),
       });
     }
 
@@ -630,6 +668,7 @@ export async function runIngestion(
       counters,
       truncated,
       errors,
+      ...(warnings.length > 0 ? { warnings } : {}),
     };
   } catch (error) {
     const ingestionError = timedOut ? timeoutError : asIngestionError(error, "run");
@@ -646,8 +685,17 @@ export async function runIngestion(
           updatedCount: counters.updated,
           unchangedCount: counters.unchanged,
           errorCount: counters.errorCount,
-          metadata: { code: ingestionError.code },
+          metadata: {
+            code: ingestionError.code,
+            ...(warnings.length > 0 ? { warnings } : {}),
+          },
         });
+        if (warnings.length > 0) {
+          await options.store.updateSource(source.id, {
+            consecutiveFailures: source.consecutiveFailures + 1,
+            lastError: tlsWarningError(warnings[0]!),
+          });
+        }
       }
       return {
         status: "PARTIAL",
@@ -664,6 +712,7 @@ export async function runIngestion(
             message: ingestionError.message,
           },
         ],
+        ...(warnings.length > 0 ? { warnings } : {}),
       };
     }
     if (runId) {
@@ -681,11 +730,20 @@ export async function runIngestion(
               timed_out: true,
               code: "RUN_TIMEOUT",
               message: ingestionError.message,
+              ...(warnings.length > 0 ? { warnings } : {}),
             }
-          : { code: ingestionError.code, message: ingestionError.message },
+          : {
+              code: ingestionError.code,
+              message: ingestionError.message,
+              ...(warnings.length > 0 ? { warnings } : {}),
+            },
       });
       await options.store.updateSource(source.id, {
         consecutiveFailures: source.consecutiveFailures + 1,
+        lastError:
+          warnings.length > 0
+            ? tlsWarningError(warnings[0]!)
+            : `${ingestionError.code}: ${ingestionError.message}`,
       });
     }
     throw ingestionError;

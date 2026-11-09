@@ -1,3 +1,20 @@
+import {
+  buildTlsWarning,
+  classifyTlsError,
+  isTlsCertificateError,
+  isTlsCode,
+  type TlsErrorClassification,
+  type TlsWarning,
+} from "@/ingestion/core/tls";
+
+export {
+  buildTlsWarning,
+  classifyTlsError,
+  isTlsCertificateError,
+  isTlsCode,
+};
+export type { TlsErrorClassification, TlsWarning };
+
 export const TLS_CERTIFICATE_ERROR_CODES = [
   "ERR_TLS_CERT_ALTNAME_INVALID",
   "UNABLE_TO_VERIFY_LEAF_SIGNATURE",
@@ -17,47 +34,8 @@ export const tlsNonBlockingSources = [
 
 export type TlsNonBlockingSource = (typeof tlsNonBlockingSources)[number];
 
-const TLS_CERTIFICATE_ERROR_CODE_SET: ReadonlySet<string> = new Set(
-  TLS_CERTIFICATE_ERROR_CODES,
-);
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
-}
-
-function matchesTlsCode(value: string): boolean {
-  return TLS_CERTIFICATE_ERROR_CODES.some((code) => value.includes(code));
-}
-
-/** Walks an error and its cause chain for a TLS certificate error code. */
-export function isTlsCertificateError(err: unknown): boolean {
-  const seen = new Set<unknown>();
-  let current: unknown = err;
-  for (let depth = 0; depth < 10 && current != null; depth += 1) {
-    if (typeof current === "string") {
-      return matchesTlsCode(current);
-    }
-    if (!isRecord(current) || seen.has(current)) {
-      return false;
-    }
-    seen.add(current);
-
-    const code = current.code;
-    if (typeof code === "string" && TLS_CERTIFICATE_ERROR_CODE_SET.has(code)) {
-      return true;
-    }
-    const errno = current.errno;
-    if (typeof errno === "string" && TLS_CERTIFICATE_ERROR_CODE_SET.has(errno)) {
-      return true;
-    }
-    const message = current.message;
-    if (typeof message === "string" && matchesTlsCode(message)) {
-      return true;
-    }
-
-    current = current.cause;
-  }
-  return false;
 }
 
 export function isTlsNonBlockingSource(source: string): source is TlsNonBlockingSource {
@@ -118,4 +96,12 @@ export function tlsCertificateWarningLine(source: string, err: unknown): string 
   return `::warning title=${escapeAnnotationProperty(
     `${source} TLS certificate error`,
   )}::${escapeAnnotationData(tlsCertificateErrorMessage(err))}`;
+}
+
+export function tlsWarningLine(source: string, warning: TlsWarning): string {
+  return `::warning title=${escapeAnnotationProperty(
+    `${source} TLS certificate error`,
+  )}::${escapeAnnotationData(
+    `${warning.tls_code} ${warning.host}: ${warning.message}`,
+  )}`;
 }

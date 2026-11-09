@@ -575,7 +575,7 @@ describe("Public Contracts Scotland Quick Quote awards", () => {
     expect(urls.every((url) => new URL(url).pathname === "/v1/Notices")).toBe(true);
     expect(outcome.counters.new).toBe(1);
     expect(store.deals[0]?.dealType).toBe("AWARD");
-    expect(store.deals[0]?.status).toBe("UNCLASSIFIED");
+    expect(store.deals[0]?.status).toBe("AWARDED");
     expect(store.previews[0]?.isPublished).toBe(false);
     expect(
       store.organizations.some((org) => org.canonicalName === "Quellmoor Canary Supplies Ltd"),

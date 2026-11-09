@@ -770,6 +770,9 @@ export function createSupabaseIngestionStore(
       if (patch.termsCheckedAt !== undefined) {
         update.terms_checked_at = patch.termsCheckedAt;
       }
+      if (patch.lastError !== undefined) {
+        update.last_error = patch.lastError;
+      }
       const result = await client.from("data_sources").update(update).eq("id", id);
       throwIfQueryError("Update data source", { data: result.data, error: result.error });
     },
