@@ -1,0 +1,232 @@
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+
+import {
+  ATTRIBUTION_FIELDS,
+  attributionFormValues,
+  recordGuideCtaClick,
+  recordLanding,
+  recordPageView,
+  resetAttributionForTests,
+  startFirstTouchAfterConsent,
+} from "@/lib/analytics/attribution";
+import { resetAnalyticsConsentForTests, setAnalyticsConsent } from "@/lib/analytics/consent";
+import {
+  ANALYTICS_CONSENT_STORAGE_KEY,
+  ANALYTICS_FIRST_TOUCH_STORAGE_KEY,
+} from "@/lib/analytics/storage-keys";
+import { readLocalValue, resetLocalStorageForTests } from "@/lib/analytics/storage";
+
+const ORIGIN = "https://www.dealatlas.uk";
+const GUIDE = "uk-tender-search";
+const DEAL_SLUG = "canary-deal-a1b2c3";
+
+function resetAll() {
+  resetLocalStorageForTests();
+  resetAttributionForTests();
+  resetAnalyticsConsentForTests();
+}
+
+describe("analytics consent and first-touch storage", () => {
+  beforeEach(resetAll);
+  afterEach(resetAll);
+
+  it("stores and sends nothing before analytics consent", () => {
+    recordLanding({
+      href: `${ORIGIN}/deals/${DEAL_SLUG}?buyer=CANARY&notice=NTC-998877#apply`,
+      referrer: "https://www.google.com/search?q=CANARY+BUYER",
+      origin: ORIGIN,
+    });
+    recordPageView(`/guides/${GUIDE}`);
+    recordGuideCtaClick("after_answer", "signup");
+
+    expect(attributionFormValues()).toEqual({});
+    expect(readLocalValue(ANALYTICS_FIRST_TOUCH_STORAGE_KEY)).toBeNull();
+    expect(readLocalValue(ANALYTICS_CONSENT_STORAGE_KEY)).toBeNull();
+  });
+
+  it("keeps first touch, last guide and last CTA after consent", () => {
+    setAnalyticsConsent(true);
+
+    recordLanding({
+      href: `${ORIGIN}/deals/${DEAL_SLUG}?buyer=CANARY&notice=NTC-998877&utm_source=newsletter&utm_medium=email&utm_campaign=oct-launch&utm_term=council+tenders&utm_content=hero+cta#apply`,
+      referrer: "https://www.google.com/search?q=CANARY+BUYER",
+      origin: ORIGIN,
+    });
+    // Later page views must not replace the first touch.
+    recordLanding({
+      href: `${ORIGIN}/pricing?utm_term=late&utm_content=banner`,
+      referrer: "https://www.bing.com/search?q=CANARY",
+      origin: ORIGIN,
+    });
+    recordPageView(`/guides/${GUIDE}`);
+    recordGuideCtaClick("mid", "deals");
+    recordGuideCtaClick("after_answer", "signup");
+
+    const values = attributionFormValues();
+    expect(values[ATTRIBUTION_FIELDS.firstTouchLandingPath]).toBe("/deals/[deal]");
+    expect(values[ATTRIBUTION_FIELDS.firstTouchReferrerDomain]).toBe("google");
+    expect(values[ATTRIBUTION_FIELDS.signupSourceGuide]).toBe(GUIDE);
+    expect(values[ATTRIBUTION_FIELDS.firstTouchGuideCtaPosition]).toBe("after_answer");
+    expect(values[ATTRIBUTION_FIELDS.firstTouchGuideCtaTarget]).toBe("signup");
+    expect(values[ATTRIBUTION_FIELDS.utm_source]).toBe("newsletter");
+    expect(values[ATTRIBUTION_FIELDS.utm_medium]).toBe("email");
+    expect(values[ATTRIBUTION_FIELDS.utm_campaign]).toBe("oct-launch");
+    expect(values[ATTRIBUTION_FIELDS.utm_term]).toBe("council tenders");
+    expect(values[ATTRIBUTION_FIELDS.utm_content]).toBe("hero cta");
+    expect(JSON.stringify(values)).not.toMatch(/email@|buyer|deal_url|deal_id/);
+
+    const stored = readLocalValue(ANALYTICS_FIRST_TOUCH_STORAGE_KEY) ?? "";
+    for (const forbidden of [DEAL_SLUG, "CANARY", "NTC-998877", "/search", "?q=", "bing"]) {
+      expect(stored).not.toContain(forbidden);
+    }
+    expect(JSON.parse(stored)).toMatchObject({
+      utm: {
+        utm_source: "newsletter",
+        utm_medium: "email",
+        utm_campaign: "oct-launch",
+        utm_term: "council tenders",
+        utm_content: "hero cta",
+      },
+    });
+  });
+
+  it("starts first touch at the consent page when consent comes later", () => {
+    recordLanding({
+      href: `${ORIGIN}/deals/${DEAL_SLUG}?buyer=CANARY&notice=NTC-998877`,
+      referrer: "https://www.google.com/search?q=CANARY",
+      origin: ORIGIN,
+    });
+    expect(readLocalValue(ANALYTICS_FIRST_TOUCH_STORAGE_KEY)).toBeNull();
+
+    setAnalyticsConsent(true);
+    startFirstTouchAfterConsent({
+      href: `${ORIGIN}/guides/${GUIDE}?utm_source=late&utm_campaign=consent&utm_term=late+term&utm_content=late+content`,
+      origin: ORIGIN,
+    });
+
+    const values = attributionFormValues();
+    expect(values[ATTRIBUTION_FIELDS.firstTouchLandingPath]).toBe(`/guides/${GUIDE}`);
+    expect(values[ATTRIBUTION_FIELDS.firstTouchReferrerDomain]).toBe("direct");
+    expect(values[ATTRIBUTION_FIELDS.utm_source]).toBe("late");
+    expect(values[ATTRIBUTION_FIELDS.utm_campaign]).toBe("consent");
+    expect(values[ATTRIBUTION_FIELDS.utm_term]).toBe("late term");
+    expect(values[ATTRIBUTION_FIELDS.utm_content]).toBe("late content");
+    expect(values[ATTRIBUTION_FIELDS.signupSourceGuide]).toBe(GUIDE);
+    expect(Object.keys(values).sort()).toEqual([
+      ATTRIBUTION_FIELDS.consent,
+      ATTRIBUTION_FIELDS.firstTouchLandingPath,
+      ATTRIBUTION_FIELDS.firstTouchReferrerDomain,
+      ATTRIBUTION_FIELDS.signupSourceGuide,
+      ATTRIBUTION_FIELDS.utm_campaign,
+      ATTRIBUTION_FIELDS.utm_content,
+      ATTRIBUTION_FIELDS.utm_source,
+      ATTRIBUTION_FIELDS.utm_term,
+    ].sort());
+
+    const stored = readLocalValue(ANALYTICS_FIRST_TOUCH_STORAGE_KEY) ?? "";
+    expect(stored).not.toContain(DEAL_SLUG);
+    expect(stored).not.toContain("google");
+  });
+
+  it("clears first touch on rejection and never resurrects it on re-accept", () => {
+    setAnalyticsConsent(true);
+    recordLanding({
+      href: `${ORIGIN}/deals/${DEAL_SLUG}?buyer=CANARY`,
+      referrer: "https://www.google.com/search?q=CANARY",
+      origin: ORIGIN,
+    });
+    expect(attributionFormValues()[ATTRIBUTION_FIELDS.firstTouchLandingPath]).toBe(
+      "/deals/[deal]",
+    );
+
+    setAnalyticsConsent(false);
+    expect(readLocalValue(ANALYTICS_FIRST_TOUCH_STORAGE_KEY)).toBeNull();
+    expect(attributionFormValues()).toEqual({});
+
+    setAnalyticsConsent(true);
+    startFirstTouchAfterConsent({ href: `${ORIGIN}/pricing`, origin: ORIGIN });
+    const values = attributionFormValues();
+    expect(values[ATTRIBUTION_FIELDS.firstTouchLandingPath]).toBe("/pricing");
+    expect(values[ATTRIBUTION_FIELDS.firstTouchReferrerDomain]).toBe("direct");
+    expect(JSON.stringify(values)).not.toContain(DEAL_SLUG);
+  });
+
+  it("stores a referrer bucket only and treats same-site referrers as direct", () => {
+    setAnalyticsConsent(true);
+    recordLanding({
+      href: `${ORIGIN}/deals/${DEAL_SLUG}?notice=NTC-998877`,
+      referrer: `https://portal.example.gov.uk/notices/NTC-998877?buyer=CANARY&utm_source=leak`,
+      origin: ORIGIN,
+    });
+    let stored = readLocalValue(ANALYTICS_FIRST_TOUCH_STORAGE_KEY) ?? "";
+    for (const forbidden of [
+      DEAL_SLUG,
+      "NTC-998877",
+      "CANARY",
+      "/notices",
+      "?buyer",
+      "utm_source",
+      "portal",
+      "example.gov.uk",
+    ]) {
+      expect(stored).not.toContain(forbidden);
+    }
+    expect(JSON.parse(stored)).toMatchObject({
+      landingPath: "/deals/[deal]",
+      referrerDomain: "other",
+    });
+
+    resetAttributionForTests();
+    recordLanding({
+      href: `${ORIGIN}/pricing`,
+      referrer: `${ORIGIN}/deals/${DEAL_SLUG}?q=CANARY`,
+      origin: ORIGIN,
+    });
+    stored = readLocalValue(ANALYTICS_FIRST_TOUCH_STORAGE_KEY) ?? "";
+    expect(JSON.parse(stored)).toMatchObject({
+      landingPath: "/pricing",
+      referrerDomain: "direct",
+    });
+    expect(stored).not.toContain(DEAL_SLUG);
+  });
+
+  it.each([
+    [
+      "https://www.example-council.gov.uk/notices/NTC-100001?buyer=CANARY",
+      "council",
+    ],
+    [
+      "https://portal.example-tenders.gov.uk/notice/NTC-100002?buyer=CANARY",
+      "portal",
+    ],
+  ])("buckets buyer and tender-portal referrers %s as other", (referrer, canary) => {
+    setAnalyticsConsent(true);
+    recordLanding({
+      href: `${ORIGIN}/pricing`,
+      referrer,
+      origin: ORIGIN,
+    });
+
+    const stored = readLocalValue(ANALYTICS_FIRST_TOUCH_STORAGE_KEY) ?? "";
+    expect(JSON.parse(stored)).toMatchObject({ referrerDomain: "other" });
+    expect(stored).not.toContain(canary);
+    expect(stored).not.toContain("NTC-1000");
+  });
+
+  it("ignores CTA values that are not allowlisted", () => {
+    setAnalyticsConsent(true);
+    recordLanding({
+      href: `${ORIGIN}/guides/${GUIDE}`,
+      referrer: "",
+      origin: ORIGIN,
+    });
+    recordGuideCtaClick("mid", "deals");
+    recordGuideCtaClick("canary-position", "signup");
+    recordGuideCtaClick("end", "canary-target");
+
+    const values = attributionFormValues();
+    expect(values[ATTRIBUTION_FIELDS.firstTouchGuideCtaPosition]).toBe("mid");
+    expect(values[ATTRIBUTION_FIELDS.firstTouchGuideCtaTarget]).toBe("deals");
+    expect(JSON.stringify(values)).not.toContain("canary");
+  });
+});

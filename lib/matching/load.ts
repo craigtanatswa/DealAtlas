@@ -7,34 +7,16 @@ import { MATCH_DETAIL_SELECT } from "@/lib/matching/types";
 import type { ProMatchView, SafeMatchView, SanitisedMatchReason } from "@/lib/matching/types";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
-const FREE_REASON_LIMIT = 3;
 const PRO_REASON_LIMIT = 8;
 
-function limitedReasons(
-  reasons: SanitisedMatchReason[],
-  mode: "free" | "pro",
-): SanitisedMatchReason[] {
-  if (mode === "pro") {
-    return reasons.slice(0, PRO_REASON_LIMIT);
-  }
-  return reasons
-    .filter(
-      (reason) =>
-        reason.kind === "match" ||
-        reason.code === "NEGATIVE_KEYWORD" ||
-        reason.code === "PROFILE_LIMITED",
-    )
-    .slice(0, FREE_REASON_LIMIT);
-}
-
+/** Pro-only view. Callers must pass the match-access gate first. */
 export function toSafeMatchView(
   score: number,
   reasons: SanitisedMatchReason[],
-  mode: "free" | "pro" = "free",
 ): SafeMatchView {
   return {
     score: Math.max(0, Math.min(100, Math.round(score))),
-    reasons: limitedReasons(reasons, mode),
+    reasons: reasons.slice(0, PRO_REASON_LIMIT),
   };
 }
 
@@ -79,7 +61,7 @@ export async function loadProMatchForDeal(input: {
     ...detail.filter((reason) => reason.kind === "mismatch"),
   ].slice(0, PRO_REASON_LIMIT);
   return {
-    ...toSafeMatchView(Number(row.relevance_score), preview, "pro"),
+    ...toSafeMatchView(Number(row.relevance_score), preview),
     mismatches,
   };
 }

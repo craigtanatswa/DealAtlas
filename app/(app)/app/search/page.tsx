@@ -43,7 +43,7 @@ export default async function AppSearchPage({ searchParams }: PageProps) {
     ? await loadExportUsageForMonth(user.id)
     : { used: 0 };
   const savedSearchCount = await countSavedSearches(client, user.id);
-  const { filters, result, companyProfileId } = await searchDealPreviewsForUser({
+  const { filters, result, companyProfileId, matchEnabled } = await searchDealPreviewsForUser({
     client,
     searchParams: params,
     userId: user.id,
@@ -75,7 +75,7 @@ export default async function AppSearchPage({ searchParams }: PageProps) {
         <DealSearchFilterDrawer
           filters={filters}
           path="/app/search"
-          showRelevance={Boolean(companyProfileId)}
+          showRelevance={matchEnabled}
         />
       </div>
       <DealActiveFilters filters={filters} path="/app/search" />
@@ -98,12 +98,13 @@ export default async function AppSearchPage({ searchParams }: PageProps) {
         <DealSearchFilterRail
           filters={filters}
           path="/app/search"
-          showRelevance={Boolean(companyProfileId)}
+          showRelevance={matchEnabled}
         />
         <DealSearchResults
           result={result}
           filters={filters}
           path="/app/search"
+          signedIn
         />
       </div>
     </Main>

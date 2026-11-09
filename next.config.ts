@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 
+import { rawCategoryAliases } from "./lib/categories/filter-map";
 import { assertPublicEnvHasNoSecrets } from "./lib/env/shared";
 
 assertPublicEnvHasNoSecrets();
@@ -13,6 +14,13 @@ const nextConfig: NextConfig = {
   },
   experimental: {
     authInterrupts: true,
+  },
+  async redirects() {
+    return rawCategoryAliases().map(({ fromSlug, toSlug }) => ({
+      source: `/categories/${fromSlug}`,
+      destination: `/categories/${toSlug}`,
+      permanent: true,
+    }));
   },
 };
 

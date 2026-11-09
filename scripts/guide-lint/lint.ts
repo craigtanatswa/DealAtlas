@@ -3,6 +3,7 @@ import path from "node:path";
 
 import { parseFrontmatter } from "@/lib/guides/content";
 
+import { lintCraigPortalRule } from "./craig-portal-rule";
 import { lintFaq } from "./faq";
 import { lintFrontmatter } from "./frontmatter";
 import { BUYER_NAME_DENYLIST, lintLeaks } from "./leaks";
@@ -66,6 +67,7 @@ export function lintGuideSource(file: string, source: string, ctx: GuideLintCont
   if (parsed) {
     const faqLine = split.frontmatter.find((entry) => entry.text.startsWith("faq:"))?.line ?? 1;
     failures.push(...lintFaq(file, parsed.data, split.body, parsed.faq, faqLine));
+    failures.push(...lintCraigPortalRule(file, split.frontmatter, split.body, parsed.data));
   }
   return failures.sort((a, b) => a.line - b.line || a.rule.localeCompare(b.rule));
 }

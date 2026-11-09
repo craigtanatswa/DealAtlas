@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { mapDealStatus } from "@/ingestion/normalizers/taxonomy";
+import {
+  buyerSectorFromClassifications,
+  mapDealStatus,
+} from "@/ingestion/normalizers/taxonomy";
 
 const now = new Date("2026-10-08T00:00:00.000Z");
 
@@ -64,7 +67,7 @@ describe("mapDealStatus", () => {
     ).toBe("CLOSED");
   });
 
-  it("marks a tender with no deadline UNCLASSIFIED", () => {
+  it("maps an active tender with no deadline to OPEN", () => {
     expect(
       mapDealStatus({
         tags: ["tenderAmendment"],
@@ -73,6 +76,54 @@ describe("mapDealStatus", () => {
         now,
         hasAwards: false,
       }),
+    ).toBe("OPEN");
+  });
+
+  it("marks a tender with no deadline and no status UNCLASSIFIED", () => {
+    expect(
+      mapDealStatus({
+        tags: ["tender"],
+        tenderStatus: null,
+        submissionDeadline: null,
+        now,
+        hasAwards: false,
+      }),
     ).toBe("UNCLASSIFIED");
+  });
+});
+
+describe("buyerSectorFromClassifications", () => {
+  it("treats a private utility classification as PRIVATE before the regex checks", () => {
+    expect(
+      buyerSectorFromClassifications([
+        { scheme: "UK_CA_TYPE", id: "privateUtility", description: "Private utility" },
+      ]),
+    ).toBe("PRIVATE");
+    expect(
+      buyerSectorFromClassifications([
+        { scheme: "uk_ca_type", id: "PRIVATEUTILITY", description: null },
+      ]),
+    ).toBe("PRIVATE");
+  });
+
+  it("does not treat a public undertaking as private", () => {
+    expect(
+      buyerSectorFromClassifications([
+        { scheme: "UK_CA_TYPE", id: "publicUndertaking", description: "Public undertaking" },
+      ]),
+    ).toBe("PUBLIC");
+  });
+
+  it("keeps the existing healthcare and public classifications unchanged", () => {
+    expect(
+      buyerSectorFromClassifications([
+        { scheme: "UK_CA_TYPE", id: "nhsBody", description: "NHS body" },
+      ]),
+    ).toBe("HEALTHCARE");
+    expect(
+      buyerSectorFromClassifications([
+        { scheme: "UK_CA_TYPE", id: "publicAuthorityLocal", description: "Public authority - local" },
+      ]),
+    ).toBe("PUBLIC");
   });
 });

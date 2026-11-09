@@ -25,6 +25,15 @@ const PHASE_B_ADDED_FUNCTIONS = new Set([
   "founding_offer",
   "founding_availability",
   "claim_founding_activation",
+  // 0052: free alert signup rate-limit RPC (service_role execute only).
+  "hit_alert_signup_rate_limit",
+  // 0060: admin-only buyer_type x sector counts (service_role execute only).
+  "admin_deal_taxonomy_counts",
+  // 0060: private helpers / trigger fn (revoked from public, anon, authenticated).
+  "deal_sector_from_cpv",
+  "deal_sector_from_cofog",
+  "deal_sector_from_text",
+  "fold_utility_buyer_sector",
 ]);
 
 export type Acl = {
@@ -248,6 +257,28 @@ export function dbProbes(ctx: Ctx, phaseA?: { holds?: string[] }): { gateMisses:
   return { gateMisses: misses, acl };
 }
 
+/**
+ * Functions whose signature 0053 replaces by dropping the old overload and
+ * adding a trailing p_categories parameter. A drop plus add is intended only
+ * when the new signature does not widen client EXECUTE.
+ */
+const REPLACED_SIGNATURE_FUNCTIONS = new Set([
+  "search_preview_dtos",
+  "search_deal_previews",
+  "search_deal_previews_for_profile",
+]);
+
+function replacementKeepsGrants(name: string, a: Acl, b: Acl): boolean {
+  const before = Object.values(a.functions).filter((f) => f.name === name);
+  const after = Object.values(b.functions).filter((f) => f.name === name);
+  if (before.length === 0 || after.length === 0) return false;
+  const beforeAnon = before.some((f) => f.anon);
+  const beforeAuth = before.some((f) => f.authenticated);
+  const afterAnon = after.some((f) => f.anon);
+  const afterAuth = after.some((f) => f.authenticated);
+  return (!afterAnon || beforeAnon) && (!afterAuth || beforeAuth);
+}
+
 /** B-XPH-02: every ACL change between phases is a revoke that 0019 intends. */
 export function aclDiff(a: Acl, b: Acl): { intended: string[]; unintended: string[] } {
   const intended: string[] = [];
@@ -261,12 +292,17 @@ export function aclDiff(a: Acl, b: Acl): { intended: string[]; unintended: strin
     const fb = b.functions[sig];
     if (!fa || !fb) {
       const added = !fa && fb;
+      const name = (fb ?? fa).name;
+      const replacedSignature =
+        REPLACED_SIGNATURE_FUNCTIONS.has(name) && replacementKeepsGrants(name, a, b);
       const serviceOnly =
         added &&
-        PHASE_B_ADDED_FUNCTIONS.has(fb.name) &&
+        PHASE_B_ADDED_FUNCTIONS.has(name) &&
         fb.anon === false &&
         fb.authenticated === false;
-      (serviceOnly ? intended : unintended).push(`${sig}: ${fa ? "dropped" : "added"}`);
+      (serviceOnly || replacedSignature ? intended : unintended).push(
+        `${sig}: ${fa ? "dropped" : "added"}`,
+      );
       continue;
     }
     const revocable = !DTO_RPCS.includes(fa.name);
@@ -274,20 +310,36 @@ export function aclDiff(a: Acl, b: Acl): { intended: string[]; unintended: strin
     note(`function ${sig} authenticated`, fa.authenticated, fb.authenticated, revocable);
   }
   for (const table of new Set([...Object.keys(a.tables), ...Object.keys(b.tables)])) {
+    const before = a.tables[table];
+    const after = b.tables[table];
+    if (!before && after) {
+      const clientOpen = (["anon", "authenticated"] as const).some((role) =>
+        (["select", "insert", "update", "delete"] as const).some((priv) => after[role][priv]),
+      );
+      // New public tables are intended only when anon/authenticated have zero grants
+      // (service_role / security-definer routes only), e.g. 0052 alert_email_subscriptions.
+      (clientOpen ? unintended : intended).push(
+        `table ${table}: added${clientOpen ? "" : " (service_role only)"}`,
+      );
+      continue;
+    }
+    if (before && !after) {
+      unintended.push(`table ${table}: dropped`);
+      continue;
+    }
     for (const role of ["anon", "authenticated"] as const) {
       for (const priv of ["select", "insert", "update", "delete"] as const) {
-        const from = a.tables[table]?.[role]?.[priv];
-        const to = b.tables[table]?.[role]?.[priv];
-        if (from === undefined || to === undefined) {
-          if (from !== to) unintended.push(`table ${table}: ${from === undefined ? "added" : "dropped"}`);
-          continue;
-        }
-        note(`table ${table} ${role} ${priv}`, from, to, table === "deal_previews");
+        const from = before![role][priv];
+        const to = after![role][priv];
+        // 0051 revokes client SELECT on deal_matches (match data is Pro-only).
+        note(`table ${table} ${role} ${priv}`, from, to, table === "deal_previews" || (table === "deal_matches" && priv === "select"));
       }
     }
   }
   for (const column of Object.keys(a.columns)) {
-    for (const role of ["anon", "authenticated"] as const) note(`column ${column} ${role}`, a.columns[column][role], b.columns[column]?.[role] ?? false, false);
+    // 0051: the table-level revoke also drops the deal_matches column grants.
+    // Only true -> false counts as intended; any new grant is still unintended.
+    for (const role of ["anon", "authenticated"] as const) note(`column ${column} ${role}`, a.columns[column][role], b.columns[column]?.[role] ?? false, column.startsWith("deal_matches."));
   }
   for (const schema of Object.keys(a.schemas)) {
     for (const role of ["anon", "authenticated"] as const) {

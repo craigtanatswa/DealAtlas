@@ -27,7 +27,11 @@ test.describe("Free account journey", () => {
     await page.locator("#search-q").fill(seed.searchToken);
     await submitKeywordSearch(page);
     await expect(page.getByRole("heading", { name: seed.previewTitle })).toBeVisible();
-    await expect(page.getByLabel(/Match score \d+/i)).toBeVisible();
+    // P0 (0051): free users get the Pro upsell, never a match score.
+    await expect(page.getByLabel(/Match score \d+/i)).toHaveCount(0);
+    await expect(
+      page.getByRole("link", { name: "Match score with DealAtlas Pro" }).first(),
+    ).toBeVisible();
     await expectNoProtectedLeaks(page);
 
     await page.goto(`/deals/${seed.publishedSlug}`);

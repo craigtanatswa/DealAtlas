@@ -10,26 +10,39 @@ export function sanitisedTitleFragment(title: string): string {
     .toLowerCase()
     .normalize("NFKD")
     .replace(/[\u0300-\u036f]/g, "")
+    // Drop CPV / notice-length digit runs so a public slug never carries
+    // source-derived 8+ digit identifiers from the title.
+    .replace(/\d{8,}/g, "")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
+    .replace(/-+/g, "-")
     .slice(0, 48)
     .replace(/-+$/g, "");
   return base || "opportunity";
 }
 
-/** Sanitised title fragment plus 8 random hex characters. Not a deal id and not an HMAC. */
-export function buildPreviewSlug(title: string, hex = randomBytes(4).toString("hex")): string {
+/**
+ * Opaque 8-hex suffix that is never an all-digit run. Random hex can be
+ * 0-9 only (~2.3% of draws), which looks like a CPV code on a public URL.
+ * Callers that reconstruct legacy deal-id suffixes still pass hex explicitly.
+ */
+export function opaquePreviewSlugHex(): string {
+  for (let attempt = 0; attempt < 32; attempt += 1) {
+    const hex = randomBytes(4).toString("hex");
+    if (!/^\d{8}$/.test(hex)) return hex;
+  }
+  // Astronomically unlikely; force a non-digit nibble.
+  return `a${randomBytes(4).toString("hex").slice(1)}`;
+}
+
+/** Sanitised title fragment plus 8 opaque hex characters. Not a deal id and not an HMAC. */
+export function buildPreviewSlug(title: string, hex = opaquePreviewSlugHex()): string {
   if (!/^[0-9a-f]{8}$/.test(hex)) {
     throw new Error("Preview slug hex must be 8 lowercase hex characters.");
   }
   return `${sanitisedTitleFragment(title)}-${hex}`;
 }
 
-/**
- * True when the slug is already this title's template fragment plus 8 random hex
- * characters. A suffix equal to the first 8 hex of the deal id is a PR1 slug and
- * is never kept, even when the fragment matches.
- */
 /** `/deals/:slug`, excluding the sitemap index. Empty string means the segment cannot be decoded. */
 export function dealPreviewPathSlug(pathname: string): string | null {
   const match = /^\/deals\/([^/]+)$/.exec(pathname);
@@ -85,6 +98,11 @@ export function dealPathGate(input: {
   return "missing";
 }
 
+/**
+ * True when the slug is already this title's template fragment plus 8 opaque hex
+ * characters. A suffix equal to the first 8 hex of the deal id is a PR1 slug and
+ * is never kept, even when the fragment matches.
+ */
 export function isTemplatePreviewSlug(slug: string, title: string, dealId: string): boolean {
   const hex = /-([0-9a-fA-F]{8})$/.exec(slug)?.[1]?.toLowerCase();
   if (!hex) {

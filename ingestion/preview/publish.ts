@@ -1,5 +1,3 @@
-import { randomBytes } from "node:crypto";
-
 import { extractDealIntelligence } from "@/ingestion/intelligence/extract";
 import type { LanguageModelProvider } from "@/ingestion/intelligence/provider";
 import { createRulesLanguageModel } from "@/ingestion/intelligence/provider";
@@ -13,6 +11,10 @@ import {
   generatePreviewDraft,
   leakScanInputFromContext,
 } from "@/ingestion/preview/generate";
+import {
+  buyerTypeFromLegacySector,
+  sectorFromLegacySector,
+} from "@/lib/deals/buyer-taxonomy";
 import { buildPreviewSlug, isTemplatePreviewSlug } from "@/lib/deals/public-slug";
 import { scanPreviewLeaks } from "@/lib/redaction/scan";
 import type {
@@ -32,10 +34,10 @@ async function allocatePreviewSlug(
   dealId: string,
 ): Promise<string> {
   for (let attempt = 0; attempt < 5; attempt += 1) {
-    const slug = buildPreviewSlug(title, randomBytes(4).toString("hex"));
+    const slug = buildPreviewSlug(title);
     if (!(await store.previewSlugInUse(slug, dealId))) return slug;
   }
-  return buildPreviewSlug(title, randomBytes(4).toString("hex"));
+  return buildPreviewSlug(title);
 }
 
 function insightRecord(dealId: string, intelligence: DealIntelligence): DealInsightRecord {
@@ -118,6 +120,15 @@ export async function persistIntelligenceAndPreview(options: {
     previewSummary: draft.previewSummary,
     dealType: context.deal.dealType,
     buyerSector: context.deal.buyerSector,
+    buyerType:
+      context.deal.buyerType ??
+      buyerTypeFromLegacySector(context.deal.buyerSector),
+    sector:
+      context.deal.sector ??
+      sectorFromLegacySector(
+        context.deal.buyerSector,
+        context.deal.mainCategory,
+      ),
     stage: context.deal.stage,
     status: context.deal.status,
     mainCategory: context.deal.mainCategory,

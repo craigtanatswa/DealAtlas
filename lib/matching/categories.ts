@@ -1,3 +1,5 @@
+import { mapRawCategoryToFilter } from "@/lib/categories/filter-map";
+
 export const DEAL_CATEGORY_CATALOG = [
   { slug: "technology", name: "Technology" },
   { slug: "professional-services", name: "Professional Services" },
@@ -51,6 +53,13 @@ export function resolveCategory(value: string | null | undefined): {
   const byName = BY_NAME.get(trimmed.toLowerCase());
   if (byName) {
     return byName;
+  }
+  const mapped = mapRawCategoryToFilter(trimmed);
+  if (mapped) {
+    const catalog = BY_NAME.get(mapped.toLowerCase());
+    if (catalog) {
+      return catalog;
+    }
   }
   return { slug: slugifyCategory(trimmed), name: trimmed };
 }

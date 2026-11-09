@@ -52,6 +52,7 @@ export default async function AppHomePage() {
   const closingItems = closingSoon.result.items.filter(
     (item) => !latestSlugs.has(item.preview.slug),
   );
+  const ranked = latest.matchEnabled && latest.companyProfileId !== null;
 
   return (
     <Main className="gap-10">
@@ -73,8 +74,12 @@ export default async function AppHomePage() {
       <section className="flex flex-col gap-6" aria-labelledby="workspace-latest-heading">
         <SectionHeader
           id="workspace-latest-heading"
-          title="Opportunities for you"
-          description="Newest opportunities, ranked by your company profile when one is saved."
+          title={ranked ? "Opportunities for you" : "Latest opportunities"}
+          description={
+            ranked
+              ? "Newest opportunities, ranked by your company profile."
+              : "The newest published opportunities."
+          }
           action={
             <Button asChild variant="outline">
               <Link href="/app/search">View all opportunities</Link>

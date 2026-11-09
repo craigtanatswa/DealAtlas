@@ -1,17 +1,17 @@
 import "server-only";
 
-import {
-  asFoundingReservation,
-  foundingAvailabilityPayload,
-  foundingOfferCopy,
-} from "@/lib/billing/founding";
+import { asFoundingReservation, foundingOfferCopy } from "@/lib/billing/founding";
 import type { FoundingReservation } from "@/lib/billing/types";
 import { getServerEnv } from "@/lib/env/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
-function foundingConfigured(): boolean {
-  const env = getServerEnv();
-  return Boolean(env.DODO_FOUNDING_PRODUCT_ID);
+/** Fails closed: unreadable env counts as not configured. */
+export function foundingConfigured(): boolean {
+  try {
+    return Boolean(getServerEnv().DODO_FOUNDING_PRODUCT_ID);
+  } catch {
+    return false;
+  }
 }
 
 export async function readFoundingMember(userId: string): Promise<boolean> {
@@ -55,13 +55,14 @@ export async function readFoundingOffer(): Promise<{
   }
 }
 
+/** Server-only exact count. Never serialise it to a public response. */
 export async function readFoundingRemaining(): Promise<number> {
   if (!foundingConfigured()) return 0;
   try {
     const admin = createSupabaseAdminClient();
     const { data, error } = await admin.rpc("founding_availability");
-    if (error || typeof data !== "number") return 0;
-    return foundingAvailabilityPayload(data).remaining;
+    if (error || typeof data !== "number" || !Number.isInteger(data) || data < 0) return 0;
+    return data;
   } catch {
     return 0;
   }

@@ -27,7 +27,9 @@ import {
 } from "@/ingestion/normalizers/text";
 import {
   buyerSectorFromClassifications,
+  buyerTypeFromClassifications,
   categoryFromCpv,
+  dealSectorFromClassifications,
   mapDealStage,
   mapDealStatus,
   mapDealType,
@@ -338,7 +340,13 @@ export function mapFindATenderRelease(
     ? tenderValue.currency
     : awardValue.currency;
 
-  const submissionDeadline = toTimestamptz(tender?.tenderPeriod?.endDate);
+  // Tender-level deadline first; otherwise the earliest lot deadline.
+  const lotDeadlines = (tender?.lots ?? [])
+    .map((lot) => toTimestamptz(lot.tenderPeriod?.endDate))
+    .filter((value): value is string => Boolean(value))
+    .sort((a, b) => Date.parse(a) - Date.parse(b));
+  const submissionDeadline =
+    toTimestamptz(tender?.tenderPeriod?.endDate) ?? lotDeadlines[0] ?? null;
   const futureTenderDate = toTimestamptz(tender?.communication?.futureNoticeDate);
   const enquiryDeadline = toTimestamptz(tender?.enquiryPeriod?.endDate);
   const hasFramework = Boolean(tender?.techniques?.hasFrameworkAgreement);
@@ -368,6 +376,22 @@ export function mapFindATenderRelease(
   );
   const primaryCpv = classifications.find((item) => item.isPrimary)?.code ?? classifications[0]?.code;
   const category = categoryFromCpv(primaryCpv);
+  const buyerType = buyerTypeFromClassifications(buyerClassifications);
+  const privateUtility = buyerClassifications.some(
+    (item) =>
+      item.scheme?.trim().toLowerCase() === "uk_ca_type" &&
+      item.id?.trim().toLowerCase() === "privateutility",
+  );
+  const sector = privateUtility
+    ? "UTILITIES"
+    : dealSectorFromClassifications([
+        ...buyerClassifications,
+        ...classifications.map((item) => ({
+          scheme: "CPV",
+          id: item.code,
+          description: item.description,
+        })),
+      ]);
 
   const lots: LotCandidate[] = (tender?.lots ?? []).map((lot) => {
     const lotValue = valueBounds(lot.value);
@@ -380,7 +404,7 @@ export function mapFindATenderRelease(
         tenderStatus: lot.status ?? tender?.status,
         lotStatus: lot.status,
         tags,
-        submissionDeadline,
+        submissionDeadline: toTimestamptz(lot.tenderPeriod?.endDate) ?? submissionDeadline,
         futureTenderDate,
         now,
         hasAwards: awards.some((award) => award.relatedLots?.includes(String(lot.id))),
@@ -391,7 +415,7 @@ export function mapFindATenderRelease(
       exactLocationText: extractLocations(
         (tender?.items ?? []).filter((item) => item.relatedLot === String(lot.id)),
       ),
-      submissionDeadline,
+      submissionDeadline: toTimestamptz(lot.tenderPeriod?.endDate) ?? submissionDeadline,
       contractStartDate: toDateOnly(lot.contractPeriod?.startDate),
       contractEndDate: toDateOnly(lot.contractPeriod?.endDate),
       extensionEndDate: toDateOnly(lot.contractPeriod?.maxExtentDate),
@@ -468,6 +492,8 @@ export function mapFindATenderRelease(
       tenderStatus: tender?.status,
     }),
     buyerSector: buyerSectorFromClassifications(buyerClassifications),
+    buyerType,
+    sector,
     stage: mapDealStage({
       tags,
       tenderStatus: tender?.status,

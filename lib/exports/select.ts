@@ -1,6 +1,11 @@
 import "server-only";
 
-import { throwIfQueryError } from "@/lib/db/errors";
+import { expandFilterToRawCategories } from "@/lib/categories/filter-map";
+import {
+  CATEGORY_FILTER_FANOUT_FALLBACK_WARN,
+  isMissingCategoriesParamError,
+  throwIfQueryError,
+} from "@/lib/db/errors";
 import type { PublicSupabaseClient } from "@/lib/db/previews";
 import type { DealExportRequest } from "@/lib/exports/request";
 import { loadCompanyProfileIdForUser } from "@/lib/matching/load";
@@ -80,21 +85,23 @@ async function listSavedDealIds(
   return rows.map((row) => row.deal_id);
 }
 
-async function listFilteredDealIds(
-  client: PublicSupabaseClient,
+async function listFilteredDealIdsForCategory(
   admin: AdminClient,
-  userId: string,
   filters: SavedSearchFilters,
+  rawCategories: string[],
+  sort: string,
+  minScore: number | undefined,
+  companyProfileId: string | null,
+  useRelevance: boolean,
   remaining: number,
 ): Promise<string[]> {
-  const companyProfileId = await loadCompanyProfileIdForUser(client, userId);
-  const sort = companyProfileId ? (filters.sort ?? "updated") : "updated";
-  const minScore = companyProfileId ? filters.minScore : undefined;
-  const useRelevance = Boolean(companyProfileId) && (sort === "relevance" || minScore != null);
-
   const ids: string[] = [];
   let offset = 0;
   let total = Number.POSITIVE_INFINITY;
+  const categoryParams = {
+    p_category: rawCategories.length === 1 ? rawCategories[0] : undefined,
+    p_categories: rawCategories.length > 1 ? rawCategories : undefined,
+  };
 
   while (ids.length < remaining && offset < total) {
     const limit = Math.min(PREVIEW_PAGE_SIZE, remaining - ids.length);
@@ -102,7 +109,7 @@ async function listFilteredDealIds(
       const { data, error } = await admin.rpc("search_deal_previews_for_profile", {
         p_company_profile_id: companyProfileId,
         p_query: filters.query || undefined,
-        p_category: filters.category,
+        ...categoryParams,
         p_buyer_sector: filters.buyerSector,
         p_deal_type: filters.dealType,
         p_region: filters.region,
@@ -137,7 +144,7 @@ async function listFilteredDealIds(
 
     const { data, error } = await admin.rpc("search_deal_previews", {
       p_query: filters.query || undefined,
-      p_category: filters.category,
+      ...categoryParams,
       p_buyer_sector: filters.buyerSector,
       p_deal_type: filters.dealType,
       p_region: filters.region,
@@ -164,6 +171,85 @@ async function listFilteredDealIds(
     offset += rows.length;
     if (rows.length < limit) {
       break;
+    }
+  }
+
+  return ids;
+}
+
+async function listFilteredDealIds(
+  client: PublicSupabaseClient,
+  admin: AdminClient,
+  userId: string,
+  filters: SavedSearchFilters,
+  remaining: number,
+): Promise<string[]> {
+  const companyProfileId = await loadCompanyProfileIdForUser(client, userId);
+  const sort = companyProfileId ? (filters.sort ?? "updated") : "updated";
+  const minScore = companyProfileId ? filters.minScore : undefined;
+  const useRelevance = Boolean(companyProfileId) && (sort === "relevance" || minScore != null);
+
+  const rawCategories = filters.category
+    ? expandFilterToRawCategories(filters.category)
+    : [];
+
+  if (rawCategories.length <= 1) {
+    return listFilteredDealIdsForCategory(
+      admin,
+      filters,
+      rawCategories,
+      sort,
+      minScore,
+      companyProfileId,
+      useRelevance,
+      remaining,
+    );
+  }
+
+  try {
+    return await listFilteredDealIdsForCategory(
+      admin,
+      filters,
+      rawCategories,
+      sort,
+      minScore,
+      companyProfileId,
+      useRelevance,
+      remaining,
+    );
+  } catch (error) {
+    if (!isMissingCategoriesParamError(error)) {
+      throw error;
+    }
+    console.warn(CATEGORY_FILTER_FANOUT_FALLBACK_WARN);
+  }
+
+  const ids: string[] = [];
+  const seen = new Set<string>();
+
+  for (const rawCategory of rawCategories) {
+    if (ids.length >= remaining) {
+      break;
+    }
+    const categoryIds = await listFilteredDealIdsForCategory(
+      admin,
+      filters,
+      [rawCategory],
+      sort,
+      minScore,
+      companyProfileId,
+      useRelevance,
+      remaining - ids.length,
+    );
+    for (const id of categoryIds) {
+      if (ids.length >= remaining) {
+        break;
+      }
+      if (seen.has(id)) {
+        continue;
+      }
+      seen.add(id);
+      ids.push(id);
     }
   }
 

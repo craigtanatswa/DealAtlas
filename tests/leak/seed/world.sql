@@ -526,6 +526,14 @@ select cp.id, pg_temp.deal_id('b3'), 64,
        '[{"code":"KEYWORD_OVERLAP","kind":"match","surface":"detail","label":"trevossian detail Quellmoor"}]'::jsonb
 from public.company_profiles cp where cp.company_name = 'Leakprobe Test Supplier';
 
+-- MATCH-01 (0051): the two free users get opposite top matches, so any
+-- profile-driven ordering would differ between them. Free must not see it.
+insert into public.deal_matches (company_profile_id, deal_id, relevance_score, preview_reasons)
+select cp.id, pg_temp.deal_id(v.deal), 99,
+       '[{"code":"KEYWORD_OVERLAP","kind":"match","surface":"preview","label":"Keyword overlap with your profile"}]'::jsonb
+from (values ('free', 'b6'), ('free_lapsed', 'b2')) as v(role, deal)
+join public.company_profiles cp on cp.user_id = pg_temp.user_id(v.role);
+
 insert into public.saved_deals (user_id, deal_id)
 values (pg_temp.user_id('free'), pg_temp.deal_id('b1')),
        (pg_temp.user_id('free'), pg_temp.deal_id('a1')),

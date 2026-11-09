@@ -1,3 +1,4 @@
+import { buyerTypeFromFunding, sectorFromText } from "@/lib/deals/buyer-taxonomy";
 import { asRecord, asString } from "@/ingestion/normalizers/text";
 import { collectObjectArrays } from "@/ingestion/sources/private/json";
 import { buildPrivateCandidate } from "@/ingestion/sources/private/parse";
@@ -38,12 +39,25 @@ export function nistaRecordId(record: unknown): string | null {
 
 export function mapNistaRecord(record: unknown, context: PrivateMappingContext) {
   const id = nistaRecordId(record) ?? "unknown";
-  return buildPrivateCandidate(unwrapProject(record), {
+  const project = unwrapProject(record);
+  const row = asRecord(project);
+  const candidate = buildPrivateCandidate(project, {
     ...context,
     sourceKey: UK_INFRASTRUCTURE_PIPELINE_SOURCE_KEY,
     parserVersion: NISTA_PARSER_VERSION,
     sourceUrl: context.sourceUrl || nistaProjectUrl(id),
   });
+  const funding =
+    asString(row?.funding) ??
+    asString(row?.["is_this_project_programme_drawing_on_public_or_private_funds"]) ??
+    asString(row?.funding_source);
+  const sectorText =
+    asString(row?.sector) ?? asString(row?.client) ?? candidate.mainCategory ?? null;
+  return {
+    ...candidate,
+    buyerType: buyerTypeFromFunding(funding) ?? "PUBLIC",
+    sector: sectorFromText(sectorText),
+  };
 }
 
 export function unwrapProject(payload: unknown): unknown {

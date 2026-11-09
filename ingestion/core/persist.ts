@@ -3,6 +3,11 @@ import { IngestionError } from "@/ingestion/core/errors";
 import { categoryFromCpv } from "@/ingestion/normalizers/taxonomy";
 import { normalizeTitle } from "@/ingestion/normalizers/text";
 import { resolveOrganization } from "@/ingestion/org/resolve";
+import { isPlaceholderBuyerName } from "@/lib/buyers/placeholder";
+import {
+  buyerTypeFromLegacySector,
+  sectorFromLegacySector,
+} from "@/lib/deals/buyer-taxonomy";
 import type {
   DataChangeRecord,
   DataSourceRecord,
@@ -175,6 +180,23 @@ async function linkDeal(
   return { deal: null, linked: false };
 }
 
+/**
+ * A buyer named only by a placeholder ("Public Sector", "N/A") is not an
+ * organisation: drop its BUYER role, and the party itself when that was its
+ * only role, so no buyer org or buyer link is written for it.
+ */
+export function withoutPlaceholderBuyers(
+  organizations: CanonicalCandidate["organizations"],
+): CanonicalCandidate["organizations"] {
+  return organizations.flatMap((organization) => {
+    if (!organization.roles.includes("BUYER") || !isPlaceholderBuyerName(organization.name)) {
+      return [organization];
+    }
+    const roles = organization.roles.filter((role) => role !== "BUYER");
+    return roles.length > 0 ? [{ ...organization, roles }] : [];
+  });
+}
+
 export async function persistCandidate(options: {
   store: IngestionStore;
   source: DataSourceRecord;
@@ -185,8 +207,14 @@ export async function persistCandidate(options: {
   const { store, source, raw, candidate, now } = options;
   const occurredAt = now.toISOString();
   const partyToOrg = new Map<string, string>();
+  const organizations = withoutPlaceholderBuyers(candidate.organizations);
+  const placeholderBuyerParties = new Set(
+    candidate.organizations
+      .filter((org) => org.roles.includes("BUYER") && isPlaceholderBuyerName(org.name))
+      .map((org) => org.sourcePartyId),
+  );
 
-  for (const organization of candidate.organizations) {
+  for (const organization of organizations) {
     const resolved = await resolveOrganization(store, organization, source.id);
     partyToOrg.set(organization.sourcePartyId, resolved.organization.id);
     if (resolved.reviewCandidateIds.length > 0) {
@@ -204,14 +232,14 @@ export async function persistCandidate(options: {
     }
   }
 
+  const firstBuyer = organizations.find((org) => org.roles.includes("BUYER"));
   const buyerOrganizationId = candidate.buyerPartyId
-    ? (partyToOrg.get(candidate.buyerPartyId) ?? null)
-    : (candidate.organizations.find((org) => org.roles.includes("BUYER"))
-        ? partyToOrg.get(
-            candidate.organizations.find((org) => org.roles.includes("BUYER"))!
-              .sourcePartyId,
-          ) ?? null
-        : null);
+    ? placeholderBuyerParties.has(candidate.buyerPartyId)
+      ? null
+      : (partyToOrg.get(candidate.buyerPartyId) ?? null)
+    : firstBuyer
+      ? (partyToOrg.get(firstBuyer.sourcePartyId) ?? null)
+      : null;
 
   const linked = await linkDeal(store, source, candidate, buyerOrganizationId);
   let outcome: PersistOutcome = linked.deal ? (linked.linked ? "linked" : "updated") : "new";
@@ -228,6 +256,11 @@ export async function persistCandidate(options: {
     buyerOrganizationId,
     dealType: candidate.dealType,
     buyerSector: candidate.buyerSector,
+    buyerType:
+      candidate.buyerType ?? buyerTypeFromLegacySector(candidate.buyerSector),
+    sector:
+      candidate.sector ??
+      sectorFromLegacySector(candidate.buyerSector, candidate.mainCategory),
     stage: candidate.stage,
     status: candidate.status,
     mainCategory: candidate.mainCategory ?? null,
@@ -260,6 +293,7 @@ export async function persistCandidate(options: {
   if (linked.deal) {
     deal = await store.updateDeal(linked.deal.id, {
       ...dealFields,
+      ...keepKnownStatusAndDeadline(linked.deal, dealFields),
       firstPublishedAt: linked.deal.firstPublishedAt ?? dealFields.firstPublishedAt,
       sourceCount: Math.max(linked.deal.sourceCount, 1),
     });
@@ -283,7 +317,7 @@ export async function persistCandidate(options: {
     }
   }
 
-  for (const organization of candidate.organizations) {
+  for (const organization of organizations) {
     const organizationId = partyToOrg.get(organization.sourcePartyId);
     if (!organizationId) {
       continue;
@@ -658,4 +692,21 @@ export async function persistCandidate(options: {
   }
 
   return { outcome, deal, noticeId: notice.id, lotIds };
+}
+
+/**
+ * An update release never nulls out a known deadline and never drops a
+ * classified status back to UNCLASSIFIED.
+ */
+export function keepKnownStatusAndDeadline(
+  existing: Pick<DealRecord, "status" | "submissionDeadline">,
+  incoming: Pick<DealRecord, "status" | "submissionDeadline">,
+): Pick<DealRecord, "status" | "submissionDeadline"> {
+  return {
+    submissionDeadline: incoming.submissionDeadline ?? existing.submissionDeadline,
+    status:
+      incoming.status === "UNCLASSIFIED" && existing.status !== "UNCLASSIFIED"
+        ? existing.status
+        : incoming.status,
+  };
 }

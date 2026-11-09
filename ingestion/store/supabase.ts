@@ -1,8 +1,14 @@
 import { DatabaseQueryError, throwIfQueryError } from "@/lib/db/errors";
+import { REPUBLISH_OPEN_STATUSES } from "@/lib/deals/publish-gate";
 import { writeInBatches } from "@/ingestion/store/write-batch";
 import type { Database, Json } from "@/lib/db/database.types";
 
 import { normalizeTitle } from "@/ingestion/normalizers/text";
+import {
+  buyerTypeFromLegacySector,
+  sectorFromLegacySector,
+} from "@/lib/deals/buyer-taxonomy";
+import { textHasReferenceToken } from "@/ingestion/sources/gca/link";
 import type {
   AwardRecord,
   ContractRecord,
@@ -98,6 +104,18 @@ function mapSource(row: SourceRow): DataSourceRecord {
     complianceNotes: row.compliance_notes,
     lastSuccessAt: row.last_success_at,
     consecutiveFailures: row.consecutive_failures,
+    discoveryMethod: row.discovery_method,
+    parserType: row.parser_type,
+    parserConfig: (row.parser_config ?? {}) as Record<string, unknown>,
+    country: row.country,
+    industry: row.industry,
+    crawlFrequencyMinutes: row.crawl_frequency_minutes,
+    lastError: row.last_error,
+    opportunitiesDiscovered: row.opportunities_discovered,
+    reliabilityScore: row.reliability_score,
+    autoPublish: row.auto_publish,
+    autoPublishMinConfidence: row.auto_publish_min_confidence,
+    marketSector: row.market_sector,
   };
 }
 
@@ -133,6 +151,8 @@ function mapDeal(row: DealRow): DealRecord {
     buyerOrganizationId: row.buyer_organization_id,
     dealType: row.deal_type,
     buyerSector: row.buyer_sector,
+    buyerType: row.buyer_type,
+    sector: row.sector,
     stage: row.stage,
     status: row.status,
     mainCategory: row.main_category,
@@ -185,6 +205,8 @@ function mapPreview(row: PreviewRow): DealPreviewRecord {
     previewSummary: row.preview_summary,
     dealType: row.deal_type,
     buyerSector: row.buyer_sector,
+    buyerType: row.buyer_type,
+    sector: row.sector,
     stage: row.stage,
     status: row.status,
     mainCategory: row.main_category,
@@ -318,6 +340,10 @@ function dealInsert(deal: Parameters<IngestionStore["createDeal"]>[0]) {
     buyer_organization_id: deal.buyerOrganizationId,
     deal_type: deal.dealType,
     buyer_sector: deal.buyerSector,
+    buyer_type:
+      deal.buyerType ?? buyerTypeFromLegacySector(deal.buyerSector),
+    sector:
+      deal.sector ?? sectorFromLegacySector(deal.buyerSector, deal.mainCategory),
     stage: deal.stage,
     status: deal.status,
     main_category: deal.mainCategory,
@@ -440,6 +466,55 @@ export function createSupabaseIngestionStore(
       }
       return missing;
     },
+    async listRepublishOpenDealIds(nowIso, limit = 5000) {
+      const cap = Math.min(5000, Math.max(1, Math.floor(limit)));
+      const statuses = [...REPUBLISH_OPEN_STATUSES] as Database["public"]["Enums"]["deal_status"][];
+      const dealIds: string[] = [];
+      let after: string | null = null;
+      for (let page = 0; page < 20 && dealIds.length < cap; page += 1) {
+        let query = client
+          .from("deals")
+          .select("id")
+          .in("status", statuses)
+          .or(`submission_deadline.gte.${nowIso},submission_deadline.is.null`)
+          .order("id", { ascending: true })
+          .limit(Math.min(1000, cap));
+        if (after) {
+          query = query.gt("id", after);
+        }
+        const rows = throwIfQueryError(
+          "List republish open deals",
+          await query,
+        ) ?? [];
+        if (rows.length === 0) break;
+        for (const row of rows) {
+          dealIds.push(row.id);
+        }
+        after = rows[rows.length - 1]?.id ?? null;
+        if (rows.length < 1000 || !after) break;
+      }
+
+      const candidates: string[] = [];
+      for (let index = 0; index < dealIds.length && candidates.length < cap; index += PREVIEW_ID_IN_CHUNK) {
+        const chunk = dealIds.slice(index, index + PREVIEW_ID_IN_CHUNK);
+        const previews = throwIfQueryError(
+          "List republish preview states",
+          await client
+            .from("deal_previews")
+            .select("deal_id")
+            .in("deal_id", chunk)
+            .eq("is_published", false),
+        ) ?? [];
+        const unpublished = new Set(previews.map((preview) => preview.deal_id));
+        for (const id of chunk) {
+          if (unpublished.has(id)) {
+            candidates.push(id);
+            if (candidates.length >= cap) break;
+          }
+        }
+      }
+      return candidates.sort().slice(0, cap);
+    },
     async listPreviewRebuildDealIds(options) {
       const limit = options?.limit ?? 100;
       let query = client
@@ -478,6 +553,16 @@ export function createSupabaseIngestionStore(
       const rows = throwIfQueryError("Check preview slug", result);
       return (rows?.length ?? 0) > 0;
     },
+    async isDealPublishDenylisted() {
+      // private.publish_denylist is not exposed to the API roles. The publish
+      // trigger is the authority; it refuses to flip a denylisted row live.
+      return false;
+    },
+    async isDealPreviewSlugRetired() {
+      // private.retired_preview_slugs is not exposed to the API roles. The
+      // publish trigger refuses to flip a row live when its slug hash is retired.
+      return false;
+    },
     async retirePreviewSlug(slug) {
       const result = await client.rpc("retire_preview_slug", { p_slug: slug });
       throwIfQueryError("Retire preview slug", result);
@@ -497,6 +582,11 @@ export function createSupabaseIngestionStore(
             preview_summary: input.previewSummary,
             deal_type: input.dealType,
             buyer_sector: input.buyerSector,
+            buyer_type:
+              input.buyerType ?? buyerTypeFromLegacySector(input.buyerSector),
+            sector:
+              input.sector ??
+              sectorFromLegacySector(input.buyerSector, input.mainCategory),
             stage: input.stage,
             status: input.status,
             main_category: input.mainCategory,
@@ -521,6 +611,41 @@ export function createSupabaseIngestionStore(
         .select("*")
         .single();
       return mapPreview(requireRow("Upsert deal preview", result));
+    },
+    async publishDealPreview(input) {
+      const patch: Database["public"]["Tables"]["deal_previews"]["Update"] = {
+        is_published: true,
+        updated_at: new Date().toISOString(),
+      };
+      if (input.mainCategory !== undefined) {
+        patch.main_category = input.mainCategory;
+      }
+      if (input.deadlineBand !== undefined) {
+        patch.deadline_band = input.deadlineBand;
+      }
+      if (input.previewTitle !== undefined) {
+        patch.preview_title = input.previewTitle;
+      }
+      if (input.previewSummary !== undefined) {
+        patch.preview_summary = input.previewSummary;
+      }
+      if (input.requirementsPreview !== undefined) {
+        patch.requirements_preview = input.requirementsPreview;
+      }
+      if (input.leakageRisk !== undefined) {
+        patch.leakage_risk = input.leakageRisk;
+      }
+      if (input.clearAdminHold) {
+        patch.unpublished_by_admin = false;
+      }
+      const result = await client
+        .from("deal_previews")
+        .update(patch)
+        .eq("deal_id", input.dealId)
+        .select("*")
+        .maybeSingle();
+      const row = throwIfQueryError("Publish deal preview", result);
+      return row ? mapPreview(row) : null;
     },
     async upsertDealInsight(input) {
       const result = await client.from("deal_insights").upsert(
@@ -645,6 +770,9 @@ export function createSupabaseIngestionStore(
       if (patch.termsCheckedAt !== undefined) {
         update.terms_checked_at = patch.termsCheckedAt;
       }
+      if (patch.lastError !== undefined) {
+        update.last_error = patch.lastError;
+      }
       const result = await client.from("data_sources").update(update).eq("id", id);
       throwIfQueryError("Update data source", { data: result.data, error: result.error });
     },
@@ -678,6 +806,52 @@ export function createSupabaseIngestionStore(
         errorCount: row.error_count,
         metadata: (row.metadata ?? {}) as Record<string, unknown>,
       } satisfies IngestionRunRecord;
+    },
+    async closeStaleRuns({ sourceId, olderThanMs }) {
+      const now = new Date();
+      const cutoff = now.getTime() - Math.max(0, olderThanMs);
+      const result = await client
+        .from("ingestion_runs")
+        .select("id, status, started_at, created_at, error_count, metadata")
+        .eq("source_id", sourceId)
+        .in("status", ["RUNNING", "QUEUED"]);
+      const rows = throwIfQueryError("List stale ingestion runs", result) ?? [];
+      let closed = 0;
+      for (const row of rows) {
+        const reference =
+          row.status === "RUNNING"
+            ? (row.started_at ?? row.created_at)
+            : row.created_at;
+        const startedAt = Date.parse(reference);
+        if (!Number.isFinite(startedAt) || startedAt >= cutoff) {
+          continue;
+        }
+        const existingMetadata =
+          row.metadata &&
+          typeof row.metadata === "object" &&
+          !Array.isArray(row.metadata)
+            ? (row.metadata as Record<string, unknown>)
+            : {};
+        const updateResult = await client
+          .from("ingestion_runs")
+          .update({
+            status: "FAILED",
+            finished_at: now.toISOString(),
+            error_count: row.error_count + 1,
+            metadata: asJson({
+              ...existingMetadata,
+              timed_out: true,
+              closed_reason: "stale run exceeded limit",
+            }),
+          })
+          .eq("id", row.id);
+        throwIfQueryError("Close stale ingestion run", {
+          data: updateResult.data,
+          error: updateResult.error,
+        });
+        closed += 1;
+      }
+      return closed;
     },
     async latestIncompleteCursor(sourceId) {
       const result = await client
@@ -974,6 +1148,43 @@ export function createSupabaseIngestionStore(
       const row = throwIfQueryError("Find deal by OCID", result);
       return row ? mapDeal(row) : null;
     },
+    async findDealByPortalReference(sourceKeys, reference) {
+      const token = reference.trim();
+      if (!token || sourceKeys.length === 0) {
+        return null;
+      }
+      const sources = await client
+        .from("data_sources")
+        .select("id")
+        .in("source_key", sourceKeys);
+      const sourceRows = throwIfQueryError("Find portal sources", sources) ?? [];
+      const ids = sourceRows.map((row) => row.id);
+      if (ids.length === 0) {
+        return null;
+      }
+      const exact = await client
+        .from("deals")
+        .select("*")
+        .in("primary_source_id", ids)
+        .ilike("reference", token)
+        .limit(1);
+      const exactRows = throwIfQueryError("Find portal deal by reference", exact) ?? [];
+      if (exactRows[0]) {
+        return mapDeal(exactRows[0]);
+      }
+      if (!textHasReferenceToken(token, token)) {
+        return null;
+      }
+      const titled = await client
+        .from("deals")
+        .select("*")
+        .in("primary_source_id", ids)
+        .ilike("source_title", `%${token}%`)
+        .limit(25);
+      const titleRows = throwIfQueryError("Find portal deal by title", titled) ?? [];
+      const match = titleRows.find((row) => textHasReferenceToken(token, row.source_title));
+      return match ? mapDeal(match) : null;
+    },
     async findDealBySourceReference(sourceId, reference) {
       const result = await client
         .from("deals")
@@ -983,6 +1194,22 @@ export function createSupabaseIngestionStore(
         .maybeSingle();
       const row = throwIfQueryError("Find deal by reference", result);
       return row ? mapDeal(row) : null;
+    },
+    async findDealByNormalizedTitle(normalizedTitle) {
+      const pageSize = 1000;
+      for (let from = 0; from < 20_000; from += pageSize) {
+        const result = await client
+          .from("deals")
+          .select("*")
+          .eq("deal_type", "GRANT")
+          .order("id")
+          .range(from, from + pageSize - 1);
+        const rows = throwIfQueryError("Find grant deal by title", result) ?? [];
+        const match = rows.find((row) => normalizeTitle(row.source_title) === normalizedTitle);
+        if (match) return mapDeal(match);
+        if (rows.length < pageSize) return null;
+      }
+      return null;
     },
     async findDealByBuyerAndNormalizedTitle(buyerOrganizationId, normalizedTitle) {
       const result = await client
@@ -1024,6 +1251,8 @@ export function createSupabaseIngestionStore(
       }
       if (patch.dealType !== undefined) update.deal_type = patch.dealType;
       if (patch.buyerSector !== undefined) update.buyer_sector = patch.buyerSector;
+      if (patch.buyerType !== undefined) update.buyer_type = patch.buyerType;
+      if (patch.sector !== undefined) update.sector = patch.sector;
       if (patch.stage !== undefined) update.stage = patch.stage;
       if (patch.status !== undefined) update.status = patch.status;
       if (patch.mainCategory !== undefined) update.main_category = patch.mainCategory;

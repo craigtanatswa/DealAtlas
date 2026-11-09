@@ -10,6 +10,7 @@ export const serverEnvSchema = z.object({
   DODO_PAYMENTS_RETURN_URL: z.url().optional(),
   DODO_PRO_MONTHLY_PRODUCT_ID: z.string().min(1).optional(),
   DODO_PRO_ANNUAL_PRODUCT_ID: z.string().min(1).optional(),
+  DODO_PRO_ANNUAL_LEGACY_PRODUCT_IDS: z.string().optional(),
   DODO_FOUNDING_PRODUCT_ID: z.string().min(1).optional(),
   RESEND_API_KEY: z.string().min(1).optional(),
   DEALATLAS_EMAIL_FROM: z.string().min(1).optional(),
@@ -20,9 +21,14 @@ export const serverEnvSchema = z.object({
   DEALATLAS_LLM_API_KEY: z.string().min(1).optional(),
   DEALATLAS_LLM_BASE_URL: z.url().optional(),
   DEALATLAS_LLM_MODEL: z.string().min(1).optional(),
+  DEALATLAS_LLM_MAX_CALLS_PER_RUN: z.string().optional(),
+  DEALATLAS_SEARCH_PROVIDER: z.enum(["tavily"]).optional(),
+  DEALATLAS_SEARCH_API_KEY: z.string().min(1).optional(),
+  DEALATLAS_SEARCH_MAX_QUERIES_PER_RUN: z.string().optional(),
   DEALATLAS_EMBEDDING_API_KEY: z.string().min(1).optional(),
   DEALATLAS_EMBEDDING_BASE_URL: z.url().optional(),
   DEALATLAS_EMBEDDING_MODEL: z.string().min(1).optional(),
+  ALERT_TOKEN_SECRET: z.string().min(32).optional(),
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;
@@ -35,6 +41,7 @@ export const SERVER_ENV_KEYS = [
   "DODO_PAYMENTS_RETURN_URL",
   "DODO_PRO_MONTHLY_PRODUCT_ID",
   "DODO_PRO_ANNUAL_PRODUCT_ID",
+  "DODO_PRO_ANNUAL_LEGACY_PRODUCT_IDS",
   "DODO_FOUNDING_PRODUCT_ID",
   "RESEND_API_KEY",
   "DEALATLAS_EMAIL_FROM",
@@ -45,7 +52,12 @@ export const SERVER_ENV_KEYS = [
   "DEALATLAS_LLM_API_KEY",
   "DEALATLAS_LLM_BASE_URL",
   "DEALATLAS_LLM_MODEL",
+  "DEALATLAS_LLM_MAX_CALLS_PER_RUN",
+  "DEALATLAS_SEARCH_PROVIDER",
+  "DEALATLAS_SEARCH_API_KEY",
+  "DEALATLAS_SEARCH_MAX_QUERIES_PER_RUN",
   "DEALATLAS_EMBEDDING_API_KEY",
   "DEALATLAS_EMBEDDING_BASE_URL",
   "DEALATLAS_EMBEDDING_MODEL",
+  "ALERT_TOKEN_SECRET",
 ] as const satisfies ReadonlyArray<keyof ServerEnv>;

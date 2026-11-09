@@ -1,4 +1,5 @@
 import { asIngestionError, IngestionError } from "@/ingestion/core/errors";
+import { buildTlsWarning, type TlsWarning } from "@/ingestion/core/tls";
 import {
   assertCanIngestSource,
   canIngestSource,
@@ -10,14 +11,26 @@ import { contextFromCandidate } from "@/ingestion/intelligence/types";
 import { persistIntelligenceAndPreview } from "@/ingestion/preview/publish";
 import { CONTRACTS_FINDER_SOURCE_KEY } from "@/ingestion/sources/contracts-finder/constants";
 import { linkContractsFinderDuplicate } from "@/ingestion/sources/contracts-finder/link";
+import { linkCrossPublishedDuplicate } from "@/ingestion/sources/ocds-monthly/link";
+import { PUBLIC_CONTRACTS_SCOTLAND_SOURCE_KEY } from "@/ingestion/sources/public-contracts-scotland/constants";
+import { SELL2WALES_SOURCE_KEY } from "@/ingestion/sources/sell2wales/constants";
+import {
+  GCA_AGREEMENTS_SOURCE_KEY,
+  GCA_PIPELINE_SOURCE_KEY,
+} from "@/ingestion/sources/gca/constants";
+import { linkGcaPortalDuplicate } from "@/ingestion/sources/gca/link";
+import { isGrantSource, linkGrantDuplicate } from "@/ingestion/sources/grant-notice/link";
 import { defaultSleep } from "@/ingestion/core/retry";
 import { unwrapReleasePayload } from "@/ingestion/sources/find-a-tender/parse";
+import { RUN_TIMEOUT_MS, STALE_RUN_LIMIT_MS } from "@/lib/jobs/run-timeouts";
 import type {
+  CanonicalCandidate,
   IngestionCounters,
   IngestionRunResult,
+  IngestionStatus,
   SourceAdapter,
 } from "@/ingestion/core/types";
-import type { DataSourceRecord, IngestionStore } from "@/ingestion/store/types";
+import type { DataSourceRecord, IngestionStore, RawRecordRow } from "@/ingestion/store/types";
 
 export type RunIngestionOptions = {
   sourceKey: string;
@@ -41,6 +54,16 @@ export type RunIngestionOptions = {
   skipPreview?: boolean;
   /** A discover/page failure is PARTIAL and does not discard rows already written. */
   failureMode?: "throw" | "partial";
+  /** Override the stale-run close window (defaults to STALE_RUN_LIMIT_MS). */
+  staleRunLimitMs?: number;
+  /** Override the hard run timeout (defaults to RUN_TIMEOUT_MS). */
+  timeoutMs?: number;
+  /** Lets the caller downgrade a successful-looking run (for example zero records). */
+  classifyResult?: (input: {
+    sourceKey: string;
+    status: IngestionStatus;
+    counters: IngestionCounters;
+  }) => { status: IngestionStatus; metadata?: Record<string, unknown> };
   onPersisted?: (info: {
     dealId: string;
     outcome: "new" | "updated" | "unchanged" | "linked";
@@ -63,6 +86,24 @@ function emptyCounters(): IngestionCounters {
   };
 }
 
+function hostFromSource(source: DataSourceRecord): string | null {
+  for (const value of [source.apiUrl, source.baseUrl]) {
+    if (!value) {
+      continue;
+    }
+    try {
+      return new URL(value).hostname;
+    } catch {
+      // Try the next configured URL.
+    }
+  }
+  return null;
+}
+
+function tlsWarningError(warning: TlsWarning): string {
+  return `${warning.code} ${warning.tls_code}: ${warning.message}`;
+}
+
 function toComplianceInput(source: DataSourceRecord) {
   return {
     sourceKey: source.sourceKey,
@@ -76,6 +117,28 @@ function toComplianceInput(source: DataSourceRecord) {
   };
 }
 
+const CROSS_PUBLISHED_SOURCE_KEYS = new Set<string>([
+  PUBLIC_CONTRACTS_SCOTLAND_SOURCE_KEY,
+  SELL2WALES_SOURCE_KEY,
+]);
+
+async function linkDuplicateCandidate(options: {
+  sourceKey: string;
+  store: IngestionStore;
+  source: DataSourceRecord;
+  raw: RawRecordRow;
+  candidate: CanonicalCandidate;
+  now: Date;
+}): Promise<boolean> {
+  if (options.sourceKey === CONTRACTS_FINDER_SOURCE_KEY) {
+    return linkContractsFinderDuplicate(options);
+  }
+  if (CROSS_PUBLISHED_SOURCE_KEYS.has(options.sourceKey)) {
+    return linkCrossPublishedDuplicate(options);
+  }
+  return false;
+}
+
 export async function runIngestion(
   options: RunIngestionOptions,
 ): Promise<IngestionRunResult> {
@@ -83,6 +146,7 @@ export async function runIngestion(
   const now = options.now ?? new Date();
   const counters = emptyCounters();
   const errors: IngestionRunResult["errors"] = [];
+  const warnings: TlsWarning[] = [];
   const source = await options.store.getSourceByKey(options.sourceKey);
 
   if (!source) {
@@ -90,6 +154,23 @@ export async function runIngestion(
       message: `Unknown source ${options.sourceKey}`,
       stage: "compliance",
       code: "SOURCE_NOT_FOUND",
+    });
+  }
+
+  const recordTlsWarning = (error: unknown): void => {
+    const warning = buildTlsWarning(error, {
+      host: hostFromSource(source),
+      at: now.toISOString(),
+    });
+    if (warning) {
+      warnings.push(warning);
+    }
+  };
+
+  if (!options.dryRun) {
+    await options.store.closeStaleRuns({
+      sourceId: source.id,
+      olderThanMs: options.staleRunLimitMs ?? STALE_RUN_LIMIT_MS,
     });
   }
 
@@ -184,13 +265,28 @@ export async function runIngestion(
   const runId = run?.id ?? null;
 
   let cursor = options.cursor;
+  let truncated = false;
   let remaining = options.limit ?? Number.POSITIVE_INFINITY;
   const minFetchIntervalMs = options.minFetchIntervalMs ?? 0;
   const sleep = options.sleep ?? defaultSleep;
   let lastFetchAt = 0;
 
-  try {
+  const timeoutMs = options.timeoutMs ?? RUN_TIMEOUT_MS;
+  const timeoutError = new IngestionError({
+    message: `Ingestion run exceeded ${timeoutMs}ms`,
+    stage: "run",
+    code: "RUN_TIMEOUT",
+    retryable: false,
+  });
+  const controller = new AbortController();
+  let timedOut = false;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+
+  const runBody = async (): Promise<void> => {
     while (remaining > 0) {
+      if (controller.signal.aborted) {
+        throw timeoutError;
+      }
       const pageLimit = Math.min(
         options.pageSize ?? 20,
         Number.isFinite(remaining) ? remaining : 20,
@@ -204,8 +300,15 @@ export async function runIngestion(
           updatedTo: options.updatedTo,
           stages: options.stages,
         });
+        if (page.truncated) {
+          truncated = true;
+        }
       } catch (error) {
+        if (controller.signal.aborted) {
+          throw timeoutError;
+        }
         const ingestionError = asIngestionError(error, "discover");
+        recordTlsWarning(error);
         counters.errorCount += 1;
         errors.push({
           stage: ingestionError.stage,
@@ -217,6 +320,9 @@ export async function runIngestion(
         }
         throw error;
       }
+      if (controller.signal.aborted) {
+        throw timeoutError;
+      }
       const items = page.items.slice(
         0,
         Number.isFinite(remaining) ? remaining : page.items.length,
@@ -224,6 +330,9 @@ export async function runIngestion(
       counters.discovered += items.length;
 
       for (const item of items) {
+        if (controller.signal.aborted) {
+          throw timeoutError;
+        }
         try {
           if (minFetchIntervalMs > 0 && lastFetchAt > 0) {
             const wait = lastFetchAt + minFetchIntervalMs - Date.now();
@@ -232,6 +341,9 @@ export async function runIngestion(
             }
           }
           const raw = await options.adapter.fetch(item);
+          if (controller.signal.aborted) {
+            throw timeoutError;
+          }
           lastFetchAt = Date.now();
           counters.fetched += 1;
           const hash = contentHash(unwrapReleasePayload(raw.payload) ?? raw.payload);
@@ -301,8 +413,40 @@ export async function runIngestion(
           }
 
           for (const candidate of candidates) {
-            if (source.sourceKey === CONTRACTS_FINDER_SOURCE_KEY) {
-              const linked = await linkContractsFinderDuplicate({
+            if (controller.signal.aborted) {
+              throw timeoutError;
+            }
+            const linked = await linkDuplicateCandidate({
+              sourceKey: source.sourceKey,
+              store: options.store,
+              source,
+              raw: snapshot.record,
+              candidate,
+              now,
+            });
+            if (linked) {
+              counters.duplicatesLinked += 1;
+              continue;
+            }
+            if (
+              source.sourceKey === GCA_AGREEMENTS_SOURCE_KEY ||
+              source.sourceKey === GCA_PIPELINE_SOURCE_KEY
+            ) {
+              const linked = await linkGcaPortalDuplicate({
+                store: options.store,
+                source,
+                raw: snapshot.record,
+                candidate,
+                now,
+              });
+              if (linked) {
+                counters.duplicatesLinked += 1;
+                continue;
+              }
+            }
+
+            if (isGrantSource(source.sourceKey)) {
+              const linked = await linkGrantDuplicate({
                 store: options.store,
                 source,
                 raw: snapshot.record,
@@ -403,7 +547,11 @@ export async function runIngestion(
             }
           }
         } catch (error) {
+          if (controller.signal.aborted) {
+            throw timeoutError;
+          }
           const ingestionError = asIngestionError(error, "record");
+          recordTlsWarning(error);
           counters.errorCount += 1;
           errors.push({
             externalRecordId: item.externalRecordId,
@@ -431,14 +579,36 @@ export async function runIngestion(
         }
       }
 
+      if (controller.signal.aborted) {
+        throw timeoutError;
+      }
       remaining -= items.length;
       cursor = page.nextCursor;
       if (!page.nextCursor || items.length === 0) {
         break;
       }
     }
+  };
 
-    const status =
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    if (!runId || !Number.isFinite(timeoutMs) || timeoutMs <= 0) {
+      return;
+    }
+    timer = setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+      reject(timeoutError);
+    }, timeoutMs);
+  });
+
+  try {
+    if (runId) {
+      await Promise.race([runBody(), timeoutPromise]);
+    } else {
+      await runBody();
+    }
+
+    let status: IngestionStatus =
       options.failureMode === "partial" && counters.errorCount > 0
         ? "PARTIAL"
         : counters.errorCount === 0
@@ -446,6 +616,16 @@ export async function runIngestion(
           : counters.new + counters.updated + counters.unchanged > 0
             ? "PARTIAL"
             : "FAILED";
+    let outcomeMetadata: Record<string, unknown> = {};
+    if (options.classifyResult) {
+      const classified = options.classifyResult({
+        sourceKey: source.sourceKey,
+        status,
+        counters,
+      });
+      status = classified.status;
+      outcomeMetadata = classified.metadata ?? {};
+    }
 
     if (runId) {
       await options.store.updateRun(runId, {
@@ -463,12 +643,19 @@ export async function runIngestion(
           duplicatesLinked: counters.duplicatesLinked,
           previewsPublished: counters.previewsPublished,
           previewsBlocked: counters.previewsBlocked,
+          ...(warnings.length > 0 ? { warnings } : {}),
+          ...outcomeMetadata,
         },
       });
 
+      const tlsWarning = warnings[0];
+      const failed = status === "FAILED";
       await options.store.updateSource(source.id, {
-        lastSuccessAt: status === "FAILED" ? source.lastSuccessAt : new Date().toISOString(),
-        consecutiveFailures: status === "FAILED" ? source.consecutiveFailures + 1 : 0,
+        lastSuccessAt:
+          failed || tlsWarning ? source.lastSuccessAt : new Date().toISOString(),
+        consecutiveFailures:
+          failed || tlsWarning ? source.consecutiveFailures + 1 : 0,
+        ...(tlsWarning ? { lastError: tlsWarningError(tlsWarning) } : {}),
       });
     }
 
@@ -479,11 +666,13 @@ export async function runIngestion(
       runId,
       cursor: cursor ?? null,
       counters,
+      truncated,
       errors,
+      ...(warnings.length > 0 ? { warnings } : {}),
     };
   } catch (error) {
-    const ingestionError = asIngestionError(error, "run");
-    if (options.failureMode === "partial") {
+    const ingestionError = timedOut ? timeoutError : asIngestionError(error, "run");
+    if (!timedOut && options.failureMode === "partial") {
       counters.errorCount += 1;
       counters.durationMs = Date.now() - started;
       if (runId) {
@@ -496,8 +685,17 @@ export async function runIngestion(
           updatedCount: counters.updated,
           unchangedCount: counters.unchanged,
           errorCount: counters.errorCount,
-          metadata: { code: ingestionError.code },
+          metadata: {
+            code: ingestionError.code,
+            ...(warnings.length > 0 ? { warnings } : {}),
+          },
         });
+        if (warnings.length > 0) {
+          await options.store.updateSource(source.id, {
+            consecutiveFailures: source.consecutiveFailures + 1,
+            lastError: tlsWarningError(warnings[0]!),
+          });
+        }
       }
       return {
         status: "PARTIAL",
@@ -505,6 +703,7 @@ export async function runIngestion(
         runId,
         cursor: cursor ?? null,
         counters,
+        truncated,
         errors: [
           ...errors,
           {
@@ -513,6 +712,7 @@ export async function runIngestion(
             message: ingestionError.message,
           },
         ],
+        ...(warnings.length > 0 ? { warnings } : {}),
       };
     }
     if (runId) {
@@ -525,13 +725,32 @@ export async function runIngestion(
         updatedCount: counters.updated,
         unchangedCount: counters.unchanged,
         errorCount: counters.errorCount + 1,
-        metadata: { code: ingestionError.code, message: ingestionError.message },
+        metadata: timedOut
+          ? {
+              timed_out: true,
+              code: "RUN_TIMEOUT",
+              message: ingestionError.message,
+              ...(warnings.length > 0 ? { warnings } : {}),
+            }
+          : {
+              code: ingestionError.code,
+              message: ingestionError.message,
+              ...(warnings.length > 0 ? { warnings } : {}),
+            },
       });
       await options.store.updateSource(source.id, {
         consecutiveFailures: source.consecutiveFailures + 1,
+        lastError:
+          warnings.length > 0
+            ? tlsWarningError(warnings[0]!)
+            : `${ingestionError.code}: ${ingestionError.message}`,
       });
     }
     throw ingestionError;
+  } finally {
+    if (timer) {
+      clearTimeout(timer);
+    }
   }
 }
 

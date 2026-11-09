@@ -1,0 +1,160 @@
+{
+  "generated": "2026-10-27",
+  "source": "prod Supabase wdcanzikysdsvdlqbrbd read-only",
+  "population": "deal_previews where is_published = true",
+  "total_published": 405,
+  "categories": [
+    {
+      "main_category": "Water and Wastewater",
+      "count": 51
+    },
+    {
+      "main_category": "Energy",
+      "count": 48
+    },
+    {
+      "main_category": "Healthcare",
+      "count": 46
+    },
+    {
+      "main_category": "Professional Services",
+      "count": 34
+    },
+    {
+      "main_category": "Transport",
+      "count": 33
+    },
+    {
+      "main_category": "Construction & Infrastructure",
+      "count": 30
+    },
+    {
+      "main_category": "services",
+      "count": 25
+    },
+    {
+      "main_category": "Education",
+      "count": 18
+    },
+    {
+      "main_category": "Technology",
+      "count": 15
+    },
+    {
+      "main_category": "Energy & Utilities",
+      "count": 12
+    },
+    {
+      "main_category": "goods",
+      "count": 8
+    },
+    {
+      "main_category": "Health and Social Care",
+      "count": 8
+    },
+    {
+      "main_category": "Transport & Logistics",
+      "count": 8
+    },
+    {
+      "main_category": "Science and Research",
+      "count": 7
+    },
+    {
+      "main_category": "Financial Services",
+      "count": 6
+    },
+    {
+      "main_category": "Housing and Regeneration",
+      "count": 6
+    },
+    {
+      "main_category": "HR and Workforce Services",
+      "count": 6
+    },
+    {
+      "main_category": "Construction",
+      "count": 5
+    },
+    {
+      "main_category": "Facilities Management",
+      "count": 4
+    },
+    {
+      "main_category": "Cultural Infrastructure",
+      "count": 3
+    },
+    {
+      "main_category": "Fleet",
+      "count": 3
+    },
+    {
+      "main_category": "Network Services",
+      "count": 3
+    },
+    {
+      "main_category": "Office & Business Supplies",
+      "count": 3
+    },
+    {
+      "main_category": "Software and Hardware",
+      "count": 3
+    },
+    {
+      "main_category": "Cloud and Hosting",
+      "count": 2
+    },
+    {
+      "main_category": "Low Value",
+      "count": 2
+    },
+    {
+      "main_category": "Professional and Business Services",
+      "count": 2
+    },
+    {
+      "main_category": "Professional And Business Services",
+      "count": 2
+    },
+    {
+      "main_category": "Software",
+      "count": 2
+    },
+    {
+      "main_category": "Technology Services",
+      "count": 2
+    },
+    {
+      "main_category": "Cloud Hosting",
+      "count": 1
+    },
+    {
+      "main_category": "Digital and Technology Services",
+      "count": 1
+    },
+    {
+      "main_category": "Estates Support Services",
+      "count": 1
+    },
+    {
+      "main_category": "Food & Catering",
+      "count": 1
+    },
+    {
+      "main_category": "Justice",
+      "count": 1
+    },
+    {
+      "main_category": "Learning and Development",
+      "count": 1
+    },
+    {
+      "main_category": "Other",
+      "count": 1
+    },
+    {
+      "main_category": "works",
+      "count": 1
+    }
+  ]
+}

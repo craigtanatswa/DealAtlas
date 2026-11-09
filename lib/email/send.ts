@@ -70,6 +70,7 @@ export function createEmailSender(options?: {
         subject: message.subject,
         text: message.text,
         html: message.html,
+        headers: message.headers,
       });
       if (result.error) {
         throw new Error(result.error.message);

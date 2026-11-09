@@ -1,5 +1,7 @@
 import type { BuyerSector } from "@/lib/constants";
+import type { BuyerType, DealSector } from "@/lib/deals/buyer-taxonomy";
 import type { Database } from "@/lib/db/database.types";
+import type { TlsWarning } from "@/ingestion/core/tls";
 import type { DealStage, DealStatus, DealType } from "@/lib/search/filters";
 
 export type SourceType = Database["public"]["Enums"]["source_type"];
@@ -27,6 +29,8 @@ export type DiscoverOptions = {
 export type DiscoverResult = {
   items: DiscoveredItem[];
   nextCursor?: string;
+  /** The official feed stopped before its reported total. Further pages are not requested. */
+  truncated?: boolean;
 };
 
 export type RawSourceRecord = {
@@ -157,6 +161,8 @@ export type CanonicalCandidate = {
   applicationUrl?: string | null;
   dealType: DealType;
   buyerSector: BuyerSector;
+  buyerType?: BuyerType;
+  sector?: DealSector;
   stage: DealStage;
   status: DealStatus;
   mainCategory?: string | null;
@@ -224,6 +230,7 @@ export type IngestionRunResult = {
   reason?: string;
   cursor?: string | null;
   counters: IngestionCounters;
+  truncated?: boolean;
   errors: Array<{
     externalRecordId?: string;
     stage: string;
@@ -231,4 +238,5 @@ export type IngestionRunResult = {
     message: string;
     details?: Record<string, unknown>;
   }>;
+  warnings?: TlsWarning[];
 };

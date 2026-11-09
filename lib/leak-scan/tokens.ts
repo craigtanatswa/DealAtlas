@@ -1,3 +1,4 @@
+import { isPlaceholderBuyerName } from "@/lib/buyers/placeholder";
 import type { ManifestToken } from "@/tests/leak/lib/scan";
 
 const PLATFORM_HOSTS = new Set([
@@ -42,7 +43,7 @@ const PLACEHOLDER_NAMES = new Set(["n/a", "tbc", "unknown", "none"]);
 export const OWN_HOSTS = new Set(["dealatlas.uk", "www.dealatlas.uk"]);
 
 export function isGenericName(value: string): boolean {
-  if (PLACEHOLDER_NAMES.has(value.trim().toLowerCase())) return true;
+  if (PLACEHOLDER_NAMES.has(value.trim().toLowerCase()) || isPlaceholderBuyerName(value)) return true;
   const words = value.split(/[^A-Za-z0-9]+/).filter(Boolean);
   if (words.length === 0) return true;
   return words.every((word) => {

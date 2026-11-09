@@ -4,11 +4,12 @@ import { eq, ok, sorted } from "../lib/probe";
 import type { Role } from "../lib/scan";
 import { restErrorIsNamesOnly } from "../lib/waiver";
 import {
-  DTO_SNAKE_KEYS,
+  DTO_SNAKE_KEYS as BASE_DTO_SNAKE_KEYS,
+  FORBIDDEN_JSON_LD_KEYS,
   FREE_ROLES,
   NON_PRO_ROLES,
   PUB_ROWS,
-  SAVED_KEYS,
+  SAVED_KEYS as BASE_SAVED_KEYS,
   SITEMAP_KEYS,
   dtoAssertions,
   enumSets,
@@ -19,7 +20,23 @@ import {
 } from "./common";
 import { searchQueries } from "./web";
 
-const SEARCH_KEYS = [...DTO_SNAKE_KEYS, "total_count"];
+// Migration 0060 adds buyer_type + sector (non-identifying taxonomy) to every preview DTO.
+// Phase A runs on the 0018 schema, so the expected key set follows the live schema.
+let DTO_SNAKE_KEYS: string[] = [...BASE_DTO_SNAKE_KEYS];
+let SAVED_KEYS: string[] = [...BASE_SAVED_KEYS];
+let SEARCH_KEYS: string[] = [...DTO_SNAKE_KEYS, "total_count"];
+let SAVED_KEY_COUNT = 22;
+
+function configureDtoKeys(ctx: Ctx): void {
+  const rows = ctx.psqlJson<Array<{ n: number }>>(
+    "select count(*)::int as n from information_schema.columns where table_schema = 'public' and table_name = 'deal_previews' and column_name in ('buyer_type','sector')",
+  );
+  const taxonomy = (rows[0]?.n ?? 0) === 2;
+  DTO_SNAKE_KEYS = taxonomy ? [...BASE_DTO_SNAKE_KEYS, "buyer_type", "sector"] : [...BASE_DTO_SNAKE_KEYS];
+  SAVED_KEYS = taxonomy ? [...BASE_SAVED_KEYS, "buyer_type", "sector"] : [...BASE_SAVED_KEYS];
+  SEARCH_KEYS = [...DTO_SNAKE_KEYS, "total_count"];
+  SAVED_KEY_COUNT = taxonomy ? 24 : 22;
+}
 
 function rows(o: ProbeOutcome): Array<Record<string, unknown>> {
   return Array.isArray(o.json) ? (o.json as Array<Record<string, unknown>>) : [];
@@ -40,14 +57,28 @@ function rpc(name: string, json: unknown = {}, extra: Partial<RequestSpec> = {})
 }
 
 /** Rows normalised for cross-phase comparison: stable order, no volatile fields. */
+// 0060 adds these non-identifying taxonomy keys to every preview DTO. They are
+// checked by exact_keys/value_domains, and excluded from the phase A vs B
+// snapshot comparison (B-LOCK-05, B-XPH-01), which otherwise must stay identical.
+const PHASE_B_ADDED_DTO_KEYS = new Set(["buyer_type", "sector"]);
+
 function normalise(o: ProbeOutcome): unknown {
   if (!Array.isArray(o.json)) return o.json;
   return (o.json as Array<Record<string, unknown>>)
-    .map((r) => JSON.stringify(Object.fromEntries(Object.entries(r).sort(([a], [b]) => a.localeCompare(b)))))
+    .map((r) =>
+      JSON.stringify(
+        Object.fromEntries(
+          Object.entries(r)
+            .filter(([k]) => !PHASE_B_ADDED_DTO_KEYS.has(k))
+            .sort(([a], [b]) => a.localeCompare(b)),
+        ),
+      ),
+    )
     .sort();
 }
 
 export async function restProbes(ctx: Ctx): Promise<void> {
+  configureDtoKeys(ctx);
   const enums = enumSets(ctx);
   const pub = pubSlugs(ctx);
   const held = heldSlugs(ctx);
@@ -127,6 +158,40 @@ export async function restProbes(ctx: Ctx): Promise<void> {
             o.control ? eq("equals_control", slugSet({ ...o, json: o.control.json } as ProbeOutcome), slugSet(o)) : ok("control_sent", false),
           ],
         }),
+      );
+    }
+    // Phase B: the multi-raw category filter (0053) keeps the same DTO
+    // allowlist and strips match data for non-Pro viewers.
+    if (ctx.phase === "B") {
+      const categorySet = new Set(["Energy", "Technology"]);
+      jobs.push(
+        ctx
+          .run({
+            id: "REST-01",
+            instance: "p_categories=[Energy,Technology]",
+            role,
+            req: rpc("search_preview_dtos", { p_categories: ["Energy", "Technology"] }, { restAuth }),
+            status: [200],
+            check: (o) => [
+              ...dtoAssertions(o.json, SEARCH_KEYS, enums, { role, label: "search" }),
+              ok(
+                "only_categories_in_set",
+                rows(o).every((r) => categorySet.has(String(r.main_category))),
+                rows(o).map((r) => r.main_category),
+              ),
+              ok(
+                "no_source_fields",
+                rows(o).every((r) => !Object.keys(r).some((k) => FORBIDDEN_JSON_LD_KEYS.has(k))),
+                Object.keys(rows(o)[0] ?? {}).filter((k) => FORBIDDEN_JSON_LD_KEYS.has(k)),
+              ),
+              ok(
+                "match_fields_empty",
+                rows(o).every((r) => r.relevance_score == null && JSON.stringify(r.preview_reasons) === "[]"),
+                rows(o).map((r) => ({ score: r.relevance_score, reasons: r.preview_reasons })),
+              ),
+            ],
+          })
+          .then(snap(`REST-01|${role}|p_categories`)),
       );
     }
     // REST-02
@@ -380,7 +445,9 @@ export async function restProbes(ctx: Ctx): Promise<void> {
         instance: "deal_matches?select=id,deal_id,relevance_score",
         role,
         req: { target: "rest", path: "/deal_matches", query: [["select", "id,deal_id,relevance_score"]] },
-        status: [200],
+        // Phase A (0018) still grants this read; 0051 revokes it, so from
+        // phase B a free user gets no match rows at all.
+        ...(ctx.phase === "A" ? { status: [200] } : { check: (o: ProbeOutcome) => [deniedNoData(o)] }),
       }),
     );
     for (const table of [
@@ -559,7 +626,7 @@ export async function restProbes(ctx: Ctx): Promise<void> {
             const bad = list.filter((r) => JSON.stringify(Object.keys(r).sort()) !== JSON.stringify([...SAVED_KEYS].sort()));
             const heldIds = new Set(heldRows().map((r) => ctx.row(r).deal_id));
             return [
-              ok("exact_keys_22", bad.length === 0 && SAVED_KEYS.length === 22, bad.slice(0, 2).map((r) => Object.keys(r))),
+              ok("exact_keys_22", bad.length === 0 && SAVED_KEYS.length === SAVED_KEY_COUNT, bad.slice(0, 2).map((r) => Object.keys(r))),
               ok("no_held_rows", list.every((r) => !heldIds.has(String(r.deal_id))), list.map((r) => r.deal_id)),
               ok("rows_are_published", list.every((r) => r.slug === null || pub.has(String(r.slug))), list.map((r) => r.slug)),
             ];

@@ -53,13 +53,13 @@ select public.close_founding_membership((select user_id from founding_results wh
 
 select is(
   (select founding_member from public.profiles where id = (select user_id from founding_results where n = 2)),
-  true,
-  'cancel keeps the lifetime founding price'
+  false,
+  'cancel ends founding status and the founding price'
 );
 select is(
   (select status from private.founding_slots where user_id = (select user_id from founding_results where n = 2)),
-  'active',
-  'cancel does not free the slot'
+  'ended',
+  'cancel marks the place ended, not released'
 );
 select is(
   public.reserve_founding_slot((select user_id from founding_results where n = 27)),
@@ -67,16 +67,13 @@ select is(
   'a cancelled founder slot is not reissued'
 );
 
-create temp table founder_count as
-select count(*)::int as n from private.founding_slots where status = 'active';
-
 create temp table offer_before as
 select public.founding_availability() as n;
 
 select is(
   public.reserve_founding_slot((select user_id from founding_results where n = 2)),
-  'active',
-  'a returning founder skips the reservation cap'
+  'ineligible',
+  'a cancelled founder cannot rejoin founding'
 );
 select is(
   public.claim_founding_activation(
@@ -84,23 +81,18 @@ select is(
     'sub_resubscribe',
     (select user_id from founding_results where n = 2)
   ),
-  true,
-  'a returning founder claims the founding product again'
-);
-select is(
-  (select count(*)::int from private.founding_slots where status = 'active'),
-  (select n from founder_count),
-  'resubscribe does not change the founder count'
+  false,
+  'a cancelled founder cannot claim the founding product again'
 );
 select is(
   (select founding_member from public.profiles where id = (select user_id from founding_results where n = 2)),
-  true,
-  'resubscribe keeps the lifetime price lock'
+  false,
+  'a refused resubscribe does not restore founding status'
 );
 select is(
   public.founding_availability(),
   (select n from offer_before),
-  'resubscribe does not change remaining slots'
+  'a refused resubscribe does not change remaining places'
 );
 
 select public.release_founding_reservation((select user_id from founding_results where n = 3));

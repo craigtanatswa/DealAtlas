@@ -18,3 +18,33 @@ export function throwIfQueryError<T>(
 
   return result.data;
 }
+
+/** Stable warning when multi-raw search falls back before migration 0053. */
+export const CATEGORY_FILTER_FANOUT_FALLBACK_WARN =
+  "[category-filter] p_categories RPC missing (PGRST202); using client fan-out fallback, order may differ";
+
+/**
+ * True when an RPC failed because the p_categories parameter/overload is not
+ * installed (older migrations). Callers use this to fall back to p_category.
+ */
+export function isMissingCategoriesParamError(error: unknown): boolean {
+  const source =
+    error instanceof DatabaseQueryError
+      ? error.cause
+      : (error as { message?: string; code?: string; details?: string } | null | undefined);
+  if (!source) {
+    return false;
+  }
+  if (source.code === "PGRST202") {
+    return true;
+  }
+
+  const text = `${source.message ?? ""} ${source.details ?? ""}`;
+  if (/could not find the function/i.test(text)) {
+    return true;
+  }
+  return (
+    /p_categories/i.test(text) &&
+    /(schema cache|does not exist|unknown parameter|not find)/i.test(text)
+  );
+}

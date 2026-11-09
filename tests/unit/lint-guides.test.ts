@@ -118,6 +118,75 @@ describe("guide content lint", () => {
     expect(routeExists(ctx.routes, "/app/deals/123")).toBe(false);
   });
 
+  describe("Craig 27 Oct portal rule", () => {
+    const craigSource = (craigApprovedAt: string, body: string) =>
+      [
+        "---",
+        "slug: craig-portal-fixture",
+        "published: true",
+        'title: "Craig portal fixture"',
+        'description: "Fixture for the Craig portal rule."',
+        'h1: "Craig portal fixture"',
+        'breadcrumb: "Craig portal fixture"',
+        "datePublished: 2026-10-27",
+        "updated: 2026-10-27",
+        'primaryKeyword: "fixture"',
+        'secondaryKeywords: ["fixture"]',
+        "relatedGuides: []",
+        "securityClearedAt: 2026-10-27",
+        `craigApprovedAt: ${craigApprovedAt}`,
+        "---",
+        "",
+        body,
+        "",
+      ].join("\n");
+
+    const craigRules = (source: string) =>
+      lintGuideSource(path.join(PASS_DIR, "craig-portal-fixture.md"), source, ctx)
+        .map((failure) => failure.rule)
+        .filter((rule) => rule.startsWith("craig-"));
+
+    it("bans advice to start on a free portal for guides approved from 27 Oct 2026", () => {
+      const source = craigSource(
+        "2026-10-27",
+        "Start with Find a Tender to find work.\n\nBrowse [live opportunities](/deals).",
+      );
+      expect(craigRules(source)).toContain("craig-portal-advice");
+    });
+
+    it("bans links to free tender source platforms", () => {
+      const source = craigSource(
+        "2026-10-27",
+        "See [search](https://www.find-tender.service.gov.uk/Search).\n\nBrowse [live opportunities](/deals).",
+      );
+      expect(craigRules(source)).toContain("craig-portal-link");
+    });
+
+    it("bans hardcoded live opportunity counts", () => {
+      const source = craigSource(
+        "2026-10-27",
+        "405 live UK opportunities on DealAtlas today.\n\nBrowse [live opportunities](/deals).",
+      );
+      expect(craigRules(source)).toContain("craig-hardcoded-count");
+    });
+
+    it("accepts the published count token and a DealAtlas CTA", () => {
+      const source = craigSource(
+        "2026-10-27",
+        "{{LIVE_COUNT}} live UK opportunities on DealAtlas today.\n\nBrowse [live opportunities](/deals).",
+      );
+      expect(craigRules(source)).toEqual([]);
+    });
+
+    it("grandfathers guides approved before 27 Oct 2026", () => {
+      const source = craigSource(
+        "2026-10-19",
+        "Start with Find a Tender to find work.\n\nBrowse [live opportunities](/deals).",
+      );
+      expect(craigRules(source)).toEqual([]);
+    });
+  });
+
   it("reuses the gate vocabulary for portal names and keeps the buyer hook empty", () => {
     expect(GUIDE_PORTAL_TERMS).toContain("find a tender");
     expect(GUIDE_PORTAL_TERMS).toContain("procontract");

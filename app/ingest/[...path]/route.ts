@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 
+import { isAutomationTraffic } from "@/lib/analytics/bot";
 import { POSTHOG_EU_API_HOST, configuredPostHogKey } from "@/lib/analytics/config";
 import {
   INGEST_EVENT_PATHS,
@@ -46,6 +47,12 @@ export async function POST(
   const joined = path.join("/");
   if (!INGEST_EVENT_PATHS.has(joined)) {
     return notFound();
+  }
+
+  // Missing/empty user agents and known bots never reach PostHog. Accept the
+  // request so automation cannot tell it was filtered.
+  if (isAutomationTraffic({ userAgent: request.headers.get("user-agent") })) {
+    return accepted();
   }
 
   const limited = rateLimit(

@@ -1,4 +1,21 @@
-export function MatchScore({ score }: { score: number }) {
+import Link from "next/link";
+
+/** Shown in place of a match score when the server sent none (non-Pro viewer). */
+export function MatchScoreUpsell() {
+  return (
+    <Link
+      href="/pricing"
+      className="text-[0.8125rem] leading-5 font-medium text-muted-foreground underline-offset-4 hover:underline"
+    >
+      Match score with DealAtlas Pro
+    </Link>
+  );
+}
+
+export function MatchScore({ score }: { score?: number | null }) {
+  if (typeof score !== "number") {
+    return <MatchScoreUpsell />;
+  }
   const clamped = Math.max(0, Math.min(100, Math.round(score)));
 
   return (

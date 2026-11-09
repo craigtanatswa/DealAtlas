@@ -153,6 +153,10 @@ export function DealCard({
                 </ul>
               ) : null}
             </div>
+          ) : signedIn ? (
+            <div className="mt-3">
+              <MatchScore score={null} />
+            </div>
           ) : null}
         </div>
         <div className="flex w-full flex-col gap-2 md:w-auto">

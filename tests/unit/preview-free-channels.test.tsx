@@ -59,6 +59,8 @@ function freeChannelBlob(store: Awaited<ReturnType<typeof ingest>>): string {
     preview_summary: preview.previewSummary,
     deal_type: preview.dealType,
     buyer_sector: preview.buyerSector,
+    buyer_type: preview.buyerType,
+    sector: preview.sector,
     stage: preview.stage,
     status: preview.status,
     main_category: preview.mainCategory,
@@ -129,6 +131,20 @@ describe("free channels stay high information and low identifiability", () => {
     }
   });
 
+  it("exposes buyer type and sector without buyer identity", async () => {
+    const store = await ingest("normal.json");
+    const blob = freeChannelBlob(store).toLowerCase();
+    expect(blob).toContain('"buyertype"');
+    expect(blob).toContain('"sector"');
+    expect(blob).not.toContain(
+      (
+        store.organizations.find(
+          (org) => org.id === store.deals[0]!.buyerOrganizationId,
+        )?.canonicalName ?? "no-buyer"
+      ).toLowerCase(),
+    );
+  });
+
   it("shows the CPV division, banded dates and value, and no day count or month", async () => {
     const store = await ingest("normal.json");
     const preview = store.previews[0]!;
@@ -179,8 +195,9 @@ describe("adversarial source text never reaches a free channel (P1-3, P1-4)", ()
       expect(blob, marker).not.toContain(marker);
     }
     expect(blob).not.toMatch(/https?:\/\/(?!localhost|schema\.org|www\.w3\.org|www\.sitemaps\.org)/);
-    // The slug ends in a random 8-hex suffix that can be all digits; it is
-    // ours, not a source id, so drop it before the 8-digit check.
+    // Slug suffixes are opaque 8-hex and never all-digit; strip any trailing
+    // suffix before the 8-digit check so a future generator change cannot
+    // weaken this assertion.
     const slugSuffix = blob.match(/\/deals\/[a-z0-9-]+-([0-9a-f]{8})\b/)?.[1];
     const withoutSlugSuffix = slugSuffix ? blob.replaceAll(slugSuffix, "") : blob;
     expect(withoutSlugSuffix).not.toMatch(/\b\d{8}\b/);

@@ -16,6 +16,10 @@ export function adminOrganisationPath(organizationId: string): string {
   return `/admin/organisations/${organizationId}`;
 }
 
+export function adminDiscoveryCandidatePath(candidateId: string): string {
+  return `/admin/discovery/candidates/${candidateId}`;
+}
+
 export function adminIngestionRunPath(runId: string): string {
   return `/admin/ingestion/runs/${runId}`;
 }

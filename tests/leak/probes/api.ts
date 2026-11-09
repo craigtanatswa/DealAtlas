@@ -203,6 +203,22 @@ export async function apiProbes(ctx: Ctx, roles: Role[] = NON_PRO_ROLES): Promis
           check: (o) => (role === "anon" ? [] : [eq("plan", "FREE", (o.json as { plan?: string })?.plan)]),
         }),
         ctx.run({ id: "API-08", instance: "/api/health", role, req: { path: "/api/health" }, status: [200] }),
+        // Public founding state: sold_out only, no count of any kind.
+        ctx.run({
+          id: "API-08",
+          instance: "/api/founding",
+          role,
+          req: { path: "/api/founding" },
+          status: [200],
+          check: (o) => {
+            const json = o.json as Record<string, unknown> | null;
+            return [
+              eq("founding_keys", ["sold_out"], Object.keys(json ?? {}).sort()),
+              ok("founding_no_remaining", !/"remaining"/.test(o.final.body), null),
+              ok("founding_no_number", !/\d/.test(o.final.body), null),
+            ];
+          },
+        }),
       );
       await Promise.all(jobs);
     }),

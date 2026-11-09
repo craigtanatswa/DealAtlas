@@ -4,11 +4,12 @@ import type { Database } from "@/lib/db/database.types";
  * Tables and RPCs that ordinary client roles may use. Canonical source-bearing
  * tables are intentionally omitted, and deal_previews is reachable only through
  * the sanitised preview DTO RPCs (table grants are revoked in 0019).
+ * deal_matches is service_role only since 0051; match data reaches clients
+ * only through the Pro-gated DTO RPCs.
  */
 export const PUBLIC_TABLE_NAMES = [
   "profiles",
   "company_profiles",
-  "deal_matches",
   "saved_deals",
   "saved_searches",
   "watched_organizations",

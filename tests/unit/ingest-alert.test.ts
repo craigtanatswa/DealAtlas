@@ -58,11 +58,60 @@ describe("open ingest alerts", () => {
       build_capped: 0,
       ingest_ok: 1,
       contracts_finder_ok: 0,
+      public_contracts_scotland_ok: 0,
+      sell2wales_ok: 0,
+      ted_ok: 0,
+      find_a_grant_ok: 0,
+      innovate_uk_ok: 0,
+      gca_agreements_ok: 0,
+      gca_pipeline_ok: 0,
       build_ok: 0,
       unpublish_ok: 1,
       publish_ok: 0,
     });
     expect(payload.text).not.toMatch(/managed it|find-tender|http/i);
+  });
+
+
+  it("marks a source as warning without failing the job", () => {
+    const body = JSON.parse(
+      ingestAlertBody({
+        ingestOk: "1",
+        publicContractsScotlandOk: "1",
+        publicContractsScotlandWarnings: JSON.stringify([
+          {
+            code: "TLS_CERT_ERROR",
+            tls_code: "UNABLE_TO_VERIFY_LEAF_SIGNATURE",
+            host: "www.publiccontractsscotland.gov.uk",
+            message: "certificate verify failed",
+            at: "2026-11-04T09:30:00.000Z",
+          },
+        ]),
+        sell2WalesOk: "1",
+        sell2WalesWarnings: "TLS_CERT_ERROR",
+      }),
+    ) as Record<string, unknown>;
+
+    expect(body.public_contracts_scotland_ok).toBe(0);
+    expect(body.public_contracts_scotland_status).toBe("warning");
+    expect(body.sell2wales_ok).toBe(0);
+    expect(body.sell2wales_status).toBe("warning");
+    expect(body.ingest_ok).toBe(1);
+    expect(JSON.stringify(body)).not.toMatch(/publiccontractsscotland|api\.sell2wales|certificate/i);
+  });
+
+  it("keeps the plain alert body when there are no warnings", () => {
+    const body = JSON.parse(
+      ingestAlertBody({
+        publicContractsScotlandOk: "1",
+        sell2WalesOk: "1",
+        publicContractsScotlandWarnings: "[]",
+      }),
+    ) as Record<string, unknown>;
+    expect(body.public_contracts_scotland_ok).toBe(1);
+    expect(body.sell2wales_ok).toBe(1);
+    expect(body).not.toHaveProperty("public_contracts_scotland_status");
+    expect(body).not.toHaveProperty("sell2wales_status");
   });
 
   it("does not call the provider for a placeholder", async () => {

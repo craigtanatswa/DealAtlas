@@ -170,6 +170,7 @@ DODO_PAYMENTS_ENVIRONMENT=test_mode
 DODO_PAYMENTS_RETURN_URL=
 DODO_PRO_MONTHLY_PRODUCT_ID=
 DODO_PRO_ANNUAL_PRODUCT_ID=
+DODO_PRO_ANNUAL_LEGACY_PRODUCT_IDS=
 DODO_FOUNDING_PRODUCT_ID=
 ```
 
@@ -248,7 +249,7 @@ and `scraping_permitted = true` for scrape-based sources.
 
 API/open-data sources still retain licence/attribution metadata.
 
-UNKNOWN and PROHIBITED sources are blocked from production automation.
+UNKNOWN and PROHIBITED sources are blocked from production automation. Government Commercial Agency ingest is preserve-only and the source rows stay disabled. NHS Supply Chain and NHS Shared Business Services are PROHIBITED, disabled, and have no fetcher.
 
 ## 12. Ingestion pipeline
 ```text
@@ -357,7 +358,7 @@ Never reuse production secret keys in local fixtures or committed files.
 
 Production fail-safes:
 - `getPublicEnv()` requires `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_SUPABASE_URL`, and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`. On `VERCEL_ENV=production` the app origin must be HTTPS and not loopback.
-- `getServerEnv()` requires `SUPABASE_SECRET_KEY`. Dodo keys are optional in `test_mode` (checkout/webhook/portal then return HTTP 503). Checkout also requires the webhook signing key so a card cannot succeed without a way to grant Pro. `live_mode` requires live API/webhook keys, HTTPS return URL, live Pro product IDs, and `DODO_FOUNDING_PRODUCT_ID` in `pdt_` plus 21 letters or digits. It rejects test/placeholder credentials and local fixture product IDs.
+- `getServerEnv()` requires `SUPABASE_SECRET_KEY`. Dodo keys are optional in `test_mode` (checkout/webhook/portal then return HTTP 503). Checkout also requires the webhook signing key so a card cannot succeed without a way to grant Pro. `live_mode` requires live API/webhook keys, HTTPS return URL, live Pro product IDs, and `DODO_FOUNDING_PRODUCT_ID` in `pdt_` plus 21 letters or digits. Optional `DODO_PRO_ANNUAL_LEGACY_PRODUCT_IDS` entries must follow the same live ID format and must not reuse a current plan ID. It rejects test/placeholder credentials and local fixture product IDs.
 - Node instrumentation (`instrumentation.node.ts`) validates public and server env when a Node server starts, and `onRequestError` reports request failures.
 - Transactional email will not send from localhost or `@example.com` from-addresses even if a Resend key is present.
 - Live scheduled ingest defaults to 500 records per source and resumes the last stored cursor until the discovery window is drained.
@@ -452,7 +453,7 @@ Launch authentication is email/password plus optional Google OAuth with Supabase
 - `GET /api/exports` returns `{ used, limit, remaining, billingMonth }` for Pro users.
 
 ### Dodo billing
-- `/api/billing/checkout` is an authenticated POST. The browser may send only `planKey` (`PRO_MONTHLY` | `PRO_ANNUAL`). The server maps that to `DODO_PRO_*_PRODUCT_ID` and creates a Checkout Session through `@dodopayments/nextjs`.
+- `/api/billing/checkout` is an authenticated POST. The browser may send only `planKey` (`PRO_MONTHLY` | `PRO_ANNUAL` | `FOUNDING`). The server maps that to an environment product ID and creates a Checkout Session through `@dodopayments/nextjs`. Only `FOUNDING` reserves a founding place. `PRO_ANNUAL` never reserves and always uses the standard annual product, except that an existing founder (`profiles.founding_member`) keeps the founding product for as long as they stay subscribed. When founding places are full, `FOUNDING` returns 409 (JSON) or redirects to `/checkout/founding-full` and creates no session. Unknown or tampered plan keys return 400.
 - Checkout metadata `user_id` and `plan_key` are generated from the authenticated session, never from the request body.
 - `/api/webhooks/dodo` uses the official `Webhooks` adapter for Standard Webhooks verification, then writes `billing_events` and the `subscriptions` mirror idempotently.
 - `/checkout/success` polls `/api/billing/entitlement` and does not treat `?success=true` as Pro.

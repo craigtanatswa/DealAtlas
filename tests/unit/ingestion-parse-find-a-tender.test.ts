@@ -19,6 +19,24 @@ describe("Find a Tender OCDS parse", () => {
     expect(candidate.valueMaxExVat).toBe(250000);
   });
 
+  it("maps a UK_CA_TYPE private utility buyer to PRIVATE", () => {
+    const payload = readFindATenderFixture("normal.json") as {
+      releases: Array<{
+        parties: Array<{ details?: { classifications?: unknown[] } }>;
+      }>;
+    };
+    const buyer = payload.releases[0]?.parties[0];
+    buyer.details = {
+      ...buyer.details,
+      classifications: [
+        { scheme: "UK_CA_TYPE", id: "privateUtility", description: "Private utility" },
+      ],
+    };
+
+    const [candidate] = parseFindATenderRaw(payload, NOW);
+    expect(candidate.buyerSector).toBe("PRIVATE");
+  });
+
   it("keeps lots as first-class records", () => {
     const [candidate] = parseFindATenderRaw(
       readFindATenderFixture("multi-lot.json"),
@@ -26,6 +44,47 @@ describe("Find a Tender OCDS parse", () => {
     );
     expect(candidate.lots.map((lot) => lot.sourceLotId)).toEqual(["LOT-1", "LOT-2"]);
     expect(candidate.dealType).toBe("FRAMEWORK");
+  });
+
+  it("uses the earliest lot deadline when the tender has no tenderPeriod", () => {
+    const payload = readFindATenderFixture("normal.json") as {
+      releases: Array<{
+        tender: {
+          tenderPeriod?: { endDate?: string };
+          lots: Array<{
+            id: string;
+            title?: string;
+            tenderPeriod?: { endDate?: string };
+          }>;
+        };
+      }>;
+    };
+    const release = structuredClone(payload.releases[0]!);
+    delete release.tender.tenderPeriod;
+    const [lot] = release.tender.lots;
+    release.tender.lots = [
+      {
+        ...lot!,
+        id: "LOT-EARLY",
+        title: "Early lot",
+        tenderPeriod: { endDate: "2026-10-20T12:00:00Z" },
+      },
+      {
+        ...lot!,
+        id: "LOT-LATE",
+        title: "Late lot",
+        tenderPeriod: { endDate: "2026-11-15T12:00:00Z" },
+      },
+    ];
+
+    const [candidate] = parseFindATenderRaw({ releases: [release] }, NOW);
+
+    expect(candidate.submissionDeadline).toBe("2026-10-20T12:00:00.000Z");
+    expect(candidate.lots.map((item) => item.submissionDeadline)).toEqual([
+      "2026-10-20T12:00:00.000Z",
+      "2026-11-15T12:00:00.000Z",
+    ]);
+    expect(candidate.status).toBe("OPEN");
   });
 
   it("maps withdrawn notices and awards/contracts when present", () => {
@@ -62,7 +121,7 @@ describe("Find a Tender OCDS parse", () => {
     expect(candidate.awardCriteria.map((item) => item.name)).toContain("Price");
   });
 
-  it("follows links.next inside the same window and keeps stages=tender", async () => {
+  it("filters wanted tags client-side, never sends stages, and follows links.next inside the window", async () => {
     const urls: string[] = [];
     const adapter = createFindATenderAdapter({
       now: () => NOW,
@@ -75,9 +134,22 @@ describe("Find a Tender OCDS parse", () => {
               status: 200,
               contentType: "application/json",
               body: {
-                releases: [{ id: "000001-2026", ocid: "ocds-h6vhtk-fixture1" }],
+                releases: [
+                  { id: "000001-2026", ocid: "ocds-h6vhtk-fixture1", tag: ["tender"] },
+                  {
+                    id: "000009-2026",
+                    ocid: "ocds-h6vhtk-fixture9",
+                    tag: ["award", "contract"],
+                  },
+                  { id: "000010-2026", ocid: "ocds-h6vhtk-fixture10", tag: ["planning"] },
+                  {
+                    id: "000011-2026",
+                    ocid: "ocds-h6vhtk-fixture11",
+                    tag: ["tenderUpdate"],
+                  },
+                ],
                 links: {
-                  next: "https://www.find-tender.service.gov.uk/api/1.0/ocdsReleasePackages?limit=100&updatedFrom=2026-09-03T12:00:00&updatedTo=2026-09-10T12:00:00&stages=tender&cursor=dXBkYXRlZEZyb209MjAyNi0wOS0wM1QxMjowMDowMHx1cGRhdGVkVG89MjAyNi0wOS0xMFQxMjowMDowMHxuZXh0Q3Vyc29yPTE=",
+                  next: "https://www.find-tender.service.gov.uk/api/1.0/ocdsReleasePackages?limit=100&updatedFrom=2026-09-03T12:00:00&updatedTo=2026-09-10T12:00:00&cursor=dXBkYXRlZEZyb209MjAyNi0wOS0wM1QxMjowMDowMHx1cGRhdGVkVG89MjAyNi0wOS0xMFQxMjowMDowMHxuZXh0Q3Vyc29yPTE=",
                 },
               },
               rawText: "{}",
@@ -87,7 +159,11 @@ describe("Find a Tender OCDS parse", () => {
             url,
             status: 200,
             contentType: "application/json",
-            body: { releases: [{ id: "000002-2026", ocid: "ocds-h6vhtk-fixture2" }] },
+            body: {
+              releases: [
+                { id: "000002-2026", ocid: "ocds-h6vhtk-fixture2", tag: ["tender"] },
+              ],
+            },
             rawText: "{}",
           };
         },
@@ -97,19 +173,75 @@ describe("Find a Tender OCDS parse", () => {
       limit: 100,
       updatedFrom: "2026-09-03T12:00:00",
       updatedTo: "2026-09-10T12:00:00",
-      stages: "tender",
+      stages: "tender,tenderUpdate",
     });
     const second = await adapter.discover(first.nextCursor, {
       limit: 100,
       updatedFrom: "2026-09-03T12:00:00",
       updatedTo: "2026-09-10T12:00:00",
-      stages: "tender",
+      stages: "tender,tenderUpdate",
     });
-    expect(first.items).toHaveLength(1);
-    expect(second.items[0]?.externalRecordId).toBe("000002-2026");
-    expect(urls[1]).toContain("stages=tender");
+    expect(first.items.map((item) => item.externalRecordId)).toEqual([
+      "000001-2026",
+      "000011-2026",
+    ]);
+    expect(second.items.map((item) => item.externalRecordId)).toEqual([
+      "000002-2026",
+    ]);
+    expect(urls.every((url) => !url.includes("stages="))).toBe(true);
     expect(urls[1]).toContain("cursor=");
     expect(urls[1]).toContain("updatedFrom=2026-09-03T12%3A00%3A00");
+    expect(urls[1]).toContain("updatedTo=2026-09-10T12%3A00%3A00");
+  });
+
+  it("skips pages with no wanted tags before returning items from a later page", async () => {
+    const urls: string[] = [];
+    const next = "https://www.find-tender.service.gov.uk/api/1.0/ocdsReleasePackages?limit=100&updatedFrom=2026-09-03T12:00:00&updatedTo=2026-09-10T12:00:00&cursor=dXBkYXRlZEZyb209MjAyNi0wOS0wM1QxMjowMDowMHx1cGRhdGVkVG89MjAyNi0wOS0xMFQxMjowMDowMHxuZXh0Q3Vyc29yPTE=";
+    const adapter = createFindATenderAdapter({
+      now: () => NOW,
+      http: {
+        async getJson(url) {
+          urls.push(url);
+          if (urls.length === 1) {
+            return {
+              url,
+              status: 200,
+              contentType: "application/json",
+              body: {
+                releases: [
+                  { id: "000009-2026", ocid: "ocds-h6vhtk-fixture9", tag: ["award"] },
+                  { id: "000010-2026", ocid: "ocds-h6vhtk-fixture10", tag: ["planning"] },
+                ],
+                links: { next },
+              },
+              rawText: "{}",
+            };
+          }
+          return {
+            url,
+            status: 200,
+            contentType: "application/json",
+            body: {
+              releases: [
+                { id: "000001-2026", ocid: "ocds-h6vhtk-fixture1", tag: ["tender"] },
+              ],
+            },
+            rawText: "{}",
+          };
+        },
+      },
+    });
+    const result = await adapter.discover(undefined, {
+      limit: 100,
+      updatedFrom: "2026-09-03T12:00:00",
+      updatedTo: "2026-09-10T12:00:00",
+      stages: "tender,tenderUpdate",
+    });
+    expect(urls).toHaveLength(2);
+    expect(urls.every((url) => !url.includes("stages="))).toBe(true);
+    expect(result.items.map((item) => item.externalRecordId)).toEqual([
+      "000001-2026",
+    ]);
   });
 
   it("rejects malformed releases", () => {

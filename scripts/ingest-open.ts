@@ -1,5 +1,14 @@
 import fs from "node:fs";
 
+import {
+  buildTlsWarning,
+  isNonBlockingTlsErrors,
+  isNonBlockingTlsFailure,
+  isTlsCertificateError,
+  isTlsNonBlockingSource,
+  tlsCertificateWarningLine,
+  tlsWarningLine,
+} from "@/lib/jobs/tls-errors";
 import { loadEnvFiles } from "./load-env";
 
 loadEnvFiles();
@@ -10,8 +19,8 @@ function countsFromEnv(): { dryRun: boolean; backfillDays: number } {
     throw new Error("dry_run must be true or false");
   }
   const days = Number(process.env.BACKFILL_DAYS ?? "7");
-  if (!Number.isInteger(days) || days < 1 || days > 366) {
-    throw new Error("backfill_days must be an integer from 1 to 366");
+  if (!Number.isInteger(days) || days < 1 || days > 180) {
+    throw new Error("backfill_days must be an integer from 1 to 180");
   }
   return { dryRun: dry === "true", backfillDays: days };
 }
@@ -25,6 +34,13 @@ function emit(line: string) {
   const output = process.env.GITHUB_OUTPUT;
   if (output) {
     fs.appendFileSync(output, `counts=${line}\n`);
+  }
+}
+
+function emitOutput(name: string, value: string) {
+  const output = process.env.GITHUB_OUTPUT;
+  if (output) {
+    fs.appendFileSync(output, `${name}=${value}\n`);
   }
 }
 
@@ -53,11 +69,19 @@ function readChangedDealIds(filePath: string | undefined): string[] {
 
 async function main() {
   const {
+    mergeOpenIngestChangedIds,
     openIngestLogLine,
     openIngestShouldFail,
     publicIngestErrorLine,
+    runOpenCatalogueIngest,
     runOpenContractsFinderIngest,
+    runOpenFindAGrantIngest,
     runOpenFindATenderIngest,
+    runOpenPublicContractsScotlandIngest,
+    runOpenSell2WalesIngest,
+    runOpenTedIngest,
+    runOpenInnovateUkIngest,
+    zeroRecordNoticeLine,
   } = await import("@/lib/jobs/ingest-open");
   const { createSupabaseIngestionStore } = await import("@/ingestion/store/supabase");
   const { createIngestionSupabaseClient } = await import(
@@ -68,36 +92,116 @@ async function main() {
   const store = createSupabaseIngestionStore(createIngestionSupabaseClient());
   const statePath = process.env.OPEN_INGEST_STATE;
   const source = (process.env.OPEN_INGEST_SOURCE ?? "find-a-tender").trim();
-  if (source !== "find-a-tender" && source !== "contracts-finder") {
-    throw new Error("OPEN_INGEST_SOURCE must be find-a-tender or contracts-finder");
+  if (
+    source !== "find-a-tender" &&
+    source !== "contracts-finder" &&
+    source !== "public-contracts-scotland" &&
+    source !== "sell2wales" &&
+    source !== "ted" &&
+    source !== "find-a-grant" &&
+    source !== "innovate-uk" &&
+    source !== "gca-agreements" &&
+    source !== "gca-procurement-pipeline"
+  ) {
+    throw new Error(
+      "OPEN_INGEST_SOURCE must be find-a-tender, contracts-finder, public-contracts-scotland, sell2wales, ted, find-a-grant, innovate-uk, gca-agreements, or gca-procurement-pipeline",
+    );
   }
-  const run =
-    source === "contracts-finder"
-      ? runOpenContractsFinderIngest
-      : runOpenFindATenderIngest;
-  const result = await run({
-    store,
-    dryRun: phase === "previews" ? false : dryRun,
-    backfillDays,
-    phase,
-    dealIds: phase === "previews" ? readChangedDealIds(statePath) : undefined,
-  });
+  const dealIds = phase === "previews" ? readChangedDealIds(statePath) : undefined;
+  const result =
+    source === "gca-agreements" || source === "gca-procurement-pipeline"
+      ? await runOpenCatalogueIngest({
+          store,
+          dryRun: phase === "previews" ? false : dryRun,
+          phase,
+          sourceKey: source,
+          dealIds,
+        })
+      : source === "find-a-grant" || source === "innovate-uk"
+        ? await (source === "find-a-grant"
+            ? runOpenFindAGrantIngest
+            : runOpenInnovateUkIngest)({
+            store,
+            dryRun: phase === "previews" ? false : dryRun,
+            phase,
+            dealIds,
+          })
+        : await (source === "contracts-finder"
+            ? runOpenContractsFinderIngest
+            : source === "public-contracts-scotland"
+              ? runOpenPublicContractsScotlandIngest
+              : source === "sell2wales"
+                ? runOpenSell2WalesIngest
+                : source === "ted"
+                  ? runOpenTedIngest
+                  : runOpenFindATenderIngest)({
+            store,
+            dryRun: phase === "previews" ? false : dryRun,
+            backfillDays,
+            phase,
+            dealIds,
+          });
   if (phase === "ingest" && statePath && !dryRun) {
-    const prior =
-      source === "contracts-finder" ? readChangedDealIds(statePath) : [];
-    const ids = [...new Set([...prior, ...result.changedDealIds])];
+    const ids = mergeOpenIngestChangedIds(
+      source,
+      readChangedDealIds(statePath),
+      result.changedDealIds,
+    );
     fs.writeFileSync(statePath, JSON.stringify(ids));
   }
   emit(openIngestLogLine(result.counts));
-  for (const error of result.errors) {
-    console.error(publicIngestErrorLine(error));
+  if (result.warnings?.length) {
+    for (const warning of result.warnings) {
+      console.log(tlsWarningLine(source, warning));
+    }
+    emitOutput("warnings", JSON.stringify(result.warnings));
+    emitOutput("has_warnings", "1");
   }
-  if (openIngestShouldFail(result)) {
+  if (result.status !== "SKIPPED") {
+    for (const error of result.errors) {
+      console.error(publicIngestErrorLine(error));
+    }
+  }
+  if (result.metadata?.zero_records === true) {
+    const reason =
+      typeof result.metadata.zero_records_reason === "string"
+        ? result.metadata.zero_records_reason
+        : undefined;
+    console.log(zeroRecordNoticeLine(source, reason));
+  }
+  const hasTlsWarnings = (result.warnings?.length ?? 0) > 0;
+  const tlsNonBlocking =
+    isTlsNonBlockingSource(source) &&
+    (hasTlsWarnings || isNonBlockingTlsErrors(source, result.errors));
+  if (tlsNonBlocking) {
+    if (!hasTlsWarnings) {
+      const tlsError =
+        result.errors.find((error) => isTlsCertificateError(error)) ??
+        result.errors[0];
+      if (tlsError) {
+        console.log(tlsCertificateWarningLine(source, tlsError));
+      }
+    }
+    process.exitCode = 0;
+  } else if (openIngestShouldFail(result)) {
     process.exitCode = 1;
   }
 }
 
 main().catch(async (err: unknown) => {
+  const source = (process.env.OPEN_INGEST_SOURCE ?? "find-a-tender").trim();
+  if (isNonBlockingTlsFailure(source, err)) {
+    const warning = buildTlsWarning(err, { at: new Date() });
+    if (warning) {
+      console.log(tlsWarningLine(source, warning));
+      emitOutput("warnings", JSON.stringify([warning]));
+      emitOutput("has_warnings", "1");
+    } else {
+      console.log(tlsCertificateWarningLine(source, err));
+    }
+    process.exitCode = 0;
+    return;
+  }
   const { publicFatalErrorLine } = await import("@/lib/jobs/ingest-open");
   console.error(publicFatalErrorLine(err));
   emit(

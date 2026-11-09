@@ -7,7 +7,8 @@ export function MatchReasons({
   mismatches,
   caption,
 }: {
-  score: number;
+  /** null when the viewer is not Pro: shows the upsell, no match data. */
+  score: number | null;
   reasons: SanitisedMatchReason[];
   mismatches?: SanitisedMatchReason[];
   caption?: string;
@@ -20,6 +21,28 @@ export function MatchReasons({
         </h2>
         <MatchScore score={score} />
       </div>
+      {score === null ? (
+        <p className="text-[0.8125rem] leading-5 text-muted-foreground">
+          See how this opportunity fits your company profile with DealAtlas Pro.
+        </p>
+      ) : (
+        <MatchDetail reasons={reasons} mismatches={mismatches} caption={caption} />
+      )}
+    </section>
+  );
+}
+
+function MatchDetail({
+  reasons,
+  mismatches,
+  caption,
+}: {
+  reasons: SanitisedMatchReason[];
+  mismatches?: SanitisedMatchReason[];
+  caption?: string;
+}) {
+  return (
+    <>
       <p className="text-[0.8125rem] leading-5 text-muted-foreground">
         {caption ??
           "DealAtlas analysis against your company profile, not an official procurement fact."}
@@ -43,6 +66,6 @@ export function MatchReasons({
           </ul>
         </div>
       ) : null}
-    </section>
+    </>
   );
 }

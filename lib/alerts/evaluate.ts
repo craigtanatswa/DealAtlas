@@ -29,6 +29,10 @@ import type {
 } from "@/lib/alerts/types";
 import { DIGEST_CADENCES } from "@/lib/alerts/types";
 import { renderAlertDigest } from "@/lib/email/render";
+import {
+  mintUnsubscribeToken,
+  mintUserDigestUnsubscribeToken,
+} from "@/lib/alerts/signup/tokens";
 import { createEmailSender, type EmailSender } from "@/lib/email/send";
 import { getPublicEnv } from "@/lib/env/public";
 import { errorMessage, structuredLog } from "@/lib/observability/log";
@@ -107,6 +111,9 @@ function previewMatchesFilters(
   filters: SavedSearchFilters,
 ): boolean {
   if (filters.buyerSector && preview.buyer_sector !== filters.buyerSector) {
+    return false;
+  }
+  if (filters.category && preview.main_category !== filters.category) {
     return false;
   }
   if (filters.region && preview.broad_region !== filters.region) {
@@ -254,6 +261,20 @@ async function loadCanonicalContext(
   return contexts;
 }
 
+async function loadProUserIds(userIds: string[], now: Date): Promise<Set<string>> {
+  const pro = new Set<string>();
+  for (const userId of userIds) {
+    try {
+      if (isProEntitlement(await getCurrentEntitlement(userId, now))) {
+        pro.add(userId);
+      }
+    } catch {
+      // Fail closed: an unreadable entitlement is not Pro.
+    }
+  }
+  return pro;
+}
+
 export async function evaluateAlerts(options?: {
   admin?: AdminClient;
   now?: Date;
@@ -318,9 +339,17 @@ export async function evaluateAlerts(options?: {
     error: searchError,
   });
 
+  // Match scores are derived from protected deal fields, so profile-match
+  // alerts and saved-search minScore run for Pro users only (fail closed).
+  const proUserIds = await loadProUserIds(
+    [...new Set(profiles.map((profile) => profile.user_id))],
+    now,
+  );
   const profileIdToUser = new Map<string, string>();
   for (const profile of profiles) {
-    profileIdToUser.set(profile.id, profile.user_id);
+    if (proUserIds.has(profile.user_id)) {
+      profileIdToUser.set(profile.id, profile.user_id);
+    }
   }
 
   const matchesByUser = new Map<string, MatchCandidate[]>();
@@ -395,7 +424,7 @@ export async function evaluateAlerts(options?: {
       if (preview.updated_at < since || !previewMatchesFilters(preview, filters)) {
         return false;
       }
-      if (filters.minScore == null) {
+      if (filters.minScore == null || !proUserIds.has(search.user_id)) {
         return true;
       }
       const scored = (matchesByUser.get(search.user_id) ?? []).find(
@@ -699,10 +728,38 @@ async function sendDueDigests(input: {
       }
     }
 
+    let unsubscribeUrl: string | null = null;
+    try {
+      const { data: sub } = await input.admin
+        .from("alert_email_subscriptions" as never)
+        .select("id")
+        .eq("user_id" as never, pref.user_id)
+        .eq("status" as never, "active")
+        .order("confirmed_at" as never, { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      const subId = (sub as { id?: string } | null)?.id;
+      const origin = appUrl.replace(/\/$/, "");
+      if (subId) {
+        const minted = mintUnsubscribeToken(subId);
+        unsubscribeUrl = `${origin}/api/alerts/unsubscribe?token=${encodeURIComponent(minted.token)}`;
+        await input.admin
+          .from("alert_email_subscriptions" as never)
+          .update({ unsubscribe_token_hash: minted.hash } as never)
+          .eq("id" as never, subId);
+      } else {
+        const minted = mintUserDigestUnsubscribeToken(pref.user_id);
+        unsubscribeUrl = `${origin}/api/alerts/unsubscribe?token=${encodeURIComponent(minted.token)}`;
+      }
+    } catch {
+      unsubscribeUrl = null;
+    }
+
     const rendered = renderAlertDigest({
       plan: entitlement.plan,
       alerts: dtos,
       appUrl,
+      unsubscribeUrl,
     });
 
     try {

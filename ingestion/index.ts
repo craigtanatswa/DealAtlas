@@ -4,6 +4,13 @@ export {
   runIngestion,
 } from "@/ingestion/core";
 export {
+  assertDiscoverySourceAllowed,
+  createDiscoverySourceAdapter,
+  createSupabaseDiscoveryStore,
+  prefilterOpportunity,
+  runDiscoverySource,
+} from "@/ingestion/discovery";
+export {
   createFindATenderAdapter,
   createPrivateSourceAdapter,
   createUkInfrastructurePipelineAdapter,

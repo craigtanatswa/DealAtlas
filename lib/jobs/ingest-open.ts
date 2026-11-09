@@ -1,21 +1,80 @@
-import { createAllowlistedJsonClient, type JsonHttpClient } from "@/ingestion/core/http";
+import {
+  createAllowlistedJsonClient,
+  createAllowlistedTextClient,
+  type AllowedFetchPolicy,
+  type JsonHttpClient,
+  type TextHttpClient,
+} from "@/ingestion/core/http";
 import { runIngestion } from "@/ingestion/core/pipeline";
 import { defaultSleep } from "@/ingestion/core/retry";
+import {
+  createPublicContractsScotlandFetch,
+  type TlsWarning,
+} from "@/ingestion/core/tls";
 import { createContractsFinderAdapter } from "@/ingestion/sources/contracts-finder/adapter";
 import {
   CONTRACTS_FINDER_FETCH_POLICY,
   CONTRACTS_FINDER_SOURCE_KEY,
 } from "@/ingestion/sources/contracts-finder/constants";
+import { createFindAGrantAdapter } from "@/ingestion/sources/find-a-grant/adapter";
+import {
+  FIND_A_GRANT_FETCH_POLICY,
+  FIND_A_GRANT_SOURCE_KEY,
+} from "@/ingestion/sources/find-a-grant/constants";
 import { createFindATenderAdapter } from "@/ingestion/sources/find-a-tender/adapter";
 import {
   FIND_A_TENDER_FETCH_POLICY,
   FIND_A_TENDER_SOURCE_KEY,
   formatOcdsDateTime,
 } from "@/ingestion/sources/find-a-tender/constants";
-import { createRequestPacer } from "@/ingestion/sources/find-a-tender/pace";
-import type { SourceAdapter } from "@/ingestion/core/types";
+import {
+  FIND_A_TENDER_REQUEST_LIMIT,
+  FIND_A_TENDER_REQUEST_WINDOW_MS,
+  createRequestPacer,
+} from "@/ingestion/sources/find-a-tender/pace";
+import { createPublicContractsScotlandAdapter } from "@/ingestion/sources/public-contracts-scotland/adapter";
+import {
+  PUBLIC_CONTRACTS_SCOTLAND_FETCH_POLICY,
+  PUBLIC_CONTRACTS_SCOTLAND_SOURCE_KEY,
+} from "@/ingestion/sources/public-contracts-scotland/constants";
+import { createSell2WalesAdapter } from "@/ingestion/sources/sell2wales/adapter";
+import {
+  SELL2WALES_FETCH_POLICY,
+  SELL2WALES_SOURCE_KEY,
+} from "@/ingestion/sources/sell2wales/constants";
+import { createTedAdapter } from "@/ingestion/sources/ted/adapter";
+import {
+  TED_FETCH_POLICY,
+  TED_REQUEST_LIMIT,
+  TED_REQUEST_WINDOW_MS,
+  TED_SOURCE_KEY,
+} from "@/ingestion/sources/ted/constants";
+import { createInnovateUkAdapter } from "@/ingestion/sources/innovate-uk/adapter";
+import {
+  INNOVATE_UK_FETCH_POLICY,
+  INNOVATE_UK_SOURCE_KEY,
+} from "@/ingestion/sources/innovate-uk/constants";
+import { createGcaAgreementsAdapter } from "@/ingestion/sources/gca/agreements";
+import {
+  GCA_AGREEMENTS_SOURCE_KEY,
+  GCA_PIPELINE_SOURCE_KEY,
+} from "@/ingestion/sources/gca/constants";
+import { createGcaPipelineAdapter } from "@/ingestion/sources/gca/pipeline";
+import type { IngestionStatus, SourceAdapter } from "@/ingestion/core/types";
 import type { IngestionStore } from "@/ingestion/store/types";
 import { rebuildChangedPreviews } from "@/lib/jobs/previews";
+
+export {
+  TLS_CERTIFICATE_ERROR_CODES,
+  isNonBlockingTlsErrors,
+  isNonBlockingTlsFailure,
+  isTlsCertificateError,
+  isTlsNonBlockingSource,
+  tlsCertificateWarningLine,
+  tlsNonBlockingSources,
+} from "@/lib/jobs/tls-errors";
+
+export { RUN_TIMEOUT_MS, STALE_RUN_LIMIT_MS } from "@/lib/jobs/run-timeouts";
 
 export type OpenIngestCounts = {
   fetched: number;
@@ -40,6 +99,8 @@ export type OpenIngestResult = {
   counts: OpenIngestCounts;
   changedDealIds: string[];
   errors: OpenIngestError[];
+  warnings?: TlsWarning[];
+  metadata?: Record<string, unknown>;
 };
 
 const MISSING_PREVIEW_CAP = 500;
@@ -144,6 +205,12 @@ export function openIngestShouldFail(result: OpenIngestResult): boolean {
   if (result.status === "FAILED") {
     return true;
   }
+  if (
+    result.status === "SUCCEEDED" &&
+    (result.metadata?.ok_with_zero === true || result.metadata?.zero_records === true)
+  ) {
+    return false;
+  }
   const fetchFailed = result.errors.some(
     (error) =>
       error.stage === "discover" || error.stage === "fetch" || error.stage === "run",
@@ -159,6 +226,97 @@ export function openIngestShouldFail(result: OpenIngestResult): boolean {
     return succeeded === 0;
   }
   return result.status === "PARTIAL" && result.counts.capped === 0 && result.counts.failed > 0;
+}
+
+export const ZERO_RECORD_SOURCE_KEYS = [
+  PUBLIC_CONTRACTS_SCOTLAND_SOURCE_KEY,
+  SELL2WALES_SOURCE_KEY,
+] as const;
+
+export type ZeroRecordRunClassification = {
+  status: OpenIngestResult["status"];
+  zeroRecords: boolean;
+  reason: string | null;
+  metadata?: {
+    zero_records: true;
+    ok_with_zero: true;
+    zero_records_reason: string;
+  };
+};
+
+export function isZeroRecordSource(sourceKey: string): boolean {
+  return (ZERO_RECORD_SOURCE_KEYS as readonly string[]).includes(sourceKey);
+}
+
+/**
+ * A completed run from PCS/Sell2Wales that fetches or discovers 0 records is a
+ * success (ok-with-zero). An empty quiet response is not a failure or a partial
+ * import and must not fire an ingest alert.
+ */
+export function classifyZeroRecordRun(input: {
+  sourceKey: string;
+  status: OpenIngestResult["status"];
+  fetched: number;
+  discovered?: number;
+}): ZeroRecordRunClassification {
+  const records = input.fetched + (input.discovered ?? 0);
+  if (
+    !isZeroRecordSource(input.sourceKey) ||
+    input.status === "SKIPPED" ||
+    input.status === "FAILED" ||
+    records > 0
+  ) {
+    return { status: input.status, zeroRecords: false, reason: null };
+  }
+  const reason = `${input.sourceKey} returned 0 records`;
+  return {
+    status: "SUCCEEDED",
+    zeroRecords: true,
+    reason,
+    metadata: { zero_records: true, ok_with_zero: true, zero_records_reason: reason },
+  };
+}
+
+function escapeAnnotationProperty(value: string): string {
+  return value
+    .replace(/%/g, "%25")
+    .replace(/\r/g, "%0D")
+    .replace(/\n/g, "%0A")
+    .replace(/:/g, "%3A")
+    .replace(/,/g, "%2C");
+}
+
+function escapeAnnotationData(value: string): string {
+  return value.replace(/%/g, "%25").replace(/\r/g, "%0D").replace(/\n/g, "%0A");
+}
+
+export function zeroRecordNoticeLine(
+  source: string,
+  reason = "No records fetched or discovered; completed run ok-with-zero",
+): string {
+  return `::notice title=${escapeAnnotationProperty(
+    `${source} returned 0 records`,
+  )}::${escapeAnnotationData(reason)}`;
+}
+
+/** @deprecated Use zeroRecordNoticeLine; zero-record runs are informational. */
+export const zeroRecordWarningLine = zeroRecordNoticeLine;
+
+function classifyIngestionRun(input: {
+  sourceKey: string;
+  status: IngestionStatus;
+  counters: { fetched: number; discovered: number };
+}): { status: IngestionStatus; metadata?: Record<string, unknown> } {
+  const classification = classifyZeroRecordRun({
+    sourceKey: input.sourceKey,
+    status: input.status as OpenIngestResult["status"],
+    fetched: input.counters.fetched,
+    discovered: input.counters.discovered,
+  });
+  return {
+    status: classification.status,
+    metadata: classification.metadata,
+  };
 }
 
 function publicStatus(error: OpenIngestError): string {
@@ -189,8 +347,14 @@ function publicHost(message: string): string {
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const WINDOW_MS = 7 * DAY_MS;
-const MAX_BACKFILL_DAYS = 366;
+const MAX_BACKFILL_DAYS = 180;
 const MAX_RECORDS = 10000;
+/**
+ * FTS tags kept by the adapter's client-side discover filter. The API `stages`
+ * query param is intentionally not sent: it only matches PCR 2015 releases and
+ * drops Procurement Act 2023 notices, which carry `tag: ["tender"]`.
+ */
+const FIND_A_TENDER_DISCOVER_TAGS = "tender,tenderUpdate";
 
 export function openIngestWindows(
   now: Date,
@@ -211,11 +375,54 @@ export function openIngestWindows(
     });
     cursor = next;
   }
-  return windows;
+  // Newest first so a MAX_RECORDS cap keeps recent open deals. A 180-day
+  // backfill is ~26 windows; at ~24 paced requests per window that is roughly
+  // 100-130 minutes of fetch plus writes, inside the 300-minute job timeout.
+  return windows.reverse();
 }
 
 function emptyCounts(): OpenIngestCounts {
   return { fetched: 0, new: 0, updated: 0, unchanged: 0, failed: 0, capped: 0 };
+}
+
+export const OPEN_INGEST_SOURCE_KEYS = [
+  FIND_A_TENDER_SOURCE_KEY,
+  CONTRACTS_FINDER_SOURCE_KEY,
+  PUBLIC_CONTRACTS_SCOTLAND_SOURCE_KEY,
+  SELL2WALES_SOURCE_KEY,
+  TED_SOURCE_KEY,
+] as const;
+
+export type OpenIngestSourceKey = (typeof OPEN_INGEST_SOURCE_KEYS)[number];
+
+/** Devolved portals stay at or under 10 requests a minute. Find a Tender stays slower. */
+export function openIngestPacerOptions(sourceKey: string): {
+  maxRequests: number;
+  windowMs: number;
+} {
+  if (sourceKey === TED_SOURCE_KEY) {
+    return { maxRequests: TED_REQUEST_LIMIT, windowMs: TED_REQUEST_WINDOW_MS };
+  }
+  if (
+    sourceKey === PUBLIC_CONTRACTS_SCOTLAND_SOURCE_KEY ||
+    sourceKey === SELL2WALES_SOURCE_KEY
+  ) {
+    return { maxRequests: 10, windowMs: 60_000 };
+  }
+  return {
+    maxRequests: FIND_A_TENDER_REQUEST_LIMIT,
+    windowMs: FIND_A_TENDER_REQUEST_WINDOW_MS,
+  };
+}
+
+/** Find a Tender starts the changed-id file. Later sources append so a failure cannot drop it. */
+export function mergeOpenIngestChangedIds(
+  source: string,
+  prior: string[],
+  current: string[],
+): string[] {
+  const base = source === FIND_A_TENDER_SOURCE_KEY ? [] : prior;
+  return [...new Set([...base, ...current])];
 }
 
 export function openIngestLogLine(counts: OpenIngestCounts): string {
@@ -241,39 +448,40 @@ export async function runOpenFindATenderIngest(options: {
   /** ingest writes canonical rows. previews rebuilds changed deals. all does both. */
   phase?: "ingest" | "previews" | "all";
   dealIds?: string[];
-  sourceKey?: typeof FIND_A_TENDER_SOURCE_KEY | typeof CONTRACTS_FINDER_SOURCE_KEY;
+  sourceKey?: OpenIngestSourceKey;
+  timeoutMs?: number;
+  staleRunLimitMs?: number;
 }): Promise<OpenIngestResult> {
   const now = options.now ?? new Date();
   const sleep = options.sleep ?? defaultSleep;
-  const pace = createRequestPacer({ sleep });
   const sourceKey = options.sourceKey ?? FIND_A_TENDER_SOURCE_KEY;
+  const pace = createRequestPacer({ sleep, ...openIngestPacerOptions(sourceKey) });
   const http =
     options.http ??
     createAllowlistedJsonClient(
-      sourceKey === CONTRACTS_FINDER_SOURCE_KEY
-        ? CONTRACTS_FINDER_FETCH_POLICY
-        : FIND_A_TENDER_FETCH_POLICY,
+      fetchPolicyFor(sourceKey),
+      sourceKey === PUBLIC_CONTRACTS_SCOTLAND_SOURCE_KEY
+        ? { fetchImpl: createPublicContractsScotlandFetch() }
+        : undefined,
     );
   const paced: JsonHttpClient = {
     async getJson(url: string) {
       await pace();
       return http.getJson(url);
     },
+    async postJson(url: string, body: unknown) {
+      await pace();
+      if (!http.postJson) {
+        throw new Error("JSON client has no postJson");
+      }
+      return http.postJson(url, body);
+    },
   };
-  const adapter =
-    options.adapter ??
-    (sourceKey === CONTRACTS_FINDER_SOURCE_KEY
-      ? createContractsFinderAdapter({
-          http: paced,
-          now: () => now,
-        })
-      : createFindATenderAdapter({
-          http: paced,
-          now: () => now,
-        }));
+  const adapter = options.adapter ?? adapterFor(sourceKey, paced, () => now);
 
   const counts = emptyCounts();
   const errors: OpenIngestError[] = [];
+  const warnings: TlsWarning[] = [];
   const changed = new Set<string>(options.dealIds ?? []);
   const phase = options.phase ?? "all";
   const recordCap = options.limit ?? MAX_RECORDS;
@@ -296,7 +504,10 @@ export async function runOpenFindATenderIngest(options: {
         limit: remaining,
         updatedFrom: window.updatedFrom,
         updatedTo: window.updatedTo,
-        stages: "tender",
+        stages:
+          sourceKey === CONTRACTS_FINDER_SOURCE_KEY
+            ? "tender"
+            : FIND_A_TENDER_DISCOVER_TAGS,
         now,
         force: true,
         pageSize: 100,
@@ -305,6 +516,9 @@ export async function runOpenFindATenderIngest(options: {
         dryRun: options.dryRun,
         skipPreview: true,
         failureMode: "partial",
+        staleRunLimitMs: options.staleRunLimitMs,
+        timeoutMs: options.timeoutMs,
+        classifyResult: classifyIngestionRun,
         onPersisted: (info) => {
           if (info.outcome === "new" || info.outcome === "updated" || info.outcome === "linked") {
             changed.add(info.dealId);
@@ -318,6 +532,7 @@ export async function runOpenFindATenderIngest(options: {
       counts.unchanged += result.counters.unchanged;
       counts.failed += result.counters.errorCount;
       remaining -= result.counters.fetched;
+      warnings.push(...(result.warnings ?? []));
       for (const error of result.errors) {
         errors.push({
           stage: error.stage,
@@ -334,6 +549,7 @@ export async function runOpenFindATenderIngest(options: {
           counts,
           changedDealIds: [],
           errors,
+          ...(warnings.length > 0 ? { warnings } : {}),
         };
       }
       const fetchLevel =
@@ -400,13 +616,60 @@ export async function runOpenFindATenderIngest(options: {
     status = "SUCCEEDED";
   }
 
+  let metadata: Record<string, unknown> | undefined;
+  if (phase !== "previews") {
+    const zeroRecord = classifyZeroRecordRun({
+      sourceKey,
+      status,
+      fetched: counts.fetched,
+    });
+    status = zeroRecord.status;
+    metadata = zeroRecord.metadata;
+  }
+
   return {
     status,
     dryRun: options.dryRun,
     counts,
     changedDealIds: phase === "previews" ? [] : [...changed],
     errors,
+    ...(warnings.length > 0 ? { warnings } : {}),
+    metadata,
   };
+}
+
+function fetchPolicyFor(sourceKey: OpenIngestSourceKey): AllowedFetchPolicy {
+  switch (sourceKey) {
+    case CONTRACTS_FINDER_SOURCE_KEY:
+      return CONTRACTS_FINDER_FETCH_POLICY;
+    case PUBLIC_CONTRACTS_SCOTLAND_SOURCE_KEY:
+      return PUBLIC_CONTRACTS_SCOTLAND_FETCH_POLICY;
+    case SELL2WALES_SOURCE_KEY:
+      return SELL2WALES_FETCH_POLICY;
+    case TED_SOURCE_KEY:
+      return TED_FETCH_POLICY;
+    default:
+      return FIND_A_TENDER_FETCH_POLICY;
+  }
+}
+
+function adapterFor(
+  sourceKey: OpenIngestSourceKey,
+  http: JsonHttpClient,
+  now: () => Date,
+): SourceAdapter {
+  switch (sourceKey) {
+    case CONTRACTS_FINDER_SOURCE_KEY:
+      return createContractsFinderAdapter({ http, now });
+    case PUBLIC_CONTRACTS_SCOTLAND_SOURCE_KEY:
+      return createPublicContractsScotlandAdapter({ http, now });
+    case SELL2WALES_SOURCE_KEY:
+      return createSell2WalesAdapter({ http, now });
+    case TED_SOURCE_KEY:
+      return createTedAdapter({ http, now });
+    default:
+      return createFindATenderAdapter({ http, now });
+  }
 }
 
 export function runOpenContractsFinderIngest(
@@ -416,4 +679,229 @@ export function runOpenContractsFinderIngest(
     ...options,
     sourceKey: CONTRACTS_FINDER_SOURCE_KEY,
   });
+}
+
+export function runOpenPublicContractsScotlandIngest(
+  options: Omit<Parameters<typeof runOpenFindATenderIngest>[0], "sourceKey">,
+): Promise<OpenIngestResult> {
+  return runOpenFindATenderIngest({
+    ...options,
+    sourceKey: PUBLIC_CONTRACTS_SCOTLAND_SOURCE_KEY,
+  });
+}
+
+export function runOpenSell2WalesIngest(
+  options: Omit<Parameters<typeof runOpenFindATenderIngest>[0], "sourceKey">,
+): Promise<OpenIngestResult> {
+  return runOpenFindATenderIngest({
+    ...options,
+    sourceKey: SELL2WALES_SOURCE_KEY,
+  });
+}
+
+export function runOpenTedIngest(
+  options: Omit<Parameters<typeof runOpenFindATenderIngest>[0], "sourceKey">,
+): Promise<OpenIngestResult> {
+  return runOpenFindATenderIngest({
+    ...options,
+    sourceKey: TED_SOURCE_KEY,
+  });
+}
+
+const GRANT_REQUESTS_PER_MINUTE = 10;
+const GRANT_WINDOW_MS = 60_000;
+
+function pacedTextClient(
+  http: TextHttpClient,
+  sleep: (ms: number) => Promise<void>,
+): TextHttpClient {
+  const pace = createRequestPacer({
+    maxRequests: GRANT_REQUESTS_PER_MINUTE,
+    windowMs: GRANT_WINDOW_MS,
+    sleep,
+  });
+  return {
+    async getText(url: string) {
+      await pace();
+      return http.getText(url);
+    },
+  };
+}
+
+export async function runOpenCatalogueIngest(options: {
+  sourceKey:
+    | typeof FIND_A_GRANT_SOURCE_KEY
+    | typeof INNOVATE_UK_SOURCE_KEY
+    | typeof GCA_AGREEMENTS_SOURCE_KEY
+    | typeof GCA_PIPELINE_SOURCE_KEY;
+  store: IngestionStore;
+  now?: Date;
+  dryRun: boolean;
+  adapter?: SourceAdapter;
+  http?: TextHttpClient;
+  sleep?: (ms: number) => Promise<void>;
+  limit?: number;
+  phase?: "ingest" | "previews" | "all";
+  dealIds?: string[];
+  timeoutMs?: number;
+  staleRunLimitMs?: number;
+}): Promise<OpenIngestResult> {
+  const now = options.now ?? new Date();
+  const sleep = options.sleep ?? defaultSleep;
+  const sourceKey = options.sourceKey;
+  const isGca =
+    sourceKey === GCA_AGREEMENTS_SOURCE_KEY || sourceKey === GCA_PIPELINE_SOURCE_KEY;
+  let adapter = options.adapter;
+  if (!adapter) {
+    if (isGca) {
+      adapter =
+        sourceKey === GCA_PIPELINE_SOURCE_KEY
+          ? createGcaPipelineAdapter({ now: () => now, sleep })
+          : createGcaAgreementsAdapter({ now: () => now, sleep });
+    } else {
+      const http =
+        options.http ??
+        createAllowlistedTextClient(
+          sourceKey === INNOVATE_UK_SOURCE_KEY
+            ? INNOVATE_UK_FETCH_POLICY
+            : FIND_A_GRANT_FETCH_POLICY,
+        );
+      const paced = pacedTextClient(http, sleep);
+      adapter =
+        sourceKey === INNOVATE_UK_SOURCE_KEY
+          ? createInnovateUkAdapter({ http: paced, now: () => now })
+          : createFindAGrantAdapter({ http: paced, now: () => now });
+    }
+  }
+  const counts = emptyCounts();
+  const errors: OpenIngestError[] = [];
+  const warnings: TlsWarning[] = [];
+  const changed = new Set<string>(options.dealIds ?? []);
+  const phase = options.phase ?? "all";
+  let status: OpenIngestResult["status"] = "SUCCEEDED";
+
+  if (phase !== "previews") {
+    const result = await runIngestion({
+      sourceKey,
+      store: options.store,
+      adapter,
+      triggerType: options.dryRun ? "DRY_RUN" : "SCHEDULED",
+      limit: options.limit ?? MAX_RECORDS,
+      now,
+      force: true,
+      pageSize: 100,
+      minFetchIntervalMs: 0,
+      sleep,
+      dryRun: options.dryRun,
+      skipPreview: true,
+      failureMode: "partial",
+      staleRunLimitMs: options.staleRunLimitMs,
+      timeoutMs: options.timeoutMs,
+      classifyResult: classifyIngestionRun,
+      onPersisted: (info) => {
+        if (info.outcome === "new" || info.outcome === "updated" || info.outcome === "linked") {
+          changed.add(info.dealId);
+        }
+      },
+    });
+    counts.fetched += result.counters.fetched;
+    counts.new += result.counters.new;
+    counts.updated += result.counters.updated;
+    counts.unchanged += result.counters.unchanged;
+    counts.failed += result.counters.errorCount;
+    if (result.truncated) {
+      counts.capped = 1;
+    }
+    warnings.push(...(result.warnings ?? []));
+    for (const error of result.errors) {
+      errors.push({
+        stage: error.stage,
+        code: error.code ?? "INGESTION_ERROR",
+        message: error.message,
+        details: error.details,
+      });
+    }
+    if (result.status === "SKIPPED") {
+      return {
+        status: "SKIPPED",
+        dryRun: options.dryRun,
+        counts,
+        changedDealIds: [],
+        errors,
+        ...(warnings.length > 0 ? { warnings } : {}),
+      };
+    }
+    if (result.status === "FAILED" || result.status === "PARTIAL" || result.truncated) {
+      status = result.status === "FAILED" ? "FAILED" : "PARTIAL";
+    }
+  }
+
+  const previewIds = phase === "ingest" ? [] : [...changed];
+  if (!options.dryRun && phase !== "ingest") {
+    const missing = await options.store.listDealIdsMissingPreview(MISSING_PREVIEW_CAP);
+    const seen = new Set(previewIds);
+    for (const dealId of missing) {
+      if (seen.has(dealId)) continue;
+      seen.add(dealId);
+      previewIds.push(dealId);
+    }
+  }
+  if (!options.dryRun && previewIds.length > 0 && phase !== "ingest") {
+    const previews = await rebuildChangedPreviews({
+      store: options.store,
+      now,
+      mode: "live",
+      changedSince: now.toISOString(),
+      dealIds: previewIds,
+      limit: previewIds.length,
+      countsOnly: true,
+    });
+    if (phase === "previews") {
+      counts.fetched = previews.selected;
+      counts.new = previews.published;
+      counts.updated = previews.processed;
+      counts.unchanged = previews.blocked;
+    }
+    counts.failed += previews.failures;
+    if (previews.failures > 0) {
+      status = "PARTIAL";
+    }
+  }
+
+  if (counts.failed === 0 && status !== "PARTIAL" && status !== "FAILED") {
+    status = "SUCCEEDED";
+  }
+
+  let metadata: Record<string, unknown> | undefined;
+  if (phase !== "previews") {
+    const zeroRecord = classifyZeroRecordRun({
+      sourceKey,
+      status,
+      fetched: counts.fetched,
+    });
+    status = zeroRecord.status;
+    metadata = zeroRecord.metadata;
+  }
+
+  return {
+    status,
+    dryRun: options.dryRun,
+    counts,
+    changedDealIds: phase === "previews" ? [] : [...changed],
+    errors,
+    ...(warnings.length > 0 ? { warnings } : {}),
+    metadata,
+  };
+}
+
+export function runOpenFindAGrantIngest(
+  options: Omit<Parameters<typeof runOpenCatalogueIngest>[0], "sourceKey">,
+): Promise<OpenIngestResult> {
+  return runOpenCatalogueIngest({ ...options, sourceKey: FIND_A_GRANT_SOURCE_KEY });
+}
+
+export function runOpenInnovateUkIngest(
+  options: Omit<Parameters<typeof runOpenCatalogueIngest>[0], "sourceKey">,
+): Promise<OpenIngestResult> {
+  return runOpenCatalogueIngest({ ...options, sourceKey: INNOVATE_UK_SOURCE_KEY });
 }

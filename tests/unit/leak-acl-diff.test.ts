@@ -58,4 +58,37 @@ describe("phase B ACL diff", () => {
       "unexpected_helper(): added",
     ]);
   });
+
+  it("treats 0052 service-only rate-limit RPC as intended", () => {
+    const after = acl({
+      ...before.functions,
+      "hit_alert_signup_rate_limit(text,integer,integer)": fn("hit_alert_signup_rate_limit", false, false),
+    });
+    const diff = aclDiff(before, after);
+    expect(diff.unintended).toEqual([]);
+    expect(diff.intended).toContain("hit_alert_signup_rate_limit(text,integer,integer): added");
+  });
+
+  it("treats a new service-role-only table as intended and rejects client grants", () => {
+    const emptyPriv = { select: false, insert: false, update: false, delete: false };
+    const closed: Acl = {
+      ...before,
+      tables: {
+        alert_email_subscriptions: { anon: emptyPriv, authenticated: { ...emptyPriv } },
+      },
+    };
+    expect(aclDiff(before, closed).unintended).toEqual([]);
+    expect(aclDiff(before, closed).intended).toEqual(["table alert_email_subscriptions: added (service_role only)"]);
+
+    const open: Acl = {
+      ...before,
+      tables: {
+        alert_email_subscriptions: {
+          anon: { ...emptyPriv, select: true },
+          authenticated: emptyPriv,
+        },
+      },
+    };
+    expect(aclDiff(before, open).unintended).toEqual(["table alert_email_subscriptions: added"]);
+  });
 });

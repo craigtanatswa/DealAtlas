@@ -1,5 +1,6 @@
 import "server-only";
 
+import { isAutomatedUserAgent } from "@/lib/analytics/bot";
 import { POSTHOG_EU_API_HOST, configuredPostHogKey } from "@/lib/analytics/config";
 import { serverCaptureBody, type ServerEvent } from "@/lib/analytics/server-events";
 
@@ -22,10 +23,20 @@ export function serverAnalyticsKey(
 /** Best effort: analytics must never fail or slow a sign-up or a webhook. */
 export async function captureServerEvent(
   event: ServerEvent | null,
-  options: { fetchImpl?: typeof fetch; env?: Record<string, string | undefined> } = {},
+  options: {
+    fetchImpl?: typeof fetch;
+    env?: Record<string, string | undefined>;
+    /** Browser UA when the caller has one; omit for app-triggered events. */
+    userAgent?: string | null;
+  } = {},
 ): Promise<void> {
   const apiKey = serverAnalyticsKey(options.env);
   if (!event || !apiKey) {
+    return;
+  }
+  // App-triggered events (sign-up, subscription) pass no UA and are allowed.
+  // A supplied UA that is empty or automated is dropped.
+  if (isAutomatedUserAgent(options.userAgent)) {
     return;
   }
   const fetchImpl = options.fetchImpl ?? fetch;

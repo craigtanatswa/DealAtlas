@@ -33,7 +33,7 @@ function sdkEvent(overrides: Record<string, unknown> = {}, event = "$pageview") 
       $window_id: "019a0c1e-2222-7000-8000-000000000001",
       $insert_id: "abc123",
       $time: 1760875200,
-      $current_url: `${ORIGIN}/deals/${SLUG}?q=CANARY%20BUYER&utm_source=newsletter&utm_campaign=oct-launch#contact`,
+      $current_url: `${ORIGIN}/deals/${SLUG}?q=CANARY%20BUYER&utm_source=newsletter&utm_campaign=oct-launch&utm_term=tender+keyword&utm_content=hero+cta#contact`,
       $host: "www.dealatlas.uk",
       $pathname: `/deals/${SLUG}`,
       $title: "CANARY SOURCE TITLE NEVER FREE · DealAtlas",
@@ -81,11 +81,13 @@ describe("fail-closed before_send allowlist", () => {
       $insert_id: "abc123",
       $time: 1760875200,
       $pathname: "/deals/[deal]",
-      $current_url: `${ORIGIN}/deals/[deal]?utm_source=newsletter&utm_campaign=oct-launch`,
+      $current_url: `${ORIGIN}/deals/[deal]?utm_source=newsletter&utm_campaign=oct-launch&utm_term=tender+keyword&utm_content=hero+cta`,
       $referrer: "/app/deals/[deal]",
       $referring_domain: "www.dealatlas.uk",
       utm_source: "newsletter",
       utm_campaign: "oct-launch",
+      utm_term: "tender keyword",
+      utm_content: "hero cta",
     });
     const serialised = JSON.stringify(result);
     for (const forbidden of [SLUG, DEAL_ID, "CANARY", "q=", "#contact", "$title", "$initial", "$session_entry", "$prev_pageview", "$host", "$set", "email", "future_sdk"]) {
@@ -179,6 +181,69 @@ describe("fail-closed before_send allowlist", () => {
     expect(result!.properties.utm_medium).toBe("email");
   });
 
+  it("allows utm_term and utm_content but drops email, source, buyer and URL fields", () => {
+    const result = sanitizeClientEvent(
+      sdkEvent({
+        $current_url: `${ORIGIN}/pricing?utm_source=newsletter&utm_term=tender+keyword&utm_content=hero+cta`,
+        utm_term: "raw term",
+        utm_content: "raw content",
+        email: "buyer@canary.example",
+        buyer_name: "CANARY BUYER NEVER FREE",
+        buyer_email: "buyer@canary.example",
+        source_url: "https://portal.example.gov.uk/notices/NTC-998877",
+        deal_url: `${ORIGIN}/deals/${SLUG}?notice=NTC-998877`,
+        deal_id: DEAL_ID,
+        name: "CANARY BUYER",
+        ip: "203.0.113.77",
+      }),
+      { origin: ORIGIN },
+    );
+    expect(result).not.toBeNull();
+    expect(result!.properties.utm_source).toBe("newsletter");
+    expect(result!.properties.utm_term).toBe("tender keyword");
+    expect(result!.properties.utm_content).toBe("hero cta");
+    for (const bannedKey of [
+      "email",
+      "buyer",
+      "buyer_name",
+      "buyer_email",
+      "source",
+      "source_url",
+      "deal_url",
+      "deal_id",
+      "name",
+      "ip",
+    ]) {
+      expect(result!.properties, bannedKey).not.toHaveProperty(bannedKey);
+    }
+    const serialised = JSON.stringify(result).toLowerCase();
+    for (const forbidden of [
+      SLUG,
+      DEAL_ID,
+      "canary",
+      "ntc-998877",
+      "portal.example",
+      "buyer@",
+      "203.0.113.77",
+      "source_url",
+    ]) {
+      expect(serialised).not.toContain(forbidden);
+    }
+  });
+
+  it("drops utm_term and utm_content values that are not simple tags", () => {
+    const result = sanitizeClientEvent(
+      sdkEvent({
+        $current_url: `${ORIGIN}/pricing?utm_term=${encodeURIComponent("https://x.example/deals/abc")}&utm_content=${"x".repeat(101)}&utm_source=ok`,
+      }),
+      { origin: ORIGIN },
+    );
+    expect(result!.properties.utm_source).toBe("ok");
+    expect(result!.properties.utm_term).toBeUndefined();
+    expect(result!.properties.utm_content).toBeUndefined();
+    expect(JSON.stringify(result)).not.toContain("x.example");
+  });
+
   it("validates pro_checkout_started", () => {
     const ok = sanitizeClientEvent(
       sdkEvent(
@@ -217,6 +282,65 @@ describe("fail-closed before_send allowlist", () => {
         { origin: ORIGIN },
       ),
     ).toBeNull();
+  });
+
+  it("validates guide_cta_viewed and strips every other property", () => {
+    const page = `${ORIGIN}/guides/how-to-win-council-contracts`;
+    const ok = sanitizeClientEvent(
+      sdkEvent(
+        {
+          $current_url: page,
+          guide_slug: "how-to-win-council-contracts",
+          position: "after_answer",
+          target: "signup",
+          cta_position: "end",
+          buyer_name: "CANARY BUYER NEVER FREE",
+          deal_url: `${ORIGIN}/deals/${SLUG}?notice=NTC-998877`,
+          deal_id: DEAL_ID,
+        },
+        "guide_cta_viewed",
+      ),
+      { origin: ORIGIN },
+    );
+    expect(ok).not.toBeNull();
+    expect(ok!.properties).toMatchObject({
+      guide_slug: "how-to-win-council-contracts",
+      position: "after_answer",
+      target: "signup",
+    });
+    expect(ok!.properties.cta_position).toBeUndefined();
+    const serialised = JSON.stringify(ok);
+    for (const forbidden of [SLUG, DEAL_ID, "CANARY", "NTC-998877", "deal_url", "deal_id", "buyer_name"]) {
+      expect(serialised).not.toContain(forbidden);
+    }
+
+    for (const bad of [
+      { guide_slug: "how-to-win-council-contracts", position: "canary", target: "signup" },
+      { guide_slug: "how-to-win-council-contracts", position: "mid", target: "canary" },
+      { guide_slug: SLUG, position: "mid", target: "deals" },
+      { guide_slug: "how-to-win-council-contracts", target: "signup" },
+      { position: "mid", target: "deals" },
+    ]) {
+      const result = sanitizeClientEvent(
+        sdkEvent({ $current_url: page, ...bad }, "guide_cta_viewed"),
+        { origin: ORIGIN },
+      );
+      expect(result, JSON.stringify(bad)).toBeNull();
+    }
+
+    const wrongPage = sanitizeClientEvent(
+      sdkEvent(
+        {
+          $current_url: `${ORIGIN}/deals/${SLUG}`,
+          guide_slug: "how-to-win-council-contracts",
+          position: "mid",
+          target: "deals",
+        },
+        "guide_cta_viewed",
+      ),
+      { origin: ORIGIN },
+    );
+    expect(wrongPage).toBeNull();
   });
 
   it("is idempotent (the proxy re-runs it on already-clean events)", () => {

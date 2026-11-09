@@ -4,13 +4,18 @@ import { ATTRIBUTION_FIELDS } from "@/lib/analytics/attribution";
 import { cleanPath } from "@/lib/analytics/clean-path";
 import {
   SIGNUP_UTM_KEYS,
+  isGuideCtaPosition,
+  isGuideCtaTarget,
   isKnownGuideSlug,
   type CheckoutAnalyticsPlan,
   type ServerEventName,
 } from "@/lib/analytics/events";
 import {
+  FIRST_TOUCH_DIRECT,
+  OTHER_REFERRER,
   cleanReferrerDomain,
   cleanUtmValue,
+  firstTouchReferrerDomain,
   isAnalyticsUuid,
   type SanitizedProperties,
 } from "@/lib/analytics/sanitize";
@@ -61,6 +66,67 @@ export function planAmountGbp(plan: CheckoutAnalyticsPlan): number {
 
 type FieldReader = (name: string) => unknown;
 
+function firstPresent(read: FieldReader, keys: readonly string[]): unknown {
+  for (const key of keys) {
+    const value = read(key);
+    if (value !== undefined && value !== null) {
+      return value;
+    }
+  }
+  return undefined;
+}
+
+function guideCtaPair(read: FieldReader): { position: string; target: string } | null {
+  const position = firstPresent(read, [
+    ATTRIBUTION_FIELDS.firstTouchGuideCtaPosition,
+    "first_touch_guide_cta_position",
+  ]);
+  const target = firstPresent(read, [
+    ATTRIBUTION_FIELDS.firstTouchGuideCtaTarget,
+    "first_touch_guide_cta_target",
+  ]);
+  if (isGuideCtaPosition(position) && isGuideCtaTarget(target)) {
+    return { position, target };
+  }
+
+  const combined = firstPresent(read, [
+    ATTRIBUTION_FIELDS.firstTouchGuideCta,
+    "first_touch_guide_cta",
+  ]);
+  if (typeof combined === "string") {
+    const trimmed = combined.trim();
+    let parsed: unknown = null;
+    try {
+      parsed = JSON.parse(trimmed);
+    } catch {
+      const [combinedPosition, combinedTarget] = trimmed.split(":");
+      return isGuideCtaPosition(combinedPosition) && isGuideCtaTarget(combinedTarget)
+        ? { position: combinedPosition, target: combinedTarget }
+        : null;
+    }
+    if (isRecord(parsed)) {
+      const parsedPosition = parsed.position;
+      const parsedTarget = parsed.target;
+      return isGuideCtaPosition(parsedPosition) && isGuideCtaTarget(parsedTarget)
+        ? { position: parsedPosition, target: parsedTarget }
+        : null;
+    }
+    return null;
+  }
+  if (isRecord(combined)) {
+    const combinedPosition = combined.position;
+    const combinedTarget = combined.target;
+    return isGuideCtaPosition(combinedPosition) && isGuideCtaTarget(combinedTarget)
+      ? { position: combinedPosition, target: combinedTarget }
+      : null;
+  }
+  return null;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 export function buildUserSignedUpEvent(input: {
   userId: string;
   read?: FieldReader;
@@ -72,23 +138,56 @@ export function buildUserSignedUpEvent(input: {
   const properties: SanitizedProperties = {};
   const setOnce: SanitizedProperties = {};
 
-  const rawLanding = read(ATTRIBUTION_FIELDS.firstLandingPath);
-  const landing = typeof rawLanding === "string" && rawLanding ? cleanPath(rawLanding) : null;
+  const newLanding = read(ATTRIBUTION_FIELDS.firstTouchLandingPath);
+  const oldLanding = read(ATTRIBUTION_FIELDS.firstLandingPath);
+  const landingSource = newLanding ?? oldLanding;
+  const landing =
+    typeof landingSource === "string" && landingSource ? cleanPath(landingSource) : null;
   if (landing) {
-    properties.first_landing_path = landing;
-    setOnce.first_landing_path = landing;
+    properties.first_touch_landing_path = landing;
+    setOnce.first_touch_landing_path = landing;
+    if (newLanding === undefined || newLanding === null) {
+      properties.first_landing_path = landing;
+      setOnce.first_landing_path = landing;
+    }
   }
-  const referrer = cleanReferrerDomain(read(ATTRIBUTION_FIELDS.firstReferrerDomain));
-  if (referrer && referrer !== "$direct") {
-    properties.first_referrer_domain = referrer;
-    setOnce.first_referrer_domain = referrer;
+
+  const newReferrer = read(ATTRIBUTION_FIELDS.firstTouchReferrerDomain);
+  const oldReferrer = read(ATTRIBUTION_FIELDS.firstReferrerDomain);
+  const referrerSource = newReferrer ?? oldReferrer;
+  if (referrerSource !== undefined && referrerSource !== null) {
+    const firstTouch = firstTouchReferrerDomain(referrerSource);
+    // Re-bucket on the server too: even a tampered raw hostname must never
+    // reach PostHog properties or $set_once.
+    const domain =
+      firstTouch === FIRST_TOUCH_DIRECT
+        ? FIRST_TOUCH_DIRECT
+        : (cleanReferrerDomain(firstTouch) ?? OTHER_REFERRER);
+    properties.first_touch_referrer_domain = domain;
+    setOnce.first_touch_referrer_domain = domain;
+    if (newReferrer === undefined || newReferrer === null) {
+      const bucket = cleanReferrerDomain(oldReferrer);
+      if (bucket && bucket !== "$direct") {
+        properties.first_referrer_domain = bucket;
+        setOnce.first_referrer_domain = bucket;
+      }
+    }
   }
+
   for (const key of SIGNUP_UTM_KEYS) {
     const value = cleanUtmValue(read(ATTRIBUTION_FIELDS[key]));
     if (value) {
       properties[key] = value;
+      setOnce[key] = value;
     }
   }
+
+  const guideCta = guideCtaPair(read);
+  if (guideCta) {
+    properties.first_touch_guide_cta = guideCta;
+    setOnce.first_touch_guide_cta = guideCta;
+  }
+
   const guide = read(ATTRIBUTION_FIELDS.signupSourceGuide);
   if (isKnownGuideSlug(guide)) {
     properties.signup_source_guide = guide;

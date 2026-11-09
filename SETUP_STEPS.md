@@ -181,7 +181,7 @@ Use the current Supabase secret/service server credential name available to your
 ## Phase I — Dodo Payments test setup
 In Dodo test mode:
 1. Create `DealAtlas Pro Monthly` subscription product in GBP at £39/month.
-2. Create `DealAtlas Pro Annual` subscription product in GBP at £390/year.
+2. Create `DealAtlas Pro Annual` subscription product in GBP at £350/year.
 3. Put them in the same Product Collection if you want portal-based monthly/annual switching.
 4. Copy the test product IDs to `.env.local`.
 5. Copy test API key to `.env.local`.

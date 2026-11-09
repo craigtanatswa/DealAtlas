@@ -4,7 +4,7 @@ import {
   valueBandFromAmounts,
 } from "@/lib/preview/bands";
 import { composeFreePreview, encodePreviewDetails } from "@/lib/preview/compose";
-import { broadRegionFromLocation } from "@/lib/preview/region";
+import { previewRegion } from "@/lib/preview/region";
 import {
   scanPreviewLeaks,
   type LeakScanInput,
@@ -113,13 +113,14 @@ export function leakScanInputFromContext(
     extraReferences: lots
       .map((lot) => lot.sourceLotId)
       .filter((item): item is string => Boolean(item)),
-    sourceUrl: deal.sourceUrl,
+    sourceUrl: context.privateSourceUrl ?? deal.sourceUrl,
     applicationUrl: deal.applicationUrl,
     sourceName: context.source.name,
     sourceKey: context.source.sourceKey,
     buyerName: buyer?.canonicalName ?? null,
-    buyerAliases: context.buyerAliases,
-    buyerDomain: buyer?.domain ?? null,
+    buyerAliases: [...context.buyerAliases, ...(context.privateBuyerNames ?? [])],
+    buyerDomain: buyer?.domain ?? context.privateBuyerDomains?.[0] ?? null,
+    buyerDomains: context.privateBuyerDomains,
     buyerWebsite: buyer?.website ?? null,
     buyerEmail: buyer?.email ?? null,
     buyerPhone: buyer?.phone ?? null,
@@ -175,10 +176,14 @@ function assembleDraft(
     relevanceTags: tags,
   };
   const scan = scanPreviewLeaks(leakInput(context, draft));
-  const region = broadRegionFromLocation([
-    context.deal.exactLocationText,
-    ...context.lots.map((lot) => lot.exactLocationText),
-  ]);
+  const region = previewRegion({
+    sourceKey: context.source?.sourceKey,
+    locationParts: [
+      context.deal.exactLocationText,
+      ...context.lots.map((lot) => lot.exactLocationText),
+    ],
+    buyer: context.buyer,
+  });
   return {
     previewTitle: draft.previewTitle,
     previewSummary: draft.previewSummary,
