@@ -147,8 +147,8 @@ export function DealProCard({
               Confirming your payment…
             </p>
             <p className="mt-1 text-sm text-muted-foreground">
-              Details unlock here automatically once payment is confirmed. You
-              don’t need to pay again.
+              Details unlock once your payment is confirmed. You don’t need to
+              pay again.
             </p>
           </div>
         </div>
