@@ -563,9 +563,18 @@ export function createSupabaseIngestionStore(
       // publish trigger refuses to flip a row live when its slug hash is retired.
       return false;
     },
-    async retirePreviewSlug(slug) {
+    async retirePreviewSlug(slug, dealId) {
       const result = await client.rpc("retire_preview_slug", { p_slug: slug });
       throwIfQueryError("Retire preview slug", result);
+      if (dealId) {
+        const aliasResult = await client.rpc("record_preview_slug_alias", {
+          p_slug: slug,
+          p_deal_id: dealId,
+        });
+        if (aliasResult.error) {
+          console.warn("Record preview slug alias failed");
+        }
+      }
     },
     async maintainDealsLeakIndex() {
       const result = await client.rpc("maintain_deals_leak_index");

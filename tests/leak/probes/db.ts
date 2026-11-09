@@ -34,6 +34,9 @@ const PHASE_B_ADDED_FUNCTIONS = new Set([
   "deal_sector_from_cofog",
   "deal_sector_from_text",
   "fold_utility_buyer_sector",
+  // 0062: hashed slug aliases (service_role execute only).
+  "record_preview_slug_alias",
+  "resolve_preview_slug_alias",
 ]);
 
 export type Acl = {

@@ -48,7 +48,7 @@ describe("supabase migrations", () => {
   const files = listMigrations();
   const sql = files.map(readMigration).join("\n");
 
-  it("are numbered 0001-0026, 0028-0030, 0040-0043, 0045-0047, 0049, 0051-0061, leaving 0027, 0031-0039, 0044, 0048 and 0050 for open pull requests", () => {
+  it("are numbered 0001-0026, 0028-0030, 0040-0043, 0045-0047, 0049, 0051-0062, leaving 0027, 0031-0039, 0044, 0048 and 0050 for open pull requests", () => {
     expect(files).toEqual([
       "0001_extensions_and_types.sql",
       "0002_core_schema.sql",
@@ -98,6 +98,7 @@ describe("supabase migrations", () => {
       "0059_country_regions_in_leak_gate.sql",
       "0060_buyer_type_private_public.sql",
       "0061_publish_gate_denylist_retired.sql",
+      "0062_preview_slug_aliases.sql",
     ]);
   });
 
@@ -580,6 +581,19 @@ describe("supabase migrations", () => {
     expect(body).toContain("security definer");
     expect(body).toContain("set search_path = ''");
     expect(body).not.toMatch(/\b(grant|revoke|alter owner)\b/i);
+  });
+
+  it("0062 adds hashed slug aliases", () => {
+    const body = readMigration("0062_preview_slug_aliases.sql");
+    expect(body).toContain("private.preview_slug_aliases");
+    expect(body).toContain("extensions.digest");
+    expect(body).toContain("security definer");
+    expect(body).toContain("set search_path = ''");
+    expect(body).toContain(
+      "grant execute on function public.resolve_preview_slug_alias(text) to service_role",
+    );
+    expect(body).not.toContain("to anon");
+    expect(body).not.toContain("to authenticated");
   });
 
   it("keep the combined schema file in sync with migrations", () => {

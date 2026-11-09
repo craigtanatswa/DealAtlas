@@ -100,7 +100,7 @@ export async function persistIntelligenceAndPreview(options: {
       : null;
   const slug = keptSlug ?? (await allocatePreviewSlug(store, draft.previewTitle, context.deal.id));
   if (!keptSlug && existing?.slug && existing.slug !== slug) {
-    await store.retirePreviewSlug(existing.slug);
+    await store.retirePreviewSlug(existing.slug, context.deal.id);
   }
   const finalScan = scanPreviewLeaks(
     leakScanInputFromContext(context, draft, { slug, broadRegion: draft.broadRegion }),
