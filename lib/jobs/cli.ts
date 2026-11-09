@@ -6,6 +6,7 @@ export const JOB_NAMES = [
   "data-quality",
   "publish-eligible",
   "unpublish-stale",
+  "refresh-deadline-bands",
   "publish-alert",
   "discover",
   "expiry",
@@ -144,6 +145,7 @@ const PARTIAL_FAIL_JOBS = new Set<string>([
   "renewals",
   "publish-eligible",
   "unpublish-stale",
+  "refresh-deadline-bands",
   "publish-alert",
   "discover",
 ]);
