@@ -501,6 +501,17 @@ describe("checkout duplicate-subscription guard", () => {
     expect(mocks.sessions[0]?.billing_currency).toBe("GBP");
   });
 
+  it("allows discount codes while keeping customer email editing disabled", async () => {
+    await createAuthenticatedCheckoutResponse({
+      request: jsonRequest({ planKey: "PRO_MONTHLY" }),
+      user: USER,
+      profile: PROFILE,
+    });
+    const featureFlags = mocks.sessions[0]?.feature_flags as Record<string, unknown>;
+    expect(featureFlags.allow_discount_code).toBe(true);
+    expect(featureFlags.allow_customer_editing_email).toBe(false);
+  });
+
   it("redirects a form post from a subscribed user to the billing page notice", async () => {
     mocks.hasLiveSubscription.mockResolvedValue(true);
     const response = await createAuthenticatedCheckoutResponse({
