@@ -504,8 +504,12 @@ describe("guide CTA analytics", () => {
     const html = renderToStaticMarkup(
       <GuideMarkdown blocks={guide.blocks} publishedGuidePaths={publishedGuidePaths()} />,
     );
-    expect(html).toContain(`${GUIDE_CTA_TARGET_ATTR}="deals" ${GUIDE_CTA_POSITION_ATTR}="end" href="/deals"`);
-    expect(html).toContain(`${GUIDE_CTA_TARGET_ATTR}="pricing" ${GUIDE_CTA_POSITION_ATTR}="end" href="/pricing"`);
+    expect(html).toMatch(
+      new RegExp(`${GUIDE_CTA_TARGET_ATTR}="deals" ${GUIDE_CTA_POSITION_ATTR}="end" href="/deals(?:\\?[^"]*)?"`),
+    );
+    expect(html).toMatch(
+      new RegExp(`${GUIDE_CTA_TARGET_ATTR}="pricing" ${GUIDE_CTA_POSITION_ATTR}="end" href="/pricing(?:\\?[^"]*)?"`),
+    );
     expect(html).not.toMatch(new RegExp(`${GUIDE_CTA_TARGET_ATTR}="[^"]*" ${GUIDE_CTA_POSITION_ATTR}="[^"]*" href="/categories`));
     expect(html).not.toMatch(/data-guide-cta-[a-z]+="[^"]*(\d{4,}|deal-)/);
   });
