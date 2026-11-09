@@ -6,7 +6,7 @@ import { DealProCard } from "@/components/deals/deal-pro-card";
 import { MatchReasons } from "@/components/deals/match-reasons";
 import { deadlineKeyFact, DealStatusBadge } from "@/components/deals/deal-status";
 import { OpeningAlertButton } from "@/components/deals/opening-alert";
-import { buyerSectorLabel, levelLabel } from "@/components/deals/types";
+import { buyerSectorLabel } from "@/components/deals/types";
 import { Button } from "@/components/ui/button";
 import { foundingUiState, type FoundingPublicCount } from "@/lib/billing/founding-ui";
 import { signupPathWithAlert } from "@/lib/auth/redirect";
@@ -17,6 +17,7 @@ import {
   distinctSpecificSector,
   keyDatesRemainder,
 } from "@/lib/preview/display";
+import { positiveFitLabel, readableRequirementLines } from "@/lib/preview/fit";
 import type { PublicDealPreview } from "@/lib/search/dto";
 import type { SafeMatchView } from "@/lib/matching/types";
 import {
@@ -115,6 +116,8 @@ export function DealPreviewDetail({
     revealHref?: string;
     returnTo?: string;
     founding?: FoundingPublicCount;
+    /** Back from checkout (?upgraded=1) and Pro not confirmed yet: no buy buttons. */
+    paymentPending?: boolean;
   };
   signedIn?: boolean;
 }) {
@@ -146,6 +149,7 @@ export function DealPreviewDetail({
     revealHref: unlock?.revealHref,
     returnTo: unlock?.returnTo,
     founding,
+    paymentPending: unlock?.paymentPending,
     alertsHref: signedIn
       ? "/app/alerts"
       : signupPathWithAlert(`/deals/${deal.slug}`),
@@ -163,6 +167,14 @@ export function DealPreviewDetail({
     ...deal.technicalSpecs,
     ...deal.standards,
   ];
+  const requirementLines = readableRequirementLines(deal.requirementsPreview);
+  const fitCells = [
+    { label: "Bid complexity", value: positiveFitLabel(deal.bidComplexity) },
+    { label: "Competition", value: positiveFitLabel(deal.competitionLevel) },
+  ].filter((cell) => cell.value);
+  // Signed-in free users still see the Pro relevance upsell (#62), so the section stays.
+  const showFit =
+    fitCells.length > 0 || deal.relevanceTags.length > 0 || Boolean(match) || signedIn;
   const deliveryItems = [
     ...deal.deliveryRequirements,
     ...deal.commercialRequirements,
@@ -172,7 +184,7 @@ export function DealPreviewDetail({
     <article
       className={cn(
         "grid grid-cols-1 gap-8 lg:grid-cols-[3fr_2fr] lg:gap-10",
-        !isPro && "pb-24 lg:pb-0",
+        !isPro && !unlock?.paymentPending && "pb-24 lg:pb-0",
       )}
     >
       <div className="min-w-0">
@@ -225,7 +237,7 @@ export function DealPreviewDetail({
               { label: "Duration", value: durationBand },
               {
                 label: "SME suitability",
-                value: disclosed(levelLabel(deal.smeSuitability, "")),
+                value: positiveFitLabel(deal.smeSuitability),
               },
               { label: "Sector", value: specificSector },
             ]}
@@ -242,15 +254,11 @@ export function DealPreviewDetail({
           </Section>
         ) : null}
 
-        <Section id="requirements-heading" title="Products and services required">
-          {deal.requirementsPreview.length > 0 ? (
-            <Bullets items={deal.requirementsPreview} />
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              No general requirements are listed for this opportunity.
-            </p>
-          )}
-        </Section>
+        {requirementLines.length > 0 ? (
+          <Section id="requirements-heading" title="Products and services required">
+            <Bullets items={requirementLines} />
+          </Section>
+        ) : null}
 
         {specs.length > 0 ? (
           <Section id="spec-heading" title="Specs & standards">
@@ -274,48 +282,36 @@ export function DealPreviewDetail({
           </Section>
         ) : null}
 
-        <Section id="fit-heading" title="Eligibility & fit">
-          <FactGrid
-            cells={[
-              {
-                label: "Bid complexity",
-                value: disclosed(levelLabel(deal.bidComplexity, "")),
-              },
-              {
-                label: "Competition",
-                value: disclosed(levelLabel(deal.competitionLevel, "")),
-              },
-            ]}
-          />
-          {deal.relevanceTags.length > 0 ? (
-            <ul className="mt-3 flex flex-wrap gap-2">
-              {deal.relevanceTags.map((tag) => (
-                <li
-                  key={tag}
-                  className="rounded-md bg-muted px-2 py-0.5 text-[0.8125rem] leading-5 text-muted-foreground"
-                >
-                  {tag}
-                </li>
-              ))}
-            </ul>
-          ) : null}
-          <p className="mt-2 text-xs text-muted-foreground">
-            Fit labels are DealAtlas analysis, not official procurement facts.
-          </p>
-          {match ? (
-            <div className="mt-4">
-              <MatchReasons
-                score={match.score}
-                reasons={match.reasons}
-                caption="Relevance based on your company profile."
-              />
-            </div>
-          ) : signedIn ? (
-            <div className="mt-4">
-              <MatchReasons score={null} reasons={[]} />
-            </div>
-          ) : null}
-        </Section>
+        {showFit ? (
+          <Section id="fit-heading" title="Eligibility & fit">
+            {fitCells.length > 0 ? <FactGrid cells={fitCells} /> : null}
+            {deal.relevanceTags.length > 0 ? (
+              <ul className={cn("flex flex-wrap gap-2", fitCells.length > 0 && "mt-3")}>
+                {deal.relevanceTags.map((tag) => (
+                  <li
+                    key={tag}
+                    className="rounded-md bg-muted px-2 py-0.5 text-[0.8125rem] leading-5 text-muted-foreground"
+                  >
+                    {tag}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+            {match ? (
+              <div className="mt-4">
+                <MatchReasons
+                  score={match.score}
+                  reasons={match.reasons}
+                  caption="Relevance based on your company profile."
+                />
+              </div>
+            ) : signedIn ? (
+              <div className="mt-4">
+                <MatchReasons score={null} reasons={[]} />
+              </div>
+            ) : null}
+          </Section>
+        ) : null}
 
         <Section id="timing-heading" title="Key timing">
           <FactGrid
@@ -335,6 +331,10 @@ export function DealPreviewDetail({
             ]}
           />
         </Section>
+
+        <p className="mt-10 border-t border-border pt-4 text-xs text-muted-foreground">
+          Fit labels are DealAtlas analysis, not official procurement facts.
+        </p>
       </div>
 
       <div className="hidden lg:block">
@@ -343,7 +343,7 @@ export function DealPreviewDetail({
         </div>
       </div>
 
-      {!isPro ? (
+      {!isPro && !unlock?.paymentPending ? (
         <div className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-background px-4 py-3 shadow-[0_-4px_12px_rgba(15,27,61,0.08)] lg:hidden">
           <div className="mx-auto flex max-w-xl items-center gap-3">
             <p className="flex min-w-0 flex-1 items-center gap-1.5 text-sm font-semibold text-foreground">
