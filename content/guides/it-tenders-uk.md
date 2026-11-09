@@ -67,25 +67,43 @@ This was by far the biggest group at the time of writing, with 26 open opportuni
 
 If you sell a SaaS product, this is where public sector demand is steadiest. Many of these tenders want configuration, data migration, training and ongoing support as well as the licence, so price the whole service, not just the subscription.
 
+Browse live [software and SaaS opportunities on DealAtlas](/deals?q=software).
+
+[Create a free DealAtlas account](/signup)
+
 ## Web and digital development tenders
 
 There were 8 open web and digital opportunities at the time of writing, covering website development and hosting, bespoke digital services, interactive and AI-driven tools, and agile product teams building early versions of new public services. Values ranged from under £25k to £1m–£5m.
 
 Digital agencies and product studios should expect questions on user research, accessibility and how you work in agile teams alongside the buyer's staff.
 
+Browse live [software development and digital opportunities on DealAtlas](/deals?q=software+development).
+
+[Create a free DealAtlas account](/signup)
+
 ## Managed IT services and infrastructure tenders
 
 At the time of writing there were 5 open opportunities for managed IT services, IT support, disaster recovery, data cabling and IT resource frameworks. Two were worth £1m–£5m. Managed services contracts tend to run for several years, so a win here can anchor your revenue.
+
+Browse live [managed IT opportunities on DealAtlas](/deals?q=managed+IT).
+
+[Create a free DealAtlas account](/signup)
 
 ## Data, analytics and licensing tenders
 
 There were 4 open data opportunities, for data platforms, analytics tools and data consultancy, and 3 for software licensing and support, including enterprise licensing renewals for schools. Licensing tenders reward resellers and partners who can bundle licences with support and advice.
 
+Browse live [Technology software opportunities on DealAtlas](/deals?category=Technology&q=software).
+
+[Create a free DealAtlas account](/signup)
+
 ## Cyber security and identity tenders
 
 There were 2 open cyber security opportunities at the time of writing: one for security testing (£50k–£100k) and one for identity and access (£5m–£10m). Cyber work also shows up inside wider managed services and software tenders, so read the requirements of those too.
 
-[Start free on DealAtlas](/signup) to see every IT and software preview as it's published. Founding offer for DealAtlas Pro: ~~£39/mo~~ £24.17/mo (£290/yr), for as long as you stay subscribed. Limited places. [See Pro](/pricing)
+Browse live [cyber security opportunities on DealAtlas](/deals?q=cyber).
+
+[Create a free DealAtlas account](/signup) to see every IT and software preview as it's published. Founding offer for DealAtlas Pro: ~~£39/mo~~ £24.17/mo (£290/yr), for as long as you stay subscribed. Limited places. [See Pro](/pricing?utm_source=dealatlas&utm_medium=organic&utm_campaign=founding&utm_content=it-tenders-uk)
 
 ## Who this is for
 
@@ -112,6 +130,8 @@ Under the [Procurement Act 2023](https://www.legislation.gov.uk/ukpga/2023/54/co
 
 ## How to find IT tenders on DealAtlas
 
+DealAtlas is where you browse and shortlist UK IT contract previews by value, region and closing date in one place. Start with the [Technology](/categories/technology) category or [filter live Technology deals](/deals?category=Technology).
+
 ### Step 1: start in the right place
 
 Almost all IT and software work sits under [Technology](/categories/technology). You can also [browse all live opportunities](/deals) to catch IT work bundled into wider contracts.
@@ -134,7 +154,7 @@ For bid advice, read [how to win council contracts](/guides/how-to-win-council-c
 
 The free preview shows the type of work, value band, closing window and region where one is listed. Pro adds the buyer, the source, contacts and documents, plus saved searches and alerts, so you can decide quickly whether to bid.
 
-[Browse live IT opportunities](/deals) or [start free on DealAtlas](/signup), then [upgrade to Pro](/pricing) when an opportunity is worth pursuing. Founding price: ~~£39/mo~~ £24.17/mo (£290/yr), for as long as you stay subscribed. Limited places.
+[Browse live IT opportunities](/deals) or [start free on DealAtlas](/signup), then [upgrade to Pro](/pricing?utm_source=dealatlas&utm_medium=organic&utm_campaign=founding&utm_content=it-tenders-uk) when an opportunity is worth pursuing. Founding price: ~~£39/mo~~ £24.17/mo (£290/yr), for as long as you stay subscribed. Limited places.
 
 ## FAQ
 
@@ -142,22 +162,34 @@ The free preview shows the type of work, value band, closing window and region w
 
 On [DealAtlas](/categories/technology). It brings UK IT and software opportunities together in one place, and you can filter them by value band, region and closing date.
 
+[Create a free DealAtlas account](/signup)
+
 ### What IT services do public buyers buy?
 
 Mostly software systems and SaaS, then web and digital development, managed IT services, data and analytics, software licensing and cyber security. At the time of writing, software systems made up 26 of the 48 open IT opportunities on DealAtlas.
+
+[Create a free DealAtlas account](/signup)
 
 ### Are IT tenders suitable for small businesses?
 
 Often, yes. At the time of writing, 16 of the 48 open IT opportunities were under £250k, and much of the work can be delivered remotely.
 
+[Create a free DealAtlas account](/signup)
+
 ### Do I need Cyber Essentials to bid for IT contracts?
 
 Many public buyers ask for it, especially where you'll handle personal data or connect to their systems. Check each tender's requirements, and get certified before you need it.
+
+[Create a free DealAtlas account](/signup)
 
 ### How long do I have to respond to an IT tender?
 
 Usually weeks, not months. At the time of writing, 37 of the 48 open IT opportunities on DealAtlas closed in November 2026.
 
+[Create a free DealAtlas account](/signup)
+
 ### What does DealAtlas Pro add?
 
-The buyer, the source, contacts and documents, plus saved searches and alerts. Founding price: ~~£39/mo~~ £24.17/mo (£290/yr), for as long as you stay subscribed. Limited places. [See Pro](/pricing)
+The buyer, the source, contacts and documents, plus saved searches and alerts. Founding price: ~~£39/mo~~ £24.17/mo (£290/yr), for as long as you stay subscribed. Limited places. [See Pro](/pricing?utm_source=dealatlas&utm_medium=organic&utm_campaign=founding&utm_content=it-tenders-uk)
+
+[Create a free DealAtlas account](/signup)
