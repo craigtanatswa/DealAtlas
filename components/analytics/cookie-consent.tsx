@@ -20,31 +20,31 @@ export function CookieConsent() {
     >
       <div className="mx-auto flex max-w-5xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="max-w-3xl">
-          We use optional analytics to count page views, guide CTA views and
-          sign-ups. Nothing loads or is stored until you accept. We never send
-          deal details, buyer names, URLs or full referrers.{" "}
+          Essential cookies keep the site working and stay on. Optional cookies
+          help with performance and advertising — accept, reject, or manage
+          them.{" "}
           <Link href="/cookies" className="underline underline-offset-4">
             Read the cookie notice
           </Link>
           .
         </p>
-        <div className="flex shrink-0 gap-2">
+        <div className="flex flex-wrap gap-2 sm:shrink-0">
           <button
             type="button"
-            className="rounded-md border border-border bg-background px-3 py-2 font-medium text-foreground hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+            className="rounded-md bg-primary px-3 py-2 font-medium text-primary-foreground hover:opacity-90 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
             onClick={() => setAnalyticsConsent(false)}
           >
-            Reject analytics
+            Reject
           </button>
           <button
             type="button"
-            className="rounded-md bg-foreground px-3 py-2 font-medium text-background hover:opacity-90 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+            className="rounded-md bg-primary px-3 py-2 font-medium text-primary-foreground hover:opacity-90 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
             onClick={() => {
               setAnalyticsConsent(true);
               startFirstTouchAfterConsent();
             }}
           >
-            Accept analytics
+            Accept
           </button>
         </div>
       </div>
