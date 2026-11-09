@@ -22,12 +22,20 @@ const paidDto = {
   sourceTitle: "CANARY SOURCE TITLE NEVER FREE",
 } as PaidDealDto;
 
+function fixtureAllowlist(): ReadonlySet<string> {
+  return new Set([
+    BILLING_FIXTURE_PRODUCTS.PRO_MONTHLY,
+    BILLING_FIXTURE_PRODUCTS.PRO_ANNUAL,
+    ...BILLING_FIXTURE_PRODUCTS.PRO_ANNUAL_LEGACY,
+  ]);
+}
+
 function entitlementFromStore(
   store: ReturnType<typeof createMemoryBillingStore>,
 ) {
   const row = store.subscriptions.find((item) => item.isCurrent) ?? null;
   if (!row) {
-    return resolveEntitlement(null, ENTITLEMENT_FIXTURE_NOW);
+    return resolveEntitlement(null, ENTITLEMENT_FIXTURE_NOW, fixtureAllowlist());
   }
   return resolveEntitlement(
     {
@@ -39,8 +47,10 @@ function entitlementFromStore(
       currentPeriodEnd: row.currentPeriodEnd,
       planKey: row.planKey,
       billingInterval: row.billingInterval,
+      dodoProductId: row.dodoProductId,
     },
     ENTITLEMENT_FIXTURE_NOW,
+    fixtureAllowlist(),
   );
 }
 

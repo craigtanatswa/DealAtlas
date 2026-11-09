@@ -17,8 +17,9 @@ export async function resolveUserEntitlement(
   userId: string,
   loadSubscription: SubscriptionLoader,
   now: Date = new Date(),
+  allowedProductIds?: ReadonlySet<string>,
 ): Promise<EntitlementSnapshot> {
   const id = parseInput(uuidSchema, userId, "User id");
   const subscription = await loadSubscription(id);
-  return resolveEntitlement(subscription, now);
+  return resolveEntitlement(subscription, now, allowedProductIds);
 }

@@ -47,8 +47,34 @@ function isCancelledAtPeriodEndPaidThrough(
   );
 }
 
-function grantsPro(subscription: SubscriptionMirror, now: Date): boolean {
+/**
+ * Status/period fixtures omit both the product id and the allowlist.
+ * A stored product id (including null), or any supplied allowlist, fails
+ * closed unless the id is a non-empty member of a non-empty set.
+ */
+function productGrantsPro(
+  subscription: SubscriptionMirror,
+  allowedProductIds: ReadonlySet<string> | undefined,
+): boolean {
+  if (allowedProductIds === undefined && subscription.dodoProductId === undefined) {
+    return true;
+  }
+  if (!allowedProductIds || allowedProductIds.size === 0) {
+    return false;
+  }
+  const productId = subscription.dodoProductId?.trim() ?? "";
+  return productId.length > 0 && allowedProductIds.has(productId);
+}
+
+function grantsPro(
+  subscription: SubscriptionMirror,
+  now: Date,
+  allowedProductIds: ReadonlySet<string> | undefined,
+): boolean {
   if (!subscription.isCurrent) {
+    return false;
+  }
+  if (!productGrantsPro(subscription, allowedProductIds)) {
     return false;
   }
 
@@ -68,18 +94,25 @@ function grantsPro(subscription: SubscriptionMirror, now: Date): boolean {
  * - CANCELLED + cancel_at_period_end + current_period_end > now → PRO until period end
  * - ON_HOLD, FAILED, EXPIRED, PENDING, UNKNOWN, immediate cancel, or lapsed period → FREE
  *
- * `plan_key` is not an entitlement signal.
+ * `plan_key` is not an entitlement signal. When `allowedProductIds` is
+ * passed, `dodo_product_id` must belong to that set. An empty set grants
+ * Pro to nobody. Production always passes the deployment allowlist.
+ *
+ * `private.is_user_pro` still checks status and paid-through only. Preview
+ * and Production share one database, so that SQL helper cannot see this
+ * deployment's product ids. Source reveal uses this function.
  */
 export function resolveEntitlement(
   subscription: SubscriptionMirror | null,
   now: Date = new Date(),
+  allowedProductIds?: ReadonlySet<string>,
 ): EntitlementSnapshot {
   if (!subscription) {
     return FREE_ENTITLEMENT;
   }
 
   return {
-    plan: grantsPro(subscription, now) ? PLANS.PRO : PLANS.FREE,
+    plan: grantsPro(subscription, now, allowedProductIds) ? PLANS.PRO : PLANS.FREE,
     status: subscription.status,
     currentPeriodEnd: subscription.currentPeriodEnd,
     cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
