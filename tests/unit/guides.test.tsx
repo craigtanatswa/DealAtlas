@@ -65,7 +65,8 @@ const SLUG_3 = "uk-tender-search";
 const SLUG_4 = "council-tenders-uk";
 const SLUG_5 = "transport-logistics-tenders-uk";
 const SLUG_6 = "financial-services-tenders-uk";
-const PUBLISHED = [SLUG, SLUG_2, SLUG_3, SLUG_4, SLUG_5, SLUG_6];
+const SLUG_7 = "it-tenders-uk";
+const PUBLISHED = [SLUG, SLUG_2, SLUG_3, SLUG_4, SLUG_5, SLUG_6, SLUG_7];
 const UNPUBLISHED_SLUG = "frameworks-and-dynamic-markets";
 
 function frontmatter(slug: string, published: boolean, updated: string) {
@@ -600,9 +601,10 @@ describe("guide sitemap and robots", () => {
         [`${ORIGIN}/guides/${SLUG_4}`, "2026-10-29"],
         [`${ORIGIN}/guides/${SLUG_5}`, "2026-11-02"],
         [`${ORIGIN}/guides/${SLUG_6}`, "2026-11-09"],
+        [`${ORIGIN}/guides/${SLUG_7}`, "2026-11-09"],
       ]),
     );
-    expect(entries).toHaveLength(7);
+    expect(entries).toHaveLength(8);
   });
 
   it("emits no sitemap entries when nothing is published", () => {
