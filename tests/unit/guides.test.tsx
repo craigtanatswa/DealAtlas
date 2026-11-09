@@ -133,8 +133,8 @@ describe("guide content", () => {
     expect(second.description).toBe(
       "How to find public sector and government tenders in the UK: where notices are published, 2026 thresholds, early pipeline signals, and search them on DealAtlas.",
     );
-    expect(second.h1).toBe("How to find public sector tenders in the UK");
-    expect(second.updated).toBe("2026-11-02");
+    expect(second.h1).toBe("How to find public sector and government tenders in the UK");
+    expect(second.updated).toBe("2026-11-09");
     const third = getPublishedGuide(SLUG_3)!;
     expect(third.published).toBe(true);
     expect(third.path).toBe(`/guides/${SLUG_3}`);
@@ -450,15 +450,15 @@ describe("guide #2 JSON-LD", () => {
     expect(jsonLd["@graph"].map((node) => node["@type"])).toEqual(["Article", "BreadcrumbList", "FAQPage"]);
     expect(byType("Article")).toMatchObject({
       "@id": `${url}#article`,
-      headline: "How to find public sector tenders in the UK",
+      headline: "How to find public sector and government tenders in the UK",
       mainEntityOfPage: url,
-      dateModified: "2026-11-02",
+      dateModified: "2026-11-09",
       image: `${ORIGIN}/brand/dealatlas-logo.png`,
     });
     expect(byType("BreadcrumbList").itemListElement).toEqual([
       { "@type": "ListItem", position: 1, name: "Home", item: `${ORIGIN}/` },
       { "@type": "ListItem", position: 2, name: "Guides", item: `${ORIGIN}/guides` },
-      { "@type": "ListItem", position: 3, name: "How to find public sector tenders in the UK", item: url },
+      { "@type": "ListItem", position: 3, name: "How to find public sector and government tenders", item: url },
     ]);
     const serialized = serializeJsonLd(jsonLd);
     expect(findProtectedMarkerLeaks(serialized)).toEqual([]);
@@ -595,10 +595,10 @@ describe("guide sitemap and robots", () => {
     expect(entries.map((entry) => [entry.url, entry.lastModified])).toEqual(
       expect.arrayContaining([
         [`${ORIGIN}/guides`, "2026-11-09"],
-        [`${ORIGIN}/guides/${SLUG}`, "2026-11-02"],
-        [`${ORIGIN}/guides/${SLUG_2}`, "2026-11-02"],
+        [`${ORIGIN}/guides/${SLUG}`, "2026-11-09"],
+        [`${ORIGIN}/guides/${SLUG_2}`, "2026-11-09"],
         [`${ORIGIN}/guides/${SLUG_3}`, "2026-11-02"],
-        [`${ORIGIN}/guides/${SLUG_4}`, "2026-10-29"],
+        [`${ORIGIN}/guides/${SLUG_4}`, "2026-11-09"],
         [`${ORIGIN}/guides/${SLUG_5}`, "2026-11-02"],
         [`${ORIGIN}/guides/${SLUG_6}`, "2026-11-09"],
         [`${ORIGIN}/guides/${SLUG_7}`, "2026-11-09"],

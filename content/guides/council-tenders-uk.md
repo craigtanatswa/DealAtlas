@@ -6,7 +6,7 @@ description: "Council tenders UK: where to find local government tenders, what c
 h1: "Council tenders in the UK: where to find them and what councils buy"
 breadcrumb: "Council tenders UK"
 datePublished: 2026-10-29
-updated: 2026-10-29
+updated: 2026-11-09
 primaryKeyword: "council tenders UK"
 secondaryKeywords: ["local government tenders", "council procurement"]
 relatedGuides: ["how-to-win-council-contracts", "how-to-find-public-sector-tenders"]
@@ -16,6 +16,8 @@ craigApprovedAt: 2026-10-29
 **Short answer:** council tenders UK suppliers can bid for are spread across many sources, so the quickest way to find them is one searchable hub. [DealAtlas](/deals) lists {{LIVE_COUNT}} live UK opportunities, and roughly 4 in 10 of them come from councils and other local authorities. Councils buy construction, healthcare and social care, and professional services more than anything else. Most of their deals close within a month, so you need to spot them early.
 
 This guide covers where council work appears, what councils buy, and how to filter it. If you already have a tender in front of you, read our guide on [preparing a bid that scores well with a council](/guides/how-to-win-council-contracts).
+
+**Find your next contract faster.** [Create your free DealAtlas account](/signup) to filter live UK opportunities by category, value band, closing date and region. When a deal is worth pursuing, [DealAtlas Pro](/pricing) unlocks the buyer, documents, saved searches and alerts. Founding offer: ~~£39/mo~~ £24.17/mo (£290/yr), for as long as you stay subscribed. Limited places.
 
 ## What counts as a council tender?
 

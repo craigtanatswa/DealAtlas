@@ -3,10 +3,10 @@ slug: how-to-find-public-sector-tenders
 published: true
 title: "How to find public sector and government tenders in the UK"
 description: "How to find public sector and government tenders in the UK: where notices are published, 2026 thresholds, early pipeline signals, and search them on DealAtlas."
-h1: "How to find public sector tenders in the UK"
-breadcrumb: "How to find public sector tenders in the UK"
+h1: "How to find public sector and government tenders in the UK"
+breadcrumb: "How to find public sector and government tenders"
 datePublished: 2026-10-19
-updated: 2026-11-02
+updated: 2026-11-09
 primaryKeyword: "how to find public sector tenders"
 secondaryKeywords: ["find tenders UK", "public sector tenders UK", "government tenders UK", "where to find government contracts", "public sector contract opportunities"]
 relatedGuides: ["how-to-win-council-contracts", "council-tenders-uk", "uk-tender-search"]
@@ -16,7 +16,7 @@ craigApprovedAt: 2026-10-19
 
 {{LIVE_COUNT}} live UK opportunities on DealAtlas today.
 
-UK public buyers publish contract notices under the [Procurement Act 2023](https://www.legislation.gov.uk/ukpga/2023/54/contents), which has applied to new procurements since 24 February 2025. Notices sit across national platforms and buyer systems, so the practical job is finding the right ones early. This guide covers the value thresholds that decide what must be advertised, the early signals that appear before a tender, what you need ready to bid, and how to track opportunities on DealAtlas.
+UK public buyers publish government tenders and other contract notices under the [Procurement Act 2023](https://www.legislation.gov.uk/ukpga/2023/54/contents), which has applied to new procurements since 24 February 2025. Notices sit across national platforms and buyer systems, so the practical job is finding the right ones early. This guide covers the value thresholds that decide what must be advertised, the early signals that appear before a tender, what you need ready to bid, and how to track opportunities on DealAtlas.
 
 ## The short answer
 

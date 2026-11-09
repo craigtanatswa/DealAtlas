@@ -6,10 +6,10 @@ description: "How to win council contracts under the Procurement Act 2023: the 2
 h1: "How to win council contracts: a practical guide for SMEs"
 breadcrumb: "How to win council contracts"
 datePublished: 2026-10-19
-updated: 2026-11-02
+updated: 2026-11-09
 primaryKeyword: "how to win council contracts"
 secondaryKeywords: ["council tenders for small businesses", "how to bid for council contracts", "local authority tenders UK", "selling to local government UK", "council procurement"]
-relatedGuides: ["how-to-find-public-sector-tenders", "council-tenders-uk"]
+relatedGuides: ["how-to-find-public-sector-tenders", "council-tenders-uk", "uk-tender-search"]
 securityClearedAt: 2026-10-19
 craigApprovedAt: 2026-10-19
 ---
@@ -68,7 +68,7 @@ Scottish councils mostly buy under Scotland's own procurement law, not the 2023 
 
 {{LIVE_COUNT}} live UK opportunities on DealAtlas today.
 
-Start on [DealAtlas](/deals). DealAtlas brings UK public and private tenders and opportunities for SMEs, in one place, so you can filter council-relevant work by category, value band, closing date and region. To see what councils are buying right now, read our guide to [council tenders UK](/guides/council-tenders-uk). Our guide on [how to find public sector tenders](/guides/how-to-find-public-sector-tenders) covers the wider set of public buyers.
+Start on [DealAtlas](/deals). DealAtlas brings UK public and private tenders and opportunities for SMEs, in one place, so you can filter council-relevant work by category, value band, closing date and region. To see what councils are buying right now, read our guide to [council tenders UK](/guides/council-tenders-uk). To search every live opportunity at once, see our [UK tender search](/guides/uk-tender-search) guide. Our guide on [how to find public sector tenders](/guides/how-to-find-public-sector-tenders) covers the wider set of public buyers.
 
 Under the Act, since 24 February 2025, above-threshold and advertised below-threshold notices for new procurements by councils in England, Wales and Northern Ireland are published on the central digital platform ([Central digital platform factsheet](https://www.gov.uk/government/publications/procurement-act-2023-short-guides/central-digital-platform-factsheet-html)). Older-regime award records still exist for procurements that started under the previous rules. Once you decide to bid, documents, clarification questions and submission usually run through the council's named system.
 
