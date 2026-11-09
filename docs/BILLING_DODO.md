@@ -6,10 +6,16 @@ Dodo Payments is the Merchant of Record for DealAtlas digital subscriptions.
 Launch products:
 - DealAtlas Pro Monthly — recommended test price £39/month
 - DealAtlas Pro Annual — recommended test price £350/year
-- DealAtlas Founding Member annual — £290/year. Live product id `pdt_0Npk9UeAQUpFBQDttq6lS`. `DODO_FOUNDING_PRODUCT_ID` is optional in `test_mode` and required in `live_mode`, where it must match `pdt_` plus 21 letters or digits. The server reserves one of 25 lifetime slots and picks the product. If you cancel, you lose founding status and the £290/yr price (409 `FOUNDING_NOT_ELIGIBLE`); the place stays used and is never reissued. Sold out uses the standard annual product. The browser cannot choose the product id. `GET /api/founding` returns `{ remaining, sold_out }` only. One processed event and one Dodo subscription mark one founder.
+- DealAtlas Founding Member annual — £290/year. Live product id `pdt_0Npk9UeAQUpFBQDttq6lS`. `DODO_FOUNDING_PRODUCT_ID` is optional in `test_mode` and required in `live_mode`, where it must match `pdt_` plus 21 letters or digits. The server reserves one of 25 lifetime slots and picks the product. If you cancel, you lose founding status and the £290/yr price (409 `FOUNDING_NOT_ELIGIBLE`); the place stays used and is never reissued. Sold out uses the standard annual product. The browser cannot choose the product id. `GET /api/founding` returns `{ sold_out }` only. One processed event and one Dodo subscription mark one founder.
 - One live subscription per user: checkout refuses anyone with an `ACTIVE` or `ON_HOLD` subscription or `founding_member` with 409 `ALREADY_SUBSCRIBED` (form posts get a 303 to `/app/billing?notice=already_subscribed`), and returns 503 if that check fails. A webhook that activates a second live subscription is still applied but its `billing_events.processing_error` is flagged `duplicate_subscription` for refund review. Sessions ask Dodo for `billing_currency: "GBP"` (honoured only when adaptive pricing is on).
 - Live DealAtlas Pro is £39/month and £350/year, both VAT-inclusive.
 - Optional `DODO_PRO_ANNUAL_LEGACY_PRODUCT_IDS` is a comma-separated list of old annual product IDs. Webhooks for these IDs keep existing subscribers on Pro annual, but checkout never offers them. In `live_mode` each ID must match `pdt_` plus 21 letters or digits, must not be a local fixture ID, and must not reuse a monthly, annual, or founding ID.
+
+Pro on a given deployment is limited to that environment's product allowlist. The server-only helper reads `DODO_PRO_MONTHLY_PRODUCT_ID`, `DODO_PRO_ANNUAL_PRODUCT_ID`, `DODO_FOUNDING_PRODUCT_ID`, and `DODO_PRO_ANNUAL_LEGACY_PRODUCT_IDS`. Legacy entries are split on commas, trimmed, and empty entries are ignored. Product IDs come only from those variables and are never hardcoded. `/api/billing/entitlement` and the server loaders that reveal source fields grant Pro only when the current subscription is paid-through and its `dodo_product_id` is in that set. If the set is empty or the environment is missing, nobody is Pro, so a test-mode subscription stored in the shared database does not unlock the live site.
+
+The webhook still records a subscription for any product. An unknown product does not grant Pro or Founding. The server logs one generic warning with no secrets and no personal data.
+
+`private.is_user_pro` remains the database status and paid-through check used by preview RPCs and quota triggers. It cannot see per-deployment product IDs. Preview and Production share one database, so the allowlist is applied in TypeScript, where entitlement is computed. Source reveal uses that TypeScript result. It does not grant Pro from `private.is_user_pro` alone. Those RPCs do not return buyer, source, URL, or notice identifiers.
 
 Do not offer a free trial that reveals protected source identity. Free DealAtlas accounts exist independently of Dodo.
 
@@ -82,6 +88,7 @@ Store provider status plus an application entitlement state.
 Suggested rule:
 - ACTIVE/RENEWED and current_period_end > now → PRO
 - CANCELLED_AT_PERIOD_END but still paid-through → PRO until period_end
+- the subscription `product_id` is in this deployment's allowlist; otherwise FREE, including when the allowlist is empty or the environment is missing
 - ON_HOLD → no protected access unless provider documentation/current state explicitly warrants a grace policy; launch default is remove Pro source reveal
 - FAILED/EXPIRED/IMMEDIATE_CANCEL → FREE
 
@@ -131,7 +138,7 @@ const DODO_PRODUCTS = {
 }
 ```
 
-Incoming webhook `product_id` is mapped back to known plan/interval, including legacy annual IDs. Checkout accepts only the plan keys `PRO_MONTHLY`, `PRO_ANNUAL` and `FOUNDING`. Only `FOUNDING` reserves a founding place; when places are full it fails closed (409 / `/checkout/founding-full`) and never falls back to a standard checkout. `PRO_ANNUAL` is always the standard annual product, except that an existing founder keeps the founding product for as long as they stay subscribed. Unknown product IDs do not grant Pro automatically.
+Incoming webhook `product_id` is mapped back to known plan/interval, including legacy annual IDs. Checkout accepts only the plan keys `PRO_MONTHLY`, `PRO_ANNUAL` and `FOUNDING`. Only `FOUNDING` reserves a founding place; when places are full it fails closed (409 / `/checkout/founding-full`) and never falls back to a standard checkout. `PRO_ANNUAL` is always the standard annual product, except that an existing founder keeps the founding product for as long as they stay subscribed. Unknown product IDs are still stored, do not grant Pro or Founding, and are outside the entitlement allowlist described above.
 
 ## 14. Taxes/invoices
 Dodo operates as Merchant of Record for customer-side transaction taxes/compliance. DealAtlas should link customers to Dodo invoices/portal and should not attempt to calculate its own VAT for the same checkout flow.

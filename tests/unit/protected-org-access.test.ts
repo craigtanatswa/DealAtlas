@@ -7,6 +7,7 @@ import {
   PROTECTED_INTELLIGENCE_ERROR,
 } from "@/lib/intelligence/access";
 import {
+  ENTITLEMENT_FIXTURE_ALLOWLIST,
   ENTITLEMENT_FIXTURE_NOW,
   ENTITLEMENT_FIXTURE_USER_ID,
   entitlementSubscriptionFixtures,
@@ -26,6 +27,7 @@ describe("protected organisation intelligence access", () => {
       entitlement: resolveEntitlement(
         entitlementSubscriptionFixtures.activePro(),
         now,
+        ENTITLEMENT_FIXTURE_ALLOWLIST,
       ),
       clientClaimedPlan: PLANS.PRO,
       load,
@@ -43,12 +45,12 @@ describe("protected organisation intelligence access", () => {
     const record = await fulfillProtectedIntelligenceRequest({
       userId: ENTITLEMENT_FIXTURE_USER_ID,
       id: ORG_ID,
-      entitlement: resolveEntitlement(null, now),
+      entitlement: resolveEntitlement(null, now, ENTITLEMENT_FIXTURE_ALLOWLIST),
       load,
     });
     const list = await fulfillProtectedIntelligenceList({
       userId: ENTITLEMENT_FIXTURE_USER_ID,
-      entitlement: resolveEntitlement(null, now),
+      entitlement: resolveEntitlement(null, now, ENTITLEMENT_FIXTURE_ALLOWLIST),
       clientClaimedPlan: PLANS.PRO,
       load: vi.fn(),
     });
@@ -71,6 +73,7 @@ describe("protected organisation intelligence access", () => {
       entitlement: resolveEntitlement(
         entitlementSubscriptionFixtures.activePro(),
         now,
+        ENTITLEMENT_FIXTURE_ALLOWLIST,
       ),
       clientClaimedPlan: PLANS.FREE,
       load,

@@ -1,5 +1,6 @@
 import { isNewerProviderEvent } from "@/lib/billing/event-id";
 import { isLiveSubscriptionStatus, snapshotWouldGrantPro } from "@/lib/billing/status";
+import { structuredLog } from "@/lib/observability/log";
 import type {
   ApplyResult,
   BillingStore,
@@ -11,6 +12,21 @@ import type {
 
 export const DUPLICATE_SUBSCRIPTION_FLAG =
   "duplicate_subscription: user already has a live current subscription; flag for refund review.";
+
+/** Fixed text. Must not include product ids, customer ids, or user ids. */
+export const UNKNOWN_PRODUCT_ENTITLEMENT_WARNING =
+  "Dodo webhook recorded a subscription whose product is outside the environment allowlist. Pro and Founding were not granted.";
+
+function warnIfUnknownProduct(snapshot: SubscriptionSnapshot): void {
+  if (snapshot.productKnown) {
+    return;
+  }
+  structuredLog({
+    level: "warn",
+    msg: UNKNOWN_PRODUCT_ENTITLEMENT_WARNING,
+    job: "dodo-webhook",
+  });
+}
 
 const TERMINAL_EVENT_STATUSES = new Set(["PROCESSED", "IGNORED"]);
 
@@ -73,6 +89,7 @@ async function applySnapshot(
   store: BillingStore,
   reconcile?: ReconcileFn,
 ): Promise<ApplyResult> {
+  warnIfUnknownProduct(snapshot);
   const userId = await resolveUserId(snapshot, store);
   if (!userId) {
     await store.markEvent(

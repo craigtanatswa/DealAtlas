@@ -31,6 +31,11 @@ export DEALATLAS_DB_TEST_ANON_KEY="$NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"
 export DEALATLAS_DB_TEST_SECRET_KEY="$SUPABASE_SECRET_KEY"
 export DEALATLAS_DB_TEST_DB_URL="$(jq -r '.DB_URL' <<<"$status")"
 export DB_URL="$DEALATLAS_DB_TEST_DB_URL"
+# Same fixture allowlist as tests/leak/start-app.sh. The digest process reads
+# these; without them a seeded Pro user fails closed and the Pro email probes fail.
+export DODO_PRO_MONTHLY_PRODUCT_ID="${DODO_PRO_MONTHLY_PRODUCT_ID:-pdt_dealatlas_pro_monthly}"
+export DODO_PRO_ANNUAL_PRODUCT_ID="${DODO_PRO_ANNUAL_PRODUCT_ID:-pdt_dealatlas_pro_annual}"
+export DODO_PAYMENTS_ENVIRONMENT="${DODO_PAYMENTS_ENVIRONMENT:-test_mode}"
 node scripts/ci-guard-env.mjs
 
 rm -rf leak-artifacts .leak

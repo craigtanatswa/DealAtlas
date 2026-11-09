@@ -19,6 +19,11 @@ export type SubscriptionMirror = {
   currentPeriodEnd: string | null;
   planKey: string;
   billingInterval: BillingInterval | null;
+  /**
+   * Dodo product id on the subscriptions row. Null or a value outside the
+   * caller's allowlist does not grant Pro.
+   */
+  dodoProductId?: string | null;
 };
 
 export type EntitlementSnapshot = {
