@@ -29,15 +29,15 @@ test.describe("analytics consent gate", () => {
     const trackerRequests = watchTrackerRequests(page);
 
     await page.goto("/");
-    await expect(page.getByRole("button", { name: "Reject analytics" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Accept analytics" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Reject" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Accept" })).toBeVisible();
     await page.waitForLoadState("networkidle");
 
     expect(trackerRequests).toEqual([]);
     await expectNoPostHogStorage(page);
 
-    await page.getByRole("button", { name: "Reject analytics" }).click();
-    await expect(page.getByRole("button", { name: "Reject analytics" })).toHaveCount(0);
+    await page.getByRole("button", { name: "Reject" }).click();
+    await expect(page.getByRole("button", { name: "Reject" })).toHaveCount(0);
     await page.waitForTimeout(500);
 
     expect(trackerRequests).toEqual([]);
