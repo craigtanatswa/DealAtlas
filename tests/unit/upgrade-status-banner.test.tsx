@@ -80,6 +80,7 @@ describe("UpgradeStatusBanner timeout", () => {
     expect(bannerText()).toMatch(PENDING);
     expect(bannerText()).not.toMatch(TIMED_OUT);
     expect(router.refresh).not.toHaveBeenCalled();
+    expect(screen.queryByRole("link", { name: "Open billing" })).toBeNull();
   });
 
   it("stops polling after 2 minutes and shows the copy with a /contact link", async () => {
@@ -91,6 +92,7 @@ describe("UpgradeStatusBanner timeout", () => {
     expect(bannerText()).toMatch(TIMED_OUT);
     expect(bannerText()).not.toMatch(PENDING);
     expect(screen.getByRole("link", { name: "contact support" }).getAttribute("href")).toBe("/contact");
+    expect(screen.getByRole("link", { name: "Open billing" }).getAttribute("href")).toBe("/app/billing");
     expect(screen.queryByRole("button")).toBeNull();
 
     await advance(10 * 60_000);

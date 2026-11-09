@@ -80,7 +80,7 @@ export function UpgradeStatusBanner({ initialPro }: { initialPro: boolean }) {
       <div
         role="status"
         aria-live="polite"
-        className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900"
+        className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900"
       >
         <p>
           <strong className="font-semibold">Still confirming?</strong> Refresh the
@@ -90,6 +90,9 @@ export function UpgradeStatusBanner({ initialPro }: { initialPro: boolean }) {
           </Link>{" "}
           if it doesn&apos;t update.
         </p>
+        <Link href="/app/billing" className="font-medium underline underline-offset-2">
+          Open billing
+        </Link>
       </div>
     );
   }
