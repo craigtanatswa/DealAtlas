@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
-import { BellIcon } from "lucide-react";
+import { MailIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -136,7 +136,7 @@ export function GetAlertsCard({
       className="rounded-xl border border-border bg-card p-5 shadow-sm"
     >
       <div className="flex items-center gap-2">
-        <BellIcon className="size-4 text-muted-foreground" aria-hidden="true" />
+        <MailIcon className="size-4 text-muted-foreground" aria-hidden="true" />
         <h2 id={headingId} className="text-base font-semibold">
           Get free alerts
         </h2>
