@@ -30,8 +30,12 @@ describe("server analytics events", () => {
         [ATTRIBUTION_FIELDS.utm_source]: "newsletter",
         [ATTRIBUTION_FIELDS.utm_medium]: "email",
         [ATTRIBUTION_FIELDS.utm_campaign]: "<script>",
+        [ATTRIBUTION_FIELDS.utm_term]: "council tenders",
+        [ATTRIBUTION_FIELDS.utm_content]: "hero cta",
         [ATTRIBUTION_FIELDS.signupSourceGuide]: "how-to-win-council-contracts",
         email: "buyer@canary.example",
+        buyer_name: "CANARY BUYER",
+        deal_url: "https://portal.example/notices/NTC-998877",
       }),
     });
     expect(event).toEqual({
@@ -44,18 +48,43 @@ describe("server analytics events", () => {
         first_touch_guide_cta: { position: "after_answer", target: "signup" },
         utm_source: "newsletter",
         utm_medium: "email",
+        utm_term: "council tenders",
+        utm_content: "hero cta",
         signup_source_guide: "how-to-win-council-contracts",
       },
       setOnce: {
         first_touch_landing_path: "/deals/[deal]",
         first_touch_referrer_domain: "google",
         first_touch_guide_cta: { position: "after_answer", target: "signup" },
+        utm_source: "newsletter",
+        utm_medium: "email",
+        utm_term: "council tenders",
+        utm_content: "hero cta",
       },
     });
     const serialised = JSON.stringify(event);
-    for (const forbidden of ["canary-deal-a1b2c3", "CANARY", "/search", "?q=", "<script>", "buyer@canary"]) {
+    for (const forbidden of [
+      "canary-deal-a1b2c3",
+      "CANARY",
+      "/search",
+      "?q=",
+      "<script>",
+      "buyer@canary",
+      "NTC-998877",
+      "portal.example",
+    ]) {
       expect(serialised).not.toContain(forbidden);
     }
+    expect(Object.keys(event!.properties).sort()).toEqual([
+      "first_touch_guide_cta",
+      "first_touch_landing_path",
+      "first_touch_referrer_domain",
+      "signup_source_guide",
+      "utm_content",
+      "utm_medium",
+      "utm_source",
+      "utm_term",
+    ].sort());
   });
 
   it.each([
@@ -165,7 +194,13 @@ describe("server analytics events", () => {
         [ATTRIBUTION_FIELDS.utm_source]: "newsletter",
         [ATTRIBUTION_FIELDS.utm_medium]: "email",
         [ATTRIBUTION_FIELDS.utm_campaign]: "launch",
+        [ATTRIBUTION_FIELDS.utm_term]: "council tenders",
+        [ATTRIBUTION_FIELDS.utm_content]: "hero cta",
         email: "buyer@canary.example",
+        buyer_name: "CANARY BUYER",
+        deal_url: "https://portal.example.gov.uk/notices/NTC-998877",
+        deal_id: "3f2b7c1e-9a4d-4c8e-8b1f-2d6e5a7c9b10",
+        ip: "203.0.113.77",
       }),
     });
     expect(event!.properties).toEqual({
@@ -176,7 +211,32 @@ describe("server analytics events", () => {
       utm_source: "newsletter",
       utm_medium: "email",
       utm_campaign: "launch",
+      utm_term: "council tenders",
+      utm_content: "hero cta",
     });
+    expect(Object.keys(event!.properties).sort()).toEqual([
+      "first_touch_guide_cta",
+      "first_touch_landing_path",
+      "first_touch_referrer_domain",
+      "signup_source_guide",
+      "utm_campaign",
+      "utm_content",
+      "utm_medium",
+      "utm_source",
+      "utm_term",
+    ].sort());
+    for (const bannedKey of [
+      "email",
+      "buyer",
+      "buyer_name",
+      "deal_id",
+      "deal_url",
+      "ip",
+      "name",
+      "url",
+    ]) {
+      expect(event!.properties, bannedKey).not.toHaveProperty(bannedKey);
+    }
     const serialised = JSON.stringify(event).toLowerCase();
     for (const forbidden of [
       "canary",
@@ -188,6 +248,7 @@ describe("server analytics events", () => {
       "#contacts",
       "canary-deal",
       "portal.example",
+      "203.0.113.77",
     ]) {
       expect(serialised).not.toContain(forbidden);
     }
@@ -250,5 +311,43 @@ describe("server analytics events", () => {
     ).resolves.toBeUndefined();
     expect(fetchImpl).toHaveBeenCalledOnce();
     expect(fetchImpl.mock.calls[0]![0]).toBe("https://eu.i.posthog.com/i/v0/e/");
+  });
+
+  it("allows app-triggered events with no user agent", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(new Response(null, { status: 200 }));
+    const event = buildProSubscribedEvent({ userId: USER, providerEventId: "evt_1", plan: "annual" });
+    await captureServerEvent(event, { env: { NEXT_PUBLIC_POSTHOG_KEY: KEY }, fetchImpl });
+    expect(fetchImpl).toHaveBeenCalledOnce();
+  });
+
+  it("drops an explicitly automated or empty user agent", async () => {
+    const event = buildProSubscribedEvent({ userId: USER, providerEventId: "evt_1", plan: "annual" });
+    for (const userAgent of [
+      "",
+      "   ",
+      "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
+      "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/141.0.0.0 Safari/537.36",
+      null,
+    ]) {
+      const fetchImpl = vi.fn().mockResolvedValue(new Response(null, { status: 200 }));
+      await captureServerEvent(event, {
+        env: { NEXT_PUBLIC_POSTHOG_KEY: KEY },
+        fetchImpl,
+        userAgent,
+      });
+      expect(fetchImpl, String(userAgent)).not.toHaveBeenCalled();
+    }
+  });
+
+  it("sends for an explicitly normal browser user agent", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(new Response(null, { status: 200 }));
+    const event = buildProSubscribedEvent({ userId: USER, providerEventId: "evt_1", plan: "annual" });
+    await captureServerEvent(event, {
+      env: { NEXT_PUBLIC_POSTHOG_KEY: KEY },
+      fetchImpl,
+      userAgent:
+        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36",
+    });
+    expect(fetchImpl).toHaveBeenCalledOnce();
   });
 });

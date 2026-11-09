@@ -178,6 +178,7 @@ export function buildUserSignedUpEvent(input: {
     const value = cleanUtmValue(read(ATTRIBUTION_FIELDS[key]));
     if (value) {
       properties[key] = value;
+      setOnce[key] = value;
     }
   }
 
