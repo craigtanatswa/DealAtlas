@@ -21,6 +21,7 @@ env -u RESEND_API_KEY \
   DODO_PAYMENTS_WEBHOOK_KEY="whsec_dGVzdF9kb2RvX3dlYmhvb2tfc2VjcmV0X2tleQ" \
   DODO_PRO_MONTHLY_PRODUCT_ID="pdt_dealatlas_pro_monthly" \
   DODO_PRO_ANNUAL_PRODUCT_ID="pdt_dealatlas_pro_annual" \
+  SHOW_ANNUAL="true" \
   DODO_PAYMENTS_RETURN_URL="${app_url}/checkout/success" \
   DODO_PAYMENTS_ENVIRONMENT="test_mode" \
   DODO_PAYMENTS_API_KEY="rk_test_e2e_placeholder" \
