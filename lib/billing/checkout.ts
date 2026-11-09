@@ -186,6 +186,7 @@ export async function createAuthenticatedCheckoutResponse(input: {
       billing_currency: "GBP",
       feature_flags: {
         allow_customer_editing_email: false,
+        allow_discount_code: true,
       },
     }),
   });
