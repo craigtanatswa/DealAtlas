@@ -24,7 +24,7 @@ function planKeys(container: HTMLElement): (string | null)[] {
 describe("deal page founding button", () => {
   it("posts FOUNDING for a signed-in free user", () => {
     const { container } = render(
-      <DealProCard mode="free" founding={open} returnTo={returnTo} alertsHref="/app/alerts" />,
+      <DealProCard mode="free" founding={open} returnTo={returnTo} />,
     );
     const button = screen.getByRole("button", { name: /founding member/i });
     const form = button.closest("form")!;
@@ -42,7 +42,7 @@ describe("deal page founding button", () => {
   });
 
   it("sends signed-out visitors to signup then the founding checkout", () => {
-    render(<DealProCard mode="anonymous" founding={open} alertsHref="/signup" />);
+    render(<DealProCard mode="anonymous" founding={open} />);
     expect(
       screen.getByRole("link", { name: /founding member/i }).getAttribute("href"),
     ).toBe(foundingSignupPath());
@@ -54,7 +54,7 @@ describe("deal page founding button", () => {
     ["unknown", undefined],
   ])("hides the founding button when founding is %s", (_name, founding) => {
     const { container } = render(
-      <DealProCard mode="free" founding={founding} returnTo={returnTo} alertsHref="/app/alerts" />,
+      <DealProCard mode="free" founding={founding} returnTo={returnTo} />,
     );
     expect(screen.queryByText(/founding/i)).toBeNull();
     expect(container.textContent).not.toMatch(/£290|places left|for as long as you stay subscribed/);

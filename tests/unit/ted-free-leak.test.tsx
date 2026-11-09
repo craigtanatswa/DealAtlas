@@ -129,9 +129,9 @@ describe("TED attribution never reaches free or anonymous surfaces", () => {
       render(<UnlockPanel mode="anonymous" />).container.innerHTML,
       render(<UnlockPanel mode="free" />).container.innerHTML,
       render(
-        <DealProCard mode="anonymous" alertsHref="/app/alerts" />,
+        <DealProCard mode="anonymous" />,
       ).container.innerHTML,
-      render(<DealProCard mode="free" alertsHref="/app/alerts" />).container
+      render(<DealProCard mode="free" />).container
         .innerHTML,
     ].join("\n");
 
@@ -555,9 +555,9 @@ describe("TED address fields and bucketed country regions", () => {
       render(<UnlockPanel mode="anonymous" />).container.innerHTML,
       render(<UnlockPanel mode="free" />).container.innerHTML,
       render(
-        <DealProCard mode="anonymous" alertsHref="/app/alerts" />,
+        <DealProCard mode="anonymous" />,
       ).container.innerHTML,
-      render(<DealProCard mode="free" alertsHref="/app/alerts" />).container
+      render(<DealProCard mode="free" />).container
         .innerHTML,
     ].join("\n");
     const freeBlob = `${JSON.stringify(dtos)}\n${freeHtml}`;

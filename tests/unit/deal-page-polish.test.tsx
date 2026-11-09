@@ -111,8 +111,29 @@ describe("payment pending (?upgraded=1)", () => {
   });
 
   it("shows the buy buttons when not pending", () => {
-    render(<DealProCard mode="free" alertsHref="/app/alerts" />);
+    render(<DealProCard mode="free" />);
     expect(screen.getByRole("button", { name: /Start Pro/ })).toBeTruthy();
     expect(screen.queryByText("Confirming your payment…")).toBeNull();
+  });
+
+  it("hides the Get alerts card while the payment is confirming", () => {
+    detail({}, { mode: "free", paymentPending: true });
+    expect(screen.queryByText("Get free alerts")).toBeNull();
+    expect(screen.queryByRole("textbox", { name: "Email" })).toBeNull();
+  });
+});
+
+describe("Get alerts card visibility", () => {
+  it("shows it to anonymous and free visitors", () => {
+    detail({}, { mode: "anonymous" });
+    expect(screen.getAllByText("Get free alerts").length).toBeGreaterThan(0);
+    cleanup();
+    detail({}, { mode: "free" });
+    expect(screen.getAllByText("Get free alerts").length).toBeGreaterThan(0);
+  });
+
+  it("never shows it to Pro users", () => {
+    detail({}, { mode: "pro" });
+    expect(screen.queryByText("Get free alerts")).toBeNull();
   });
 });

@@ -8,8 +8,13 @@ export const CLIENT_EVENTS = [
   "guide_cta_clicked",
   "guide_cta_viewed",
   "pro_checkout_started",
+  "alerts_signup_viewed",
+  "alerts_signup_submitted",
+  "alerts_signup_result",
 ] as const;
 export type ClientEventName = (typeof CLIENT_EVENTS)[number];
+
+export const ALERTS_OUTCOMES = ["pending", "invalid", "rate_limited"] as const;
 
 export const SERVER_EVENTS = ["user_signed_up", "pro_subscribed"] as const;
 export type ServerEventName = (typeof SERVER_EVENTS)[number];
