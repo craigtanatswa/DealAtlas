@@ -1,6 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type FormEvent,
+} from "react";
 import Link from "next/link";
 import { MailIcon } from "lucide-react";
 
@@ -29,6 +35,10 @@ function rateLimitedMessage(retryAfterSeconds: number | null): string {
   return `Too many attempts. Try again in ${minutes} minute${minutes === 1 ? "" : "s"}.`;
 }
 
+function subscribeNever(): () => void {
+  return () => {};
+}
+
 export function GetAlertsCard({
   dealSlug,
   categorySlug,
@@ -52,6 +62,13 @@ export function GetAlertsCard({
   const [emailError, setEmailError] = useState<string | null>(null);
   const [consentError, setConsentError] = useState<string | null>(null);
   const [rateMessage, setRateMessage] = useState<string | null>(null);
+  // False in the server render and until React hydrates, so the button can't
+  // submit the form natively before JavaScript loads.
+  const hydrated = useSyncExternalStore(
+    subscribeNever,
+    () => true,
+    () => false,
+  );
 
   const cardRef = useRef<HTMLElement>(null);
 
@@ -151,6 +168,8 @@ export function GetAlertsCard({
         </p>
       ) : (
         <form
+          // POST, never GET: the email must never end up in a URL.
+          method="post"
           noValidate
           onSubmit={handleSubmit}
           className="mt-4 flex flex-col gap-4"
@@ -246,10 +265,15 @@ export function GetAlertsCard({
             type="submit"
             variant="outline"
             className="w-full"
-            disabled={submitting}
+            disabled={!hydrated || submitting}
           >
             {submitting ? "Sending…" : "Get alerts"}
           </Button>
+          <noscript>
+            <p className="text-sm text-muted-foreground">
+              Enable JavaScript to sign up
+            </p>
+          </noscript>
         </form>
       )}
     </aside>
