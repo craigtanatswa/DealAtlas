@@ -64,7 +64,8 @@ const SLUG_2 = "how-to-find-public-sector-tenders";
 const SLUG_3 = "uk-tender-search";
 const SLUG_4 = "council-tenders-uk";
 const SLUG_5 = "transport-logistics-tenders-uk";
-const PUBLISHED = [SLUG, SLUG_2, SLUG_3, SLUG_4, SLUG_5];
+const SLUG_6 = "financial-services-tenders-uk";
+const PUBLISHED = [SLUG, SLUG_2, SLUG_3, SLUG_4, SLUG_5, SLUG_6];
 const UNPUBLISHED_SLUG = "frameworks-and-dynamic-markets";
 
 function frontmatter(slug: string, published: boolean, updated: string) {
@@ -592,15 +593,16 @@ describe("guide sitemap and robots", () => {
     const entries = guideSitemapEntries(ORIGIN, listPublishedGuides());
     expect(entries.map((entry) => [entry.url, entry.lastModified])).toEqual(
       expect.arrayContaining([
-        [`${ORIGIN}/guides`, "2026-11-02"],
+        [`${ORIGIN}/guides`, "2026-11-09"],
         [`${ORIGIN}/guides/${SLUG}`, "2026-11-02"],
         [`${ORIGIN}/guides/${SLUG_2}`, "2026-11-02"],
         [`${ORIGIN}/guides/${SLUG_3}`, "2026-11-02"],
         [`${ORIGIN}/guides/${SLUG_4}`, "2026-10-29"],
         [`${ORIGIN}/guides/${SLUG_5}`, "2026-11-02"],
+        [`${ORIGIN}/guides/${SLUG_6}`, "2026-11-09"],
       ]),
     );
-    expect(entries).toHaveLength(6);
+    expect(entries).toHaveLength(7);
   });
 
   it("emits no sitemap entries when nothing is published", () => {

@@ -7,12 +7,15 @@ import { contractsFinderSourceRecord } from "@/ingestion/sources/contracts-finde
 import { PUBLIC_CONTRACTS_SCOTLAND_SOURCE_KEY } from "@/ingestion/sources/public-contracts-scotland/constants";
 import { publicContractsScotlandSourceRecord } from "@/ingestion/sources/public-contracts-scotland/seed";
 import { SELL2WALES_SOURCE_KEY } from "@/ingestion/sources/sell2wales/constants";
+import { sell2WalesSourceRecord } from "@/ingestion/sources/sell2wales/seed";
 import { createMemoryIngestionStore } from "@/ingestion/store/memory";
 import {
   classifyZeroRecordRun,
   isZeroRecordSource,
+  openIngestShouldFail,
   runOpenPublicContractsScotlandIngest,
-  zeroRecordWarningLine,
+  runOpenSell2WalesIngest,
+  zeroRecordNoticeLine,
 } from "@/lib/jobs/ingest-open";
 
 const NOW = new Date("2026-09-10T12:00:00.000Z");
@@ -171,7 +174,7 @@ describe("per-run timeout", () => {
 });
 
 describe("zero-record classification", () => {
-  it("downgrades empty PCS and Sell2Wales runs only", () => {
+  it("marks empty PCS and Sell2Wales runs as ok-with-zero only", () => {
     expect(isZeroRecordSource(PUBLIC_CONTRACTS_SCOTLAND_SOURCE_KEY)).toBe(true);
     expect(isZeroRecordSource(SELL2WALES_SOURCE_KEY)).toBe(true);
     expect(isZeroRecordSource("find-a-tender")).toBe(false);
@@ -186,11 +189,12 @@ describe("zero-record classification", () => {
         fetched: 0,
         discovered: 0,
       });
-      expect(classified.status).toBe("PARTIAL");
+      expect(classified.status).toBe("SUCCEEDED");
       expect(classified.zeroRecords).toBe(true);
       expect(classified.reason).toContain("returned 0 records");
       expect(classified.metadata).toEqual({
         zero_records: true,
+        ok_with_zero: true,
         zero_records_reason: `${sourceKey} returned 0 records`,
       });
     }
@@ -220,13 +224,24 @@ describe("zero-record classification", () => {
     ).toMatchObject({ status: "SKIPPED", zeroRecords: false });
   });
 
-  it("prints a GitHub warning annotation", () => {
-    expect(zeroRecordWarningLine("sell2wales")).toContain(
-      "::warning title=sell2wales returned 0 records::",
+  it("prints an informational notice annotation", () => {
+    expect(zeroRecordNoticeLine("sell2wales")).toContain(
+      "::notice title=sell2wales returned 0 records::",
     );
   });
 
-  it("marks an empty PCS open ingest as PARTIAL with zero_records metadata", async () => {
+  it("treats a partial status with zero records as ok-with-zero", () => {
+    const classified = classifyZeroRecordRun({
+      sourceKey: PUBLIC_CONTRACTS_SCOTLAND_SOURCE_KEY,
+      status: "PARTIAL",
+      fetched: 0,
+      discovered: 0,
+    });
+    expect(classified.status).toBe("SUCCEEDED");
+    expect(classified.metadata).toMatchObject({ ok_with_zero: true });
+  });
+
+  it("completed 0-record run is success / ok-with-zero and does not fail", async () => {
     const store = createMemoryIngestionStore({
       sources: [publicContractsScotlandSourceRecord({ id: "source-pcs" })],
     });
@@ -249,8 +264,41 @@ describe("zero-record classification", () => {
       },
     });
 
-    expect(result.status).toBe("PARTIAL");
+    expect(result.status).toBe("SUCCEEDED");
     expect(result.counts.fetched).toBe(0);
-    expect(result.metadata).toMatchObject({ zero_records: true });
+    expect(result.metadata).toEqual({
+      zero_records: true,
+      ok_with_zero: true,
+      zero_records_reason: "public-contracts-scotland returned 0 records",
+    });
+    expect(openIngestShouldFail(result)).toBe(false);
+  });
+
+  it("completed 0-record Sell2Wales run does not fail either", async () => {
+    const store = createMemoryIngestionStore({
+      sources: [sell2WalesSourceRecord({ id: "source-s2w" })],
+    });
+    const result = await runOpenSell2WalesIngest({
+      store,
+      now: NOW,
+      dryRun: true,
+      backfillDays: 7,
+      sleep: async () => undefined,
+      http: {
+        async getJson(url) {
+          return {
+            url,
+            status: 200,
+            contentType: "application/json",
+            body: { releases: [] },
+            rawText: "{}",
+          };
+        },
+      },
+    });
+
+    expect(result.status).toBe("SUCCEEDED");
+    expect(result.metadata).toMatchObject({ zero_records: true, ok_with_zero: true });
+    expect(openIngestShouldFail(result)).toBe(false);
   });
 });

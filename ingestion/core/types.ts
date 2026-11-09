@@ -1,6 +1,7 @@
 import type { BuyerSector } from "@/lib/constants";
 import type { BuyerType, DealSector } from "@/lib/deals/buyer-taxonomy";
 import type { Database } from "@/lib/db/database.types";
+import type { TlsWarning } from "@/ingestion/core/tls";
 import type { DealStage, DealStatus, DealType } from "@/lib/search/filters";
 
 export type SourceType = Database["public"]["Enums"]["source_type"];
@@ -237,4 +238,5 @@ export type IngestionRunResult = {
     message: string;
     details?: Record<string, unknown>;
   }>;
+  warnings?: TlsWarning[];
 };

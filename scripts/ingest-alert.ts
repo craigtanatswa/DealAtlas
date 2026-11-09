@@ -18,7 +18,10 @@ async function main() {
     ingestOk: process.env.INGEST_OK,
     contractsFinderOk: process.env.CONTRACTS_FINDER_OK,
     publicContractsScotlandOk: process.env.PUBLIC_CONTRACTS_SCOTLAND_OK,
+    publicContractsScotlandWarnings:
+      process.env.PUBLIC_CONTRACTS_SCOTLAND_WARNINGS,
     sell2WalesOk: process.env.SELL2WALES_OK,
+    sell2WalesWarnings: process.env.SELL2WALES_WARNINGS,
     tedOk: process.env.TED_OK,
     findAGrantOk: process.env.FIND_A_GRANT_OK,
     innovateUkOk: process.env.INNOVATE_UK_OK,
