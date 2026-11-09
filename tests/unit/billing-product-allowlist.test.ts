@@ -115,9 +115,13 @@ describe("deployment product allowlist", () => {
   it("keeps the leak Pro seed on the leak app's monthly product id", () => {
     const sql = fs.readFileSync(path.join(ROOT, "tests/leak/seed/world.sql"), "utf8");
     const start = fs.readFileSync(path.join(ROOT, "tests/leak/start-app.sh"), "utf8");
+    const local = fs.readFileSync(path.join(ROOT, "tests/leak/run-local.sh"), "utf8");
+    const ci = fs.readFileSync(path.join(ROOT, ".github/workflows/ci.yml"), "utf8");
     const monthly = start.match(/DODO_PRO_MONTHLY_PRODUCT_ID="([^"]+)"/)?.[1];
     expect(monthly).toBeTruthy();
     expect(sql).toContain(`sub_leak_pro', '${monthly}'`);
+    expect(local).toContain(`DODO_PRO_MONTHLY_PRODUCT_ID:-${monthly}`);
+    expect(ci).toContain(`DODO_PRO_MONTHLY_PRODUCT_ID: ${monthly}`);
   });
 
   it("fails closed when server env cannot be read", () => {
