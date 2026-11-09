@@ -20,8 +20,8 @@ export type SubscriptionMirror = {
   planKey: string;
   billingInterval: BillingInterval | null;
   /**
-   * Dodo product id on the subscriptions row. Omitted only by status/period
-   * fixtures. Null does not grant Pro once an allowlist is applied.
+   * Dodo product id on the subscriptions row. Null or a value outside the
+   * caller's allowlist does not grant Pro.
    */
   dodoProductId?: string | null;
 };

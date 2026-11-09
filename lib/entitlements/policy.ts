@@ -48,18 +48,14 @@ function isCancelledAtPeriodEndPaidThrough(
 }
 
 /**
- * Status/period fixtures omit both the product id and the allowlist.
- * A stored product id (including null), or any supplied allowlist, fails
- * closed unless the id is a non-empty member of a non-empty set.
+ * Fail closed. An empty allowlist, a missing product id, or a product id
+ * outside the set never grants Pro. Callers must pass the set.
  */
 function productGrantsPro(
   subscription: SubscriptionMirror,
-  allowedProductIds: ReadonlySet<string> | undefined,
+  allowedProductIds: ReadonlySet<string>,
 ): boolean {
-  if (allowedProductIds === undefined && subscription.dodoProductId === undefined) {
-    return true;
-  }
-  if (!allowedProductIds || allowedProductIds.size === 0) {
+  if (allowedProductIds.size === 0) {
     return false;
   }
   const productId = subscription.dodoProductId?.trim() ?? "";
@@ -69,7 +65,7 @@ function productGrantsPro(
 function grantsPro(
   subscription: SubscriptionMirror,
   now: Date,
-  allowedProductIds: ReadonlySet<string> | undefined,
+  allowedProductIds: ReadonlySet<string>,
 ): boolean {
   if (!subscription.isCurrent) {
     return false;
@@ -94,9 +90,9 @@ function grantsPro(
  * - CANCELLED + cancel_at_period_end + current_period_end > now → PRO until period end
  * - ON_HOLD, FAILED, EXPIRED, PENDING, UNKNOWN, immediate cancel, or lapsed period → FREE
  *
- * `plan_key` is not an entitlement signal. When `allowedProductIds` is
- * passed, `dodo_product_id` must belong to that set. An empty set grants
- * Pro to nobody. Production always passes the deployment allowlist.
+ * `plan_key` is not an entitlement signal. `allowedProductIds` is required.
+ * `dodo_product_id` must belong to that set. An empty set grants Pro to
+ * nobody. Production passes the deployment allowlist from the environment.
  *
  * `private.is_user_pro` still checks status and paid-through only. Preview
  * and Production share one database, so that SQL helper cannot see this
@@ -104,8 +100,8 @@ function grantsPro(
  */
 export function resolveEntitlement(
   subscription: SubscriptionMirror | null,
-  now: Date = new Date(),
-  allowedProductIds?: ReadonlySet<string>,
+  now: Date,
+  allowedProductIds: ReadonlySet<string>,
 ): EntitlementSnapshot {
   if (!subscription) {
     return FREE_ENTITLEMENT;

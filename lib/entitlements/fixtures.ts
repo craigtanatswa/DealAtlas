@@ -7,6 +7,16 @@ export const ENTITLEMENT_FIXTURE_USER_ID =
 
 export const ENTITLEMENT_FIXTURE_NOW = new Date("2026-06-15T12:00:00.000Z");
 
+/**
+ * In-memory id for entitlement fixtures. Not a deployment allowlist entry.
+ * Production Pro uses `getAllowedProductIds()` and never reads this constant.
+ */
+export const ENTITLEMENT_FIXTURE_PRODUCT_ID = "pdt_entitlement_fixture_monthly";
+
+export const ENTITLEMENT_FIXTURE_ALLOWLIST: ReadonlySet<string> = new Set([
+  ENTITLEMENT_FIXTURE_PRODUCT_ID,
+]);
+
 export function createSubscriptionFixture(
   overrides: Partial<SubscriptionMirror> = {},
 ): SubscriptionMirror {
@@ -19,6 +29,7 @@ export function createSubscriptionFixture(
     currentPeriodEnd: "2026-07-01T00:00:00.000Z",
     planKey: "PRO",
     billingInterval: "MONTHLY",
+    dodoProductId: ENTITLEMENT_FIXTURE_PRODUCT_ID,
     ...overrides,
   };
 }
