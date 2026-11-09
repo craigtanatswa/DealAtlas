@@ -8,7 +8,7 @@ async function main() {
   const job = args.job;
   if (!job) {
     console.error(
-      "Usage: npm run job -- --job <ingest|previews|alerts|renewals|data-quality|publish-eligible|unpublish-stale|publish-alert|discover|expiry|health> [--mode live|test|dry-run]",
+      "Usage: npm run job -- --job <ingest|previews|alerts|renewals|data-quality|publish-eligible|unpublish-stale|refresh-deadline-bands|publish-alert|discover|expiry|health> [--mode live|test|dry-run]",
     );
     process.exitCode = 1;
     return;
@@ -105,6 +105,7 @@ async function dispatchJob(
     | "data-quality"
     | "publish-eligible"
     | "unpublish-stale"
+    | "refresh-deadline-bands"
     | "publish-alert"
     | "discover"
     | "expiry"
@@ -255,7 +256,12 @@ async function dispatchJob(
     return runHealthJob({ client });
   }
 
-  if (job === "publish-eligible" || job === "unpublish-stale" || job === "publish-alert") {
+  if (
+    job === "publish-eligible" ||
+    job === "unpublish-stale" ||
+    job === "refresh-deadline-bands" ||
+    job === "publish-alert"
+  ) {
     const { createIngestionSupabaseClient } = await import(
       "@/ingestion/store/worker-client"
     );
@@ -263,11 +269,34 @@ async function dispatchJob(
       "@/lib/jobs/publish-open"
     );
     const client = createIngestionSupabaseClient() as never;
+    if (job === "refresh-deadline-bands") {
+      const { refreshDeadlineBands } = await import(
+        "@/lib/jobs/refresh-deadline-bands"
+      );
+      const counts = await refreshDeadlineBands({
+        client,
+        apply: args.mode === "live",
+      });
+      return {
+        status: "SUCCEEDED",
+        dryRun: args.mode !== "live",
+        ...counts,
+      };
+    }
     if (job === "publish-eligible") {
       return runPublishEligible({ mode: args.mode, client, env: process.env });
     }
     if (job === "unpublish-stale") {
-      return runUnpublishStale({ mode: args.mode, client, env: process.env });
+      const { refreshDeadlineBands } = await import(
+        "@/lib/jobs/refresh-deadline-bands"
+      );
+      return runUnpublishStale({
+        mode: args.mode,
+        client,
+        env: process.env,
+        refreshBands: (now) =>
+          refreshDeadlineBands({ client, now, apply: true }),
+      });
     }
     return runPublishAlert({ mode: args.mode, client, env: process.env });
   }

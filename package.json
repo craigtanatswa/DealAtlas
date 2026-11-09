@@ -35,6 +35,7 @@
     "rebuild-matches": "tsx scripts/rebuild-matches.ts",
     "send-alerts": "tsx --import ./scripts/allow-server-only.mjs scripts/send-alerts.ts",
     "job": "tsx --import ./scripts/allow-server-only.mjs scripts/run-job.ts",
+    "refresh-deadline-bands": "tsx --import ./scripts/allow-server-only.mjs scripts/run-job.ts --job refresh-deadline-bands",
     "leak-scan": "tsx --import ./scripts/allow-server-only.mjs scripts/leak-scan.ts"
   },
   "dependencies": {
