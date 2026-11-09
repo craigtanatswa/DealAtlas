@@ -13,6 +13,7 @@ import { appDealPath, parseDealIdParam } from "@/lib/deals/paths";
 import { loadPaidDealDto } from "@/lib/deals/protected";
 import { loadDealHistory } from "@/lib/intelligence/protected";
 import { readFoundingPublicCount } from "@/lib/billing/founding-public";
+import { paymentPendingFor } from "@/lib/billing/payment-pending";
 import { isProEntitlement } from "@/lib/entitlements/policy";
 import { getCurrentEntitlement } from "@/lib/entitlements/service";
 import { loadExportUsageForMonth } from "@/lib/exports/usage";
@@ -154,7 +155,7 @@ export default async function AppDealPage({ params, searchParams }: PageProps) {
           returnTo: appDealPath(dealId),
           revealHref: appDealPath(dealId),
           founding: foundingCount,
-          paymentPending: upgraded,
+          paymentPending: paymentPendingFor({ signedIn: true, upgraded, isPro }),
         }}
       />
     </Main>

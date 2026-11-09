@@ -12,6 +12,7 @@ import { loginPathWithNext } from "@/lib/auth/redirect";
 import { getAppOrigin } from "@/lib/auth/urls";
 import { appDealPath } from "@/lib/deals/paths";
 import { readFoundingPublicCount } from "@/lib/billing/founding-public";
+import { paymentPendingFor } from "@/lib/billing/payment-pending";
 import { isProEntitlement } from "@/lib/entitlements/policy";
 import { getCurrentEntitlement } from "@/lib/entitlements/service";
 import { featureLimit } from "@/lib/quotas";
@@ -121,7 +122,11 @@ export default async function DealPreviewPage({ params, searchParams }: PageProp
           revealHref: dealId ? appDealPath(dealId) : undefined,
           returnTo: dealId ? appDealPath(dealId) : undefined,
           founding: founding ?? undefined,
-          paymentPending: Boolean(user) && upgraded && mode !== "pro",
+          paymentPending: paymentPendingFor({
+            signedIn: Boolean(user),
+            upgraded,
+            isPro: mode === "pro",
+          }),
         }}
       />
     </Main>

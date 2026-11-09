@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { Loader2Icon, LockIcon } from "lucide-react";
+import { LockIcon } from "lucide-react";
 
 import { CheckoutPlanForm } from "@/components/billing/checkout-plan-form";
+import { PaymentPendingNotice } from "@/components/billing/payment-pending-notice";
 import { FoundingButtonLabel, ProAnnualButtonLabel } from "@/components/billing/founding-price";
 import { FoundingCheckoutButton } from "@/components/billing/founding-checkout-button";
 import { Button } from "@/components/ui/button";
@@ -135,22 +136,7 @@ export function DealProCard({
 
       {paymentPending ? (
         <div className="border-t border-border p-5">
-          <div
-            role="status"
-            className="rounded-lg border border-emerald-300 bg-emerald-50/60 p-4"
-          >
-            <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
-              <Loader2Icon
-                className="size-4 animate-spin text-primary motion-reduce:animate-none"
-                aria-hidden="true"
-              />
-              Confirming your payment…
-            </p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Details unlock here automatically once payment is confirmed. You
-              don’t need to pay again.
-            </p>
-          </div>
+          <PaymentPendingNotice />
         </div>
       ) : null}
 
