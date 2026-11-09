@@ -388,7 +388,7 @@ export type IngestionStore = {
     patch: Partial<
       Pick<
         DataSourceRecord,
-        "lastSuccessAt" | "consecutiveFailures" | "apiUrl" | "termsCheckedAt"
+        "lastSuccessAt" | "consecutiveFailures" | "apiUrl" | "termsCheckedAt" | "lastError"
       >
     >,
   ): Promise<void>;

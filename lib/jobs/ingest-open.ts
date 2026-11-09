@@ -7,7 +7,10 @@ import {
 } from "@/ingestion/core/http";
 import { runIngestion } from "@/ingestion/core/pipeline";
 import { defaultSleep } from "@/ingestion/core/retry";
-import { createPublicContractsScotlandFetch } from "@/ingestion/core/tls";
+import {
+  createPublicContractsScotlandFetch,
+  type TlsWarning,
+} from "@/ingestion/core/tls";
 import { createContractsFinderAdapter } from "@/ingestion/sources/contracts-finder/adapter";
 import {
   CONTRACTS_FINDER_FETCH_POLICY,
@@ -96,6 +99,7 @@ export type OpenIngestResult = {
   counts: OpenIngestCounts;
   changedDealIds: string[];
   errors: OpenIngestError[];
+  warnings?: TlsWarning[];
   metadata?: Record<string, unknown>;
 };
 
@@ -201,6 +205,12 @@ export function openIngestShouldFail(result: OpenIngestResult): boolean {
   if (result.status === "FAILED") {
     return true;
   }
+  if (
+    result.status === "SUCCEEDED" &&
+    (result.metadata?.ok_with_zero === true || result.metadata?.zero_records === true)
+  ) {
+    return false;
+  }
   const fetchFailed = result.errors.some(
     (error) =>
       error.stage === "discover" || error.stage === "fetch" || error.stage === "run",
@@ -227,14 +237,22 @@ export type ZeroRecordRunClassification = {
   status: OpenIngestResult["status"];
   zeroRecords: boolean;
   reason: string | null;
-  metadata?: { zero_records: true; zero_records_reason: string };
+  metadata?: {
+    zero_records: true;
+    ok_with_zero: true;
+    zero_records_reason: string;
+  };
 };
 
 export function isZeroRecordSource(sourceKey: string): boolean {
   return (ZERO_RECORD_SOURCE_KEYS as readonly string[]).includes(sourceKey);
 }
 
-/** A quiet empty response from PCS/Sell2Wales is not a successful run. */
+/**
+ * A completed run from PCS/Sell2Wales that fetches or discovers 0 records is a
+ * success (ok-with-zero). An empty quiet response is not a failure or a partial
+ * import and must not fire an ingest alert.
+ */
 export function classifyZeroRecordRun(input: {
   sourceKey: string;
   status: OpenIngestResult["status"];
@@ -252,10 +270,10 @@ export function classifyZeroRecordRun(input: {
   }
   const reason = `${input.sourceKey} returned 0 records`;
   return {
-    status: "PARTIAL",
+    status: "SUCCEEDED",
     zeroRecords: true,
     reason,
-    metadata: { zero_records: true, zero_records_reason: reason },
+    metadata: { zero_records: true, ok_with_zero: true, zero_records_reason: reason },
   };
 }
 
@@ -272,14 +290,17 @@ function escapeAnnotationData(value: string): string {
   return value.replace(/%/g, "%25").replace(/\r/g, "%0D").replace(/\n/g, "%0A");
 }
 
-export function zeroRecordWarningLine(
+export function zeroRecordNoticeLine(
   source: string,
-  reason = "No records fetched or discovered; run marked PARTIAL",
+  reason = "No records fetched or discovered; completed run ok-with-zero",
 ): string {
-  return `::warning title=${escapeAnnotationProperty(
+  return `::notice title=${escapeAnnotationProperty(
     `${source} returned 0 records`,
   )}::${escapeAnnotationData(reason)}`;
 }
+
+/** @deprecated Use zeroRecordNoticeLine; zero-record runs are informational. */
+export const zeroRecordWarningLine = zeroRecordNoticeLine;
 
 function classifyIngestionRun(input: {
   sourceKey: string;
@@ -460,6 +481,7 @@ export async function runOpenFindATenderIngest(options: {
 
   const counts = emptyCounts();
   const errors: OpenIngestError[] = [];
+  const warnings: TlsWarning[] = [];
   const changed = new Set<string>(options.dealIds ?? []);
   const phase = options.phase ?? "all";
   const recordCap = options.limit ?? MAX_RECORDS;
@@ -510,6 +532,7 @@ export async function runOpenFindATenderIngest(options: {
       counts.unchanged += result.counters.unchanged;
       counts.failed += result.counters.errorCount;
       remaining -= result.counters.fetched;
+      warnings.push(...(result.warnings ?? []));
       for (const error of result.errors) {
         errors.push({
           stage: error.stage,
@@ -526,6 +549,7 @@ export async function runOpenFindATenderIngest(options: {
           counts,
           changedDealIds: [],
           errors,
+          ...(warnings.length > 0 ? { warnings } : {}),
         };
       }
       const fetchLevel =
@@ -609,6 +633,7 @@ export async function runOpenFindATenderIngest(options: {
     counts,
     changedDealIds: phase === "previews" ? [] : [...changed],
     errors,
+    ...(warnings.length > 0 ? { warnings } : {}),
     metadata,
   };
 }
@@ -750,6 +775,7 @@ export async function runOpenCatalogueIngest(options: {
   }
   const counts = emptyCounts();
   const errors: OpenIngestError[] = [];
+  const warnings: TlsWarning[] = [];
   const changed = new Set<string>(options.dealIds ?? []);
   const phase = options.phase ?? "all";
   let status: OpenIngestResult["status"] = "SUCCEEDED";
@@ -786,6 +812,7 @@ export async function runOpenCatalogueIngest(options: {
     if (result.truncated) {
       counts.capped = 1;
     }
+    warnings.push(...(result.warnings ?? []));
     for (const error of result.errors) {
       errors.push({
         stage: error.stage,
@@ -801,6 +828,7 @@ export async function runOpenCatalogueIngest(options: {
         counts,
         changedDealIds: [],
         errors,
+        ...(warnings.length > 0 ? { warnings } : {}),
       };
     }
     if (result.status === "FAILED" || result.status === "PARTIAL" || result.truncated) {
@@ -861,6 +889,7 @@ export async function runOpenCatalogueIngest(options: {
     counts,
     changedDealIds: phase === "previews" ? [] : [...changed],
     errors,
+    ...(warnings.length > 0 ? { warnings } : {}),
     metadata,
   };
 }
