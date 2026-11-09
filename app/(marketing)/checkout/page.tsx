@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/card";
 import { parseCheckoutPlan, signupPathForPlan } from "@/lib/auth/redirect";
 import { getCurrentAccount } from "@/lib/auth/session";
+import { isProAnnualEnabled } from "@/lib/billing/annual-enabled";
 import { priceLabel } from "@/lib/billing/display";
 import {
   FOUNDING_PLAN_KEY,
@@ -47,7 +48,9 @@ export default async function CheckoutPage({
   const rawPlan = firstParam(params.plan);
   const founding = rawPlan === FOUNDING_PLAN_KEY;
   const plan = founding ? null : parseCheckoutPlan(rawPlan);
-  if (!founding && !plan) {
+  const annualEnabled = isProAnnualEnabled();
+  // Pro annual not offered: its confirm page does not exist either.
+  if ((!founding && !plan) || (plan === "PRO_ANNUAL" && !annualEnabled)) {
     redirect("/pricing");
   }
 
@@ -63,9 +66,12 @@ export default async function CheckoutPage({
     <Main width="narrow" className="gap-6">
       {founding || !plan ? (
         foundingState === "available" ? (
-          <FoundingCheckoutSummary founding={count ?? undefined} />
+          <FoundingCheckoutSummary
+            founding={count ?? undefined}
+            annualEnabled={annualEnabled}
+          />
         ) : (
-          <FoundingFullCheckout />
+          <FoundingFullCheckout annualEnabled={annualEnabled} />
         )
       ) : (
         <>

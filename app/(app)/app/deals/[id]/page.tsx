@@ -12,6 +12,7 @@ import { DatabaseQueryError } from "@/lib/db/errors";
 import { appDealPath, parseDealIdParam } from "@/lib/deals/paths";
 import { loadPaidDealDto } from "@/lib/deals/protected";
 import { loadDealHistory } from "@/lib/intelligence/protected";
+import { isProAnnualEnabled } from "@/lib/billing/annual-enabled";
 import { readFoundingPublicCount } from "@/lib/billing/founding-public";
 import { isProEntitlement } from "@/lib/entitlements/policy";
 import { getCurrentEntitlement } from "@/lib/entitlements/service";
@@ -154,6 +155,7 @@ export default async function AppDealPage({ params, searchParams }: PageProps) {
           returnTo: appDealPath(dealId),
           revealHref: appDealPath(dealId),
           founding: foundingCount,
+          annualEnabled: isProAnnualEnabled(),
         }}
       />
     </Main>

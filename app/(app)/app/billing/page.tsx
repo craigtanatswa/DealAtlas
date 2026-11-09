@@ -13,6 +13,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { requireUser } from "@/lib/auth/session";
+import { isProAnnualEnabled } from "@/lib/billing/annual-enabled";
 import { readFoundingMember } from "@/lib/billing/founding-db";
 import { loadDodoCustomerIdForUser } from "@/lib/billing/store";
 import { getCurrentEntitlement } from "@/lib/entitlements/service";
@@ -37,6 +38,7 @@ export default async function BillingPage({
     readFoundingMember(user.id),
   ]);
   const pro = isProEntitlement(entitlement);
+  const annualEnabled = isProAnnualEnabled();
 
   return (
     <Main className="gap-10">
@@ -60,20 +62,24 @@ export default async function BillingPage({
           <CardHeader>
             <CardTitle>Upgrade to DealAtlas Pro</CardTitle>
             <CardDescription>
-              {DISPLAY_PRICING.proMonthly} or {DISPLAY_PRICING.proAnnual}. Product
-              IDs stay on the server.
+              {annualEnabled
+                ? `${DISPLAY_PRICING.proMonthly} or ${DISPLAY_PRICING.proAnnual}.`
+                : `${DISPLAY_PRICING.proMonthly}.`}{" "}
+              Product IDs stay on the server.
             </CardDescription>
           </CardHeader>
-          <CardContent className="grid gap-6 sm:grid-cols-2">
+          <CardContent className={annualEnabled ? "grid gap-6 sm:grid-cols-2" : "grid gap-6"}>
             <CheckoutPlanForm
               planKey="PRO_MONTHLY"
               label="Subscribe monthly"
               recommended
             />
-            <CheckoutPlanForm
-              planKey="PRO_ANNUAL"
-              label={<ProAnnualButtonLabel text="Subscribe annually" />}
-            />
+            {annualEnabled ? (
+              <CheckoutPlanForm
+                planKey="PRO_ANNUAL"
+                label={<ProAnnualButtonLabel text="Subscribe annually" />}
+              />
+            ) : null}
           </CardContent>
         </Card>
       )}

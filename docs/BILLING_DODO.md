@@ -33,9 +33,15 @@ DODO_PRO_MONTHLY_PRODUCT_ID=
 DODO_PRO_ANNUAL_PRODUCT_ID=
 DODO_PRO_ANNUAL_LEGACY_PRODUCT_IDS=
 DODO_FOUNDING_PRODUCT_ID=
+SHOW_ANNUAL=
 ```
 
 Production uses `live_mode` and production return URL.
+
+Pro annual is offered only when `SHOW_ANNUAL=true` **and** `DODO_PRO_ANNUAL_PRODUCT_ID`
+is set. Both are server-only; `lib/billing/annual-enabled.ts` (`isProAnnualEnabled()`) is
+the single source of truth for the pages and for `/api/billing/checkout`, which refuses
+`PRO_ANNUAL` with a generic 400 `INVALID_PLAN` before any Dodo call when it is false.
 
 ## 4. Integration
 Prefer the official `@dodopayments/nextjs` adapter for Next.js App Router.

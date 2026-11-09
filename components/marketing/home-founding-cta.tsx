@@ -18,9 +18,12 @@ import {
 export function HomeFoundingCta({
   signedIn,
   founding,
+  annualEnabled,
 }: {
   signedIn: boolean;
   founding?: FoundingPublicCount;
+  /** From isProAnnualEnabled() on the server. Only used by the founding-full fallback. */
+  annualEnabled: boolean;
 }) {
   if (foundingUiState(founding) !== "available") return null;
 
@@ -58,6 +61,7 @@ export function HomeFoundingCta({
                   returnTo="/pricing"
                   className="mt-5"
                   buttonClassName="bg-[#00806A] text-white hover:bg-[#006b56]"
+                  annualEnabled={annualEnabled}
                 />
               ) : (
                 <Button asChild className="mt-5 h-auto min-h-11 w-full whitespace-normal py-2 bg-[#00806A] text-white hover:bg-[#006b56]">

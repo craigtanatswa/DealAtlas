@@ -14,6 +14,7 @@ import { getAppOrigin } from "@/lib/auth/urls";
 import { foundingUiState } from "@/lib/billing/founding-ui";
 import { readFoundingPublicCount } from "@/lib/billing/founding-public";
 import { getHomeSearchChips } from "@/lib/search/home-chips-server";
+import { isProAnnualEnabled } from "@/lib/billing/annual-enabled";
 import { searchLiveHomePreviews } from "@/lib/search/public";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { organizationJsonLd, webPageJsonLd } from "@/lib/seo/json-ld";
@@ -62,7 +63,11 @@ export default async function HomePage() {
         signedIn={Boolean(user)}
       />
       {foundingState === "available" ? (
-        <HomeFoundingCta signedIn={Boolean(user)} founding={founding} />
+        <HomeFoundingCta
+          signedIn={Boolean(user)}
+          founding={founding}
+          annualEnabled={isProAnnualEnabled()}
+        />
       ) : null}
       <HomeTestimonialsSection />
       <Container className="flex flex-col gap-16 py-12 md:py-16">

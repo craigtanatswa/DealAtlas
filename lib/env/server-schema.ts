@@ -12,6 +12,8 @@ export const serverEnvSchema = z.object({
   DODO_PRO_ANNUAL_PRODUCT_ID: z.string().min(1).optional(),
   DODO_PRO_ANNUAL_LEGACY_PRODUCT_IDS: z.string().optional(),
   DODO_FOUNDING_PRODUCT_ID: z.string().min(1).optional(),
+  /** Server-only. "true" (with DODO_PRO_ANNUAL_PRODUCT_ID set) offers Pro annual. */
+  SHOW_ANNUAL: z.string().optional(),
   RESEND_API_KEY: z.string().min(1).optional(),
   DEALATLAS_EMAIL_FROM: z.string().min(1).optional(),
   DEALATLAS_EMAIL_TEST_TO: z.email().optional(),
@@ -43,6 +45,7 @@ export const SERVER_ENV_KEYS = [
   "DODO_PRO_ANNUAL_PRODUCT_ID",
   "DODO_PRO_ANNUAL_LEGACY_PRODUCT_IDS",
   "DODO_FOUNDING_PRODUCT_ID",
+  "SHOW_ANNUAL",
   "RESEND_API_KEY",
   "DEALATLAS_EMAIL_FROM",
   "DEALATLAS_EMAIL_TEST_TO",

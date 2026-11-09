@@ -41,6 +41,7 @@ export function DealProCard({
   founding,
   alertsHref,
   idSuffix = "default",
+  annualEnabled,
 }: {
   mode?: "anonymous" | "free" | "pro";
   loginHref?: string;
@@ -49,6 +50,8 @@ export function DealProCard({
   founding?: FoundingPublicCount;
   alertsHref: string;
   idSuffix?: string;
+  /** From isProAnnualEnabled() on the server. False removes the annual link. */
+  annualEnabled: boolean;
 }) {
   const headingId = `pro-card-heading-${idSuffix}`;
 
@@ -137,6 +140,7 @@ export function DealProCard({
               <FoundingCheckoutButton
                 label={<FoundingButtonLabel text={FOUNDING_COPY.cta} />}
                 returnTo={returnTo}
+                annualEnabled={annualEnabled}
               />
             ) : (
               <Button asChild className="h-auto min-h-11 w-full whitespace-normal py-2">
@@ -190,7 +194,7 @@ export function DealProCard({
             <p className="mt-2 text-center text-xs font-medium text-foreground/80">
               Cancel any time · VAT incl.
             </p>
-            {mode === "free" ? (
+            {!annualEnabled ? null : mode === "free" ? (
               <CheckoutPlanForm
                 planKey="PRO_ANNUAL"
                 label={<ProAnnualButtonLabel text={FOUNDING_COPY.soldOutAnnual} />}

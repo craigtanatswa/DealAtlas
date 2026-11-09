@@ -179,9 +179,9 @@ describe("founding member checkout", () => {
       expect(label).not.toMatch(/\d+\s+places?\s+left/i);
       expect(label).not.toContain("Founding places available");
     }
-    expect(foundingSoldOutNote()).toContain("Founding membership is full.");
-    expect(foundingSoldOutNote()).not.toMatch(/\d+\s*(places?|customers?|remaining|cap)/i);
-    expect(foundingSoldOutNote()).not.toContain("Founding places available");
+    expect(foundingSoldOutNote(true)).toContain("Founding membership is full.");
+    expect(foundingSoldOutNote(true)).not.toMatch(/\d+\s*(places?|customers?|remaining|cap)/i);
+    expect(foundingSoldOutNote(true)).not.toContain("Founding places available");
     expect(FOUNDING_COPY.cancelTerms).toBe(
       "If you cancel, you lose founding status and the £290/yr price.",
     );

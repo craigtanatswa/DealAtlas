@@ -5,6 +5,7 @@ import { Main } from "@/components/layout/container";
 import { JsonLd } from "@/components/seo/json-ld";
 import { getAuthUser } from "@/lib/auth/session";
 import { getAppOrigin } from "@/lib/auth/urls";
+import { isProAnnualEnabled } from "@/lib/billing/annual-enabled";
 import { readFoundingPublicCount } from "@/lib/billing/founding-public";
 import { webPageJsonLd } from "@/lib/seo/json-ld";
 import { marketingPageMetadata } from "@/lib/seo/metadata";
@@ -36,7 +37,12 @@ export default async function PricingPage() {
         })}
       />
       {/* Founding full or not offered: PricingPlans drops the founding card entirely. */}
-      <PricingPlans signedIn={Boolean(user)} founding={founding} />
+      {/* Pro annual not offered: PricingPlans drops the annual card entirely. */}
+      <PricingPlans
+        signedIn={Boolean(user)}
+        founding={founding}
+        annualEnabled={isProAnnualEnabled()}
+      />
       <p className="text-center text-sm text-muted-foreground">
         All prices include VAT.
       </p>

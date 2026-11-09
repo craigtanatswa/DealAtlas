@@ -22,12 +22,15 @@ export function FoundingUnlockActions({
   founding,
   mode,
   returnTo,
+  annualEnabled,
 }: {
   state?: Exclude<FoundingUiState, "hidden">;
   founding?: FoundingPublicCount;
   mode: "anonymous" | "free";
   loginHref?: string;
   returnTo?: string;
+  /** From isProAnnualEnabled() on the server. False removes the annual link. */
+  annualEnabled: boolean;
 }) {
   const state = founding ? foundingUiState(founding) : (stateProp ?? "hidden");
 
@@ -46,25 +49,29 @@ export function FoundingUnlockActions({
               className="w-full"
               buttonClassName="w-full"
             />
-            <CheckoutPlanForm
-              planKey="PRO_ANNUAL"
-              label={<ProAnnualButtonLabel text={FOUNDING_COPY.soldOutAnnual} />}
-              showPrice={false}
-              variant="link"
-              returnTo={returnTo}
-              className="justify-center"
-            />
+            {annualEnabled ? (
+              <CheckoutPlanForm
+                planKey="PRO_ANNUAL"
+                label={<ProAnnualButtonLabel text={FOUNDING_COPY.soldOutAnnual} />}
+                showPrice={false}
+                variant="link"
+                returnTo={returnTo}
+                className="justify-center"
+              />
+            ) : null}
           </>
         ) : (
           <>
             <Button asChild className="h-11 w-full">
               <Link href={signupPathForPlan("PRO_MONTHLY")}>{FOUNDING_COPY.soldOutMonthly}</Link>
             </Button>
-            <Button asChild variant="link">
-              <Link href={signupPathForPlan("PRO_ANNUAL")}>
-                <ProAnnualButtonLabel text={FOUNDING_COPY.soldOutAnnual} />
-              </Link>
-            </Button>
+            {annualEnabled ? (
+              <Button asChild variant="link">
+                <Link href={signupPathForPlan("PRO_ANNUAL")}>
+                  <ProAnnualButtonLabel text={FOUNDING_COPY.soldOutAnnual} />
+                </Link>
+              </Button>
+            ) : null}
           </>
         )}
       </div>
@@ -78,6 +85,7 @@ export function FoundingUnlockActions({
           label={<FoundingButtonLabel text={FOUNDING_COPY.cta} />}
           returnTo={returnTo}
           buttonClassName={FOUNDING_BUTTON}
+          annualEnabled={annualEnabled}
         />
       ) : (
         <Button asChild className={`h-auto min-h-11 whitespace-normal py-2 ${FOUNDING_BUTTON}`}>

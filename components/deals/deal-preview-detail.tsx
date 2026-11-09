@@ -115,6 +115,8 @@ export function DealPreviewDetail({
     revealHref?: string;
     returnTo?: string;
     founding?: FoundingPublicCount;
+    /** From isProAnnualEnabled() on the server. Omitted hides Pro annual. */
+    annualEnabled?: boolean;
   };
   signedIn?: boolean;
 }) {
@@ -146,6 +148,7 @@ export function DealPreviewDetail({
     revealHref: unlock?.revealHref,
     returnTo: unlock?.returnTo,
     founding,
+    annualEnabled: unlock?.annualEnabled ?? false,
     alertsHref: signedIn
       ? "/app/alerts"
       : signupPathWithAlert(`/deals/${deal.slug}`),

@@ -1,5 +1,9 @@
 import { SIGNUP_PATH } from "@/lib/auth/redirect";
-import { FOUNDING_NOT_ELIGIBLE_MESSAGE } from "@/lib/billing/founding";
+import {
+  FOUNDING_NOT_ELIGIBLE_MESSAGE,
+  foundingNotEligibleMessage,
+  foundingUnavailableMessage,
+} from "@/lib/billing/founding";
 import type { CheckoutPlanKey } from "@/lib/billing/types";
 import { DISPLAY_PRICING } from "@/lib/constants";
 
@@ -8,6 +12,23 @@ export const FOUNDING_PLAN_KEY = "FOUNDING" satisfies CheckoutPlanKey;
 
 /** Fallback copy for a FOUNDING_CAP_FULL error when the server sends no message. */
 export const FOUNDING_FULL_MESSAGE = `Founding places are all taken. You can still subscribe to Pro annual at ${DISPLAY_PRICING.proAnnual}.`;
+
+/** Founding full copy. Names Pro annual only while annual is offered. */
+export function foundingFullMessage(annualEnabled: boolean): string {
+  return annualEnabled ? FOUNDING_FULL_MESSAGE : foundingUnavailableMessage(false);
+}
+
+/** Founding rejoin copy. Names Pro annual only while annual is offered. */
+export function foundingNotEligibleLead(annualEnabled: boolean): string {
+  return foundingNotEligibleMessage(annualEnabled);
+}
+
+/** Founding race body. Offers monthly when Pro annual is not offered. */
+export function foundingRaceBody(annualEnabled: boolean): string {
+  return annualEnabled
+    ? FOUNDING_COPY.raceBody
+    : `Continue with Pro monthly at ${DISPLAY_PRICING.proMonthly.replace("/month", "/mo")}?`;
+}
 
 /** /checkout for the founding plan. */
 export function foundingCheckoutPath(): string {
@@ -133,8 +154,8 @@ export function foundingPaywallPlaces(): string {
 }
 
 /** Sold-out note. Deliberately carries no count or cap. */
-export function foundingSoldOutNote(): string {
-  return `Founding membership is full. ${FOUNDING_FULL_MESSAGE}`;
+export function foundingSoldOutNote(annualEnabled: boolean): string {
+  return `Founding membership is full. ${foundingFullMessage(annualEnabled)}`;
 }
 
 export const FOUNDING_COPY = {

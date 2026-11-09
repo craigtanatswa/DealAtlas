@@ -5,6 +5,7 @@ import { Heading } from "@/components/layout/heading";
 import { Main } from "@/components/layout/container";
 import { loginPathWithNext } from "@/lib/auth/redirect";
 import { getAuthUser } from "@/lib/auth/session";
+import { isProAnnualEnabled } from "@/lib/billing/annual-enabled";
 import { parseCheckoutReturnTo } from "@/lib/deals/paths";
 import {
   getPublicDealPreviewPageByDealId,
@@ -75,6 +76,7 @@ export default async function FoundingFullPage({
         returnTo={returnTo ?? undefined}
         returnTitle={returnTitle}
         notEligible={firstParam(params.reason) === "not_eligible"}
+        annualEnabled={isProAnnualEnabled()}
       />
     </Main>
   );

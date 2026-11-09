@@ -9,7 +9,7 @@ import {
 import { Heading } from "@/components/layout/heading";
 import {
   FOUNDING_COPY,
-  FOUNDING_FULL_MESSAGE,
+  foundingFullMessage,
   foundingDueToday,
   foundingUiState,
   proMonthlyShort,
@@ -19,8 +19,11 @@ import {
 /** Founding plan summary on /checkout. Renders only while the offer is available. */
 export function FoundingCheckoutSummary({
   founding,
+  annualEnabled,
 }: {
   founding?: FoundingPublicCount;
+  /** From isProAnnualEnabled() on the server. Only used by the founding-full fallback. */
+  annualEnabled: boolean;
 }) {
   if (foundingUiState(founding) !== "available") return null;
 
@@ -71,6 +74,7 @@ export function FoundingCheckoutSummary({
           label={<FoundingButtonLabel text="Continue to payment" />}
           returnTo="/pricing"
           buttonClassName="bg-[#00806A] text-white hover:bg-[#006b56]"
+          annualEnabled={annualEnabled}
         />
         <CheckoutPlanForm
           planKey="PRO_MONTHLY"
@@ -87,9 +91,32 @@ export function FoundingCheckoutSummary({
 
 /**
  * /checkout?plan=FOUNDING when founding is full or not offered: no founding summary,
- * just the full-founding copy and the standard Pro annual option.
+ * just the full-founding copy and the standard Pro annual option. With annual not
+ * offered (isProAnnualEnabled() false), Pro monthly is the only option.
  */
-export function FoundingFullCheckout() {
+export function FoundingFullCheckout({ annualEnabled }: { annualEnabled: boolean }) {
+  if (!annualEnabled) {
+    return (
+      <>
+        <Heading>Confirm your plan</Heading>
+        <p
+          role="alert"
+          className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-pretty text-amber-900"
+        >
+          {foundingFullMessage(false)}
+        </p>
+        <CheckoutPlanForm
+          planKey="PRO_MONTHLY"
+          label={FOUNDING_COPY.soldOutMonthly}
+          showPrice={false}
+          returnTo="/pricing"
+          className="w-full"
+          buttonClassName="h-11 w-full"
+        />
+      </>
+    );
+  }
+
   return (
     <>
       <Heading>Confirm your plan</Heading>
@@ -97,7 +124,7 @@ export function FoundingFullCheckout() {
         role="alert"
         className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-pretty text-amber-900"
       >
-        {FOUNDING_FULL_MESSAGE}
+        {foundingFullMessage(true)}
       </p>
       <section className="rounded-xl border-2 border-primary bg-background p-5 shadow-sm">
         <h2 className="font-heading text-base font-semibold">Pro annual</h2>

@@ -66,21 +66,21 @@ function sourceFiles(dir: string): string[] {
 describe("founding UI only receives the public count shape", () => {
   it("renders every founding surface without a count, cap or places-left copy", () => {
     const surfaces = [
-      <PricingPlans key="pricing" signedIn founding={openCount} />,
-      <HomeFoundingCta key="home" signedIn founding={openCount} />,
-      <DealProCard
+      <PricingPlans annualEnabled key="pricing" signedIn founding={openCount} />,
+      <HomeFoundingCta annualEnabled key="home" signedIn founding={openCount} />,
+      <DealProCard annualEnabled
         key="deal"
         mode="free"
         founding={openCount}
         alertsHref="/app/alerts"
       />,
       <UnlockPanel key="unlock" mode="free" founding={openCount} />,
-      <FoundingUnlockActions
+      <FoundingUnlockActions annualEnabled
         key="actions"
         founding={openCount}
         mode="anonymous"
       />,
-      <FoundingCheckoutSummary key="summary" founding={openCount} />,
+      <FoundingCheckoutSummary annualEnabled key="summary" founding={openCount} />,
     ];
 
     for (const surface of surfaces) {
@@ -92,18 +92,18 @@ describe("founding UI only receives the public count shape", () => {
 
   it("hides founding CTAs when the offer is missing, not offered or sold out", () => {
     expect(
-      renderToString(<HomeFoundingCta signedIn founding={notOfferedCount} />),
+      renderToString(<HomeFoundingCta annualEnabled signedIn founding={notOfferedCount} />),
     ).toBe("");
     expect(
-      renderToString(<FoundingCheckoutSummary founding={notOfferedCount} />),
+      renderToString(<FoundingCheckoutSummary annualEnabled founding={notOfferedCount} />),
     ).toBe("");
-    expect(renderToString(<HomeFoundingCta signedIn />)).toBe("");
-    expect(renderToString(<FoundingCheckoutSummary />)).toBe("");
+    expect(renderToString(<HomeFoundingCta annualEnabled signedIn />)).toBe("");
+    expect(renderToString(<FoundingCheckoutSummary annualEnabled />)).toBe("");
 
     for (const founding of [soldOutCount, notOfferedCount, undefined]) {
       expect(
         renderToString(
-          <DealProCard
+          <DealProCard annualEnabled
             mode="free"
             founding={founding}
             alertsHref="/app/alerts"
@@ -140,38 +140,43 @@ describe("founding prop types", () => {
     type ActionsProps = Parameters<typeof FoundingUnlockActions>[0];
     type SummaryProps = Parameters<typeof FoundingCheckoutSummary>[0];
 
-    const pricing: PricingProps = { signedIn: true, founding: openCount };
-    const home: HomeProps = { signedIn: true, founding: openCount };
+    const pricing: PricingProps = { signedIn: true, founding: openCount, annualEnabled: true };
+    const home: HomeProps = { signedIn: true, founding: openCount, annualEnabled: true };
     const deal: DealProps = {
       mode: "free",
       founding: openCount,
       alertsHref: "/app/alerts",
+      annualEnabled: true,
     };
     const unlock: UnlockProps = { mode: "free", founding: openCount };
-    const actions: ActionsProps = { founding: openCount, mode: "anonymous" };
-    const summary: SummaryProps = { founding: openCount };
+    const actions: ActionsProps = { founding: openCount, mode: "anonymous", annualEnabled: true };
+    const summary: SummaryProps = { founding: openCount, annualEnabled: true };
 
     const badPricingRemaining: PricingProps = {
       signedIn: true,
+      annualEnabled: true,
       // @ts-expect-error remaining is not part of the public founding count
       founding: { offered: true, sold_out: false, remaining: 1 },
     };
     const badPricingCap: PricingProps = {
       signedIn: true,
+      annualEnabled: true,
       // @ts-expect-error cap is not part of the public founding count
       founding: { offered: true, sold_out: false, cap: 25 },
     };
     const badPricingAvailable: PricingProps = {
       signedIn: true,
+      annualEnabled: true,
       // @ts-expect-error availability is not part of the public founding count
       founding: { offered: true, sold_out: false, available: true },
     };
     // @ts-expect-error the home CTA takes a count object, not a bare remaining count
-    const badHome: HomeProps = { signedIn: true, remaining: 1 };
+    const badHome: HomeProps = { signedIn: true, annualEnabled: true, remaining: 1 };
     // @ts-expect-error the home CTA does not take availability
-    const badHomeAvailable: HomeProps = { signedIn: true, available: true };
+    const badHomeAvailable: HomeProps = { signedIn: true, annualEnabled: true, available: true };
     const badDeal: DealProps = {
       mode: "free",
+      annualEnabled: true,
       // @ts-expect-error founding cannot carry a remaining count
       founding: { offered: true, sold_out: false, remaining: 1 },
       alertsHref: "/app/alerts",
@@ -187,13 +192,13 @@ describe("founding prop types", () => {
       founding: { offered: true, sold_out: false, available: true },
     };
     // @ts-expect-error the unlock actions take no remaining count
-    const badActions: ActionsProps = { founding: openCount, mode: "anonymous", remaining: 1 };
+    const badActions: ActionsProps = { founding: openCount, mode: "anonymous", annualEnabled: true, remaining: 1 };
     // @ts-expect-error the unlock actions do not take availability
-    const badActionsAvailable: ActionsProps = { founding: openCount, mode: "anonymous", available: true };
+    const badActionsAvailable: ActionsProps = { founding: openCount, mode: "anonymous", annualEnabled: true, available: true };
     // @ts-expect-error the checkout summary takes a count object, not a remaining count
-    const badSummary: SummaryProps = { remaining: 1 };
+    const badSummary: SummaryProps = { annualEnabled: true, remaining: 1 };
     // @ts-expect-error the checkout summary does not take availability
-    const badSummaryAvailable: SummaryProps = { available: true };
+    const badSummaryAvailable: SummaryProps = { annualEnabled: true, available: true };
 
     void [pricing, home, deal, unlock, actions, summary];
     void [

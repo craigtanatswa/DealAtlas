@@ -7,8 +7,8 @@ import { ProAnnualButtonLabel } from "@/components/billing/founding-price";
 import { Button } from "@/components/ui/button";
 import {
   FOUNDING_COPY,
-  FOUNDING_FULL_MESSAGE,
   FOUNDING_PLAN_KEY,
+  foundingFullMessage,
 } from "@/lib/billing/founding-ui";
 import { cn } from "@/lib/utils";
 
@@ -33,11 +33,14 @@ export function FoundingCheckoutButton({
   returnTo,
   className,
   buttonClassName,
+  annualEnabled,
 }: {
   label: ReactNode;
   returnTo?: string;
   className?: string;
   buttonClassName?: string;
+  /** From isProAnnualEnabled() on the server. False offers monthly as the fallback. */
+  annualEnabled: boolean;
 }) {
   // The full state here only covers the race where founding fills after page load.
   const [status, setStatus] = useState<Status>({ kind: "idle" });
@@ -63,7 +66,7 @@ export function FoundingCheckoutButton({
         const message =
           typeof body.message === "string" && body.message.trim()
             ? body.message
-            : FOUNDING_FULL_MESSAGE;
+            : foundingFullMessage(annualEnabled);
         setStatus({ kind: "full", message });
         return;
       }
@@ -84,8 +87,14 @@ export function FoundingCheckoutButton({
       >
         <p className="text-pretty">{status.message}</p>
         <CheckoutPlanForm
-          planKey="PRO_ANNUAL"
-          label={<ProAnnualButtonLabel text={FOUNDING_COPY.startAnnual} />}
+          planKey={annualEnabled ? "PRO_ANNUAL" : "PRO_MONTHLY"}
+          label={
+            annualEnabled ? (
+              <ProAnnualButtonLabel text={FOUNDING_COPY.startAnnual} />
+            ) : (
+              FOUNDING_COPY.soldOutMonthly
+            )
+          }
           showPrice={false}
           returnTo={returnTo}
           className="mt-3 w-full"

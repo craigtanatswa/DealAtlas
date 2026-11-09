@@ -7,9 +7,10 @@ import { checkoutMetadata } from "@/lib/billing/metadata";
 import {
   ALREADY_SUBSCRIBED_MESSAGE,
   CHECKOUT_ERROR_CODES,
-  FOUNDING_NOT_ELIGIBLE_MESSAGE,
-  FOUNDING_UNAVAILABLE_MESSAGE,
+  foundingNotEligibleMessage,
+  foundingUnavailableMessage,
 } from "@/lib/billing/founding";
+import { isProAnnualEnabled } from "@/lib/billing/annual-enabled";
 import {
   parseCheckoutRequest,
   selectCheckoutProduct,
@@ -85,6 +86,20 @@ export async function createAuthenticatedCheckoutResponse(input: {
     );
   }
 
+  // Pro annual is not offered: refuse it exactly like an unknown plan key,
+  // before any config read or Dodo call.
+  const annualEnabled = isProAnnualEnabled();
+  if (parsed.planKey === "PRO_ANNUAL" && !annualEnabled) {
+    return NextResponse.json(
+      {
+        error: "Choose a DealAtlas Pro plan.",
+        message: "Choose a DealAtlas Pro plan.",
+        code: CHECKOUT_ERROR_CODES.invalidPlan,
+      },
+      { status: 400 },
+    );
+  }
+
   let config;
   try {
     config = requireDodoCheckoutConfig();
@@ -139,7 +154,9 @@ export async function createAuthenticatedCheckoutResponse(input: {
   });
   if (!chosen.ok) {
     const notEligible = chosen.reason === "founding_not_eligible";
-    const message = notEligible ? FOUNDING_NOT_ELIGIBLE_MESSAGE : FOUNDING_UNAVAILABLE_MESSAGE;
+    const message = notEligible
+      ? foundingNotEligibleMessage(annualEnabled)
+      : foundingUnavailableMessage(annualEnabled);
     if (wantsJson(input.request)) {
       return NextResponse.json(
         {

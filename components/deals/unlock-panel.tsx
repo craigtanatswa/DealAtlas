@@ -33,6 +33,7 @@ export function UnlockPanel({
   returnTo,
   founding,
   hasScope = false,
+  annualEnabled = false,
 }: {
   heading?: string;
   fields?: readonly { label: string; benefit: string }[];
@@ -43,6 +44,8 @@ export function UnlockPanel({
   /** Counts only. Omitted, or not offered, keeps the standard Pro CTA. */
   founding?: FoundingPublicCount;
   hasScope?: boolean;
+  /** From isProAnnualEnabled() on the server. Omitted hides Pro annual. */
+  annualEnabled?: boolean;
 }) {
   if (mode === "pro") {
     return (
@@ -117,6 +120,7 @@ export function UnlockPanel({
             founding={founding}
             mode={mode === "free" ? "free" : "anonymous"}
             returnTo={returnTo}
+            annualEnabled={annualEnabled}
           />
         )}
       </CardFooter>

@@ -10,6 +10,21 @@ export const FOUNDING_UNAVAILABLE_MESSAGE = `Founding places are all taken. You 
 
 export const FOUNDING_NOT_ELIGIBLE_MESSAGE = `Founding membership can't be rejoined after cancelling. You can still subscribe to Pro annual at ${DISPLAY_PRICING.proAnnual}.`;
 
+/** Fallback when Pro annual is not offered (see lib/billing/annual-enabled.ts). */
+const FOUNDING_UNAVAILABLE_MONTHLY_MESSAGE = `Founding places are all taken. You can still subscribe to Pro monthly at ${DISPLAY_PRICING.proMonthly}.`;
+
+const FOUNDING_NOT_ELIGIBLE_MONTHLY_MESSAGE = `Founding membership can't be rejoined after cancelling. You can still subscribe to Pro monthly at ${DISPLAY_PRICING.proMonthly}.`;
+
+/** Founding full message. Names Pro annual only while annual is offered. */
+export function foundingUnavailableMessage(annualEnabled: boolean): string {
+  return annualEnabled ? FOUNDING_UNAVAILABLE_MESSAGE : FOUNDING_UNAVAILABLE_MONTHLY_MESSAGE;
+}
+
+/** Founding rejoin message. Names Pro annual only while annual is offered. */
+export function foundingNotEligibleMessage(annualEnabled: boolean): string {
+  return annualEnabled ? FOUNDING_NOT_ELIGIBLE_MESSAGE : FOUNDING_NOT_ELIGIBLE_MONTHLY_MESSAGE;
+}
+
 /** Stable checkout error codes. The UI (#49) matches on these. */
 export const ALREADY_SUBSCRIBED_MESSAGE =
   "You already have an active DealAtlas Pro subscription. Manage or change it from the billing portal at /app/billing.";

@@ -31,6 +31,8 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("server-only", () => ({}));
+// Pro annual offered (SHOW_ANNUAL=true with a product id). The off state is in annual-flag.test.tsx.
+vi.mock("@/lib/billing/annual-enabled", () => ({ isProAnnualEnabled: () => true }));
 
 vi.mock("@/lib/billing/founding-db", () => ({
   readFoundingMember: mocks.readFoundingMember,

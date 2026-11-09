@@ -132,16 +132,22 @@ export function PricingPlans({
   signedIn,
   founding,
   state: stateProp,
+  annualEnabled,
 }: {
   signedIn: boolean;
   founding?: FoundingPublicCount;
   state?: Exclude<FoundingUiState, "hidden">;
+  /** From isProAnnualEnabled() on the server. False removes the annual card. */
+  annualEnabled: boolean;
 }) {
   const state = founding ? foundingUiState(founding) : (stateProp ?? "hidden");
-  // Founding full, hidden or not offered: the card disappears and the grid reflows to three plans.
+  // Founding full, hidden or not offered: the card disappears and the grid reflows.
   const showFounding = state === "available";
   const soldOut = state === "sold_out";
   const annualVariant = showFounding ? "outline" : "default";
+  // With neither Founding nor annual, monthly is the only paid plan and leads.
+  const monthlyLeads = !showFounding && !annualEnabled;
+  const columns = 2 + (showFounding ? 1 : 0) + (annualEnabled ? 1 : 0);
 
   return (
     <>
@@ -155,7 +161,9 @@ export function PricingPlans({
       <div
         className={cn(
           "grid items-stretch gap-6 pt-3",
-          showFounding ? "lg:grid-cols-4" : "lg:grid-cols-3",
+          columns === 4 && "lg:grid-cols-4",
+          columns === 3 && "lg:grid-cols-3",
+          columns === 2 && "mx-auto w-full max-w-4xl md:grid-cols-2",
         )}
       >
         <PlanCard className={cn(showFounding ? "order-2 lg:order-1" : "order-1")}>
@@ -187,6 +195,7 @@ export function PricingPlans({
                   label={<FoundingButtonLabel text={FOUNDING_COPY.cta} />}
                   returnTo="/pricing"
                   buttonClassName={FOUNDING_BUTTON}
+                  annualEnabled={annualEnabled}
                 />
               ) : (
                 <Button asChild className={cn("h-auto min-h-11 w-full whitespace-normal py-2", FOUNDING_BUTTON)}>
@@ -200,7 +209,12 @@ export function PricingPlans({
           </PlanCard>
         ) : null}
 
-        <PlanCard className="order-3">
+        <PlanCard className={cn("order-3", monthlyLeads && "border-2 border-primary")}>
+          {monthlyLeads ? (
+            <p className="absolute -top-3 left-6 rounded-full bg-primary px-2.5 py-0.5 text-xs font-medium text-primary-foreground">
+              {FOUNDING_COPY.recommended}
+            </p>
+          ) : null}
           <h2 className="font-heading text-xl font-semibold text-balance">Pro monthly</h2>
           <Price label={DISPLAY_PRICING.proMonthly} />
           <p className="mt-1 text-sm text-muted-foreground">{FOUNDING_COPY.monthlyNote}</p>
@@ -210,10 +224,12 @@ export function PricingPlans({
               signedIn={signedIn}
               planKey="PRO_MONTHLY"
               label={FOUNDING_COPY.startMonthly}
+              variant={monthlyLeads ? "default" : "outline"}
             />
           </div>
         </PlanCard>
 
+        {annualEnabled ? (
         <PlanCard
           className={cn("order-4", !showFounding && "border-2 border-primary")}
         >
@@ -235,10 +251,11 @@ export function PricingPlans({
             />
           </div>
         </PlanCard>
+        ) : null}
       </div>
       {soldOut ? (
         <p className="mx-auto max-w-xl rounded-lg bg-muted px-4 py-3 text-center text-sm text-pretty text-muted-foreground">
-          {foundingSoldOutNote()}
+          {foundingSoldOutNote(annualEnabled)}
         </p>
       ) : null}
     </>

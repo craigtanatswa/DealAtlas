@@ -3,6 +3,8 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
+// Pro annual offered (SHOW_ANNUAL=true with a product id). The off state is in annual-flag.test.tsx.
+vi.mock("@/lib/billing/annual-enabled", () => ({ isProAnnualEnabled: () => true }));
 vi.mock("@/lib/auth/session", () => ({
   requireUser: vi.fn(async () => ({ user: { id: "user-1" }, profile: {} })),
 }));
@@ -89,7 +91,7 @@ describe("pro annual price components", () => {
 describe("pro annual surfaces", () => {
   it("shows the annual price lead and button on the pricing card", () => {
     const { container } = render(
-      <PricingPlans signedIn founding={openCount} />,
+      <PricingPlans annualEnabled signedIn founding={openCount} />,
     );
     expect(screen.getByText(billedLine)).toBeTruthy();
     expectProAnnualPrice(container);
@@ -101,25 +103,25 @@ describe("pro annual surfaces", () => {
   });
 
   it("shows the annual price lead and button on the full checkout fallback", () => {
-    const { container } = render(<FoundingFullCheckout />);
+    const { container } = render(<FoundingFullCheckout annualEnabled />);
     expect(screen.getByText(billedLine)).toBeTruthy();
     expectProAnnualPrice(container);
     expectProAnnualPrice(screen.getByRole("button", { name: /Start Pro annual/ }));
   });
 
   it("shows the price in the sold-out annual button on a deal card", () => {
-    render(<DealProCard mode="free" founding={soldOutCount} alertsHref="/app/alerts" />);
+    render(<DealProCard annualEnabled mode="free" founding={soldOutCount} alertsHref="/app/alerts" />);
     expectProAnnualPrice(screen.getByRole("button", { name: /Or Pro annual/ }));
   });
 
   it("shows the price in the sold-out annual link for an anonymous visitor", () => {
-    render(<DealProCard mode="anonymous" founding={soldOutCount} alertsHref="/signup" />);
+    render(<DealProCard annualEnabled mode="anonymous" founding={soldOutCount} alertsHref="/signup" />);
     expectProAnnualPrice(screen.getByRole("link", { name: /Or Pro annual/ }));
   });
 
   it("shows the price in the sold-out annual link from unlock actions", () => {
     render(
-      <FoundingUnlockActions
+      <FoundingUnlockActions annualEnabled
         state="sold_out"
         mode="anonymous"
       />,
@@ -128,7 +130,7 @@ describe("pro annual surfaces", () => {
   });
 
   it("shows the price in the race annual button", () => {
-    render(<FoundingFullNotice signedIn loginHref="/login" />);
+    render(<FoundingFullNotice annualEnabled signedIn loginHref="/login" />);
     expectProAnnualPrice(screen.getByRole("button", { name: /Continue with annual/ }));
   });
 

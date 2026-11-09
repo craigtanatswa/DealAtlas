@@ -64,7 +64,7 @@ describe("founding price lead", () => {
 describe("founding pricing cards", () => {
   it("shows the limited-places label and a founding offer, not a client price or example label", () => {
     const { container } = render(
-      <PricingPlans signedIn founding={openCount} />,
+      <PricingPlans annualEnabled signedIn founding={openCount} />,
     );
 
     expect(screen.getByRole("heading", { name: "Pricing" })).toBeTruthy();
@@ -93,7 +93,7 @@ describe("founding pricing cards", () => {
   });
 
   it("shows the same limited-places label without extra urgency", () => {
-    const { container } = render(<PricingPlans signedIn founding={openCount} />);
+    const { container } = render(<PricingPlans annualEnabled signedIn founding={openCount} />);
     expect(screen.getByText("Limited places")).toBeTruthy();
     expect(container.textContent).not.toMatch(/\d+\s+places?\s+left/i);
     expect(container.textContent).not.toMatch(/only today|hurry|almost gone/i);
@@ -101,7 +101,7 @@ describe("founding pricing cards", () => {
 
   it("removes the founding card when sold out and shows a count-free note", () => {
     const { container } = render(
-      <PricingPlans signedIn={false} founding={soldOutCount} />,
+      <PricingPlans annualEnabled signedIn={false} founding={soldOutCount} />,
     );
     expect(screen.getByText(/Founding membership is full\./)).toBeTruthy();
     expect(container.textContent).not.toMatch(/Become a founding member|£290|£24\.17|for as long as you stay subscribed/i);
@@ -147,7 +147,7 @@ describe("founding deal paywall", () => {
   });
 
   it("falls back to standard prices when founding is sold out", () => {
-    const { container } = render(<UnlockPanel mode="free" founding={soldOutCount} />);
+    const { container } = render(<UnlockPanel annualEnabled mode="free" founding={soldOutCount} />);
     expect(screen.getByRole("button", { name: "Start Pro – £39/mo" })).toBeTruthy();
     expect(screen.getByRole("button", { name: /Or Pro annual/ })).toBeTruthy();
     expect(container.querySelector("input[name='offer']")).toBeNull();
@@ -166,7 +166,7 @@ describe("founding deal paywall", () => {
 describe("founding checkout race", () => {
   it("offers standard plans and keeps the deal return without a founding offer", () => {
     const { container } = render(
-      <FoundingFullNotice
+      <FoundingFullNotice annualEnabled
         signedIn
         loginHref="/login"
         returnTo="/deals/grounds-maintenance"
@@ -215,10 +215,10 @@ describe("founding billing summary", () => {
 describe("founding checkout summary", () => {
   it("puts the struck-through and founding price inside every founding button", () => {
     for (const ui of [
-      <PricingPlans key="p" signedIn founding={openCount} />,
-      <HomeFoundingCta key="h" signedIn founding={openCount} />,
-      <DealProCard key="d" mode="free" founding={openCount} alertsHref="/app/alerts" />,
-      <DealProCard key="a" mode="anonymous" founding={openCount} alertsHref="/signup" />,
+      <PricingPlans annualEnabled key="p" signedIn founding={openCount} />,
+      <HomeFoundingCta annualEnabled key="h" signedIn founding={openCount} />,
+      <DealProCard annualEnabled key="d" mode="free" founding={openCount} alertsHref="/app/alerts" />,
+      <DealProCard annualEnabled key="a" mode="anonymous" founding={openCount} alertsHref="/signup" />,
     ]) {
       const { unmount } = render(ui);
       const node =
@@ -230,7 +230,7 @@ describe("founding checkout summary", () => {
   });
 
   it("shows the monthly-equivalent price, due today and a limited-places label only", () => {
-    const { container } = render(<FoundingCheckoutSummary founding={openCount} />);
+    const { container } = render(<FoundingCheckoutSummary annualEnabled founding={openCount} />);
     expect(screen.getByText("Limited places")).toBeTruthy();
     expect(container.textContent).not.toMatch(/\d+\s+places?\s+left/i);
     expect(container.textContent).toContain("£24.17/mo");
@@ -257,14 +257,14 @@ describe("founding plan key", () => {
   });
 
   it("sends signed-out founding CTAs to signup then the founding checkout", () => {
-    render(<PricingPlans signedIn={false} founding={openCount} />);
+    render(<PricingPlans annualEnabled signedIn={false} founding={openCount} />);
     const link = screen.getByRole("link", { name: /founding member/i });
     expect(link.getAttribute("href")).toBe(foundingSignupPath());
     expect(decodeURIComponent(foundingSignupPath())).toContain("/checkout?plan=FOUNDING");
   });
 
   it("posts FOUNDING from the homepage band", () => {
-    const { container } = render(<HomeFoundingCta signedIn founding={openCount} />);
+    const { container } = render(<HomeFoundingCta annualEnabled signedIn founding={openCount} />);
     expect(planForms(container).map(planKeyOf)).toContain(FOUNDING_PLAN_KEY);
   });
 });
@@ -280,9 +280,9 @@ function stubCheckoutResponse(status: number, body: unknown) {
 
 describe("founding full error state", () => {
   it.each([
-    ["pricing", () => <PricingPlans signedIn founding={openCount} />, /founding member/i],
-    ["homepage band", () => <HomeFoundingCta signedIn founding={openCount} />, /founding member/i],
-    ["checkout", () => <FoundingCheckoutSummary founding={openCount} />, /Continue to payment/],
+    ["pricing", () => <PricingPlans annualEnabled signedIn founding={openCount} />, /founding member/i],
+    ["homepage band", () => <HomeFoundingCta annualEnabled signedIn founding={openCount} />, /founding member/i],
+    ["checkout", () => <FoundingCheckoutSummary annualEnabled founding={openCount} />, /Continue to payment/],
   ])("shows the server message with a Pro annual fallback on %s", async (_where, ui, buttonName) => {
     const fetchMock = stubCheckoutResponse(409, { code: "FOUNDING_CAP_FULL", message: FOUNDING_FULL_MESSAGE });
     const { container } = render(ui());
@@ -302,7 +302,7 @@ describe("founding full error state", () => {
 
   it("shows the server message for FOUNDING_CAP_FULL, not the local copy", async () => {
     stubCheckoutResponse(409, { code: "FOUNDING_CAP_FULL", message: "Server copy wins." });
-    render(<FoundingCheckoutButton label="Become a founding member" returnTo="/pricing" />);
+    render(<FoundingCheckoutButton annualEnabled label="Become a founding member" returnTo="/pricing" />);
     fireEvent.click(screen.getByRole("button", { name: "Become a founding member" }));
     const alert = await screen.findByRole("alert");
     expect(alert.textContent).toContain("Server copy wins.");
@@ -312,7 +312,7 @@ describe("founding full error state", () => {
 
   it("falls back to the local copy when FOUNDING_CAP_FULL has no message", async () => {
     stubCheckoutResponse(409, { code: "FOUNDING_CAP_FULL" });
-    render(<FoundingCheckoutButton label="Become a founding member" returnTo="/pricing" />);
+    render(<FoundingCheckoutButton annualEnabled label="Become a founding member" returnTo="/pricing" />);
     fireEvent.click(screen.getByRole("button", { name: "Become a founding member" }));
     expect((await screen.findByRole("alert")).textContent).toContain(FOUNDING_FULL_MESSAGE);
   });
@@ -323,7 +323,7 @@ describe("founding full error state", () => {
     ["unknown error", 500, { code: "SOMETHING_ELSE", message: "Internal detail" }],
   ])("shows a generic error with no annual fallback for %s", async (_name, status, body) => {
     stubCheckoutResponse(status, body);
-    render(<FoundingCheckoutButton label="Become a founding member" returnTo="/pricing" />);
+    render(<FoundingCheckoutButton annualEnabled label="Become a founding member" returnTo="/pricing" />);
     fireEvent.click(screen.getByRole("button", { name: "Become a founding member" }));
     const alert = await screen.findByRole("alert");
     expect(alert.textContent).toBe("Checkout could not be started. Try again.");
@@ -334,13 +334,13 @@ describe("founding full error state", () => {
     const assign = vi.fn();
     vi.stubGlobal("location", { ...window.location, assign });
     stubCheckoutResponse(200, { checkout_url: "https://checkout.example/session" });
-    render(<FoundingCheckoutButton label="Become a founding member" returnTo="/pricing" />);
+    render(<FoundingCheckoutButton annualEnabled label="Become a founding member" returnTo="/pricing" />);
     fireEvent.click(screen.getByRole("button", { name: "Become a founding member" }));
     await vi.waitFor(() => expect(assign).toHaveBeenCalledWith("https://checkout.example/session"));
   });
 
   it("checkout for a full founding plan shows the message and Pro annual, no founding summary", () => {
-    const { container } = render(<FoundingFullCheckout />);
+    const { container } = render(<FoundingFullCheckout annualEnabled />);
     expect(screen.getByRole("alert").textContent).toBe(FOUNDING_FULL_MESSAGE);
     expect(screen.getByText("billed £350/yr, VAT included")).toBeTruthy();
     expect(container.textContent).toContain("£29.17/mo");
@@ -356,7 +356,7 @@ describe("founding full error state", () => {
 
 describe("founding cancellation line", () => {
   it("says cancelling loses founding status and the £290/yr price", () => {
-    render(<PricingPlans signedIn={false} founding={openCount} />);
+    render(<PricingPlans annualEnabled signedIn={false} founding={openCount} />);
     expect(
       screen.getByText("If you cancel, you lose founding status and the £290/yr price."),
     ).toBeTruthy();

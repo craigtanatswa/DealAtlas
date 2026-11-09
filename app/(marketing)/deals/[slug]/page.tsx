@@ -11,6 +11,7 @@ import { getAuthUser } from "@/lib/auth/session";
 import { loginPathWithNext } from "@/lib/auth/redirect";
 import { getAppOrigin } from "@/lib/auth/urls";
 import { appDealPath } from "@/lib/deals/paths";
+import { isProAnnualEnabled } from "@/lib/billing/annual-enabled";
 import { readFoundingPublicCount } from "@/lib/billing/founding-public";
 import { isProEntitlement } from "@/lib/entitlements/policy";
 import { getCurrentEntitlement } from "@/lib/entitlements/service";
@@ -121,6 +122,7 @@ export default async function DealPreviewPage({ params, searchParams }: PageProp
           revealHref: dealId ? appDealPath(dealId) : undefined,
           returnTo: dealId ? appDealPath(dealId) : undefined,
           founding: founding ?? undefined,
+          annualEnabled: isProAnnualEnabled(),
         }}
       />
     </Main>
