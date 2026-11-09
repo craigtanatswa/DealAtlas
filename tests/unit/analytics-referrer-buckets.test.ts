@@ -8,6 +8,7 @@ import {
   referrerBucketForHost,
 } from "@/lib/analytics/sanitize";
 import { buildUserSignedUpEvent } from "@/lib/analytics/server-events";
+import { resetAnalyticsConsentForTests, setAnalyticsConsent } from "@/lib/analytics/consent";
 
 const ORIGIN = "https://www.dealatlas.uk";
 
@@ -76,23 +77,40 @@ describe("referrer buckets", () => {
     expect(cleanReferrer("", ORIGIN)).toEqual({ referrer: "$direct", domain: "$direct" });
   });
 
-  it("first_referrer_domain is bucketed from first touch through to the server event", () => {
+  it("buckets both first-touch and legacy referrer fields and never stores a hostname", () => {
     resetAttributionForTests();
+    resetAnalyticsConsentForTests();
+
+    // No consent yet: nothing is recorded.
+    recordLanding({
+      href: `${ORIGIN}/pricing`,
+      referrer: "https://portal.example-council.gov.uk/notice/12345",
+      origin: ORIGIN,
+    });
+    expect(attributionFormValues()).toEqual({});
+
+    setAnalyticsConsent(true);
     recordLanding({
       href: `${ORIGIN}/pricing`,
       referrer: "https://portal.example-council.gov.uk/notice/12345",
       origin: ORIGIN,
     });
     const values = attributionFormValues();
-    expect(values[ATTRIBUTION_FIELDS.firstReferrerDomain]).toBe("other");
+    expect(values[ATTRIBUTION_FIELDS.firstTouchReferrerDomain]).toBe("other");
+    expect(JSON.stringify(values)).not.toMatch(/\/notice|12345|portal/);
 
     const tampered = buildUserSignedUpEvent({
       userId: "6b0a3d5e-1c2f-4a8b-9d7e-0f1a2b3c4d5e",
       read: (name) =>
-        name === ATTRIBUTION_FIELDS.firstReferrerDomain ? "portal.example-council.gov.uk" : undefined,
+        name === ATTRIBUTION_FIELDS.firstReferrerDomain
+          ? "https://portal.example-council.gov.uk/notice/12345"
+          : undefined,
     });
-    expect(JSON.stringify(tampered)).not.toMatch(/example|council/);
+    expect(tampered?.properties.first_touch_referrer_domain).toBe("other");
     expect(tampered?.properties.first_referrer_domain).toBe("other");
+    expect(JSON.stringify(tampered)).not.toMatch(/\/notice|12345|portal/);
+
+    resetAnalyticsConsentForTests();
     resetAttributionForTests();
   });
 });

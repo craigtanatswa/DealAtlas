@@ -1,12 +1,12 @@
 ---
 slug: uk-tender-search
 published: true
-title: "Why one hub beats checking scattered UK tender sources"
-description: "UK public tenders are published across national platforms and buyer systems. See why SMEs track opportunities faster from one searchable hub on DealAtlas."
-h1: "Why one searchable hub beats checking scattered UK tender sources"
-breadcrumb: "One hub vs scattered tender sources"
+title: "UK tender search: find UK tenders in one place"
+description: "UK tender search: search live UK public and private tenders in one place on DealAtlas, filter by category, value, closing date and region, and get alerts."
+h1: "UK tender search: find UK tenders in one place"
+breadcrumb: "UK tender search"
 datePublished: 2026-10-27
-updated: 2026-10-27
+updated: 2026-11-02
 primaryKeyword: "UK tender search"
 secondaryKeywords: ["find UK tenders in one place", "find tenders", "SME tender alerts UK"]
 relatedGuides: ["how-to-find-public-sector-tenders", "how-to-win-council-contracts"]
@@ -15,7 +15,7 @@ craigApprovedAt: 2026-10-27
 
 {{LIVE_COUNT}} live UK opportunities on DealAtlas today.
 
-UK public contract notices do not live in one official inbox. Under the [Procurement Act 2023](https://www.legislation.gov.uk/ukpga/2023/54/contents), which has applied to new procurements since 24 February 2025, buyers in England, Wales and Northern Ireland publish required notices on the central digital platform, while older-regime records, devolved publication rules and each buyer's submission system still sit alongside that duty. For an SME, the cost is time spent checking several places before a deadline closes.
+UK tender search is slower than it should be, because UK public contract notices do not live in one official inbox. Under the [Procurement Act 2023](https://www.legislation.gov.uk/ukpga/2023/54/contents), which has applied to new procurements since 24 February 2025, buyers in England, Wales and Northern Ireland publish required notices on the central digital platform, while older-regime records, devolved publication rules and each buyer's submission system still sit alongside that duty. For an SME, the cost is time spent checking several places before a deadline closes.
 
 DealAtlas is built for that job. It brings UK public and private tenders and opportunities for SMEs, in one place, so you can search once, then go deeper when an opportunity is worth pursuing.
 
@@ -23,13 +23,15 @@ DealAtlas is built for that job. It brings UK public and private tenders and opp
 
 Start on [DealAtlas](/deals). Filter by category, value band, closing date and region, browse free previews, and move to [DealAtlas Pro](/pricing) for buyer details, documents, saved searches and alerts. You'll need to register on the government's central digital platform before you bid, so find the right opportunity on DealAtlas first. Keep an eye on pipeline, preliminary market engagement and planned procurement notices, because those signals appear before the tender notice.
 
+**Find your next contract faster.** [Create your free DealAtlas account](/signup) to filter live UK opportunities by category, value band, closing date and region. When a deal is worth pursuing, [DealAtlas Pro](/pricing) unlocks the buyer, documents, saved searches and alerts. Founding offer: ~~£39/mo~~ £24.17/mo (£290/yr), for as long as you stay subscribed. Limited places.
+
 ## Why discovery feels scattered after the Procurement Act 2023
 
 The Act fixed where new opportunity notices must be published for most buyers in England, Wales and Northern Ireland: on the central digital platform ([Central digital platform factsheet](https://www.gov.uk/government/publications/procurement-act-2023-short-guides/central-digital-platform-factsheet-html)). That is a clear legal duty for buyers. It does not mean every useful signal for an SME sits in one search box you already use every Monday morning.
 
 Three layers still sit beside new Act notices:
 
-- Older-regime records. Procurements that started under the Public Contracts Regulations 2015 still carry award and call-off information under those saved rules. [PPN 019](https://www.gov.uk/government/publications/ppn-019-requirements-to-publish-on-contracts-finder/update-to-legal-requirements-to-publish-procurement-information-on-contracts-finder) sets out when those older publication duties still apply. From [1 May 2027](https://www.legislation.gov.uk/uksi/2026/746/made), SI 2026/746 moves more of that older-regime duty onto the central digital platform.
+- Older-regime records. Procurements that started under the Public Contracts Regulations 2015 still carry award and call-off information under those saved rules. The saved legal requirements set out when those older publication duties still apply. From [1 May 2027](https://www.legislation.gov.uk/uksi/2026/746/made), SI 2026/746 moves more of that older-regime duty onto the central digital platform.
 - Devolved rules. Scottish authorities mostly buy under Scotland's own procurement law, so below-threshold Scottish notices follow different publication rules from the Act. Welsh and Northern Ireland buyers also have national arrangements alongside Act noticing where it applies.
 - Buyer systems. A published notice is often only the front door. Documents, clarification questions and submissions usually run through the system the buyer names.
 
@@ -102,7 +104,6 @@ You'll need to register on the government's central digital platform before you 
 ## Sources
 
 - [Central digital platform factsheet](https://www.gov.uk/government/publications/procurement-act-2023-short-guides/central-digital-platform-factsheet-html)
-- [PPN 019: update to legal requirements to publish procurement information](https://www.gov.uk/government/publications/ppn-019-requirements-to-publish-on-contracts-finder/update-to-legal-requirements-to-publish-procurement-information-on-contracts-finder)
 - [PPN 023: 2026 threshold amounts](https://www.gov.uk/government/publications/ppn-023-2026-threshold-amounts/ppn-023-2026-threshold-amounts-html)
 - [Guidance: Below-threshold contracts](https://www.gov.uk/government/publications/procurement-act-2023-guidance-documents-define-phase/guidance-below-threshold-contracts-html)
 - [The Procurement (Amendment) (No. 2) Regulations 2026 (SI 2026/746)](https://www.legislation.gov.uk/uksi/2026/746/made)

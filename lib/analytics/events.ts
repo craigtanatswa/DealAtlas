@@ -6,6 +6,7 @@
 export const CLIENT_EVENTS = [
   "$pageview",
   "guide_cta_clicked",
+  "guide_cta_viewed",
   "pro_checkout_started",
   "alerts_signup_viewed",
   "alerts_signup_submitted",
@@ -33,6 +34,8 @@ export const KNOWN_GUIDE_SLUGS: readonly string[] = [
   "how-to-win-council-contracts",
   "how-to-find-public-sector-tenders",
   "uk-tender-search",
+  "council-tenders-uk",
+  "transport-logistics-tenders-uk",
 ];
 
 export function isKnownGuideSlug(value: unknown): value is string {
@@ -43,6 +46,20 @@ export function isCheckoutAnalyticsPlan(value: unknown): value is CheckoutAnalyt
   return (
     typeof value === "string" &&
     (CHECKOUT_ANALYTICS_PLANS as readonly string[]).includes(value)
+  );
+}
+
+export function isGuideCtaPosition(value: unknown): value is (typeof GUIDE_CTA_POSITIONS)[number] {
+  return (
+    typeof value === "string" &&
+    (GUIDE_CTA_POSITIONS as readonly string[]).includes(value)
+  );
+}
+
+export function isGuideCtaTarget(value: unknown): value is (typeof GUIDE_CTA_TARGETS)[number] {
+  return (
+    typeof value === "string" &&
+    (GUIDE_CTA_TARGETS as readonly string[]).includes(value)
   );
 }
 

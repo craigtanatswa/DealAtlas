@@ -1,3 +1,8 @@
+import {
+  buyerTypeFromTedLegalType,
+  sectorFromCpv,
+  type BuyerType,
+} from "@/lib/deals/buyer-taxonomy";
 import { safeHttpUrl } from "@/lib/deals/urls";
 
 import type {
@@ -29,6 +34,10 @@ import {
 } from "@/ingestion/sources/ted/constants";
 
 export { TED_PARSER_VERSION };
+
+export function tedBuyerSector(value: unknown): BuyerType {
+  return buyerTypeFromTedLegalType(value);
+}
 
 const ISO3_COUNTRY: Record<string, { iso2: string; name: string }> = {
   AUT: { iso2: "AT", name: "Austria" },
@@ -145,6 +154,8 @@ export function parseTedNotice(
     isPrimary: index === 0,
   }));
   const category = categoryFromCpv(cpvCodes[0]);
+  const buyerType = tedBuyerSector(notice?.["buyer-legal-type"]);
+  const sector = sectorFromCpv(cpvCodes[0]);
   const countries = countryNames(notice?.["place-of-performance"]);
   const buyerCountry = countryNames(notice?.["buyer-country"])[0] ?? null;
   const exactLocation = locationText(countries.length > 0 ? countries : [buyerCountry]);
@@ -220,7 +231,9 @@ export function parseTedNotice(
       hasFramework: framework,
       hasDynamicMarket: false,
     }),
-    buyerSector: "PUBLIC",
+    buyerSector: buyerType,
+    buyerType,
+    sector,
     stage: "LIVE",
     status: mapDealStatus({
       tags: ["tender"],

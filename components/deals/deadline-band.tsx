@@ -1,6 +1,9 @@
 import { cn } from "@/lib/utils";
 
 export function DeadlineBand({ value }: { value: string | null }) {
+  if (value?.endsWith("TBC")) {
+    return <span className="text-[0.8125rem] leading-5 text-foreground">{value}</span>;
+  }
   if (value == null || value === "Upcoming / date not yet fixed") {
     return <span className="text-[0.8125rem] leading-5 text-foreground">Deadline TBC</span>;
   }

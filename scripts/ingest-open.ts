@@ -1,5 +1,11 @@
 import fs from "node:fs";
 
+import {
+  isNonBlockingTlsErrors,
+  isNonBlockingTlsFailure,
+  isTlsCertificateError,
+  tlsCertificateWarningLine,
+} from "@/lib/jobs/tls-errors";
 import { loadEnvFiles } from "./load-env";
 
 loadEnvFiles();
@@ -65,6 +71,7 @@ async function main() {
     runOpenSell2WalesIngest,
     runOpenTedIngest,
     runOpenInnovateUkIngest,
+    zeroRecordWarningLine,
   } = await import("@/lib/jobs/ingest-open");
   const { createSupabaseIngestionStore } = await import("@/ingestion/store/supabase");
   const { createIngestionSupabaseClient } = await import(
@@ -138,12 +145,31 @@ async function main() {
       console.error(publicIngestErrorLine(error));
     }
   }
+  if (result.metadata?.zero_records === true) {
+    const reason =
+      typeof result.metadata.zero_records_reason === "string"
+        ? result.metadata.zero_records_reason
+        : undefined;
+    console.log(zeroRecordWarningLine(source, reason));
+  }
   if (openIngestShouldFail(result)) {
-    process.exitCode = 1;
+    if (isNonBlockingTlsErrors(source, result.errors)) {
+      const tlsError =
+        result.errors.find((error) => isTlsCertificateError(error)) ?? result.errors[0];
+      console.log(tlsCertificateWarningLine(source, tlsError));
+    } else {
+      process.exitCode = 1;
+    }
   }
 }
 
 main().catch(async (err: unknown) => {
+  const source = (process.env.OPEN_INGEST_SOURCE ?? "find-a-tender").trim();
+  if (isNonBlockingTlsFailure(source, err)) {
+    console.log(tlsCertificateWarningLine(source, err));
+    process.exitCode = 0;
+    return;
+  }
   const { publicFatalErrorLine } = await import("@/lib/jobs/ingest-open");
   console.error(publicFatalErrorLine(err));
   emit(

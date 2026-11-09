@@ -48,7 +48,7 @@ describe("supabase migrations", () => {
   const files = listMigrations();
   const sql = files.map(readMigration).join("\n");
 
-  it("are numbered 0001-0026, 0028-0030, 0040-0043, 0045-0047, 0049, 0051-0055, leaving 0027, 0031-0039, 0044, 0048 and 0050 for open pull requests", () => {
+  it("are numbered 0001-0026, 0028-0030, 0040-0043, 0045-0047, 0049, 0051-0061, leaving 0027, 0031-0039, 0044, 0048 and 0050 for open pull requests", () => {
     expect(files).toEqual([
       "0001_extensions_and_types.sql",
       "0002_core_schema.sql",
@@ -92,6 +92,12 @@ describe("supabase migrations", () => {
       "0053_search_preview_dtos_categories.sql",
       "0054_preview_slug_no_digit_runs.sql",
       "0055_leak_gate_currency_codes.sql",
+      "0056_private_discovery_stage1.sql",
+      "0057_private_discovery_stage2.sql",
+      "0058_enable_devolved_portals_private_buyers.sql",
+      "0059_country_regions_in_leak_gate.sql",
+      "0060_buyer_type_private_public.sql",
+      "0061_publish_gate_denylist_retired.sql",
     ]);
   });
 
@@ -468,6 +474,112 @@ describe("supabase migrations", () => {
     expect(sql).toContain("Cloudflare/WAF");
     expect(sql).toContain("electronic reproduction");
     expect(sql).not.toMatch(/disable row level security/i);
+  });
+
+  it("0056 adds private discovery candidates behind approval and RLS gates", () => {
+    const body = readMigration("0056_private_discovery_stage1.sql");
+    for (const table of [
+      "discovery_keywords",
+      "discovered_source_candidates",
+      "opportunity_candidates",
+      "deal_source_links",
+    ]) {
+      expect(body).toContain(`create table public.${table}`);
+      expect(body).toContain(`alter table public.${table} enable row level security`);
+      expect(body).toContain(`revoke all on table public.${table} from public, anon, authenticated`);
+    }
+    expect(body).toContain("discovery_method public.discovery_method");
+    expect(body).toContain("market_sector public.market_sector");
+    expect(body).toContain("auto_publish boolean not null default false");
+    expect(body).toContain("auto_publish_min_confidence integer not null default 90");
+    expect(body).toContain("enforce_discovery_candidate_publish_gate");
+    expect(body).toContain("'SUPPLIER_ONBOARDING'::public.deal_type");
+    expect(body).toContain("'APPROVED'::public.candidate_status");
+    expect(body).not.toMatch(/grant .* to (anon|authenticated)/);
+    expect(body).not.toMatch(/disable row level security/i);
+  });
+
+  it("0057 adds discovery channels, blocked reasons and seed leak terms", () => {
+    const body = readMigration("0057_private_discovery_stage2.sql");
+    expect(body).toContain("add column discovery_channel text not null default 'UNKNOWN'");
+    expect(body).toContain("add column blocked_reason text");
+    expect(body).toContain("discovery_channel in ('SEARCH', 'CRAWL', 'UNKNOWN')");
+    expect(body).toContain("insert into private.leak_gate_terms");
+    expect(body).toContain("'source_platform', 'techuk.org'");
+    expect(body).toContain("on conflict (kind, term) do nothing");
+    expect(body).not.toMatch(/grant .* to (anon|authenticated)/);
+    expect(body).not.toMatch(/disable row level security/i);
+  });
+
+  it("0060 adds buyer_type, deal_sector, backfill and taxonomy RPCs", () => {
+    const body = readMigration("0060_buyer_type_private_public.sql");
+    expect(body).toContain("create type public.buyer_type as enum ('PUBLIC', 'PRIVATE')");
+    for (const sector of [
+      "UTILITIES",
+      "HEALTHCARE",
+      "EDUCATION",
+      "CONSTRUCTION_INFRASTRUCTURE",
+      "TRANSPORT",
+      "TECHNOLOGY",
+      "DEFENCE_SECURITY",
+      "FACILITIES_PROPERTY",
+      "PROFESSIONAL_SERVICES",
+      "ENVIRONMENT_WASTE",
+      "HOUSING",
+      "SOCIAL_CARE",
+      "FOOD_CATERING",
+      "MANUFACTURING_EQUIPMENT",
+      "CHARITY_NONPROFIT",
+      "OTHER",
+    ]) {
+      expect(body, sector).toContain(`'${sector}'`);
+    }
+    expect(body).toContain("add column buyer_type public.buyer_type");
+    expect(body).toContain("add column sector public.deal_sector");
+    expect(body).toContain("alter column buyer_type set not null");
+    expect(body).toContain("alter column sector set not null");
+    expect(body).toContain("raise exception 'deals have null buyer_type or sector after backfill'");
+    expect(body).toContain("raise exception 'deal_previews have null buyer_type or sector after backfill'");
+    expect(body).toContain("'privateutility'");
+    expect(body).toContain("rr.raw_payload::text like '%' || to_jsonb(d.ocid)::text || '%'");
+    expect(body).toContain("when t.deal_id is not null then 'PUBLIC'::public.buyer_type");
+    expect(body).toContain("buyer_sector = 'UTILITY'::public.buyer_sector");
+    expect(body).toContain("create trigger fold_utility_buyer_sector");
+    expect(body).toContain("is_this_project_programme_drawing_on_public_or_private_funds");
+    expect(body).toContain("discovery_method");
+    expect(body).toContain("opportunity_candidates");
+    expect(body).toContain("'NONPROFIT'::public.buyer_sector");
+    expect(body).toContain("'CHARITY_NONPROFIT'::public.deal_sector");
+    expect(body).toContain("create function public.admin_deal_taxonomy_counts()");
+    expect(body).toContain("grant execute on function public.admin_deal_taxonomy_counts()");
+    expect(body).toContain("buyer_type public.buyer_type");
+    expect(body).toContain("sector public.deal_sector");
+    for (const fn of [
+      "get_preview_dto_by_slug",
+      "get_preview_dto_by_deal_id",
+      "list_saved_deal_previews",
+      "search_preview_dtos",
+      "search_deal_previews",
+      "search_deal_previews_for_profile",
+    ]) {
+      expect(body).toContain(`create function public.${fn}(`);
+    }
+  });
+
+  it("0061 refuses denylisted and retired-slug previews in the publish gate", () => {
+    const body = readMigration("0061_publish_gate_denylist_retired.sql");
+    expect(body).toContain("create or replace function private.enforce_preview_safety()");
+    expect(body).toContain("private.preview_holds");
+    expect(body).toContain("private.detect_preview_leakage(");
+    expect(body).toContain("private.publish_denylist x where x.deal_id = new.deal_id");
+    expect(body).toContain("private.retired_preview_slugs r");
+    expect(body).toContain("new.slug");
+    expect(body).toContain("extensions.digest");
+    expect(body).toContain("new.is_published := false;");
+    expect(body).toMatch(/^create or replace function private\.enforce_preview_safety\(\)/m);
+    expect(body).toContain("security definer");
+    expect(body).toContain("set search_path = ''");
+    expect(body).not.toMatch(/\b(grant|revoke|alter owner)\b/i);
   });
 
   it("keep the combined schema file in sync with migrations", () => {

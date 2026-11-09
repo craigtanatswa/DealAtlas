@@ -20,6 +20,7 @@ export type AdminSourceRow = {
   robotsCheckedAt: string | null;
   termsCheckedAt: string | null;
   complianceNotes: string | null;
+  discoveryMethod: Database["public"]["Enums"]["discovery_method"] | null;
   lastSuccessAt: string | null;
   consecutiveFailures: number;
   createdAt: string;
@@ -214,6 +215,20 @@ export type AdminJobRunRow = {
   errorMessage: string | null;
 };
 
+export type AdminBuyerTypeCount = {
+  buyerType: Database["public"]["Enums"]["buyer_type"];
+  count: number;
+};
+
+export type AdminSectorCount = {
+  sector: Database["public"]["Enums"]["deal_sector"];
+  count: number;
+};
+
+export type AdminBuyerTypeSectorCount = AdminSectorCount & {
+  buyerType: Database["public"]["Enums"]["buyer_type"];
+};
+
 export type AdminDashboard = {
   sources: { total: number; enabled: number; blocked: number; stale: number };
   runs: { failed24h: number; skipped24h: number };
@@ -226,6 +241,11 @@ export type AdminDashboard = {
   failedMatchJobs: number;
   failedDocuments: number;
   billingErrors: number;
+  buyerTypeCounts: AdminBuyerTypeCount[];
+  sectorCounts: AdminSectorCount[];
+  buyerTypeSectorCounts: AdminBuyerTypeSectorCount[];
+  dealsByBuyerType: AdminBuyerTypeCount[];
+  dealsByBuyerTypeSector: AdminBuyerTypeSectorCount[];
   emailConfigured: boolean;
   monitoringConfigured: boolean;
   recentRuns: AdminRunRow[];
@@ -240,4 +260,92 @@ export type AdminListResult<T> = {
   total: number;
   page: number;
   pageSize: number;
+};
+
+export type AdminDiscoveryCandidateRow = {
+  id: string;
+  sourceId: string;
+  sourceKey: string | null;
+  sourceName: string | null;
+  status: Database["public"]["Enums"]["candidate_status"];
+  opportunityType: Database["public"]["Enums"]["deal_type"];
+  title: string;
+  buyerName: string | null;
+  buyerDomain: string | null;
+  location: string | null;
+  budgetMin: number | null;
+  budgetMax: number | null;
+  currency: string | null;
+  deadline: string | null;
+  confidence: number;
+  rejectReason: string | null;
+  mergedDealId: string | null;
+  url: string;
+  normalizedUrl: string;
+  discoveredAt: string;
+  updatedAt: string;
+};
+
+export type AdminDiscoveryKeywordRow = {
+  id: string;
+  keyword: string;
+  normalizedKeyword: string;
+  enabled: boolean;
+  createdAt: string;
+};
+
+export type AdminDiscoverySourceRow = {
+  id: string;
+  sourceKey: string;
+  name: string;
+  enabled: boolean;
+  discoveryMethod: Database["public"]["Enums"]["discovery_method"] | null;
+  autoPublish: boolean;
+  autoPublishMinConfidence: number;
+  lastSuccessAt: string | null;
+  opportunitiesDiscovered: number;
+  reliabilityScore: number | null;
+  lastError: string | null;
+  health: "healthy" | "degraded" | "down" | "disabled";
+  candidateCount: number;
+};
+
+export type AdminDiscoveryMetrics = {
+  searchQueriesUsedMonth: number;
+  searchQueryCap: number;
+  llmCallsUsedMonth: number;
+  llmCallCap: number;
+  candidatesByMethod: {
+    SEARCH: number;
+    CRAWL: number;
+    UNKNOWN: number;
+  };
+  blockedDomains: Array<{ domain: string; count: number }>;
+  sourcesByHealth: {
+    healthy: number;
+    degraded: number;
+    down: number;
+    disabled: number;
+  };
+  expiredCount: number;
+};
+
+export type AdminDiscoveryOverview = {
+  counts: Record<Database["public"]["Enums"]["candidate_status"], number>;
+  metrics: AdminDiscoveryMetrics;
+  sources: AdminDiscoverySourceRow[];
+  recent: AdminDiscoveryCandidateRow[];
+  keywords: AdminDiscoveryKeywordRow[];
+};
+
+export type AdminDiscoveryCandidateDetail = {
+  candidate: AdminDiscoveryCandidateRow;
+  extraction: Json;
+  preview: {
+    dealId: string;
+    slug: string;
+    previewTitle: string;
+    isPublished: boolean;
+    leakageRisk: Database["public"]["Enums"]["leakage_risk"];
+  } | null;
 };

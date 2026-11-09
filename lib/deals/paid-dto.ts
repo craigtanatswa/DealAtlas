@@ -1,6 +1,14 @@
 import type { BuyerSector } from "@/lib/constants";
 import { BUYER_SECTORS } from "@/lib/constants";
 import {
+  BUYER_TYPES,
+  DEAL_SECTORS,
+  buyerTypeFromLegacySector,
+  sectorFromLegacySector,
+  type BuyerType,
+  type DealSector,
+} from "@/lib/deals/buyer-taxonomy";
+import {
   canLinkToSource,
   canRedistributeVerbatim,
   canShowNoticeMetadata,
@@ -30,6 +38,8 @@ export const PAID_DEAL_DTO_KEYS = [
   "externalPrimaryId",
   "dealType",
   "buyerSector",
+  "buyerType",
+  "sector",
   "stage",
   "status",
   "mainCategory",
@@ -206,6 +216,8 @@ export type PaidDealDto = {
   externalPrimaryId: string | null;
   dealType: DealType;
   buyerSector: BuyerSector;
+  buyerType: BuyerType;
+  sector: DealSector;
   stage: DealStage;
   status: DealStatus;
   mainCategory: string | null;
@@ -253,6 +265,8 @@ export type PaidDealMappingInput = {
     external_primary_id: string | null;
     deal_type: string;
     buyer_sector: string;
+    buyer_type?: string | null;
+    sector?: string | null;
     stage: string;
     status: string;
     main_category: string | null;
@@ -432,6 +446,24 @@ function parseBuyerSector(value: unknown): BuyerSector {
     return value as BuyerSector;
   }
   return "OTHER";
+}
+
+function parseBuyerType(value: unknown, legacy: BuyerSector): BuyerType {
+  if (typeof value === "string" && (BUYER_TYPES as readonly string[]).includes(value)) {
+    return value as BuyerType;
+  }
+  return buyerTypeFromLegacySector(legacy);
+}
+
+function parseDealSector(
+  value: unknown,
+  legacy: BuyerSector,
+  category: string | null,
+): DealSector {
+  if (typeof value === "string" && (DEAL_SECTORS as readonly string[]).includes(value)) {
+    return value as DealSector;
+  }
+  return sectorFromLegacySector(legacy, category);
 }
 
 function toPaidBuyerDto(
@@ -788,6 +820,12 @@ export function toPaidDealDto(input: PaidDealMappingInput): PaidDealDto {
     externalPrimaryId: showMetadata ? deal.external_primary_id : null,
     dealType: parseEnum(deal.deal_type, DEAL_TYPES, "PUBLIC_TENDER"),
     buyerSector: parseBuyerSector(deal.buyer_sector),
+    buyerType: parseBuyerType(deal.buyer_type, parseBuyerSector(deal.buyer_sector)),
+    sector: parseDealSector(
+      deal.sector,
+      parseBuyerSector(deal.buyer_sector),
+      deal.main_category,
+    ),
     stage: parseEnum(deal.stage, DEAL_STAGES, "LIVE"),
     status: parseEnum(deal.status, DEAL_STATUSES, "OPEN"),
     mainCategory: deal.main_category,

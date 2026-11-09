@@ -42,6 +42,8 @@ describe("public preview DTO", () => {
     const json = JSON.stringify(dto);
 
     expect(Object.keys(dto).sort()).toEqual([...PUBLIC_PREVIEW_DTO_KEYS].sort());
+    expect(dto.buyerType).toBe("PUBLIC");
+    expect(dto.sector).toBe("TECHNOLOGY");
     expect(dto.freshnessLabel).toBe("Open opportunity");
     expect(findForbiddenPublicKeys(dto)).toEqual([]);
     expect(findProtectedMarkerLeaks(json)).toEqual([]);

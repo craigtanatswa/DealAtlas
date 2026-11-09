@@ -10005,3 +10005,2781 @@ on conflict do nothing;
 -- ============================================================================
 -- END 0055_leak_gate_currency_codes.sql
 -- ============================================================================
+
+-- ============================================================================
+-- BEGIN 0056_private_discovery_stage1.sql
+-- ============================================================================
+
+-- Stage 1 private-opportunity discovery. Sources remain disabled; this migration
+-- only adds configuration, candidate review storage, and service-role gates.
+
+alter type public.deal_type add value if not exists 'ITT';
+alter type public.deal_type add value if not exists 'SUPPLIER_ONBOARDING';
+alter type public.deal_type add value if not exists 'OTHER';
+
+create type public.discovery_method as enum ('RSS', 'HTML', 'JSON');
+create type public.candidate_status as enum (
+  'PENDING_REVIEW',
+  'APPROVED',
+  'REJECTED',
+  'DUPLICATE',
+  'EXPIRED'
+);
+create type public.market_sector as enum ('PUBLIC', 'PRIVATE', 'MIXED');
+
+comment on type public.candidate_status is
+  'Review lifecycle for discovered private opportunities. Only APPROVED candidates may publish.';
+comment on type public.market_sector is
+  'Derived public/private/mixed market classification.';
+
+alter table public.data_sources
+  add column discovery_method public.discovery_method,
+  add column parser_type text,
+  add column parser_config jsonb not null default '{}'::jsonb,
+  add column country text not null default 'GB',
+  add column industry text,
+  add column crawl_frequency_minutes integer not null default 1440,
+  add column last_error text,
+  add column opportunities_discovered integer not null default 0,
+  add column reliability_score numeric(5,2) not null default 0,
+  add column auto_publish boolean not null default false,
+  add column auto_publish_min_confidence integer not null default 90,
+  add column market_sector public.market_sector generated always as (
+    case
+      when source_type in (
+        'GOVERNMENT_OPEN_DATA'::public.source_type,
+        'GOVERNMENT_WEB'::public.source_type
+      ) then 'PUBLIC'::public.market_sector
+      when source_type in (
+        'PRIVATE_COMPANY_WEB'::public.source_type,
+        'SUPPLY_CHAIN_PLATFORM'::public.source_type
+      ) then 'PRIVATE'::public.market_sector
+      else 'MIXED'::public.market_sector
+    end
+  ) stored;
+
+alter table public.data_sources
+  add constraint data_sources_country_format
+    check (country ~ '^[A-Z]{2}$'),
+  add constraint data_sources_crawl_frequency_positive
+    check (crawl_frequency_minutes > 0),
+  add constraint data_sources_opportunities_discovered_non_negative
+    check (opportunities_discovered >= 0),
+  add constraint data_sources_reliability_score_range
+    check (reliability_score >= 0 and reliability_score <= 100),
+  add constraint data_sources_auto_publish_min_confidence_range
+    check (auto_publish_min_confidence >= 0 and auto_publish_min_confidence <= 100),
+  add constraint data_sources_parser_config_object
+    check (jsonb_typeof(parser_config) = 'object');
+
+comment on column public.data_sources.discovery_method is
+  'Set for sources crawled by the generic discovery adapter. Null means an existing fixed adapter.';
+comment on column public.data_sources.parser_config is
+  'Selectors and feed paths for the generic discovery adapter. Never contains credentials.';
+comment on column public.data_sources.auto_publish is
+  'Off by default. When true, only APPROVED candidates at or above the confidence floor may auto-publish.';
+
+create table public.discovery_keywords (
+  id uuid primary key default gen_random_uuid(),
+  keyword text not null,
+  normalized_keyword text not null unique,
+  enabled boolean not null default true,
+  match_count integer not null default 0 check (match_count >= 0),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint discovery_keywords_length
+    check (char_length(trim(keyword)) between 2 and 120)
+);
+
+create table public.discovered_source_candidates (
+  id uuid primary key default gen_random_uuid(),
+  source_id uuid not null references public.data_sources(id) on delete cascade,
+  url text not null,
+  normalized_url text not null,
+  domain text,
+  title text,
+  published_at timestamptz,
+  discovered_at timestamptz not null default now(),
+  status public.candidate_status not null default 'PENDING_REVIEW',
+  confidence integer not null default 0 check (confidence >= 0 and confidence <= 100),
+  matched_keywords text[] not null default '{}'::text[],
+  content_hash text,
+  raw_payload jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (source_id, normalized_url)
+);
+
+create table public.opportunity_candidates (
+  id uuid primary key default gen_random_uuid(),
+  source_id uuid not null references public.data_sources(id) on delete cascade,
+  discovered_candidate_id uuid references public.discovered_source_candidates(id)
+    on delete set null,
+  url text not null,
+  raw_record_id uuid references public.raw_records(id) on delete set null,
+  content_hash text not null,
+  extraction jsonb not null default '{}'::jsonb,
+  title text,
+  buyer_name text,
+  buyer_domain text,
+  summary text,
+  deadline timestamptz,
+  confidence integer not null default 0 check (confidence >= 0 and confidence <= 100),
+  opportunity_type public.deal_type,
+  is_private boolean not null default true,
+  market_sector public.market_sector not null default 'PRIVATE',
+  status public.candidate_status not null default 'PENDING_REVIEW',
+  reject_reason text,
+  dedupe_key text not null,
+  merged_deal_id uuid references public.deals(id) on delete set null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint opportunity_candidates_extraction_object
+    check (jsonb_typeof(extraction) = 'object'),
+  unique (source_id, dedupe_key)
+);
+
+create table public.deal_source_links (
+  id uuid primary key default gen_random_uuid(),
+  deal_id uuid not null references public.deals(id) on delete cascade,
+  source_id uuid not null references public.data_sources(id) on delete cascade,
+  candidate_id uuid references public.opportunity_candidates(id) on delete set null,
+  url text not null,
+  normalized_url text not null,
+  link_type text not null default 'DISCOVERED',
+  created_at timestamptz not null default now(),
+  constraint deal_source_links_link_type
+    check (link_type in ('DISCOVERED', 'DUPLICATE', 'MERGED')),
+  unique (source_id, normalized_url)
+);
+
+create index discovery_keywords_enabled_idx
+  on public.discovery_keywords (normalized_keyword)
+  where enabled;
+
+create index discovered_source_candidates_review_idx
+  on public.discovered_source_candidates (status, discovered_at desc);
+
+create index discovered_source_candidates_source_idx
+  on public.discovered_source_candidates (source_id, discovered_at desc);
+
+create index opportunity_candidates_review_idx
+  on public.opportunity_candidates (status, confidence desc, created_at desc);
+
+create index opportunity_candidates_source_idx
+  on public.opportunity_candidates (source_id, created_at desc);
+
+create index opportunity_candidates_dedupe_idx
+  on public.opportunity_candidates (dedupe_key);
+
+create index opportunity_candidates_deal_idx
+  on public.opportunity_candidates (merged_deal_id)
+  where merged_deal_id is not null;
+
+create index deal_source_links_deal_idx
+  on public.deal_source_links (deal_id);
+
+create or replace function private.derive_opportunity_candidate_market_sector()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_source_sector public.market_sector;
+begin
+  select s.market_sector
+  into v_source_sector
+  from public.data_sources s
+  where s.id = new.source_id;
+
+  new.market_sector := case
+    when new.is_private then 'PRIVATE'::public.market_sector
+    when v_source_sector = 'PUBLIC'::public.market_sector then 'PUBLIC'::public.market_sector
+    else 'MIXED'::public.market_sector
+  end;
+  return new;
+end;
+$$;
+
+revoke all on function private.derive_opportunity_candidate_market_sector()
+  from public, anon, authenticated, service_role;
+
+create trigger derive_opportunity_candidate_market_sector
+before insert or update of is_private, source_id
+on public.opportunity_candidates
+for each row execute function private.derive_opportunity_candidate_market_sector();
+
+-- Approved discovery candidates are a hard pre-condition for first
+-- publication. Existing fixed-adapter sources are unaffected.
+create or replace function private.enforce_discovery_candidate_publish_gate()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_discovery public.discovery_method;
+  v_approved boolean;
+begin
+  select s.discovery_method
+  into v_discovery
+  from public.deals d
+  join public.data_sources s on s.id = d.primary_source_id
+  where d.id = new.deal_id;
+
+  if v_discovery is null then
+    return new;
+  end if;
+
+  select exists (
+    select 1
+    from public.opportunity_candidates c
+    where c.merged_deal_id = new.deal_id
+      and c.status = 'APPROVED'::public.candidate_status
+      and c.opportunity_type is distinct from 'SUPPLIER_ONBOARDING'::public.deal_type
+  )
+  into v_approved;
+
+  if new.is_published and not v_approved then
+    new.is_published := false;
+  end if;
+
+  return new;
+end;
+$$;
+
+revoke all on function private.enforce_discovery_candidate_publish_gate()
+  from public, anon, authenticated, service_role;
+
+create trigger enforce_discovery_candidate_publish_gate
+before insert or update of is_published
+on public.deal_previews
+for each row execute function private.enforce_discovery_candidate_publish_gate();
+
+create or replace function private.unpublish_rejected_discovery_candidate()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if new.merged_deal_id is not null
+    and (
+      new.status in (
+        'REJECTED'::public.candidate_status,
+        'DUPLICATE'::public.candidate_status,
+        'EXPIRED'::public.candidate_status
+      )
+      or new.opportunity_type = 'SUPPLIER_ONBOARDING'::public.deal_type
+    )
+  then
+    update public.deal_previews dp
+    set is_published = false,
+        updated_at = now()
+    where dp.deal_id = new.merged_deal_id
+      and dp.is_published;
+  end if;
+  return new;
+end;
+$$;
+
+revoke all on function private.unpublish_rejected_discovery_candidate()
+  from public, anon, authenticated, service_role;
+
+create trigger unpublish_rejected_discovery_candidate
+after update of status, opportunity_type
+on public.opportunity_candidates
+for each row execute function private.unpublish_rejected_discovery_candidate();
+
+alter table public.discovery_keywords enable row level security;
+alter table public.discovered_source_candidates enable row level security;
+alter table public.opportunity_candidates enable row level security;
+alter table public.deal_source_links enable row level security;
+
+revoke all on table public.discovery_keywords from public, anon, authenticated;
+revoke all on table public.discovered_source_candidates from public, anon, authenticated;
+revoke all on table public.opportunity_candidates from public, anon, authenticated;
+revoke all on table public.deal_source_links from public, anon, authenticated;
+
+grant select, insert, update, delete on table public.discovery_keywords to service_role;
+grant select, insert, update, delete on table public.discovered_source_candidates to service_role;
+grant select, insert, update, delete on table public.opportunity_candidates to service_role;
+grant select, insert, update, delete on table public.deal_source_links to service_role;
+
+insert into public.discovery_keywords (keyword, normalized_keyword)
+values
+  ('RFQ', 'rfq'),
+  ('RFP', 'rfp'),
+  ('ITT', 'itt'),
+  ('invitation to tender', 'invitation to tender'),
+  ('invitation to quote', 'invitation to quote'),
+  ('request for quotation', 'request for quotation'),
+  ('request for proposal', 'request for proposal'),
+  ('expression of interest', 'expression of interest'),
+  ('EOI', 'eoi'),
+  ('RFI', 'rfi'),
+  ('seeking suppliers', 'seeking suppliers'),
+  ('suppliers wanted', 'suppliers wanted'),
+  ('supplier opportunity', 'supplier opportunity'),
+  ('subcontract opportunity', 'subcontract opportunity'),
+  ('subcontractor wanted', 'subcontractor wanted'),
+  ('framework opportunity', 'framework opportunity'),
+  ('call for suppliers', 'call for suppliers'),
+  ('purchasing requirement', 'purchasing requirement'),
+  ('preferred supplier', 'preferred supplier'),
+  ('procurement opportunity', 'procurement opportunity')
+on conflict (normalized_keyword) do nothing;
+
+comment on table public.discovery_keywords is
+  'Free keyword vocabulary used to pre-filter discovered pages before any model call.';
+comment on table public.opportunity_candidates is
+  'Raw discovery output requiring admin review. Protected buyer/source fields never reach preview DTOs.';
+comment on table public.deal_source_links is
+  'Every discovered or merged source URL for a deal, used for cross-source deduplication.';
+
+-- ============================================================================
+-- END 0056_private_discovery_stage1.sql
+-- ============================================================================
+
+-- ============================================================================
+-- BEGIN 0057_private_discovery_stage2.sql
+-- ============================================================================
+
+-- Stage 2 private discovery adds only observability columns and leak vocabulary.
+-- Candidate and source rows remain service-role-only behind Stage 1 RLS.
+
+alter table public.discovered_source_candidates
+  add column discovery_channel text not null default 'UNKNOWN',
+  add column blocked_reason text,
+  add constraint discovered_source_candidates_discovery_channel
+    check (discovery_channel in ('SEARCH', 'CRAWL', 'UNKNOWN'));
+
+create index discovered_source_candidates_channel_idx
+  on public.discovered_source_candidates (discovery_channel, discovered_at desc);
+
+create index discovered_source_candidates_blocked_idx
+  on public.discovered_source_candidates (domain, discovered_at desc)
+  where blocked_reason is not null;
+
+insert into private.leak_gate_terms (kind, term)
+values
+  ('source_platform', 'achilles'),
+  ('source_platform', 'achilles.com'),
+  ('source_platform', 'build uk'),
+  ('source_platform', 'builduk.org'),
+  ('source_platform', 'chartered institute of procurement and supply'),
+  ('source_platform', 'cips'),
+  ('source_platform', 'cips.org'),
+  ('source_platform', 'contractsfinder.service.gov.uk'),
+  ('source_platform', 'constructionline.co.uk'),
+  ('source_platform', 'crowncommercial.gov.uk'),
+  ('source_platform', 'energy uk'),
+  ('source_platform', 'energy-uk.org.uk'),
+  ('source_platform', 'energyuk'),
+  ('source_platform', 'hs2'),
+  ('source_platform', 'hs2.org.uk'),
+  ('source_platform', 'make uk'),
+  ('source_platform', 'makeuk.org'),
+  ('source_platform', 'national grid'),
+  ('source_platform', 'nationalgrid.com'),
+  ('source_platform', 'network rail'),
+  ('source_platform', 'networkrail.co.uk'),
+  ('source_platform', 'publiccontractsscotland.gov.uk'),
+  ('source_platform', 'rail forum'),
+  ('source_platform', 'railforum.uk'),
+  ('source_platform', 'sell2wales.gov.wales'),
+  ('source_platform', 'supplychain.nhs.uk'),
+  ('source_platform', 'techuk'),
+  ('source_platform', 'techuk.org'),
+  ('source_platform', 'thames water'),
+  ('source_platform', 'thameswater.co.uk'),
+  ('source_platform', 'united utilities'),
+  ('source_platform', 'unitedutilities.com')
+on conflict (kind, term) do nothing;
+
+comment on column public.discovered_source_candidates.discovery_channel is
+  'SEARCH results, CRAWL portal links, or UNKNOWN for Stage 1 rows.';
+comment on column public.discovered_source_candidates.blocked_reason is
+  'Compliance or access block recorded instead of bypassing the source.';
+
+-- ============================================================================
+-- END 0057_private_discovery_stage2.sql
+-- ============================================================================
+
+-- ============================================================================
+-- BEGIN 0058_enable_devolved_portals_private_buyers.sql
+-- ============================================================================
+
+-- DealAtlas migration 0058
+-- Enables the Public Contracts Scotland and Sell2Wales official OCDS API rows
+-- added in 0045. Approved by Craig 1 Nov 2026. reuse_status is unchanged
+-- (OPEN_LICENSE). 0057 is reserved by the private-discovery-stage2 branch.
+
+update public.data_sources
+set enabled = true,
+    updated_at = now()
+where source_key in ('public-contracts-scotland', 'sell2wales')
+  and enabled = false;
+
+-- ============================================================================
+-- END 0058_enable_devolved_portals_private_buyers.sql
+-- ============================================================================
+
+-- ============================================================================
+-- BEGIN 0059_country_regions_in_leak_gate.sql
+-- ============================================================================
+
+-- 0059: allow country-level regions (TED) in broad_region and in the
+-- "Delivery within <region>" preview line. Country names only, mapped from the
+-- ISO code; nothing finer. Function bodies are copied unchanged from 0018/0041
+-- apart from the region arrays.
+
+create or replace function private.preview_leak_findings(
+  p_deal_id uuid,
+  p_slug text,
+  p_preview_title text,
+  p_preview_summary text,
+  p_requirements jsonb,
+  p_relevance_tags text[] default '{}'::text[],
+  p_broad_region text default null
+)
+returns table (finding_code text, finding_risk public.leakage_risk, finding_token text)
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+declare
+  d public.deals%rowtype;
+  b public.organizations%rowtype;
+  v_has_buyer boolean := false;
+  v_generic_org text[];
+  v_generic_acr text[];
+  v_generic_proper text[];
+  v_broad text[];
+  v_ref_prefix text[];
+  v_postcode_like text[];
+  v_stop text[];
+  v_platforms text[];
+  v_req text[];
+  v_segments text[];
+  v_prose_segments text[];
+  v_slug text;
+  v_slug_norm text;
+  v_slug_tokens text[];
+  v_text_cs text;
+  v_all text;
+  v_all_lower text;
+  v_all_norm text;
+  v_source_parts text[];
+  v_source_raw text;
+  v_source_norm text;
+  v_source_acronyms text[];
+  v_source_names text[];
+  v_cs_tokens text[];
+  v_term text;
+  v_label text;
+  v_norm text;
+  v_words text[];
+  v_window text;
+  v_seg text;
+  v_digits text;
+  v_m text[];
+  v_count integer;
+  v_sim real;
+  v_carried text[];
+  v_k integer;
+  v_amounts text[];
+  i integer;
+begin
+  select * into d from public.deals where id = p_deal_id;
+  if not found then
+    return query select 'DEAL_MISSING'::text, 'HIGH'::public.leakage_risk, null::text;
+    return;
+  end if;
+
+  select
+    coalesce(array_agg(t.term) filter (where t.kind = 'generic_org_token'), '{}'),
+    coalesce(array_agg(t.term) filter (where t.kind = 'generic_acronym'), '{}'),
+    coalesce(array_agg(t.term) filter (where t.kind = 'generic_proper_word'), '{}'),
+    coalesce(array_agg(t.term) filter (where t.kind = 'broad_location'), '{}'),
+    coalesce(array_agg(t.term) filter (where t.kind = 'reference_prefix'), '{}'),
+    coalesce(array_agg(t.term) filter (where t.kind = 'postcode_like'), '{}'),
+    coalesce(array_agg(t.term) filter (where t.kind = 'phrase_stopword'), '{}'),
+    coalesce(array_agg(t.term) filter (where t.kind = 'source_platform'), '{}')
+  into v_generic_org, v_generic_acr, v_generic_proper, v_broad, v_ref_prefix, v_postcode_like, v_stop, v_platforms
+  from private.leak_gate_terms t;
+
+  -- Every string leaf of requirements_preview is scanned, not just text/label.
+  select coalesce(array_agg(btrim(v #>> '{}')) filter (where btrim(v #>> '{}') <> ''), '{}')
+  into v_req
+  from jsonb_path_query(
+    case when jsonb_typeof(p_requirements) in ('array', 'object') then p_requirements else '[]'::jsonb end,
+    'strict $.**'
+  ) as v
+  where jsonb_typeof(v) = 'string';
+
+  v_prose_segments := array_remove(array[nullif(btrim(p_preview_summary), '')], null) || v_req;
+  v_segments := array_remove(array[nullif(btrim(p_preview_title), '')], null) || v_prose_segments;
+  v_slug := regexp_replace(lower(coalesce(p_slug, '')), '-[0-9a-f]{8}$', '');
+  v_slug_norm := private.leak_norm(v_slug);
+  v_slug_tokens := string_to_array(btrim(v_slug_norm), ' ');
+  v_text_cs := concat_ws(' . ', nullif(array_to_string(v_segments, ' . '), ''), nullif(array_to_string(coalesce(p_relevance_tags, '{}'), ' . '), ''));
+  v_all := concat_ws(' . ', nullif(v_text_cs, ''), nullif(v_slug, ''));
+  v_all_lower := lower(v_all);
+  v_all_norm := private.leak_norm(v_all);
+  v_cs_tokens := array(select m[1] from regexp_matches(v_text_cs, '([A-Za-z0-9&]+)', 'g') as m);
+
+  select array_remove(
+    array[d.source_title, d.source_description]
+    || coalesce((select array_agg(x) from public.lots l, unnest(array[l.source_title, l.source_description]) as x where l.deal_id = d.id), '{}')
+    || coalesce((select array_agg(x) from public.requirements r, unnest(array[r.name, r.description]) as x where r.deal_id = d.id), '{}')
+    || coalesce((select array[pod.project_name] || pod.goods_required || pod.services_required || pod.works_required
+       from public.private_opportunity_details pod where pod.deal_id = d.id), '{}'),
+    null
+  ) into v_source_parts;
+  v_source_raw := array_to_string(v_source_parts, ' . ');
+  v_source_norm := private.leak_norm(v_source_raw);
+
+  -- Names the source uses: standalone acronyms (outside all-caps fields and
+  -- all-caps runs) and capitalised words that follow a lowercase word and never
+  -- appear in lowercase. Matched case-insensitively so slugs and lowercased
+  -- prose cannot carry them.
+  select coalesce(array_agg(distinct lower(m[1])), '{}') into v_source_acronyms
+  from unnest(v_source_parts) as part
+  cross join lateral regexp_matches(
+    regexp_replace(part, '\m[A-Z][A-Z0-9&]*(?:\s+[A-Z][A-Z0-9&]*\M)+', ' ', 'g'),
+    '\m([A-Z][A-Z0-9]{2,5})\M', 'g'
+  ) as m
+  where length(regexp_replace(part, '[^A-Z]', '', 'g')) * 2 <= length(regexp_replace(part, '[^A-Za-z]', '', 'g'))
+    and m[1] <> all(v_generic_acr)
+    and lower(m[1]) <> all(v_generic_org)
+    and lower(m[1]) <> all(v_generic_proper)
+    and lower(m[1]) <> all(v_broad)
+    and lower(m[1]) <> all(v_stop)
+    and not exists (
+      select 1 from regexp_matches(v_source_raw, '\m(' || m[1] || ')\M', 'gi') as o where o[1] <> m[1]
+    );
+
+  select coalesce(array_agg(distinct lower(m[1])), '{}') into v_source_names
+  from unnest(v_source_parts) as part
+  cross join lateral regexp_matches(part, '\m[a-z][a-z0-9''-]*[,;:)]?\s+([A-Z][a-z]{3,})\M', 'g') as m
+  where lower(m[1]) <> all(v_generic_org)
+    and lower(m[1]) <> all(v_generic_proper)
+    and lower(m[1]) <> all(v_broad)
+    and lower(m[1]) <> all(v_stop)
+    and v_source_raw !~ ('\m' || lower(m[1]) || '\M');
+
+  -- Direct identifiers -------------------------------------------------------
+  return query select 'URL'::text, 'HIGH'::public.leakage_risk, left(m[1], 120)
+    from regexp_matches(v_all, '((?:https?://|www\.)[^[:space:]]+)', 'gi') as m;
+
+  return query select 'EMAIL'::text, 'HIGH'::public.leakage_risk, left(m[1], 120)
+    from regexp_matches(v_all, '([a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,})', 'gi') as m;
+
+  return query select 'DOMAIN'::text, 'HIGH'::public.leakage_risk, left(m[1], 120)
+    from regexp_matches(v_all, '\m([a-z0-9][a-z0-9-]*(?:\.[a-z0-9-]+)*\.(?:uk|com|org|gov|eu|io|info|scot|wales|cymru))\M', 'gi') as m;
+
+  for v_m in select regexp_matches(v_all, '(\+?[0-9][0-9 ().-]{8,18}[0-9])', 'g') loop
+    v_digits := regexp_replace(v_m[1], '[^0-9]', '', 'g');
+    if length(v_digits) between 10 and 13 and (v_digits like '0%' or v_digits like '44%') then
+      return query select 'PHONE'::text, 'HIGH'::public.leakage_risk, v_m[1];
+    end if;
+  end loop;
+
+  return query select 'OCID'::text, 'HIGH'::public.leakage_risk, m[1]
+    from regexp_matches(v_all, '\m(ocds-[a-z0-9]{3,}-[a-z0-9-]+)', 'gi') as m;
+
+  return query select 'REFERENCE_ID'::text, 'HIGH'::public.leakage_risk, m[1]
+    from regexp_matches(v_all, '\m([0-9]{6,}-[0-9]{4})\M', 'g') as m;
+
+  return query select 'REFERENCE_ID'::text, 'HIGH'::public.leakage_risk, m[1]
+    from regexp_matches(v_all, '\m([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\M', 'gi') as m;
+
+  for v_term in
+    select distinct btrim(x)
+    from (
+      select unnest(array[d.reference, d.ocid, d.external_primary_id]) as x
+      union all select n.notice_identifier from public.notices n where n.deal_id = d.id
+      union all select n.release_id from public.notices n where n.deal_id = d.id
+      union all select pod.rfp_number from public.private_opportunity_details pod where pod.deal_id = d.id
+      union all select pod.rfq_number from public.private_opportunity_details pod where pod.deal_id = d.id
+      union all select c.contract_identifier from public.contracts c where c.deal_id = d.id
+      union all select a.award_identifier from public.awards a where a.deal_id = d.id
+      union all select l.source_lot_id from public.lots l where l.deal_id = d.id
+      union all select oi.value from public.organization_identifiers oi where oi.organization_id = d.buyer_organization_id
+    ) refs
+    where x is not null
+  loop
+    v_norm := private.leak_norm(v_term);
+    if v_term ~ '[0-9]' and length(btrim(v_norm)) >= 5 and position(v_norm in v_all_norm) > 0 then
+      return query select 'REFERENCE_ID'::text, 'HIGH'::public.leakage_risk, v_term;
+    end if;
+  end loop;
+
+  return query select 'REFERENCE_PATTERN'::text, 'REVIEW'::public.leakage_risk, m[1]
+    from regexp_matches(v_all, '\m(([A-Za-z]{1,6})[-/_.]?[0-9]{3,}(?:[-/_.][A-Za-z0-9]+)*)\M', 'g') as m
+    where lower(m[2]) <> all(v_ref_prefix);
+
+  -- Dates --------------------------------------------------------------------
+  foreach v_term in array array[
+    '\m([0-3]?[0-9](?:st|nd|rd|th)?\s+(?:of\s+)?(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|june?|july?|aug(?:ust)?|sept?(?:ember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?))\M',
+    '\m([0-3]?[0-9](?:st|nd|rd|th)?\s+(?:of\s+)?may,?\s+(?:19|20)[0-9]{2})\M',
+    '\m((?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|june?|july?|aug(?:ust)?|sept?(?:ember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\.?\s+[0-3]?[0-9](?:st|nd|rd|th)?)\M',
+    '\m(may\s+[0-3]?[0-9](?:st|nd|rd|th)?,?\s+(?:19|20)[0-9]{2})\M',
+    '\m([0-3]?[0-9][/.-][01]?[0-9][/.-](?:19|20)?[0-9]{2})\M',
+    '\m((?:19|20)[0-9]{2}[/.-][01]?[0-9][/.-][0-3]?[0-9])\M',
+    '\m([0-3]?[0-9](?:st|nd|rd|th)?\s+(?:of\s+)?may)\M(?!\s+(?:be|not|also|apply|have|include|need|require|vary|change|only|still|well)\M)',
+    '\m(may\s+[0-3]?[0-9](?:st|nd|rd|th)?)\M',
+    '(?<![0-9/.])((?:0?[1-9]|[12][0-9]|3[01])/(?:0?[1-9]|1[0-2]))(?![0-9/])',
+    '\m([0-3]?[0-9]-(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sept?(?:ember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)(?:-(?:19|20)?[0-9]{2})?)\M'
+  ]
+  loop
+    return query select 'DATE_EXACT'::text, 'REVIEW'::public.leakage_risk, m[1]
+      from regexp_matches(v_all, v_term, 'gi') as m
+      where m[1] <> '24/7';
+  end loop;
+
+  -- Source dates in Europe/London, +/- one day, in common written forms.
+  for v_term in
+    with src(dt) as (
+      select (x at time zone 'Europe/London')::date
+      from unnest(array[d.enquiry_deadline, d.submission_deadline, d.first_published_at]) as x
+      where x is not null
+      union
+      select x
+      from unnest(array[
+        d.award_decision_date, d.contract_start_date, d.contract_end_date, d.extension_end_date,
+        d.next_procurement_date, d.estimated_renewal_date
+      ]) as x
+      where x is not null
+      union
+      select (pod.expression_of_interest_deadline at time zone 'Europe/London')::date
+      from public.private_opportunity_details pod
+      where pod.deal_id = d.id and pod.expression_of_interest_deadline is not null
+      union
+      select pod.anticipated_award_date
+      from public.private_opportunity_details pod
+      where pod.deal_id = d.id and pod.anticipated_award_date is not null
+      union
+      select (n.published_at at time zone 'Europe/London')::date
+      from public.notices n
+      where n.deal_id = d.id and n.published_at is not null
+      union
+      select (l.submission_deadline at time zone 'Europe/London')::date
+      from public.lots l
+      where l.deal_id = d.id and l.submission_deadline is not null
+      union
+      select x
+      from public.lots l, unnest(array[l.contract_start_date, l.contract_end_date]) as x
+      where l.deal_id = d.id and x is not null
+      union
+      select a.award_date from public.awards a where a.deal_id = d.id and a.award_date is not null
+      union
+      select x
+      from public.contracts c, unnest(array[c.start_date, c.end_date]) as x
+      where c.deal_id = d.id and x is not null
+    ),
+    days(dt) as (
+      select distinct s.dt + o
+      from src s
+      cross join generate_series(-1, 1) as o
+    )
+    select distinct to_char(days.dt, f)
+    from days
+    cross join unnest(array[
+      'YYYY-MM-DD', 'DD/MM/YYYY', 'FMDD/FMMM/YYYY', 'DD/MM/YY', 'FMDD FMMonth',
+      'FMDDth FMMonth', 'FMDD Mon', 'FMDDth Mon', 'FMMonth FMDD', 'FMMonth FMDDth', 'Mon FMDD',
+      'DD/MM', 'FMDD/FMMM', 'DD.MM', 'FMDD.FMMM', 'DD-MM', 'FMDD-FMMM', 'DD MM'
+    ]) as f
+  loop
+    -- Yearless numeric forms only count with digit boundaries, so decimals
+    -- such as "14.035" or longer digit runs are not hits. A hyphen may follow
+    -- so ranges like "14/03-21/03" still match.
+    if (v_term ~ '^[0-9]+[/. -][0-9]+$'
+        and v_all_lower ~ ('(?<![0-9/.,])' || replace(v_term, '.', '[.]') || '(?![0-9]|[/.,][0-9])'))
+       or (v_term !~ '^[0-9]+[/. -][0-9]+$' and position(private.leak_norm(v_term) in v_all_norm) > 0)
+    then
+      return query select 'DATE_SOURCE'::text, 'HIGH'::public.leakage_risk, v_term;
+    end if;
+  end loop;
+
+  -- Postcodes and places -----------------------------------------------------
+  return query select 'POSTCODE'::text, 'HIGH'::public.leakage_risk, m[1]
+    from regexp_matches(v_all, '\m([A-Z]{1,2}[0-9][A-Z0-9]?\s*[0-9][A-Z]{2})\M', 'gi') as m;
+
+  for v_term in
+    select distinct upper(left(c, length(c) - 3))
+    from (
+      select regexp_replace(upper(pc), '[^A-Z0-9]', '', 'g') as c
+      from (
+        select b2.postcode as pc from public.organizations b2 where b2.id = d.buyer_organization_id
+        union all
+        select o.postcode
+        from public.deal_organizations dorg
+        join public.organizations o on o.id = dorg.organization_id
+        where dorg.deal_id = d.id
+        union all
+        select loc.postcode
+        from public.deal_locations dl
+        join public.locations loc on loc.id = dl.location_id
+        where dl.deal_id = d.id
+        union all
+        select m[1]
+        from regexp_matches(coalesce(v_source_raw, '') || ' ' || coalesce(d.exact_location_text, ''), '\m([A-Z]{1,2}[0-9][A-Z0-9]?\s*[0-9][A-Z]{2})\M', 'gi') as m
+      ) pcs
+      where pc is not null
+    ) compact
+    where c ~ '^[A-Z]{1,2}[0-9][A-Z0-9]?[0-9][A-Z]{2}$'
+  loop
+    if v_all ~* ('\m' || v_term || '\M') then
+      return query select 'POSTCODE_KNOWN_OUTWARD'::text, 'HIGH'::public.leakage_risk, v_term;
+    end if;
+  end loop;
+
+  return query select 'POSTCODE_OUTWARD'::text, 'REVIEW'::public.leakage_risk, m[1]
+    from regexp_matches(v_text_cs, '\m([A-Z]{1,2}[0-9][A-Z0-9]?)\M', 'g') as m
+    where m[1] <> all(v_postcode_like);
+
+  -- Slugs are lowercase, so postcode-shaped slug words are checked separately.
+  return query select 'POSTCODE_OUTWARD'::text, 'REVIEW'::public.leakage_risk, upper(w)
+    from unnest(v_slug_tokens) as w
+    where w ~ '^[a-z]{1,2}[0-9][a-z0-9]?$' and upper(w) <> all(v_postcode_like);
+
+  if d.buyer_organization_id is not null then
+    select * into b from public.organizations where id = d.buyer_organization_id;
+    v_has_buyer := found;
+  end if;
+
+  for v_term in
+    select distinct btrim(part)
+    from (
+      select regexp_split_to_table(x, '[,;/|()]') as part
+      from (
+        select d.exact_location_text as x
+        union all select l.exact_location_text from public.lots l where l.deal_id = d.id
+      ) s
+      where x is not null
+      union all
+      select unnest(array[loc.city, loc.county])
+      from public.deal_locations dl
+      join public.locations loc on loc.id = dl.location_id
+      where dl.deal_id = d.id
+      union all
+      select unnest(array[b.city, b.county, b.address_line_1, b.address_line_2])
+      where v_has_buyer
+    ) parts
+    where part is not null
+  loop
+    v_norm := private.leak_norm(v_term);
+    if length(btrim(v_norm)) >= 4
+       and btrim(v_norm) <> all(v_broad)
+       and v_norm <> private.leak_norm(p_broad_region)
+       and exists (
+         select 1
+         from unnest(string_to_array(btrim(v_norm), ' ')) as w
+         where w <> all(v_generic_org) and w <> all(v_broad) and w !~ '^[0-9]+$'
+       )
+       and position(v_norm in v_all_norm) > 0
+    then
+      return query select 'LOCATION_EXACT'::text, 'HIGH'::public.leakage_risk, v_term;
+    end if;
+
+    -- Single distinctive words of a location ("Brindlequay" from
+    -- "Brindlequay, Ostbury Fenmoor"), in any case and in the slug.
+    return query select 'LOCATION_TOKEN'::text,
+        (case when length(w) >= 5 then 'HIGH' else 'REVIEW' end)::public.leakage_risk,
+        w
+      from unnest(string_to_array(btrim(v_norm), ' ')) as w
+      where length(w) >= 4
+        and w !~ '[0-9]'
+        and w <> all(v_generic_org)
+        and w <> all(v_generic_proper)
+        and w <> all(v_broad)
+        and w <> all(v_stop)
+        and position(' ' || w || ' ' in coalesce(private.leak_norm(p_broad_region), '')) = 0
+        and position(' ' || w || ' ' in v_all_norm) > 0;
+  end loop;
+
+  -- Buyer identity -----------------------------------------------------------
+  if v_has_buyer then
+    v_norm := private.leak_norm(b.canonical_name);
+    if length(btrim(v_norm)) >= 3 and position(v_norm in v_all_norm) > 0 then
+      return query select 'BUYER_NAME'::text, 'HIGH'::public.leakage_risk, b.canonical_name;
+    elsif b.leak_match_name is not null and position(b.leak_match_name in v_all_norm) > 0 then
+      return query select 'BUYER_NAME'::text, 'HIGH'::public.leakage_risk, b.canonical_name;
+    end if;
+
+    for v_term in
+      select a.alias from public.organization_aliases a where a.organization_id = b.id
+    loop
+      v_label := replace(v_term, '.', '');
+      -- Acronym-style aliases: all caps, or mixed case with two or more capitals.
+      if v_label ~ '^[A-Za-z0-9&]{2,12}$'
+         and ((v_label ~ '[A-Z]' and v_label !~ '[a-z]') or v_label ~ '[A-Z][^A-Z]*[A-Z]')
+      then
+        if v_label = any(v_cs_tokens)
+           or (length(v_label) >= 3
+               and upper(v_label) <> all(v_generic_acr)
+               and lower(v_label) <> all(v_generic_org)
+               and lower(v_label) <> all(v_generic_proper)
+               and lower(v_label) <> all(v_stop)
+               and position(private.leak_norm(v_label) in v_all_norm) > 0)
+        then
+          return query select 'BUYER_ACRONYM'::text, 'HIGH'::public.leakage_risk, v_term;
+        end if;
+        continue;
+      end if;
+      v_norm := private.leak_norm(v_term);
+      if length(btrim(v_norm)) >= 4
+         and exists (
+           select 1 from unnest(string_to_array(btrim(v_norm), ' ')) as w
+           where w <> all(v_generic_org) and w <> all(v_broad)
+         )
+         and position(v_norm in v_all_norm) > 0
+      then
+        return query select 'BUYER_ALIAS'::text, 'HIGH'::public.leakage_risk, v_term;
+      elsif length(btrim(v_norm)) between 2 and 3
+         and btrim(v_norm) <> all(v_generic_org)
+         and btrim(v_norm) <> all(v_broad)
+         and btrim(v_norm) <> all(v_stop)
+         and upper(btrim(v_norm)) <> all(v_generic_acr)
+         and position(v_norm in v_all_norm) > 0
+      then
+        return query select 'BUYER_ALIAS'::text, 'REVIEW'::public.leakage_risk, v_term;
+      end if;
+    end loop;
+
+    for v_term in
+      select distinct lower(regexp_replace(x, '^www\.', ''))
+      from (
+        select b.domain as x
+        union all select regexp_replace(lower(b.website), '^[a-z][a-z0-9+.-]*://([^/:?#]+).*$', '\1')
+        union all select split_part(b.email, '@', 2)
+      ) hosts
+      where x is not null and length(x) >= 4
+    loop
+      if position(v_term in v_all_lower) > 0 then
+        return query select 'BUYER_DOMAIN'::text, 'HIGH'::public.leakage_risk, v_term;
+      else
+        v_label := split_part(v_term, '.', 1);
+        if length(v_label) >= 5
+           and v_label <> all(v_generic_org)
+           and position(' ' || v_label || ' ' in v_all_norm) > 0
+        then
+          return query select 'BUYER_DOMAIN'::text, 'HIGH'::public.leakage_risk, v_label;
+        end if;
+      end if;
+    end loop;
+
+    for v_term in
+      select distinct w
+      from unnest(string_to_array(btrim(private.leak_norm(b.canonical_name)), ' ')) as w
+      where length(w) >= 4
+        and w !~ '^[0-9]+$'
+        and w <> all(v_generic_org)
+        and w <> all(v_generic_proper)
+        and w <> all(v_broad)
+        and w <> all(v_stop)
+    loop
+      if position(' ' || v_term || ' ' in v_all_norm) > 0 then
+        return query select 'BUYER_TOKEN'::text,
+          (case when length(v_term) >= 5 then 'HIGH' else 'REVIEW' end)::public.leakage_risk,
+          v_term;
+      end if;
+    end loop;
+
+    for v_term in
+      select upper(string_agg(left(w, 1), '' order by ord))
+      from unnest(string_to_array(btrim(private.leak_norm(b.canonical_name)), ' ')) with ordinality as t(w, ord)
+      where w not in ('and', 'of', 'the', 'for') and w !~ '^[0-9]+$'
+      union
+      select upper(string_agg(left(w, 1), '' order by ord))
+      from unnest(string_to_array(btrim(b.leak_match_name), ' ')) with ordinality as t(w, ord)
+      where w not in ('and', 'of', 'the', 'for') and w !~ '^[0-9]+$'
+    loop
+      if v_term is not null and length(v_term) >= 3
+         and (v_term = any(v_cs_tokens) or (length(v_term) >= 4 and lower(v_term) = any(v_slug_tokens)))
+      then
+        return query select 'BUYER_ACRONYM'::text, 'HIGH'::public.leakage_risk, v_term;
+      end if;
+    end loop;
+  end if;
+
+  for v_term in
+    select distinct lower(regexp_replace(regexp_replace(lower(u), '^[a-z][a-z0-9+.-]*://([^/:?#]+).*$', '\1'), '^www\.', ''))
+    from unnest(array[d.source_url, d.application_url]) as u
+    where u is not null
+  loop
+    if length(v_term) >= 4 and position(v_term in v_all_lower) > 0 then
+      return query select 'BUYER_DOMAIN'::text, 'HIGH'::public.leakage_risk, v_term;
+    end if;
+  end loop;
+
+  -- Any known organisation (buyers, suppliers, incumbents) -------------------
+  for v_term, v_norm in
+    select o.canonical_name, o.leak_match_name
+    from public.organizations o
+    where o.leak_match_name is not null and position(o.leak_match_name in v_all_norm) > 0
+    union
+    select a.alias, a.leak_match_name
+    from public.organization_aliases a
+    where a.leak_match_name is not null and position(a.leak_match_name in v_all_norm) > 0
+  loop
+    select count(*) into v_count
+    from unnest(string_to_array(btrim(v_norm), ' ')) as w
+    where w <> all(v_generic_org) and w <> all(v_broad) and w <> all(v_stop) and w !~ '^[0-9]+$'
+      and (length(btrim(v_norm)) >= 5 or (upper(w) <> all(v_generic_acr) and w <> all(v_generic_proper)));
+    if v_count >= 2 then
+      return query select 'ORG_NAME'::text, 'HIGH'::public.leakage_risk, v_term;
+    elsif v_count = 1 then
+      return query select 'ORG_NAME'::text, 'REVIEW'::public.leakage_risk, v_term;
+    end if;
+  end loop;
+
+  for v_term in
+    select distinct w
+    from (
+      select o.canonical_name as n
+      from public.deal_organizations dorg
+      join public.organizations o on o.id = dorg.organization_id
+      where dorg.deal_id = d.id
+      union
+      select o.canonical_name
+      from public.awards aw
+      join public.award_suppliers s on s.award_id = aw.id
+      join public.organizations o on o.id = s.organization_id
+      where aw.deal_id = d.id
+      union
+      select o.canonical_name
+      from public.deal_insights di
+      join public.organizations o on o.id = di.incumbent_organization_id
+      where di.deal_id = d.id
+    ) names
+    cross join lateral unnest(string_to_array(btrim(private.leak_norm(names.n)), ' ')) as w
+    where length(w) >= 4
+      and w !~ '^[0-9]+$'
+      and w <> all(v_generic_org)
+      and w <> all(v_generic_proper)
+      and w <> all(v_broad)
+      and w <> all(v_stop)
+  loop
+    if position(' ' || v_term || ' ' in v_all_norm) > 0 then
+      return query select 'ORG_TOKEN'::text,
+        (case when length(v_term) >= 5 then 'HIGH' else 'REVIEW' end)::public.leakage_risk,
+        v_term;
+    end if;
+  end loop;
+
+  return query select 'ORG_SUFFIX'::text, 'HIGH'::public.leakage_risk, m[1]
+    from regexp_matches(v_text_cs, '((?:[A-Z][A-Za-z0-9&-]*\s+){1,4}(?:Ltd|LTD|Limited|LIMITED|LLP|PLC|Plc|plc|LLC|Inc|CIC))\M', 'g') as m;
+
+  return query select 'ORG_SUFFIX'::text, 'HIGH'::public.leakage_risk, m[1]
+    from regexp_matches(v_all, '\m(ltd|llp)\M', 'gi') as m;
+
+  -- Project / programme names ------------------------------------------------
+  for v_term in
+    select pod.project_name
+    from public.private_opportunity_details pod
+    where pod.deal_id = d.id and pod.project_name is not null
+  loop
+    v_norm := private.leak_norm(v_term);
+    if length(btrim(v_norm)) >= 5 and position(v_norm in v_all_norm) > 0 then
+      return query select 'PROJECT_NAME'::text, 'HIGH'::public.leakage_risk, v_term;
+    end if;
+    return query
+      select 'PROJECT_NAME'::text,
+        (case when length(w) >= 5 then 'HIGH' else 'REVIEW' end)::public.leakage_risk,
+        w
+      from (
+        select distinct w
+        from unnest(string_to_array(btrim(v_norm), ' ')) as w
+        where length(w) >= 4
+          and w !~ '^[0-9]+$'
+          and w <> all(v_generic_org)
+          and w <> all(v_generic_proper)
+          and w <> all(v_broad)
+          and w <> all(v_stop)
+      ) tokens
+      where position(' ' || w || ' ' in v_all_norm) > 0;
+  end loop;
+
+  for v_m in select regexp_matches(v_text_cs, '\m([A-Z][A-Z0-9&]{2,})\M', 'g') loop
+    if v_m[1] <> all(v_generic_acr) then
+      v_norm := private.leak_norm(v_m[1]);
+      return query select 'ACRONYM'::text,
+        (case when length(btrim(v_norm)) >= 3 and position(v_norm in v_source_norm) > 0 then 'HIGH' else 'REVIEW' end)::public.leakage_risk,
+        v_m[1];
+    end if;
+  end loop;
+
+  -- Title-Case runs inside sentence-case prose (site/programme names).
+  foreach v_seg in array v_prose_segments loop
+    for v_m in select regexp_matches(v_seg, '\m[a-z][a-z0-9''-]*[,;:)]?\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)', 'g') loop
+      select count(*) into v_count
+      from unnest(string_to_array(btrim(private.leak_norm(v_m[1])), ' ')) as w
+      where w <> all(v_generic_proper) and w <> all(v_generic_org) and w <> all(v_broad);
+      if v_count > 0 then
+        return query select 'PROPER_NOUN_RUN'::text,
+          (case when position(private.leak_norm(v_m[1]) in v_source_norm) > 0 then 'HIGH' else 'REVIEW' end)::public.leakage_risk,
+          v_m[1];
+      end if;
+    end loop;
+  end loop;
+
+  return query select 'SOURCE_NAME_TOKEN'::text, 'HIGH'::public.leakage_risk, w
+    from unnest(v_source_acronyms) as w
+    where position(' ' || w || ' ' in v_all_norm) > 0;
+
+  return query select 'SOURCE_NAME_TOKEN'::text,
+      (case when length(w) >= 5 then 'HIGH' else 'REVIEW' end)::public.leakage_risk,
+      w
+    from unnest(v_source_names) as w
+    where position(' ' || w || ' ' in v_all_norm) > 0;
+
+  -- Capitalised source words in any position (Title-Case titles, sentence
+  -- starts, ALL-CAPS headings) that the source never writes in lowercase and
+  -- that fewer than three other deals use. Per-word form of COMBINATION, so
+  -- REVIEW only; common words are filtered out by the corpus count.
+  for v_term in
+    select c.w
+    from (
+      select distinct lower(m[1]) as w
+      from unnest(v_source_parts) as part
+      cross join lateral regexp_matches(part, '\m([A-Z][a-z]{3,}|[A-Z]{4,})\M', 'g') as m
+    ) c
+    where c.w <> all(v_generic_org)
+      and c.w <> all(v_generic_proper)
+      and c.w <> all(v_broad)
+      and c.w <> all(v_stop)
+      and c.w <> all(v_source_names)
+      and c.w <> all(v_source_acronyms)
+      and v_source_raw !~ ('\m' || c.w || '\M')
+      and position(' ' || c.w || ' ' in v_all_norm) > 0
+    order by length(c.w) desc, c.w
+    limit 20
+  loop
+    select count(*) into v_k
+    from (
+      select 1
+      from public.deals x
+      where x.id <> d.id
+        and to_tsvector('simple'::regconfig, coalesce(x.source_title, '') || ' ' || coalesce(x.source_description, ''))
+            @@ plainto_tsquery('simple'::regconfig, v_term)
+      limit 3
+    ) others;
+    if v_k < 3 then
+      return query select 'SOURCE_RARE_WORD'::text, 'REVIEW'::public.leakage_risk, v_term;
+    end if;
+  end loop;
+
+  -- Similarity and copied phrases -------------------------------------------
+  if length(btrim(coalesce(d.source_title, ''))) >= 4 then
+    v_sim := extensions.similarity(lower(d.source_title), lower(coalesce(p_preview_title, '')));
+    if v_sim >= 0.9 then
+      return query select 'TITLE_SIMILARITY'::text, 'HIGH'::public.leakage_risk, to_char(v_sim, 'FM0.00');
+    elsif v_sim >= 0.8 then
+      return query select 'TITLE_SIMILARITY'::text, 'REVIEW'::public.leakage_risk, to_char(v_sim, 'FM0.00');
+    end if;
+
+    if btrim(v_slug_norm) <> '' then
+      v_sim := extensions.similarity(lower(d.source_title), btrim(v_slug_norm));
+      if v_sim >= 0.9 then
+        return query select 'SLUG_SIMILARITY'::text, 'HIGH'::public.leakage_risk, to_char(v_sim, 'FM0.00');
+      elsif v_sim >= 0.8 then
+        return query select 'SLUG_SIMILARITY'::text, 'REVIEW'::public.leakage_risk, to_char(v_sim, 'FM0.00');
+      end if;
+    end if;
+  end if;
+
+  if length(btrim(coalesce(d.source_description, ''))) >= 40 then
+    v_sim := extensions.similarity(lower(d.source_description), lower(coalesce(p_preview_summary, '')));
+    if v_sim >= 0.85 then
+      return query select 'DESCRIPTION_SIMILARITY'::text, 'HIGH'::public.leakage_risk, to_char(v_sim, 'FM0.00');
+    elsif v_sim >= 0.55 then
+      return query select 'DESCRIPTION_SIMILARITY'::text, 'REVIEW'::public.leakage_risk, to_char(v_sim, 'FM0.00');
+    end if;
+  end if;
+
+  foreach v_seg in array v_segments loop
+    v_words := string_to_array(btrim(private.leak_norm(v_seg)), ' ');
+    if coalesce(cardinality(v_words), 0) >= 6 then
+      for i in 1 .. cardinality(v_words) - 5 loop
+        v_window := ' ' || array_to_string(v_words[i:i + 5], ' ') || ' ';
+        select count(*) into v_count from unnest(v_words[i:i + 5]) as w where w <> all(v_stop);
+        if v_count >= 2 and position(v_window in v_source_norm) > 0 then
+          return query select 'PHRASE_OVERLAP'::text, 'HIGH'::public.leakage_risk, btrim(v_window);
+          exit;
+        end if;
+      end loop;
+    end if;
+  end loop;
+
+  -- Exact amounts ------------------------------------------------------------
+  select coalesce(array_agg(distinct x), '{}') into v_amounts
+  from (
+    select round(v)::bigint::text as x
+    from unnest(array[d.value_min_ex_vat, d.value_max_ex_vat]) as v
+    where v is not null
+    union all
+    select round(v)::bigint::text
+    from public.lots l, unnest(array[l.value_min, l.value_max]) as v
+    where l.deal_id = d.id and v is not null
+    union all
+    select round(a.award_value)::bigint::text from public.awards a where a.deal_id = d.id and a.award_value is not null
+    union all
+    select round(v)::bigint::text
+    from public.contracts c, unnest(array[c.original_value, c.current_value]) as v
+    where c.deal_id = d.id and v is not null
+    union all
+    select regexp_replace(d.exact_value_text, '[^0-9]', '', 'g') where d.exact_value_text is not null
+  ) amounts
+  where length(x) >= 5;
+
+  return query select 'EXACT_AMOUNT'::text, 'HIGH'::public.leakage_risk, m[1]
+    from regexp_matches(v_all, '(£\s?[0-9]{1,3}(?:,[0-9]{3})+(?:\.[0-9]{1,2})?)', 'g') as m;
+
+  return query select 'EXACT_AMOUNT'::text, 'HIGH'::public.leakage_risk, m[1]
+    from regexp_matches(v_all, '\m([0-9]{5,}(?:\.[0-9]{1,2})?)\M', 'g') as m
+    where split_part(m[1], '.', 1) = any(v_amounts);
+
+  -- Source platform ----------------------------------------------------------
+  return query
+    select 'SOURCE_PLATFORM'::text, 'HIGH'::public.leakage_risk, marker
+    from (
+      select unnest(v_platforms) as marker
+      union
+      select source_marker
+      from (
+        select lower(ds.name) as source_marker from public.data_sources ds where ds.id = d.primary_source_id
+        union
+        select lower(ds.source_key) from public.data_sources ds where ds.id = d.primary_source_id
+        union
+        select replace(lower(ds.source_key), '-', ' ') from public.data_sources ds where ds.id = d.primary_source_id
+      ) source_markers
+      where length(source_marker) >= 5
+        and exists (
+          select 1 from unnest(string_to_array(btrim(private.leak_norm(source_marker)), ' ')) as w
+          where w <> all(v_generic_org) and w <> all(v_broad)
+        )
+    ) markers
+    -- Short all-letter markers match whole words only (lib/redaction/scan.ts
+    -- platformSubstringOk).
+    where ((marker ~ '[^a-z ]' or length(replace(marker, ' ', '')) >= 8)
+           and position(marker in v_all_lower) > 0)
+       or position(private.leak_norm(marker) in v_all_norm) > 0;
+
+  -- broad_region is shown verbatim on cards, so it must be one of the fixed
+  -- regions (lib/preview/region.ts BROAD_REGIONS).
+  if nullif(btrim(p_broad_region), '') is not null
+     and btrim(p_broad_region) <> all(array[
+       'Nationwide', 'London', 'South East England', 'South West England', 'East of England',
+       'East Midlands', 'West Midlands', 'Yorkshire and the Humber', 'North West England',
+       'North East England', 'Scotland', 'Wales', 'Northern Ireland', 'Remote',
+       -- Country-level regions (TED); lib/preview/region.ts COUNTRY_REGIONS.
+       'Belgium', 'Czechia', 'Denmark', 'Estonia', 'Europe (other)', 'Finland', 'France', 'Germany', 'Ireland', 'Latvia', 'Netherlands', 'Slovenia', 'Spain', 'Sweden'
+     ]) then
+    return query select 'BROAD_REGION'::text, 'HIGH'::public.leakage_risk, left(btrim(p_broad_region), 120);
+  end if;
+
+  -- Combination risk: distinctive words carried from the source that pin the
+  -- preview to fewer than three deals.
+  select coalesce(array_agg(w order by length(w) desc, w), '{}') into v_carried
+  from (
+    select distinct w
+    from unnest(string_to_array(btrim(private.leak_norm(concat_ws(' . ', array_to_string(v_segments, ' . '), v_slug))), ' ')) as w
+    where length(w) >= 5
+      and w !~ '^[0-9]+$'
+      and w <> all(v_generic_org)
+      and w <> all(v_generic_proper)
+      and w <> all(v_broad)
+      and w <> all(v_stop)
+      and position(' ' || w || ' ' in v_source_norm) > 0
+  ) carried;
+
+  if cardinality(v_carried) >= 3 then
+    v_carried := v_carried[1:4];
+    select count(*) into v_k
+    from (
+      select 1
+      from public.deals x
+      where x.id <> d.id
+        and to_tsvector('simple'::regconfig, coalesce(x.source_title, '') || ' ' || coalesce(x.source_description, ''))
+            @@ plainto_tsquery('simple'::regconfig, array_to_string(v_carried, ' '))
+      limit 2
+    ) others;
+    if v_k + 1 < 3 then
+      return query select 'COMBINATION'::text, 'REVIEW'::public.leakage_risk, array_to_string(v_carried, ' + ');
+    end if;
+  end if;
+
+  return;
+end;
+$$;
+
+revoke execute on function private.preview_leak_findings(uuid, text, text, text, jsonb, text[], text)
+  from public, anon, authenticated;
+grant execute on function private.preview_leak_findings(uuid, text, text, text, jsonb, text[], text)
+  to service_role;
+
+comment on function private.preview_leak_findings(uuid, text, text, text, jsonb, text[], text) is
+  'Preview leak gate v2 findings. Tokens can contain protected values; service-role/admin only.';
+
+create or replace function private.preview_dto_requirements(p jsonb)
+returns jsonb
+language sql
+immutable
+set search_path = ''
+as $$
+  with vocab as (
+    select
+      array[
+      'Agricultural, farming, fishing and forestry products',
+      'Petroleum, fuel, electricity and other energy',
+      'Mining, basic metals and related products',
+      'Food, beverages, tobacco and related products',
+      'Agricultural machinery',
+      'Clothing, footwear, luggage and accessories',
+      'Leather, textile, plastic and rubber materials',
+      'Printed matter and related products',
+      'Chemical products',
+      'Office and computing machinery and supplies',
+      'Electrical machinery, apparatus and lighting',
+      'Communications and telecommunications equipment',
+      'Medical equipment, pharmaceuticals and personal care',
+      'Transport equipment',
+      'Security, fire-fighting and defence equipment',
+      'Musical instruments, sports goods, games and toys',
+      'Laboratory, optical and precision equipment',
+      'Furniture, furnishings, domestic appliances and cleaning products',
+      'Collected and purified water',
+      'Industrial machinery',
+      'Mining, quarrying and construction machinery',
+      'Construction structures and materials',
+      'Construction work',
+      'Software packages and information systems',
+      'Repair and maintenance services',
+      'Installation services',
+      'Hotel, restaurant and retail services',
+      'Transport services',
+      'Supporting transport and travel-agency services',
+      'Postal and telecommunications services',
+      'Public utilities',
+      'Financial and insurance services',
+      'Real estate services',
+      'Architectural, engineering and inspection services',
+      'IT services: consulting, software development, Internet and support',
+      'Research and development services',
+      'Administration, defence and social security services',
+      'Oil and gas industry services',
+      'Agricultural, forestry and horticultural services',
+      'Business services: law, marketing, consulting, recruitment and security',
+      'Education and training services',
+      'Health and social work services',
+      'Sewage, refuse, cleaning and environmental services',
+      'Recreational, cultural and sporting services',
+      'Other community, social and personal services'
+    ]::text[] as cpv_divisions,
+      array[
+      'ISO 27001 information security',
+      'ISO 9001 quality management',
+      'ISO 14001 environmental management',
+      'Cyber Essentials Plus',
+      'Cyber Essentials',
+      'PAS 91 construction prequalification',
+      'UK data-protection duties'
+    ]::text[] as standards,
+      array[
+      'Price scored',
+      'Quality scored',
+      'Social value scored'
+    ]::text[] as commercial,
+      array[
+      'financial capacity evidence',
+      'information-security capability',
+      'appropriate insurance cover',
+      'data-protection capability',
+      'evidence of comparable delivery',
+      'social value contribution',
+      'ongoing support capability',
+      'implementation and mobilisation capability'
+    ]::text[] as labels,
+      array[
+      'Nationwide',
+      'London',
+      'South East England',
+      'South West England',
+      'East of England',
+      'East Midlands',
+      'West Midlands',
+      'Yorkshire and the Humber',
+      'North West England',
+      'North East England',
+      'Scotland',
+      'Wales',
+      'Northern Ireland',
+      'Remote',
+      'Belgium', 'Czechia', 'Denmark', 'Estonia', 'Europe (other)', 'Finland', 'France', 'Germany', 'Ireland', 'Latvia', 'Netherlands', 'Slovenia', 'Spain', 'Sweden'
+    ]::text[] as regions,
+      array[
+      'Closing window Closing today',
+      'Closing window Closing today. Contract term Under 3 months',
+      'Closing window Closing today. Contract term 3–6 months',
+      'Closing window Closing today. Contract term 6–12 months',
+      'Closing window Closing today. Contract term 1–2 years',
+      'Closing window Closing today. Contract term 2–3 years',
+      'Closing window Closing today. Contract term 3–5 years',
+      'Closing window Closing today. Contract term 5+ years',
+      'Closing window Within 3 days',
+      'Closing window Within 3 days. Contract term Under 3 months',
+      'Closing window Within 3 days. Contract term 3–6 months',
+      'Closing window Within 3 days. Contract term 6–12 months',
+      'Closing window Within 3 days. Contract term 1–2 years',
+      'Closing window Within 3 days. Contract term 2–3 years',
+      'Closing window Within 3 days. Contract term 3–5 years',
+      'Closing window Within 3 days. Contract term 5+ years',
+      'Closing window Within 7 days',
+      'Closing window Within 7 days. Contract term Under 3 months',
+      'Closing window Within 7 days. Contract term 3–6 months',
+      'Closing window Within 7 days. Contract term 6–12 months',
+      'Closing window Within 7 days. Contract term 1–2 years',
+      'Closing window Within 7 days. Contract term 2–3 years',
+      'Closing window Within 7 days. Contract term 3–5 years',
+      'Closing window Within 7 days. Contract term 5+ years',
+      'Closing window Within 14 days',
+      'Closing window Within 14 days. Contract term Under 3 months',
+      'Closing window Within 14 days. Contract term 3–6 months',
+      'Closing window Within 14 days. Contract term 6–12 months',
+      'Closing window Within 14 days. Contract term 1–2 years',
+      'Closing window Within 14 days. Contract term 2–3 years',
+      'Closing window Within 14 days. Contract term 3–5 years',
+      'Closing window Within 14 days. Contract term 5+ years',
+      'Closing window Within 30 days',
+      'Closing window Within 30 days. Contract term Under 3 months',
+      'Closing window Within 30 days. Contract term 3–6 months',
+      'Closing window Within 30 days. Contract term 6–12 months',
+      'Closing window Within 30 days. Contract term 1–2 years',
+      'Closing window Within 30 days. Contract term 2–3 years',
+      'Closing window Within 30 days. Contract term 3–5 years',
+      'Closing window Within 30 days. Contract term 5+ years',
+      'Closing window More than 30 days',
+      'Closing window More than 30 days. Contract term Under 3 months',
+      'Closing window More than 30 days. Contract term 3–6 months',
+      'Closing window More than 30 days. Contract term 6–12 months',
+      'Closing window More than 30 days. Contract term 1–2 years',
+      'Closing window More than 30 days. Contract term 2–3 years',
+      'Closing window More than 30 days. Contract term 3–5 years',
+      'Closing window More than 30 days. Contract term 5+ years',
+      'Closing window Closed',
+      'Closing window Closed. Contract term Under 3 months',
+      'Closing window Closed. Contract term 3–6 months',
+      'Closing window Closed. Contract term 6–12 months',
+      'Closing window Closed. Contract term 1–2 years',
+      'Closing window Closed. Contract term 2–3 years',
+      'Closing window Closed. Contract term 3–5 years',
+      'Closing window Closed. Contract term 5+ years',
+      'Closing window Upcoming / date not yet fixed',
+      'Closing window Upcoming / date not yet fixed. Contract term Under 3 months',
+      'Closing window Upcoming / date not yet fixed. Contract term 3–6 months',
+      'Closing window Upcoming / date not yet fixed. Contract term 6–12 months',
+      'Closing window Upcoming / date not yet fixed. Contract term 1–2 years',
+      'Closing window Upcoming / date not yet fixed. Contract term 2–3 years',
+      'Closing window Upcoming / date not yet fixed. Contract term 3–5 years',
+      'Closing window Upcoming / date not yet fixed. Contract term 5+ years',
+      'Closing window Not disclosed',
+      'Closing window Not disclosed. Contract term Under 3 months',
+      'Closing window Not disclosed. Contract term 3–6 months',
+      'Closing window Not disclosed. Contract term 6–12 months',
+      'Closing window Not disclosed. Contract term 1–2 years',
+      'Closing window Not disclosed. Contract term 2–3 years',
+      'Closing window Not disclosed. Contract term 3–5 years',
+      'Closing window Not disclosed. Contract term 5+ years',
+      'Contract term Under 3 months',
+      'Contract term 3–6 months',
+      'Contract term 6–12 months',
+      'Contract term 1–2 years',
+      'Contract term 2–3 years',
+      'Contract term 3–5 years',
+      'Contract term 5+ years'
+    ]::text[] as key_dates,
+      array[
+      'device',
+      'devices',
+      'each',
+      'hour',
+      'hours',
+      'item',
+      'items',
+      'licences',
+      'litre',
+      'litres',
+      'set',
+      'sets',
+      'site',
+      'sites',
+      'tonne',
+      'tonnes',
+      'unit',
+      'units',
+      'user',
+      'users',
+      'vehicle',
+      'vehicles'
+    ]::text[] as units
+  ),
+  raw as (
+    select
+      a.ord,
+      case
+        when jsonb_typeof(a.e) = 'object' then nullif(a.e ->> 'field', '')
+        when jsonb_typeof(a.e) = 'string'
+          and split_part(btrim(a.e #>> '{}'), ': ', 1) ~ '^[a-z][A-Za-z0-9]+$'
+          and position(': ' in btrim(a.e #>> '{}')) > 0
+          then split_part(btrim(a.e #>> '{}'), ': ', 1)
+        else null
+      end as field,
+      btrim(
+        case
+          when jsonb_typeof(a.e) = 'object' then coalesce(a.e ->> 'text', a.e ->> 'label', '')
+          when jsonb_typeof(a.e) = 'string'
+            and split_part(btrim(a.e #>> '{}'), ': ', 1) ~ '^[a-z][A-Za-z0-9]+$'
+            and position(': ' in btrim(a.e #>> '{}')) > 0
+            then substr(btrim(a.e #>> '{}'), length(split_part(btrim(a.e #>> '{}'), ': ', 1)) + 3)
+          when jsonb_typeof(a.e) = 'string' then a.e #>> '{}'
+          else ''
+        end
+      ) as body
+    from jsonb_array_elements(case when jsonb_typeof(p) = 'array' then p else '[]'::jsonb end)
+      with ordinality as a(e, ord)
+  ),
+  items as (
+    -- List fields are joined with " · "; every item is checked on its own.
+    select r.ord, r.field, r.body,
+      coalesce(
+        (select array_agg(btrim(x)) from unnest(string_to_array(r.body, ' · ')) as x where btrim(x) <> ''),
+        '{}'::text[]
+      ) as parts
+    from raw r
+  ),
+  checked as (
+    select i.ord, i.field, i.body
+    from items i, vocab v
+    where i.body <> ''
+      and length(i.body) <= 500
+      and i.body !~ '\m[0-9]{8}(-[0-9])?\M'
+      and not private.preview_detail_text_risky(i.body)
+      and cardinality(i.parts) > 0
+      and case i.field
+        when 'goodsServices' then i.parts <@ v.cpv_divisions
+        when 'specificSector' then i.parts <@ v.cpv_divisions and cardinality(i.parts) = 1
+        when 'standards' then i.parts <@ v.standards
+        when 'commercialRequirements' then i.parts <@ v.commercial
+        when 'keyDates' then i.body = any(v.key_dates)
+        when 'deliveryRequirements' then
+          (select bool_and(x = 'UK-wide delivery' or (x like 'Delivery within %' and substr(x, 17) = any(v.regions) and substr(x, 17) <> 'Nationwide')) from unnest(i.parts) as x)
+        when 'quantities' then
+          (select bool_and(x ~ '^Quantities specified \([a-z]+\)$'
+                           and rtrim(substr(x, 23, length(x) - 23), 's') = any(
+                             select rtrim(u, 's') from unnest(v.units) as u))
+           from unnest(i.parts) as x)
+        when 'currency' then i.body ~ '^[A-Z]{3}$'
+        when 'scope' then true
+        when 'technicalSpecs' then true
+        else i.field is null and i.body = any(v.labels)
+      end
+  )
+  select coalesce(jsonb_agg(
+    case
+      when c.field is not null then jsonb_build_object('field', c.field, 'text', c.body)
+      else to_jsonb(c.body)
+    end
+    order by c.ord
+  ), '[]'::jsonb)
+  from (select * from checked order by ord limit 40) c;
+$$;
+
+
+revoke execute on function private.preview_dto_requirements(jsonb) from public, anon, authenticated;
+
+-- ============================================================================
+-- END 0059_country_regions_in_leak_gate.sql
+-- ============================================================================
+
+-- ============================================================================
+-- BEGIN 0060_buyer_type_private_public.sql
+-- ============================================================================
+
+-- DealAtlas migration 0060
+-- Top-level Private/Public buyer type plus the canonical deal sector taxonomy.
+-- Legacy buyer_sector is retained as-is for compatibility and historical data.
+
+create type public.buyer_type as enum ('PUBLIC', 'PRIVATE');
+
+create type public.deal_sector as enum (
+  'UTILITIES',
+  'HEALTHCARE',
+  'EDUCATION',
+  'CONSTRUCTION_INFRASTRUCTURE',
+  'TRANSPORT',
+  'TECHNOLOGY',
+  'DEFENCE_SECURITY',
+  'FACILITIES_PROPERTY',
+  'PROFESSIONAL_SERVICES',
+  'ENVIRONMENT_WASTE',
+  'HOUSING',
+  'SOCIAL_CARE',
+  'FOOD_CATERING',
+  'MANUFACTURING_EQUIPMENT',
+  'CHARITY_NONPROFIT',
+  'OTHER'
+);
+
+alter table public.deals
+  add column buyer_type public.buyer_type default 'PUBLIC'::public.buyer_type,
+  add column sector public.deal_sector default 'OTHER'::public.deal_sector;
+
+alter table public.deal_previews
+  add column buyer_type public.buyer_type default 'PUBLIC'::public.buyer_type,
+  add column sector public.deal_sector default 'OTHER'::public.deal_sector;
+
+create function private.deal_sector_from_cpv(p_code text)
+returns public.deal_sector
+language sql
+immutable
+set search_path = ''
+as $$
+  select case pg_catalog.left(pg_catalog.regexp_replace(coalesce(p_code, ''), '[^0-9]', '', 'g'), 2)
+    when '09' then 'UTILITIES'::public.deal_sector
+    when '40' then 'UTILITIES'::public.deal_sector
+    when '41' then 'UTILITIES'::public.deal_sector
+    when '65' then 'UTILITIES'::public.deal_sector
+    when '76' then 'UTILITIES'::public.deal_sector
+    when '33' then 'HEALTHCARE'::public.deal_sector
+    when '85' then 'HEALTHCARE'::public.deal_sector
+    when '80' then 'EDUCATION'::public.deal_sector
+    when '44' then 'CONSTRUCTION_INFRASTRUCTURE'::public.deal_sector
+    when '45' then 'CONSTRUCTION_INFRASTRUCTURE'::public.deal_sector
+    when '71' then 'CONSTRUCTION_INFRASTRUCTURE'::public.deal_sector
+    when '34' then 'TRANSPORT'::public.deal_sector
+    when '60' then 'TRANSPORT'::public.deal_sector
+    when '63' then 'TRANSPORT'::public.deal_sector
+    when '30' then 'TECHNOLOGY'::public.deal_sector
+    when '32' then 'TECHNOLOGY'::public.deal_sector
+    when '38' then 'TECHNOLOGY'::public.deal_sector
+    when '48' then 'TECHNOLOGY'::public.deal_sector
+    when '64' then 'TECHNOLOGY'::public.deal_sector
+    when '72' then 'TECHNOLOGY'::public.deal_sector
+    when '73' then 'TECHNOLOGY'::public.deal_sector
+    when '35' then 'DEFENCE_SECURITY'::public.deal_sector
+    when '50' then 'FACILITIES_PROPERTY'::public.deal_sector
+    when '51' then 'FACILITIES_PROPERTY'::public.deal_sector
+    when '70' then 'FACILITIES_PROPERTY'::public.deal_sector
+    when '66' then 'PROFESSIONAL_SERVICES'::public.deal_sector
+    when '74' then 'PROFESSIONAL_SERVICES'::public.deal_sector
+    when '79' then 'PROFESSIONAL_SERVICES'::public.deal_sector
+    when '90' then 'ENVIRONMENT_WASTE'::public.deal_sector
+    when '03' then 'FOOD_CATERING'::public.deal_sector
+    when '15' then 'FOOD_CATERING'::public.deal_sector
+    when '55' then 'FOOD_CATERING'::public.deal_sector
+    when '77' then 'FOOD_CATERING'::public.deal_sector
+    when '14' then 'MANUFACTURING_EQUIPMENT'::public.deal_sector
+    when '18' then 'MANUFACTURING_EQUIPMENT'::public.deal_sector
+    when '19' then 'MANUFACTURING_EQUIPMENT'::public.deal_sector
+    when '31' then 'MANUFACTURING_EQUIPMENT'::public.deal_sector
+    when '42' then 'MANUFACTURING_EQUIPMENT'::public.deal_sector
+    when '43' then 'MANUFACTURING_EQUIPMENT'::public.deal_sector
+    when '98' then 'OTHER'::public.deal_sector
+    else 'OTHER'::public.deal_sector
+  end;
+$$;
+
+create function private.deal_sector_from_cofog(p_code text)
+returns public.deal_sector
+language sql
+immutable
+set search_path = ''
+as $$
+  select case pg_catalog.left(pg_catalog.regexp_replace(coalesce(p_code, ''), '[^0-9]', '', 'g'), 2)
+    when '06' then 'HOUSING'::public.deal_sector
+    when '07' then 'HEALTHCARE'::public.deal_sector
+    when '09' then 'EDUCATION'::public.deal_sector
+    when '10' then 'SOCIAL_CARE'::public.deal_sector
+    else null
+  end;
+$$;
+
+create function private.deal_sector_from_text(p_value text)
+returns public.deal_sector
+language plpgsql
+immutable
+set search_path = ''
+as $$
+declare
+  v text := lower(coalesce(p_value, ''));
+begin
+  if btrim(v) = '' then
+    return 'OTHER'::public.deal_sector;
+  end if;
+  if v ~* '\m(social care|adult care|childcare|children''s care|domiciliary care)\M'
+     and v !~* '\mhealth\M' then
+    return 'SOCIAL_CARE'::public.deal_sector;
+  end if;
+  if v ~* '\m(nhs|health|hospital|medical|clinical|pharmaceutical|social care)\M' then
+    return 'HEALTHCARE'::public.deal_sector;
+  end if;
+  if v ~* '\m(education|school|university|college|academy|training|learning)\M' then
+    return 'EDUCATION'::public.deal_sector;
+  end if;
+  if v ~* '\m(utility|utilities|energy|water|wastewater|gas|electric|electricity|power|grid|transmission|nuclear|oil)\M' then
+    return 'UTILITIES'::public.deal_sector;
+  end if;
+  if v ~* '\m(transport|rail|railway|road|highway|bus|coach|aviation|airport|port|shipping|maritime|fleet|logistics)\M' then
+    return 'TRANSPORT'::public.deal_sector;
+  end if;
+  if v ~* '\m(defence|defense|military|security|police|fire service|cyber security)\M' then
+    return 'DEFENCE_SECURITY'::public.deal_sector;
+  end if;
+  if v ~* '\m(environment|waste|recycling|pollution|conservation|green|decarbonisation)\M' then
+    return 'ENVIRONMENT_WASTE'::public.deal_sector;
+  end if;
+  if v ~* '\m(housing|homes|residential|regeneration|homelessness)\M' then
+    return 'HOUSING'::public.deal_sector;
+  end if;
+  if v ~* '\m(facilities|property|estate|real estate|cleaning|maintenance|repairs)\M' then
+    return 'FACILITIES_PROPERTY'::public.deal_sector;
+  end if;
+  if v ~* '\m(food|catering|meals|drink|beverage|agriculture|farming|forestry)\M' then
+    return 'FOOD_CATERING'::public.deal_sector;
+  end if;
+  if v ~* '\m(technology|software|hardware|digital|data|computing|computer|cloud|network|telecom|information technology|cyber|artificial intelligence|ai)\M' then
+    return 'TECHNOLOGY'::public.deal_sector;
+  end if;
+  if v ~* '\m(manufacturing|manufacture|equipment|machinery|industrial|engineering|vehicles|materials)\M' then
+    return 'MANUFACTURING_EQUIPMENT'::public.deal_sector;
+  end if;
+  if v ~* '\m(charity|charitable|non-profit|nonprofit|not-for-profit|voluntary)\M' then
+    return 'CHARITY_NONPROFIT'::public.deal_sector;
+  end if;
+  if v ~* '\m(professional|consultancy|consulting|legal|financial|finance|audit|accounting|human resources|recruitment|marketing|advertising|business services)\M' then
+    return 'PROFESSIONAL_SERVICES'::public.deal_sector;
+  end if;
+  if v ~* '\m(construction|infrastructure|building|civil engineering|works)\M' then
+    return 'CONSTRUCTION_INFRASTRUCTURE'::public.deal_sector;
+  end if;
+  return 'OTHER'::public.deal_sector;
+end;
+$$;
+
+revoke all on function private.deal_sector_from_cpv(text)
+  from public, anon, authenticated, service_role;
+revoke all on function private.deal_sector_from_cofog(text)
+  from public, anon, authenticated, service_role;
+revoke all on function private.deal_sector_from_text(text)
+  from public, anon, authenticated, service_role;
+
+with fts as (
+  select
+    n.deal_id,
+    bool_or(
+      lower(coalesce(c->>'scheme', '')) = 'uk_ca_type'
+      and lower(coalesce(c->>'id', '')) = 'privateutility'
+    ) as private_utility,
+    array_agg(distinct pg_catalog.left(
+      pg_catalog.regexp_replace(coalesce(c->>'id', ''), '[^0-9]', '', 'g'),
+      2
+    )) filter (where lower(coalesce(c->>'scheme', '')) = 'cofog') as cofog_codes
+  from public.notices n
+  join public.data_sources s on s.id = n.source_id
+  join public.deals d on d.id = n.deal_id
+  join public.raw_records rr on rr.id = n.raw_record_id
+  cross join lateral jsonb_path_query(rr.raw_payload, '$.**') c
+  where s.source_key in ('find-a-tender', 'public-contracts-scotland', 'sell2wales')
+    and jsonb_typeof(c) = 'object'
+    and d.ocid is not null
+    and rr.raw_payload::text like '%' || to_jsonb(d.ocid)::text || '%'
+  group by n.deal_id
+),
+ted as (
+  -- TED notices are EU public procurement notices: always PUBLIC.
+  select distinct n.deal_id
+  from public.notices n
+  join public.data_sources s on s.id = n.source_id
+  where s.source_key = 'ted'
+),
+ukip as (
+  select
+    n.deal_id,
+    max(lower(coalesce(
+      rr.raw_payload #>> '{body,record,is_this_project_programme_drawing_on_public_or_private_funds}',
+      ''
+    ))) as funding,
+    max(coalesce(
+      rr.raw_payload #>> '{body,record,sector}',
+      rr.raw_payload #>> '{body,record,key_client}',
+      ''
+    )) as sector_text
+  from public.notices n
+  join public.data_sources s on s.id = n.source_id
+  join public.raw_records rr on rr.id = n.raw_record_id
+  where s.source_key = 'uk-infrastructure-pipeline'
+  group by n.deal_id
+),
+private_discovery as (
+  select d.id as deal_id
+  from public.deals d
+  join public.data_sources s on s.id = d.primary_source_id
+  where s.discovery_method is not null
+  union
+  select c.merged_deal_id as deal_id
+  from public.opportunity_candidates c
+  where c.is_private
+    and c.merged_deal_id is not null
+),
+primary_cpv as (
+  select distinct on (dc.deal_id)
+    dc.deal_id,
+    dc.cpv_code
+  from public.deal_classifications dc
+  where dc.cpv_code is not null
+  order by dc.deal_id, dc.is_primary desc nulls last, dc.created_at, dc.id
+),
+computed as (
+  select
+    d.id,
+    case
+      when coalesce(f.private_utility, false) then 'PRIVATE'::public.buyer_type
+      when u.funding ~ '\mpublic\M' then 'PUBLIC'::public.buyer_type
+      when u.funding ~ '\mprivate\M' then 'PRIVATE'::public.buyer_type
+      when t.deal_id is not null then 'PUBLIC'::public.buyer_type
+      when pd.deal_id is not null then 'PRIVATE'::public.buyer_type
+      when d.buyer_sector in ('PRIVATE'::public.buyer_sector, 'NONPROFIT'::public.buyer_sector)
+        then 'PRIVATE'::public.buyer_type
+      else 'PUBLIC'::public.buyer_type
+    end as buyer_type,
+    case
+      when coalesce(f.private_utility, false) then 'UTILITIES'::public.deal_sector
+      when f.cofog_codes is not null and '07' = any(f.cofog_codes) then 'HEALTHCARE'::public.deal_sector
+      when f.cofog_codes is not null and '09' = any(f.cofog_codes) then 'EDUCATION'::public.deal_sector
+      when f.cofog_codes is not null and '06' = any(f.cofog_codes) then 'HOUSING'::public.deal_sector
+      when f.cofog_codes is not null and '10' = any(f.cofog_codes) then 'SOCIAL_CARE'::public.deal_sector
+      when f.deal_id is not null then coalesce(
+        nullif(private.deal_sector_from_cpv(pc.cpv_code), 'OTHER'::public.deal_sector),
+        nullif(private.deal_sector_from_text(d.main_category), 'OTHER'::public.deal_sector),
+        'OTHER'::public.deal_sector
+      )
+      when u.deal_id is not null then coalesce(
+        nullif(private.deal_sector_from_text(u.sector_text), 'OTHER'::public.deal_sector),
+        nullif(private.deal_sector_from_cpv(pc.cpv_code), 'OTHER'::public.deal_sector),
+        nullif(private.deal_sector_from_text(d.main_category), 'OTHER'::public.deal_sector),
+        'OTHER'::public.deal_sector
+      )
+      when d.buyer_sector = 'UTILITY'::public.buyer_sector then 'UTILITIES'::public.deal_sector
+      when d.buyer_sector = 'HEALTHCARE'::public.buyer_sector then 'HEALTHCARE'::public.deal_sector
+      when d.buyer_sector = 'EDUCATION'::public.buyer_sector then 'EDUCATION'::public.deal_sector
+      when d.buyer_sector = 'NONPROFIT'::public.buyer_sector then 'CHARITY_NONPROFIT'::public.deal_sector
+      else coalesce(
+        nullif(private.deal_sector_from_cpv(pc.cpv_code), 'OTHER'::public.deal_sector),
+        nullif(private.deal_sector_from_text(d.main_category), 'OTHER'::public.deal_sector),
+        'OTHER'::public.deal_sector
+      )
+    end as sector
+  from public.deals d
+  left join fts f on f.deal_id = d.id
+  left join ted t on t.deal_id = d.id
+  left join ukip u on u.deal_id = d.id
+  left join private_discovery pd on pd.deal_id = d.id
+  left join primary_cpv pc on pc.deal_id = d.id
+)
+update public.deals d
+set buyer_type = c.buyer_type,
+    sector = c.sector
+from computed c
+where c.id = d.id;
+
+update public.deal_previews dp
+set buyer_type = d.buyer_type,
+    sector = d.sector
+from public.deals d
+where d.id = dp.deal_id;
+
+-- Top level is Private or Public only: fold legacy buyer_sector values that
+-- are really sectors (TED PRIVATE, UTILITY) into the buyer type.
+update public.deals d
+set buyer_sector = d.buyer_type::text::public.buyer_sector
+where d.buyer_sector = 'UTILITY'::public.buyer_sector
+   or (d.buyer_sector = 'PRIVATE'::public.buyer_sector and d.buyer_type = 'PUBLIC'::public.buyer_type);
+
+update public.deal_previews dp
+set buyer_sector = d.buyer_sector
+from public.deals d
+where d.id = dp.deal_id
+  and dp.buyer_sector is distinct from d.buyer_sector
+  and (dp.buyer_sector = 'UTILITY'::public.buyer_sector
+       or dp.buyer_sector = 'PRIVATE'::public.buyer_sector);
+
+update public.deal_previews dp
+set buyer_sector = coalesce(dp.buyer_type, 'PUBLIC'::public.buyer_type)::text::public.buyer_sector
+where dp.buyer_sector = 'UTILITY'::public.buyer_sector;
+
+create or replace function private.fold_utility_buyer_sector()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  if new.buyer_sector = 'UTILITY'::public.buyer_sector then
+    new.buyer_sector := coalesce(new.buyer_type, 'PUBLIC'::public.buyer_type)::text::public.buyer_sector;
+  end if;
+  return new;
+end;
+$$;
+
+revoke all on function private.fold_utility_buyer_sector() from public, anon, authenticated;
+
+drop trigger if exists fold_utility_buyer_sector on public.deals;
+create trigger fold_utility_buyer_sector
+  before insert or update of buyer_sector, buyer_type on public.deals
+  for each row execute function private.fold_utility_buyer_sector();
+
+drop trigger if exists fold_utility_buyer_sector on public.deal_previews;
+create trigger fold_utility_buyer_sector
+  before insert or update of buyer_sector, buyer_type on public.deal_previews
+  for each row execute function private.fold_utility_buyer_sector();
+
+do $$
+begin
+  if exists (
+    select 1 from public.deals
+    where buyer_type is null or sector is null
+  ) then
+    raise exception 'deals have null buyer_type or sector after backfill';
+  end if;
+  if exists (
+    select 1 from public.deal_previews
+    where buyer_type is null or sector is null
+  ) then
+    raise exception 'deal_previews have null buyer_type or sector after backfill';
+  end if;
+end;
+$$;
+
+alter table public.deals
+  alter column buyer_type set not null,
+  alter column sector set not null;
+
+alter table public.deal_previews
+  alter column buyer_type set not null,
+  alter column sector set not null;
+
+create index deals_buyer_type_sector_idx
+  on public.deals (buyer_type, sector);
+
+create index deal_previews_buyer_type_sector_idx
+  on public.deal_previews (buyer_type, sector);
+
+comment on column public.deals.buyer_type is
+  'Top-level buyer type: PUBLIC or PRIVATE. Legacy buyer_sector remains unchanged.';
+comment on column public.deals.sector is
+  'Canonical 16-value buyer sector derived at ingestion and backfilled for existing rows.';
+
+drop function if exists public.get_preview_dto_by_slug(text);
+
+create function public.get_preview_dto_by_slug(p_slug text)
+returns table (
+  slug text,
+  preview_title text,
+  preview_summary text,
+  deal_type public.deal_type,
+  buyer_sector public.buyer_sector,
+  buyer_type public.buyer_type,
+  sector public.deal_sector,
+  stage public.deal_stage,
+  status public.deal_status,
+  main_category text,
+  broad_region text,
+  value_band text,
+  deadline_band text,
+  duration_band text,
+  sme_suitability text,
+  bid_complexity text,
+  competition_level text,
+  requirements_preview jsonb,
+  relevance_tags text[],
+  freshness_label text,
+  relevance_score numeric,
+  preview_reasons jsonb
+)
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select
+    dp.slug,
+    dp.preview_title,
+    dp.preview_summary,
+    dp.deal_type,
+    dp.buyer_sector,
+    dp.buyer_type,
+    dp.sector,
+    dp.stage,
+    dp.status,
+    dp.main_category,
+    dp.broad_region,
+    dp.value_band,
+    dp.deadline_band,
+    dp.duration_band,
+    dp.sme_suitability,
+    dp.bid_complexity,
+    dp.competition_level,
+    private.preview_dto_requirements(dp.requirements_preview),
+    dp.relevance_tags[1:12],
+    private.preview_freshness_label(dp.created_at, dp.updated_at),
+    dm.relevance_score,
+    private.preview_dto_reasons(dm.preview_reasons)
+  from public.deal_previews dp
+  left join public.company_profiles cp
+    on cp.user_id = auth.uid()
+   and coalesce(private.is_user_pro(auth.uid()), false)
+  left join public.deal_matches dm
+    on dm.deal_id = dp.deal_id
+   and dm.company_profile_id = cp.id
+  where length(coalesce(p_slug, '')) between 1 and 200
+    and dp.slug = p_slug
+    and dp.is_published = true
+    and dp.leakage_risk = 'LOW'
+    and dp.unpublished_by_admin = false
+    and not private.preview_slug_is_legacy(dp.slug, dp.deal_id)
+  limit 1;
+$$;
+
+revoke all on function public.get_preview_dto_by_slug(text) from public;
+grant execute on function public.get_preview_dto_by_slug(text)
+  to anon, authenticated, service_role;
+
+drop function if exists public.get_preview_dto_by_deal_id(uuid);
+
+create function public.get_preview_dto_by_deal_id(p_deal_id uuid)
+returns table (
+  slug text,
+  preview_title text,
+  preview_summary text,
+  deal_type public.deal_type,
+  buyer_sector public.buyer_sector,
+  buyer_type public.buyer_type,
+  sector public.deal_sector,
+  stage public.deal_stage,
+  status public.deal_status,
+  main_category text,
+  broad_region text,
+  value_band text,
+  deadline_band text,
+  duration_band text,
+  sme_suitability text,
+  bid_complexity text,
+  competition_level text,
+  requirements_preview jsonb,
+  relevance_tags text[],
+  freshness_label text,
+  relevance_score numeric,
+  preview_reasons jsonb
+)
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select
+    dp.slug,
+    dp.preview_title,
+    dp.preview_summary,
+    dp.deal_type,
+    dp.buyer_sector,
+    dp.buyer_type,
+    dp.sector,
+    dp.stage,
+    dp.status,
+    dp.main_category,
+    dp.broad_region,
+    dp.value_band,
+    dp.deadline_band,
+    dp.duration_band,
+    dp.sme_suitability,
+    dp.bid_complexity,
+    dp.competition_level,
+    private.preview_dto_requirements(dp.requirements_preview),
+    dp.relevance_tags[1:12],
+    private.preview_freshness_label(dp.created_at, dp.updated_at),
+    dm.relevance_score,
+    private.preview_dto_reasons(dm.preview_reasons)
+  from public.deal_previews dp
+  left join public.company_profiles cp
+    on cp.user_id = auth.uid()
+   and coalesce(private.is_user_pro(auth.uid()), false)
+  left join public.deal_matches dm
+    on dm.deal_id = dp.deal_id
+   and dm.company_profile_id = cp.id
+  where auth.uid() is not null
+    and dp.deal_id = p_deal_id
+    and dp.is_published = true
+    and dp.leakage_risk = 'LOW'
+    and dp.unpublished_by_admin = false
+  limit 1;
+$$;
+
+revoke all on function public.get_preview_dto_by_deal_id(uuid) from public, anon;
+grant execute on function public.get_preview_dto_by_deal_id(uuid)
+  to authenticated, service_role;
+
+drop function if exists public.list_saved_deal_previews();
+
+create function public.list_saved_deal_previews()
+returns table (
+  saved_deal_id uuid,
+  deal_id uuid,
+  notes text,
+  saved_at timestamptz,
+  slug text,
+  preview_title text,
+  preview_summary text,
+  deal_type public.deal_type,
+  buyer_sector public.buyer_sector,
+  buyer_type public.buyer_type,
+  sector public.deal_sector,
+  stage public.deal_stage,
+  status public.deal_status,
+  main_category text,
+  broad_region text,
+  value_band text,
+  deadline_band text,
+  duration_band text,
+  sme_suitability text,
+  bid_complexity text,
+  competition_level text,
+  requirements_preview jsonb,
+  relevance_tags text[],
+  freshness_label text
+)
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select
+    sd.id,
+    sd.deal_id,
+    sd.notes,
+    sd.created_at,
+    dp.slug,
+    dp.preview_title,
+    dp.preview_summary,
+    dp.deal_type,
+    dp.buyer_sector,
+    dp.buyer_type,
+    dp.sector,
+    dp.stage,
+    dp.status,
+    dp.main_category,
+    dp.broad_region,
+    dp.value_band,
+    dp.deadline_band,
+    dp.duration_band,
+    dp.sme_suitability,
+    dp.bid_complexity,
+    dp.competition_level,
+    case when dp.deal_id is null then null else private.preview_dto_requirements(dp.requirements_preview) end,
+    dp.relevance_tags[1:12],
+    case when dp.deal_id is null then null else private.preview_freshness_label(dp.created_at, dp.updated_at) end
+  from public.saved_deals sd
+  left join public.deal_previews dp
+    on dp.deal_id = sd.deal_id
+   and dp.is_published = true
+   and dp.leakage_risk = 'LOW'
+   and dp.unpublished_by_admin = false
+  where sd.user_id = auth.uid()
+    and (dp.deal_id is not null or private.is_user_pro(auth.uid()))
+  order by sd.created_at desc;
+$$;
+
+revoke all on function public.list_saved_deal_previews() from public, anon;
+grant execute on function public.list_saved_deal_previews()
+  to authenticated, service_role;
+
+drop function if exists public.search_preview_dtos(
+  text,
+  text,
+  public.buyer_sector,
+  public.deal_type,
+  text,
+  public.deal_status,
+  public.deal_status[],
+  text,
+  text,
+  numeric,
+  text,
+  integer,
+  integer,
+  text[]
+);
+
+create function public.search_preview_dtos(
+  p_query text default null,
+  p_category text default null,
+  p_buyer_sector public.buyer_sector default null,
+  p_deal_type public.deal_type default null,
+  p_region text default null,
+  p_status public.deal_status default null,
+  p_statuses public.deal_status[] default null,
+  p_value_band text default null,
+  p_deadline_band text default null,
+  p_min_score numeric default null,
+  p_sort text default 'updated',
+  p_limit integer default 20,
+  p_offset integer default 0,
+  p_categories text[] default null
+)
+returns table (
+  slug text,
+  preview_title text,
+  preview_summary text,
+  deal_type public.deal_type,
+  buyer_sector public.buyer_sector,
+  buyer_type public.buyer_type,
+  sector public.deal_sector,
+  stage public.deal_stage,
+  status public.deal_status,
+  main_category text,
+  broad_region text,
+  value_band text,
+  deadline_band text,
+  duration_band text,
+  sme_suitability text,
+  bid_complexity text,
+  competition_level text,
+  requirements_preview jsonb,
+  relevance_tags text[],
+  freshness_label text,
+  relevance_score numeric,
+  preview_reasons jsonb,
+  total_count bigint
+)
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  with opts as (
+    select
+      coalesce(private.is_user_pro(auth.uid()), false) as pro,
+      lower(coalesce(p_sort, 'updated')) as requested_sort
+  ),
+  eff as (
+    select
+      o.pro,
+      case
+        when o.requested_sort = 'relevance' and not o.pro then 'biddable'
+        else o.requested_sort
+      end as sort,
+      case when o.pro then p_min_score end as min_score
+    from opts o
+  ),
+  viewer as (
+    select cp.id as company_profile_id
+    from public.company_profiles cp
+    cross join eff
+    where cp.user_id = auth.uid()
+      and eff.pro
+    limit 1
+  ),
+  q as (
+    select nullif(btrim(left(coalesce(p_query, ''), 200)), '') as text
+  ),
+  ranked as (
+    select
+      dp.*,
+      eff.sort,
+      dm.relevance_score as match_score,
+      dm.preview_reasons as match_reasons,
+      case
+        when q.text is null then 0
+        else ts_rank(
+          to_tsvector('english'::regconfig, coalesce(dp.preview_title, '') || ' ' || coalesce(dp.preview_summary, '') || ' ' || coalesce(dp.main_category, '')),
+          websearch_to_tsquery('english'::regconfig, q.text)
+        )
+      end as query_rank
+    from public.deal_previews dp
+    cross join q
+    cross join eff
+    left join viewer v on true
+    left join public.deal_matches dm
+      on dm.deal_id = dp.deal_id
+     and dm.company_profile_id = v.company_profile_id
+    where dp.is_published = true
+      and dp.leakage_risk = 'LOW'
+      and dp.unpublished_by_admin = false
+      and (
+        case
+          when p_categories is not null and cardinality(p_categories) > 0
+            then dp.main_category = any(p_categories)
+          else (p_category is null or dp.main_category = p_category)
+        end
+      )
+      and (p_buyer_sector is null or dp.buyer_sector = p_buyer_sector)
+      and (p_deal_type is null or dp.deal_type = p_deal_type)
+      and (p_region is null or dp.broad_region = p_region)
+      and (p_status is null or dp.status = p_status)
+      and (p_statuses is null or cardinality(p_statuses) = 0 or dp.status = any(p_statuses))
+      and (p_value_band is null or dp.value_band = p_value_band)
+      and (p_deadline_band is null or dp.deadline_band = p_deadline_band)
+      and (eff.min_score is null or coalesce(dm.relevance_score, -1) >= eff.min_score)
+      and (
+        q.text is null
+        or to_tsvector('english'::regconfig, coalesce(dp.preview_title, '') || ' ' || coalesce(dp.preview_summary, '') || ' ' || coalesce(dp.main_category, ''))
+             @@ websearch_to_tsquery('english'::regconfig, q.text)
+      )
+  ),
+  paged as (
+    select
+      r.*,
+      count(*) over () as total_count,
+      case when r.sort = 'relevance' then coalesce(r.match_score, -1) else 0 end as sort_score,
+      case
+        when r.sort = 'biddable' and r.status = 'CLOSING_SOON'::public.deal_status then 0
+        when r.sort = 'biddable' and r.status = 'OPEN'::public.deal_status then 1
+        when r.sort = 'biddable' and r.status = 'UPCOMING'::public.deal_status then 2
+        when r.sort = 'biddable' then 3
+        else 0
+      end as sort_status,
+      case
+        when r.sort in ('biddable', 'deadline') then (
+          select d.submission_deadline
+          from public.deals d
+          where d.id = r.deal_id
+        )
+      end as sort_deadline,
+      case when r.sort = 'relevance' then r.query_rank else 0 end as sort_rank
+    from ranked r
+    order by sort_score desc, sort_status asc, sort_deadline asc nulls last, sort_rank desc, r.updated_at desc, r.slug
+    limit greatest(1, least(coalesce(p_limit, 20), 50))
+    offset greatest(0, least(coalesce(p_offset, 0), 10000))
+  )
+  select
+    p.slug,
+    p.preview_title,
+    p.preview_summary,
+    p.deal_type,
+    p.buyer_sector,
+    p.buyer_type,
+    p.sector,
+    p.stage,
+    p.status,
+    p.main_category,
+    p.broad_region,
+    p.value_band,
+    p.deadline_band,
+    p.duration_band,
+    p.sme_suitability,
+    p.bid_complexity,
+    p.competition_level,
+    private.preview_dto_requirements(p.requirements_preview),
+    p.relevance_tags[1:12],
+    private.preview_freshness_label(p.created_at, p.updated_at),
+    p.match_score,
+    private.preview_dto_reasons(p.match_reasons),
+    p.total_count
+  from paged p
+  order by p.sort_score desc, p.sort_status asc, p.sort_deadline asc nulls last, p.sort_rank desc, p.updated_at desc, p.slug;
+$$;
+
+revoke all on function public.search_preview_dtos(
+  text,
+  text,
+  public.buyer_sector,
+  public.deal_type,
+  text,
+  public.deal_status,
+  public.deal_status[],
+  text,
+  text,
+  numeric,
+  text,
+  integer,
+  integer,
+  text[]
+) from public;
+grant execute on function public.search_preview_dtos(
+  text,
+  text,
+  public.buyer_sector,
+  public.deal_type,
+  text,
+  public.deal_status,
+  public.deal_status[],
+  text,
+  text,
+  numeric,
+  text,
+  integer,
+  integer,
+  text[]
+) to anon, authenticated, service_role;
+
+drop function if exists public.search_deal_previews(
+  text,
+  text,
+  public.buyer_sector,
+  public.deal_type,
+  text,
+  public.deal_status,
+  text,
+  text,
+  integer,
+  integer,
+  text[]
+);
+
+create function public.search_deal_previews(
+  p_query text default null,
+  p_category text default null,
+  p_buyer_sector public.buyer_sector default null,
+  p_deal_type public.deal_type default null,
+  p_region text default null,
+  p_status public.deal_status default null,
+  p_value_band text default null,
+  p_deadline_band text default null,
+  p_limit integer default 20,
+  p_offset integer default 0,
+  p_categories text[] default null
+)
+returns table (
+  deal_id uuid,
+  slug text,
+  preview_title text,
+  preview_summary text,
+  deal_type public.deal_type,
+  buyer_sector public.buyer_sector,
+  buyer_type public.buyer_type,
+  sector public.deal_sector,
+  stage public.deal_stage,
+  status public.deal_status,
+  main_category text,
+  broad_region text,
+  value_band text,
+  deadline_band text,
+  duration_band text,
+  sme_suitability text,
+  bid_complexity text,
+  competition_level text,
+  requirements_preview jsonb,
+  relevance_tags text[],
+  freshness_label text,
+  total_count bigint
+)
+language sql
+stable
+security invoker
+set search_path = public, extensions, pg_catalog
+as $$
+  select
+    dp.deal_id,
+    dp.slug,
+    dp.preview_title,
+    dp.preview_summary,
+    dp.deal_type,
+    dp.buyer_sector,
+    dp.buyer_type,
+    dp.sector,
+    dp.stage,
+    dp.status,
+    dp.main_category,
+    dp.broad_region,
+    dp.value_band,
+    dp.deadline_band,
+    dp.duration_band,
+    dp.sme_suitability,
+    dp.bid_complexity,
+    dp.competition_level,
+    dp.requirements_preview,
+    dp.relevance_tags,
+    dp.freshness_label,
+    count(*) over() as total_count
+  from public.deal_previews dp
+  where dp.is_published = true
+    and dp.leakage_risk = 'LOW'
+    and (
+      case
+        when p_categories is not null and cardinality(p_categories) > 0
+          then dp.main_category = any(p_categories)
+        else (p_category is null or dp.main_category = p_category)
+      end
+    )
+    and (p_buyer_sector is null or dp.buyer_sector = p_buyer_sector)
+    and (p_deal_type is null or dp.deal_type = p_deal_type)
+    and (p_region is null or dp.broad_region = p_region)
+    and (p_status is null or dp.status = p_status)
+    and (p_value_band is null or dp.value_band = p_value_band)
+    and (p_deadline_band is null or dp.deadline_band = p_deadline_band)
+    and (
+      p_query is null
+      or btrim(p_query) = ''
+      or to_tsvector('english', coalesce(dp.preview_title, '') || ' ' || coalesce(dp.preview_summary, '') || ' ' || coalesce(dp.main_category, ''))
+           @@ websearch_to_tsquery('english', p_query)
+      or dp.preview_title % p_query
+    )
+  order by
+    case when p_query is null or btrim(p_query) = '' then 0
+      else ts_rank(
+        to_tsvector('english', coalesce(dp.preview_title, '') || ' ' || coalesce(dp.preview_summary, '') || ' ' || coalesce(dp.main_category, '')),
+        websearch_to_tsquery('english', p_query)
+      )
+    end desc,
+    dp.updated_at desc
+  limit greatest(1, least(coalesce(p_limit, 20), 50))
+  offset greatest(coalesce(p_offset, 0), 0);
+$$;
+
+revoke all on function public.search_deal_previews(
+  text,
+  text,
+  public.buyer_sector,
+  public.deal_type,
+  text,
+  public.deal_status,
+  text,
+  text,
+  integer,
+  integer,
+  text[]
+) from public, anon, authenticated;
+grant execute on function public.search_deal_previews(
+  text,
+  text,
+  public.buyer_sector,
+  public.deal_type,
+  text,
+  public.deal_status,
+  text,
+  text,
+  integer,
+  integer,
+  text[]
+) to service_role;
+
+drop function if exists public.search_deal_previews_for_profile(
+  uuid,
+  text,
+  text,
+  public.buyer_sector,
+  public.deal_type,
+  text,
+  public.deal_status,
+  text,
+  text,
+  numeric,
+  text,
+  integer,
+  integer,
+  text[]
+);
+
+create function public.search_deal_previews_for_profile(
+  p_company_profile_id uuid,
+  p_query text default null,
+  p_category text default null,
+  p_buyer_sector public.buyer_sector default null,
+  p_deal_type public.deal_type default null,
+  p_region text default null,
+  p_status public.deal_status default null,
+  p_value_band text default null,
+  p_deadline_band text default null,
+  p_min_score numeric default null,
+  p_sort text default 'updated',
+  p_limit integer default 20,
+  p_offset integer default 0,
+  p_categories text[] default null
+)
+returns table (
+  deal_id uuid,
+  slug text,
+  preview_title text,
+  preview_summary text,
+  deal_type public.deal_type,
+  buyer_sector public.buyer_sector,
+  buyer_type public.buyer_type,
+  sector public.deal_sector,
+  stage public.deal_stage,
+  status public.deal_status,
+  main_category text,
+  broad_region text,
+  value_band text,
+  deadline_band text,
+  duration_band text,
+  sme_suitability text,
+  bid_complexity text,
+  competition_level text,
+  requirements_preview jsonb,
+  relevance_tags text[],
+  freshness_label text,
+  relevance_score numeric,
+  preview_reasons jsonb,
+  total_count bigint
+)
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  with ranked as (
+    select
+      dp.deal_id,
+      dp.slug,
+      dp.preview_title,
+      dp.preview_summary,
+      dp.deal_type,
+      dp.buyer_sector,
+      dp.buyer_type,
+      dp.sector,
+      dp.stage,
+      dp.status,
+      dp.main_category,
+      dp.broad_region,
+      dp.value_band,
+      dp.deadline_band,
+      dp.duration_band,
+      dp.sme_suitability,
+      dp.bid_complexity,
+      dp.competition_level,
+      dp.requirements_preview,
+      dp.relevance_tags,
+      dp.freshness_label,
+      dm.relevance_score,
+      case
+        when auth.role() = 'service_role' then coalesce(dm.preview_reasons, '[]'::jsonb)
+        else '[]'::jsonb
+      end as preview_reasons,
+      dp.updated_at,
+      case
+        when p_query is null or btrim(p_query) = '' then 0
+        else ts_rank(
+          to_tsvector(
+            'english',
+            coalesce(dp.preview_title, '') || ' ' || coalesce(dp.preview_summary, '') || ' ' || coalesce(dp.main_category, '')
+          ),
+          websearch_to_tsquery('english', p_query)
+        )
+      end as query_rank
+    from public.deal_previews dp
+    left join public.deal_matches dm
+      on dm.deal_id = dp.deal_id
+     and dm.company_profile_id = p_company_profile_id
+     and (
+       auth.role() = 'service_role'
+       or exists (
+         select 1
+         from public.company_profiles cp
+         where cp.id = p_company_profile_id
+           and cp.user_id = auth.uid()
+       )
+     )
+    where dp.is_published = true
+      and dp.leakage_risk = 'LOW'
+      and (
+        case
+          when p_categories is not null and cardinality(p_categories) > 0
+            then dp.main_category = any(p_categories)
+          else (p_category is null or dp.main_category = p_category)
+        end
+      )
+      and (p_buyer_sector is null or dp.buyer_sector = p_buyer_sector)
+      and (p_deal_type is null or dp.deal_type = p_deal_type)
+      and (p_region is null or dp.broad_region = p_region)
+      and (p_status is null or dp.status = p_status)
+      and (p_value_band is null or dp.value_band = p_value_band)
+      and (p_deadline_band is null or dp.deadline_band = p_deadline_band)
+      and (
+        p_min_score is null
+        or coalesce(dm.relevance_score, -1) >= p_min_score
+      )
+      and (
+        p_query is null
+        or btrim(p_query) = ''
+        or to_tsvector(
+             'english',
+             coalesce(dp.preview_title, '') || ' ' || coalesce(dp.preview_summary, '') || ' ' || coalesce(dp.main_category, '')
+           ) @@ websearch_to_tsquery('english', p_query)
+      )
+  )
+  select
+    ranked.deal_id,
+    ranked.slug,
+    ranked.preview_title,
+    ranked.preview_summary,
+    ranked.deal_type,
+    ranked.buyer_sector,
+    ranked.buyer_type,
+    ranked.sector,
+    ranked.stage,
+    ranked.status,
+    ranked.main_category,
+    ranked.broad_region,
+    ranked.value_band,
+    ranked.deadline_band,
+    ranked.duration_band,
+    ranked.sme_suitability,
+    ranked.bid_complexity,
+    ranked.competition_level,
+    private.preview_dto_requirements(ranked.requirements_preview),
+    ranked.relevance_tags,
+    ranked.freshness_label,
+    ranked.relevance_score,
+    ranked.preview_reasons,
+    count(*) over() as total_count
+  from ranked
+  order by
+    case when lower(coalesce(p_sort, 'updated')) = 'relevance'
+      then coalesce(ranked.relevance_score, -1)
+      else 0
+    end desc,
+    ranked.query_rank desc,
+    ranked.updated_at desc
+  limit greatest(1, least(coalesce(p_limit, 20), 50))
+  offset greatest(coalesce(p_offset, 0), 0);
+$$;
+
+revoke all on function public.search_deal_previews_for_profile(
+  uuid,
+  text,
+  text,
+  public.buyer_sector,
+  public.deal_type,
+  text,
+  public.deal_status,
+  text,
+  text,
+  numeric,
+  text,
+  integer,
+  integer,
+  text[]
+) from public, anon, authenticated;
+grant execute on function public.search_deal_previews_for_profile(
+  uuid,
+  text,
+  text,
+  public.buyer_sector,
+  public.deal_type,
+  text,
+  public.deal_status,
+  text,
+  text,
+  numeric,
+  text,
+  integer,
+  integer,
+  text[]
+) to service_role;
+
+create function public.admin_deal_taxonomy_counts()
+returns table (
+  buyer_type public.buyer_type,
+  sector public.deal_sector,
+  deal_count bigint
+)
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select
+    d.buyer_type,
+    d.sector,
+    count(*) as deal_count
+  from public.deals d
+  group by d.buyer_type, d.sector
+  order by d.buyer_type, d.sector;
+$$;
+
+revoke all on function public.admin_deal_taxonomy_counts()
+  from public, anon, authenticated;
+grant execute on function public.admin_deal_taxonomy_counts()
+  to service_role;
+
+-- ============================================================================
+-- END 0060_buyer_type_private_public.sql
+-- ============================================================================
+
+-- ============================================================================
+-- BEGIN 0061_publish_gate_denylist_retired.sql
+-- ============================================================================
+
+-- Enforce the publish denylist and retired preview slugs in the database gate.
+-- This mirrors the checks the publish paths already run before they flip a
+-- preview live, so a direct UPDATE cannot bypass them.
+
+create or replace function private.enforce_preview_safety()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  detected public.leakage_risk;
+begin
+  if exists (select 1 from private.preview_holds h where h.deal_id = new.deal_id) then
+    new.unpublished_by_admin := true;
+  elsif new.unpublished_by_admin then
+    insert into private.preview_holds (deal_id) values (new.deal_id)
+    on conflict (deal_id) do nothing;
+  end if;
+
+  begin
+    detected := private.detect_preview_leakage(
+      new.deal_id,
+      new.slug,
+      new.preview_title,
+      new.preview_summary,
+      new.requirements_preview,
+      new.relevance_tags,
+      new.broad_region
+    );
+  exception when others then
+    raise warning 'preview leak gate failed for deal %: %', new.deal_id, sqlerrm;
+    detected := 'REVIEW';
+  end;
+
+  if detected > new.leakage_risk then
+    new.leakage_risk := detected;
+  end if;
+
+  if new.leakage_risk <> 'LOW' then
+    new.is_published := false;
+  end if;
+
+  if new.unpublished_by_admin then
+    new.is_published := false;
+  end if;
+
+  if new.is_published and (
+    exists (
+      select 1 from private.publish_denylist x where x.deal_id = new.deal_id
+    )
+    or exists (
+      select 1
+      from private.retired_preview_slugs r
+      where r.slug_sha256 = encode(
+        extensions.digest(convert_to(lower(btrim(new.slug)), 'UTF8'), 'sha256'),
+        'hex'
+      )
+    )
+  ) then
+    new.is_published := false;
+  end if;
+
+  return new;
+end;
+$$;
+
+-- ============================================================================
+-- END 0061_publish_gate_denylist_retired.sql
+-- ============================================================================

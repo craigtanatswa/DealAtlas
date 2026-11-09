@@ -16,6 +16,10 @@ import {
 import { loadAdminDashboard } from "@/lib/admin/load";
 import { readAdmin } from "@/lib/admin/page";
 import { adminDealPath, adminIngestionRunPath } from "@/lib/admin/paths";
+import {
+  BUYER_TYPE_LABELS,
+  DEAL_SECTOR_LABELS,
+} from "@/lib/deals/buyer-taxonomy";
 import { formatDealDateTime } from "@/lib/deals/format";
 
 export const metadata: Metadata = {
@@ -77,6 +81,87 @@ export default async function AdminHomePage() {
           value={dashboard.monitoringConfigured ? "Configured" : "Log-only"}
           hint="Sentry DSN optional. Jobs still emit structured logs without secrets."
         />
+      </section>
+
+      <section className="grid gap-6 xl:grid-cols-2">
+        <div className="flex flex-col gap-3">
+          <h2 className="text-lg font-semibold">Deals by buyer type</h2>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Buyer type</TableHead>
+                <TableHead className="text-right">Deals</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {dashboard.buyerTypeCounts.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={2}>No deals yet.</TableCell>
+                </TableRow>
+              ) : (
+                dashboard.buyerTypeCounts.map((row) => (
+                  <TableRow key={row.buyerType}>
+                    <TableCell>{BUYER_TYPE_LABELS[row.buyerType]}</TableCell>
+                    <TableCell className="text-right">{row.count}</TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+        <div className="flex flex-col gap-3">
+          <h2 className="text-lg font-semibold">Deals by sector</h2>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Sector</TableHead>
+                <TableHead className="text-right">Deals</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {dashboard.sectorCounts.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={2}>No deals yet.</TableCell>
+                </TableRow>
+              ) : (
+                dashboard.sectorCounts.map((row) => (
+                  <TableRow key={row.sector}>
+                    <TableCell>{DEAL_SECTOR_LABELS[row.sector]}</TableCell>
+                    <TableCell className="text-right">{row.count}</TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="text-lg font-semibold">Deals by buyer type and sector</h2>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Buyer type</TableHead>
+              <TableHead>Sector</TableHead>
+              <TableHead className="text-right">Deals</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {dashboard.buyerTypeSectorCounts.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={3}>No deals yet.</TableCell>
+              </TableRow>
+            ) : (
+              dashboard.buyerTypeSectorCounts.map((row) => (
+                <TableRow key={`${row.buyerType}:${row.sector}`}>
+                  <TableCell>{BUYER_TYPE_LABELS[row.buyerType]}</TableCell>
+                  <TableCell>{DEAL_SECTOR_LABELS[row.sector]}</TableCell>
+                  <TableCell className="text-right">{row.count}</TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
       </section>
 
       <section className="flex flex-col gap-3">

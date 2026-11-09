@@ -223,11 +223,11 @@ describe.each(portals)("$key OCDS adapter", (portal) => {
     };
   }
 
-  it("is seeded disabled, closed to scraping, and under the Open Government Licence", () => {
+  it("is seeded enabled, closed to scraping, and under the Open Government Licence", () => {
     const row = portal.record();
     expect(row.reuseStatus).toBe("OPEN_LICENSE");
     expect(row.scrapingPermitted).toBe(false);
-    expect(row.enabled).toBe(false);
+    expect(row.enabled).toBe(true);
     expect(row.rateLimitPerMinute).toBe(10);
     expect(row.accessMethod).toBe("OCDS_API");
   });
@@ -451,7 +451,7 @@ describe.each(portals)("$key OCDS adapter", (portal) => {
 
   it("does not fetch while the source is disabled, and that skip is not a failure", async () => {
     const store = createMemoryIngestionStore({
-      sources: [portal.record({ id: `source-${portal.key}` })],
+      sources: [portal.record({ id: `source-${portal.key}`, enabled: false })],
     });
     const result = await portal.run({
       store,

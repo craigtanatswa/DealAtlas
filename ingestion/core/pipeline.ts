@@ -21,10 +21,12 @@ import { linkGcaPortalDuplicate } from "@/ingestion/sources/gca/link";
 import { isGrantSource, linkGrantDuplicate } from "@/ingestion/sources/grant-notice/link";
 import { defaultSleep } from "@/ingestion/core/retry";
 import { unwrapReleasePayload } from "@/ingestion/sources/find-a-tender/parse";
+import { RUN_TIMEOUT_MS, STALE_RUN_LIMIT_MS } from "@/lib/jobs/run-timeouts";
 import type {
   CanonicalCandidate,
   IngestionCounters,
   IngestionRunResult,
+  IngestionStatus,
   SourceAdapter,
 } from "@/ingestion/core/types";
 import type { DataSourceRecord, IngestionStore, RawRecordRow } from "@/ingestion/store/types";
@@ -51,6 +53,16 @@ export type RunIngestionOptions = {
   skipPreview?: boolean;
   /** A discover/page failure is PARTIAL and does not discard rows already written. */
   failureMode?: "throw" | "partial";
+  /** Override the stale-run close window (defaults to STALE_RUN_LIMIT_MS). */
+  staleRunLimitMs?: number;
+  /** Override the hard run timeout (defaults to RUN_TIMEOUT_MS). */
+  timeoutMs?: number;
+  /** Lets the caller downgrade a successful-looking run (for example zero records). */
+  classifyResult?: (input: {
+    sourceKey: string;
+    status: IngestionStatus;
+    counters: IngestionCounters;
+  }) => { status: IngestionStatus; metadata?: Record<string, unknown> };
   onPersisted?: (info: {
     dealId: string;
     outcome: "new" | "updated" | "unchanged" | "linked";
@@ -122,6 +134,13 @@ export async function runIngestion(
       message: `Unknown source ${options.sourceKey}`,
       stage: "compliance",
       code: "SOURCE_NOT_FOUND",
+    });
+  }
+
+  if (!options.dryRun) {
+    await options.store.closeStaleRuns({
+      sourceId: source.id,
+      olderThanMs: options.staleRunLimitMs ?? STALE_RUN_LIMIT_MS,
     });
   }
 
@@ -222,8 +241,22 @@ export async function runIngestion(
   const sleep = options.sleep ?? defaultSleep;
   let lastFetchAt = 0;
 
-  try {
+  const timeoutMs = options.timeoutMs ?? RUN_TIMEOUT_MS;
+  const timeoutError = new IngestionError({
+    message: `Ingestion run exceeded ${timeoutMs}ms`,
+    stage: "run",
+    code: "RUN_TIMEOUT",
+    retryable: false,
+  });
+  const controller = new AbortController();
+  let timedOut = false;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+
+  const runBody = async (): Promise<void> => {
     while (remaining > 0) {
+      if (controller.signal.aborted) {
+        throw timeoutError;
+      }
       const pageLimit = Math.min(
         options.pageSize ?? 20,
         Number.isFinite(remaining) ? remaining : 20,
@@ -241,6 +274,9 @@ export async function runIngestion(
           truncated = true;
         }
       } catch (error) {
+        if (controller.signal.aborted) {
+          throw timeoutError;
+        }
         const ingestionError = asIngestionError(error, "discover");
         counters.errorCount += 1;
         errors.push({
@@ -253,6 +289,9 @@ export async function runIngestion(
         }
         throw error;
       }
+      if (controller.signal.aborted) {
+        throw timeoutError;
+      }
       const items = page.items.slice(
         0,
         Number.isFinite(remaining) ? remaining : page.items.length,
@@ -260,6 +299,9 @@ export async function runIngestion(
       counters.discovered += items.length;
 
       for (const item of items) {
+        if (controller.signal.aborted) {
+          throw timeoutError;
+        }
         try {
           if (minFetchIntervalMs > 0 && lastFetchAt > 0) {
             const wait = lastFetchAt + minFetchIntervalMs - Date.now();
@@ -268,6 +310,9 @@ export async function runIngestion(
             }
           }
           const raw = await options.adapter.fetch(item);
+          if (controller.signal.aborted) {
+            throw timeoutError;
+          }
           lastFetchAt = Date.now();
           counters.fetched += 1;
           const hash = contentHash(unwrapReleasePayload(raw.payload) ?? raw.payload);
@@ -337,6 +382,9 @@ export async function runIngestion(
           }
 
           for (const candidate of candidates) {
+            if (controller.signal.aborted) {
+              throw timeoutError;
+            }
             const linked = await linkDuplicateCandidate({
               sourceKey: source.sourceKey,
               store: options.store,
@@ -468,6 +516,9 @@ export async function runIngestion(
             }
           }
         } catch (error) {
+          if (controller.signal.aborted) {
+            throw timeoutError;
+          }
           const ingestionError = asIngestionError(error, "record");
           counters.errorCount += 1;
           errors.push({
@@ -496,14 +547,36 @@ export async function runIngestion(
         }
       }
 
+      if (controller.signal.aborted) {
+        throw timeoutError;
+      }
       remaining -= items.length;
       cursor = page.nextCursor;
       if (!page.nextCursor || items.length === 0) {
         break;
       }
     }
+  };
 
-    const status =
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    if (!runId || !Number.isFinite(timeoutMs) || timeoutMs <= 0) {
+      return;
+    }
+    timer = setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+      reject(timeoutError);
+    }, timeoutMs);
+  });
+
+  try {
+    if (runId) {
+      await Promise.race([runBody(), timeoutPromise]);
+    } else {
+      await runBody();
+    }
+
+    let status: IngestionStatus =
       options.failureMode === "partial" && counters.errorCount > 0
         ? "PARTIAL"
         : counters.errorCount === 0
@@ -511,6 +584,16 @@ export async function runIngestion(
           : counters.new + counters.updated + counters.unchanged > 0
             ? "PARTIAL"
             : "FAILED";
+    let outcomeMetadata: Record<string, unknown> = {};
+    if (options.classifyResult) {
+      const classified = options.classifyResult({
+        sourceKey: source.sourceKey,
+        status,
+        counters,
+      });
+      status = classified.status;
+      outcomeMetadata = classified.metadata ?? {};
+    }
 
     if (runId) {
       await options.store.updateRun(runId, {
@@ -528,6 +611,7 @@ export async function runIngestion(
           duplicatesLinked: counters.duplicatesLinked,
           previewsPublished: counters.previewsPublished,
           previewsBlocked: counters.previewsBlocked,
+          ...outcomeMetadata,
         },
       });
 
@@ -548,8 +632,8 @@ export async function runIngestion(
       errors,
     };
   } catch (error) {
-    const ingestionError = asIngestionError(error, "run");
-    if (options.failureMode === "partial") {
+    const ingestionError = timedOut ? timeoutError : asIngestionError(error, "run");
+    if (!timedOut && options.failureMode === "partial") {
       counters.errorCount += 1;
       counters.durationMs = Date.now() - started;
       if (runId) {
@@ -592,13 +676,23 @@ export async function runIngestion(
         updatedCount: counters.updated,
         unchangedCount: counters.unchanged,
         errorCount: counters.errorCount + 1,
-        metadata: { code: ingestionError.code, message: ingestionError.message },
+        metadata: timedOut
+          ? {
+              timed_out: true,
+              code: "RUN_TIMEOUT",
+              message: ingestionError.message,
+            }
+          : { code: ingestionError.code, message: ingestionError.message },
       });
       await options.store.updateSource(source.id, {
         consecutiveFailures: source.consecutiveFailures + 1,
       });
     }
     throw ingestionError;
+  } finally {
+    if (timer) {
+      clearTimeout(timer);
+    }
   }
 }
 

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, Geist_Mono } from "next/font/google";
 import type { ReactNode } from "react";
 
+import { CookieConsent } from "@/components/analytics/cookie-consent";
 import { PostHogAnalytics } from "@/components/analytics/posthog-analytics";
 import { SkipLink } from "@/components/layout/skip-link";
 import { PublicNavigationMemory } from "@/components/navigation/public-back-link";
@@ -94,6 +95,7 @@ export default function RootLayout({
         <PublicNavigationMemory />
         <SkipLink />
         {children}
+        <CookieConsent />
       </body>
     </html>
   );

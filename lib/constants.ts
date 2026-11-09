@@ -89,6 +89,7 @@ export const ADMIN_NAV = [
   { href: "/admin", label: "Overview" },
   { href: "/admin/deals", label: "Deals" },
   { href: "/admin/sources", label: "Sources" },
+  { href: "/admin/discovery", label: "Discovery" },
   { href: "/admin/ingestion", label: "Ingestion" },
   { href: "/admin/organisations", label: "Organisations" },
   { href: "/admin/deduplication", label: "Deduplication" },

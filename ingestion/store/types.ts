@@ -1,3 +1,4 @@
+import type { BuyerType, DealSector } from "@/lib/deals/buyer-taxonomy";
 import type { Database } from "@/lib/db/database.types";
 
 import type {
@@ -30,6 +31,18 @@ export type DataSourceRecord = {
   complianceNotes: string | null;
   lastSuccessAt: string | null;
   consecutiveFailures: number;
+  discoveryMethod?: Database["public"]["Enums"]["discovery_method"] | null;
+  parserType?: string | null;
+  parserConfig?: Record<string, unknown>;
+  country?: string;
+  industry?: string | null;
+  crawlFrequencyMinutes?: number;
+  lastError?: string | null;
+  opportunitiesDiscovered?: number;
+  reliabilityScore?: number | null;
+  autoPublish?: boolean;
+  autoPublishMinConfidence?: number;
+  marketSector?: Database["public"]["Enums"]["market_sector"];
 };
 
 export type IngestionRunRecord = {
@@ -92,6 +105,8 @@ export type DealRecord = {
   buyerOrganizationId: string | null;
   dealType: Database["public"]["Enums"]["deal_type"];
   buyerSector: Database["public"]["Enums"]["buyer_sector"];
+  buyerType?: BuyerType;
+  sector?: DealSector;
   stage: Database["public"]["Enums"]["deal_stage"];
   status: Database["public"]["Enums"]["deal_status"];
   mainCategory: string | null;
@@ -228,6 +243,8 @@ export type DealPreviewRecord = {
   previewSummary: string;
   dealType: DealRecord["dealType"];
   buyerSector: DealRecord["buyerSector"];
+  buyerType?: BuyerType;
+  sector?: DealSector;
   stage: DealRecord["stage"];
   status: DealRecord["status"];
   mainCategory: string | null;
@@ -307,12 +324,45 @@ export type IngestionStore = {
   }): Promise<string[]>;
   /** Deals with no preview row, oldest id first, at most `limit` (capped at 500). */
   listDealIdsMissingPreview(limit?: number): Promise<string[]>;
+  /**
+   * Unpublished previews for live-ish deals whose deadline is null or in the
+   * future. Used by the explicit republish-open-deals CLI only.
+   */
+  listRepublishOpenDealIds(nowIso: string, limit?: number): Promise<string[]>;
   getDealById(id: string): Promise<DealRecord | null>;
   getDealPreview(dealId: string): Promise<DealPreviewRecord | null>;
   previewSlugInUse(slug: string, dealId: string): Promise<boolean>;
+  /**
+   * True when the private publish denylist names this deal. The memory store
+   * models this for unit tests; the Supabase store returns false because the
+   * database publish gate enforces the denylist.
+   */
+  isDealPublishDenylisted(dealId: string): Promise<boolean>;
+  /**
+   * True when this deal's current preview slug is in retired_preview_slugs.
+   * The memory store models this for unit tests; the Supabase store returns
+   * false because the database publish gate enforces retired slugs.
+   */
+  isDealPreviewSlugRetired(dealId: string): Promise<boolean>;
   retirePreviewSlug(slug: string): Promise<void>;
   maintainDealsLeakIndex(): Promise<void>;
   upsertDealPreview(input: DealPreviewRecord): Promise<DealPreviewRecord>;
+  /**
+   * Flip a preview live after the caller has run the LOW leak gate. The
+   * database trigger remains the final authority. `clearAdminHold` is only
+   * used by an explicit operator opt-in.
+   */
+  publishDealPreview(input: {
+    dealId: string;
+    mainCategory?: string | null;
+    deadlineBand?: string | null;
+    /** Preview-owned text only. Never use this to write source/protected fields. */
+    previewTitle?: string;
+    previewSummary?: string;
+    requirementsPreview?: string[];
+    leakageRisk?: DealPreviewRecord["leakageRisk"];
+    clearAdminHold?: boolean;
+  }): Promise<DealPreviewRecord | null>;
   upsertDealInsight(input: DealInsightRecord): Promise<void>;
   getDealInsight(dealId: string): Promise<DealInsightRecord | null>;
   insertPreviewGenerationRun(
@@ -351,6 +401,11 @@ export type IngestionStore = {
     metadata?: Record<string, unknown>;
     startedAt?: string | null;
   }): Promise<IngestionRunRecord>;
+  /** Fails RUNNING/QUEUED rows older than the limit and returns how many were closed. */
+  closeStaleRuns(input: {
+    sourceId: string;
+    olderThanMs: number;
+  }): Promise<number>;
   updateRun(
     id: string,
     patch: Partial<

@@ -6,10 +6,10 @@ import {
 import {
   ALERTS_OUTCOMES,
   CLIENT_EVENTS,
-  GUIDE_CTA_POSITIONS,
-  GUIDE_CTA_TARGETS,
   UTM_KEYS,
   isCheckoutAnalyticsPlan,
+  isGuideCtaPosition,
+  isGuideCtaTarget,
   isKnownGuideSlug,
   type ClientEventName,
   type UtmKey,
@@ -24,7 +24,13 @@ import { DEAL_CATEGORY_SLUGS } from "@/lib/matching/categories";
  * $set_once and any property a future SDK adds are dropped by construction.
  */
 
-export type SanitizedProperties = Record<string, string | number | boolean>;
+export type SanitizedPropertyValue =
+  | string
+  | number
+  | boolean
+  | { position: string; target: string };
+
+export type SanitizedProperties = Record<string, SanitizedPropertyValue>;
 
 export type SanitizedClientEvent = {
   uuid?: string;
@@ -57,6 +63,7 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{
 const UTM_VALUE_PATTERN = /^[A-Za-z0-9._+\- ]{1,100}$/;
 const HOSTNAME_PATTERN = /^(?=.{1,253}$)[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*$/;
 const DIRECT = "$direct";
+export const FIRST_TOUCH_DIRECT = "direct";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -264,6 +271,66 @@ export function cleanReferrer(
   return { referrer: bucket, domain: bucket };
 }
 
+function bareHostname(host: string): string {
+  return host.trim().toLowerCase().replace(/\.$/, "").replace(/^www\./, "");
+}
+
+function isSameSiteHost(host: string, origin: string | undefined): boolean {
+  if (!origin) {
+    return host === "dealatlas.uk" || host.endsWith(".dealatlas.uk");
+  }
+  try {
+    const originHost = bareHostname(new URL(origin).hostname);
+    return (
+      host === originHost ||
+      host.endsWith(`.${originHost}`) ||
+      originHost.endsWith(`.${host}`)
+    );
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * First-touch referrers keep only a bucket label or "direct". Paths, queries,
+ * fragments and full URLs never leave this function, and an external hostname
+ * is never returned.
+ */
+export function firstTouchReferrerDomain(value: unknown, origin?: string): string {
+  if (typeof value !== "string") {
+    return FIRST_TOUCH_DIRECT;
+  }
+  const trimmed = value.trim();
+  if (!trimmed || trimmed.startsWith("/")) {
+    return FIRST_TOUCH_DIRECT;
+  }
+  const lower = trimmed.toLowerCase();
+  if (lower === DIRECT || lower === FIRST_TOUCH_DIRECT) {
+    return FIRST_TOUCH_DIRECT;
+  }
+  if (isReferrerBucket(lower)) {
+    return lower === DIRECT ? FIRST_TOUCH_DIRECT : lower;
+  }
+  let url: URL;
+  try {
+    url = new URL(lower);
+  } catch {
+    try {
+      url = new URL(`https://${lower}`);
+    } catch {
+      return FIRST_TOUCH_DIRECT;
+    }
+  }
+  if (url.protocol !== "https:" && url.protocol !== "http:") {
+    return FIRST_TOUCH_DIRECT;
+  }
+  const host = bareHostname(url.hostname);
+  if (!HOSTNAME_PATTERN.test(host) || isSameSiteHost(host, origin)) {
+    return FIRST_TOUCH_DIRECT;
+  }
+  return referrerBucketForHost(host);
+}
+
 function isClientEventName(value: unknown): value is ClientEventName {
   return typeof value === "string" && (CLIENT_EVENTS as readonly string[]).includes(value);
 }
@@ -283,14 +350,26 @@ function eventProperties(
       if (
         !isKnownGuideSlug(slug) ||
         page !== `/guides/${slug}` ||
-        typeof position !== "string" ||
-        !(GUIDE_CTA_POSITIONS as readonly string[]).includes(position) ||
-        typeof target !== "string" ||
-        !(GUIDE_CTA_TARGETS as readonly string[]).includes(target)
+        !isGuideCtaPosition(position) ||
+        !isGuideCtaTarget(target)
       ) {
         return null;
       }
       return { guide_slug: slug, cta_position: position, cta_target: target };
+    }
+    case "guide_cta_viewed": {
+      const slug = raw.guide_slug;
+      const position = raw.position;
+      const target = raw.target;
+      if (
+        !isKnownGuideSlug(slug) ||
+        page !== `/guides/${slug}` ||
+        !isGuideCtaPosition(position) ||
+        !isGuideCtaTarget(target)
+      ) {
+        return null;
+      }
+      return { guide_slug: slug, position, target };
     }
     case "pro_checkout_started": {
       if (!isCheckoutAnalyticsPlan(raw.plan)) {

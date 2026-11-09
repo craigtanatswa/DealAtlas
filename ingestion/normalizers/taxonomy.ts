@@ -1,4 +1,12 @@
 import type { BuyerSector } from "@/lib/constants";
+import {
+  buyerTypeFromUkCaType,
+  sectorFromCofog,
+  sectorFromCpv,
+  sectorFromText,
+  type BuyerType,
+  type DealSector,
+} from "@/lib/deals/buyer-taxonomy";
 import type { DealStage, DealStatus, DealType } from "@/lib/search/filters";
 
 const CPV_CATEGORY: Array<{ prefix: string; slug: string; label: string }> = [
@@ -37,6 +45,15 @@ export function categoryFromCpv(
 export function buyerSectorFromClassifications(
   schemes: Array<{ scheme?: string | null; id?: string | null; description?: string | null }>,
 ): BuyerSector {
+  const privateUtility = schemes.some(
+    (item) =>
+      item.scheme?.trim().toLowerCase() === "uk_ca_type" &&
+      item.id?.trim().toLowerCase() === "privateutility",
+  );
+  if (privateUtility) {
+    return "PRIVATE";
+  }
+
   const blob = schemes
     .map((item) => `${item.id ?? ""} ${item.description ?? ""}`.toLowerCase())
     .join(" ");
@@ -54,6 +71,45 @@ export function buyerSectorFromClassifications(
     return "NONPROFIT";
   }
   return "PUBLIC";
+}
+
+export function buyerTypeFromClassifications(
+  schemes: Array<{ scheme?: string | null; id?: string | null }>,
+): BuyerType {
+  return buyerTypeFromUkCaType(schemes);
+}
+
+export function dealSectorFromClassifications(
+  schemes: Array<{ scheme?: string | null; id?: string | null; description?: string | null }>,
+): DealSector {
+  for (const item of schemes) {
+    const scheme = item.scheme?.trim().toLowerCase() ?? "";
+    if (scheme === "cofog") {
+      const sector = sectorFromCofog(item.id);
+      if (sector) {
+        return sector;
+      }
+    }
+  }
+
+  for (const item of schemes) {
+    const scheme = item.scheme?.trim().toLowerCase() ?? "";
+    if (scheme === "cpv") {
+      const sector = sectorFromCpv(item.id);
+      if (sector !== "OTHER") {
+        return sector;
+      }
+    }
+  }
+
+  for (const item of schemes) {
+    const textSector = sectorFromText(`${item.id ?? ""} ${item.description ?? ""}`);
+    if (textSector !== "OTHER") {
+      return textSector;
+    }
+  }
+
+  return "OTHER";
 }
 
 export function mapDealType(input: {
@@ -155,6 +211,11 @@ export function mapDealStatus(input: {
     if (deadline - input.now.getTime() <= sevenDays) {
       return "CLOSING_SOON";
     }
+    return "OPEN";
+  }
+
+  // A live tender notice with no dated deadline is still open.
+  if (tenderNotice && status === "active") {
     return "OPEN";
   }
 

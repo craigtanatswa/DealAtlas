@@ -1,6 +1,11 @@
 import { randomUUID } from "node:crypto";
 
+import {
+  buyerTypeFromLegacySector,
+  sectorFromLegacySector,
+} from "@/lib/deals/buyer-taxonomy";
 import { previewSlugHash } from "@/lib/deals/public-slug";
+import { REPUBLISH_OPEN_STATUSES } from "@/lib/deals/publish-gate";
 
 import { normalizeTitle } from "@/ingestion/normalizers/text";
 import { textHasReferenceToken } from "@/ingestion/sources/gca/link";
@@ -75,6 +80,7 @@ export type MemoryIngestionState = {
   insights: DealInsightRecord[];
   previewRuns: PreviewGenerationRunRecord[];
   retiredSlugHashes: string[];
+  publishDenylistDealIds: string[];
 };
 
 export function createMemoryIngestionStore(seed?: {
@@ -113,6 +119,7 @@ export function createMemoryIngestionStore(seed?: {
     insights: [],
     previewRuns: [],
     retiredSlugHashes: [],
+    publishDenylistDealIds: [],
   };
 
   const store: IngestionStore & MemoryIngestionState = {
@@ -175,6 +182,25 @@ export function createMemoryIngestionStore(seed?: {
         .filter((id) => afterId == null || id > afterId)
         .slice(0, limit);
     },
+    async listRepublishOpenDealIds(nowIso, limit = 5000) {
+      const now = Date.parse(nowIso);
+      const statuses = new Set<string>(REPUBLISH_OPEN_STATUSES);
+      return state.deals
+        .filter((deal) => statuses.has(deal.status))
+        .filter(
+          (deal) =>
+            deal.submissionDeadline == null ||
+            Date.parse(deal.submissionDeadline) >= now,
+        )
+        .filter((deal) =>
+          state.previews.some(
+            (preview) => preview.dealId === deal.id && !preview.isPublished,
+          ),
+        )
+        .map((deal) => deal.id)
+        .sort()
+        .slice(0, Math.max(0, Math.floor(limit)));
+    },
     async getDealById(id) {
       return state.deals.find((item) => item.id === id) ?? null;
     },
@@ -184,6 +210,15 @@ export function createMemoryIngestionStore(seed?: {
     async previewSlugInUse(slug, dealId) {
       return state.previews.some((item) => item.slug === slug && item.dealId !== dealId);
     },
+    async isDealPublishDenylisted(dealId) {
+      return state.publishDenylistDealIds.includes(dealId);
+    },
+    async isDealPreviewSlugRetired(dealId) {
+      const preview = state.previews.find((item) => item.dealId === dealId);
+      return Boolean(
+        preview && state.retiredSlugHashes.includes(previewSlugHash(preview.slug)),
+      );
+    },
     async retirePreviewSlug(slug) {
       const hash = previewSlugHash(slug);
       if (!state.retiredSlugHashes.includes(hash)) state.retiredSlugHashes.push(hash);
@@ -192,8 +227,17 @@ export function createMemoryIngestionStore(seed?: {
     async upsertDealPreview(input) {
       const index = state.previews.findIndex((item) => item.dealId === input.dealId);
       const held = index >= 0 && state.previews[index].unpublishedByAdmin === true;
-      const saved: typeof input = {
+      const deal = state.deals.find((item) => item.id === input.dealId);
+      const saved: DealPreviewRecord = {
         ...input,
+        buyerType:
+          input.buyerType ??
+          deal?.buyerType ??
+          buyerTypeFromLegacySector(input.buyerSector),
+        sector:
+          input.sector ??
+          deal?.sector ??
+          sectorFromLegacySector(input.buyerSector, input.mainCategory),
         unpublishedByAdmin: held,
         isPublished: input.isPublished && !held && input.leakageRisk === "LOW",
       };
@@ -202,6 +246,39 @@ export function createMemoryIngestionStore(seed?: {
       } else {
         state.previews.push(saved);
       }
+      return saved;
+    },
+    async publishDealPreview(input) {
+      const index = state.previews.findIndex((item) => item.dealId === input.dealId);
+      if (index < 0) {
+        return null;
+      }
+      const current = state.previews[index];
+      const unpublishedByAdmin = input.clearAdminHold
+        ? false
+        : current.unpublishedByAdmin === true;
+      const saved: DealPreviewRecord = {
+        ...current,
+        mainCategory:
+          input.mainCategory === undefined ? current.mainCategory : input.mainCategory,
+        deadlineBand:
+          input.deadlineBand === undefined ? current.deadlineBand : input.deadlineBand,
+        previewTitle:
+          input.previewTitle === undefined ? current.previewTitle : input.previewTitle,
+        previewSummary:
+          input.previewSummary === undefined ? current.previewSummary : input.previewSummary,
+        requirementsPreview:
+          input.requirementsPreview === undefined
+            ? current.requirementsPreview
+            : input.requirementsPreview,
+        leakageRisk:
+          input.leakageRisk === undefined ? current.leakageRisk : input.leakageRisk,
+        unpublishedByAdmin,
+        isPublished:
+          !unpublishedByAdmin &&
+          (input.leakageRisk ?? current.leakageRisk) === "LOW",
+      };
+      state.previews[index] = saved;
       return saved;
     },
     async upsertDealInsight(input) {
@@ -274,6 +351,33 @@ export function createMemoryIngestionStore(seed?: {
       };
       state.runs.push(run);
       return run;
+    },
+    async closeStaleRuns({ sourceId, olderThanMs }) {
+      const now = Date.now();
+      const cutoff = now - Math.max(0, olderThanMs);
+      let closed = 0;
+      for (const run of state.runs) {
+        if (run.sourceId !== sourceId) {
+          continue;
+        }
+        if (run.status !== "RUNNING" && run.status !== "QUEUED") {
+          continue;
+        }
+        const startedAt = Date.parse(run.startedAt ?? "");
+        if (!Number.isFinite(startedAt) || startedAt >= cutoff) {
+          continue;
+        }
+        run.status = "FAILED";
+        run.finishedAt = new Date(now).toISOString();
+        run.errorCount += 1;
+        run.metadata = {
+          ...run.metadata,
+          timed_out: true,
+          closed_reason: "stale run exceeded limit",
+        };
+        closed += 1;
+      }
+      return closed;
     },
     async updateRun(id, patch) {
       const run = state.runs.find((item) => item.id === id);
@@ -448,6 +552,11 @@ export function createMemoryIngestionStore(seed?: {
     async createDeal(input) {
       const deal: DealRecord = {
         ...input,
+        buyerType:
+          input.buyerType ?? buyerTypeFromLegacySector(input.buyerSector),
+        sector:
+          input.sector ??
+          sectorFromLegacySector(input.buyerSector, input.mainCategory),
         id: input.id ?? randomUUID(),
         firstDiscoveredAt: input.firstDiscoveredAt ?? new Date().toISOString(),
         sourceCount: input.sourceCount ?? 1,

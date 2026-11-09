@@ -19,6 +19,24 @@ describe("Find a Tender OCDS parse", () => {
     expect(candidate.valueMaxExVat).toBe(250000);
   });
 
+  it("maps a UK_CA_TYPE private utility buyer to PRIVATE", () => {
+    const payload = readFindATenderFixture("normal.json") as {
+      releases: Array<{
+        parties: Array<{ details?: { classifications?: unknown[] } }>;
+      }>;
+    };
+    const buyer = payload.releases[0]?.parties[0];
+    buyer.details = {
+      ...buyer.details,
+      classifications: [
+        { scheme: "UK_CA_TYPE", id: "privateUtility", description: "Private utility" },
+      ],
+    };
+
+    const [candidate] = parseFindATenderRaw(payload, NOW);
+    expect(candidate.buyerSector).toBe("PRIVATE");
+  });
+
   it("keeps lots as first-class records", () => {
     const [candidate] = parseFindATenderRaw(
       readFindATenderFixture("multi-lot.json"),
@@ -26,6 +44,47 @@ describe("Find a Tender OCDS parse", () => {
     );
     expect(candidate.lots.map((lot) => lot.sourceLotId)).toEqual(["LOT-1", "LOT-2"]);
     expect(candidate.dealType).toBe("FRAMEWORK");
+  });
+
+  it("uses the earliest lot deadline when the tender has no tenderPeriod", () => {
+    const payload = readFindATenderFixture("normal.json") as {
+      releases: Array<{
+        tender: {
+          tenderPeriod?: { endDate?: string };
+          lots: Array<{
+            id: string;
+            title?: string;
+            tenderPeriod?: { endDate?: string };
+          }>;
+        };
+      }>;
+    };
+    const release = structuredClone(payload.releases[0]!);
+    delete release.tender.tenderPeriod;
+    const [lot] = release.tender.lots;
+    release.tender.lots = [
+      {
+        ...lot!,
+        id: "LOT-EARLY",
+        title: "Early lot",
+        tenderPeriod: { endDate: "2026-10-20T12:00:00Z" },
+      },
+      {
+        ...lot!,
+        id: "LOT-LATE",
+        title: "Late lot",
+        tenderPeriod: { endDate: "2026-11-15T12:00:00Z" },
+      },
+    ];
+
+    const [candidate] = parseFindATenderRaw({ releases: [release] }, NOW);
+
+    expect(candidate.submissionDeadline).toBe("2026-10-20T12:00:00.000Z");
+    expect(candidate.lots.map((item) => item.submissionDeadline)).toEqual([
+      "2026-10-20T12:00:00.000Z",
+      "2026-11-15T12:00:00.000Z",
+    ]);
+    expect(candidate.status).toBe("OPEN");
   });
 
   it("maps withdrawn notices and awards/contracts when present", () => {

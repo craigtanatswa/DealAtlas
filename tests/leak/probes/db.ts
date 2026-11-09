@@ -27,6 +27,13 @@ const PHASE_B_ADDED_FUNCTIONS = new Set([
   "claim_founding_activation",
   // 0052: free alert signup rate-limit RPC (service_role execute only).
   "hit_alert_signup_rate_limit",
+  // 0060: admin-only buyer_type x sector counts (service_role execute only).
+  "admin_deal_taxonomy_counts",
+  // 0060: private helpers / trigger fn (revoked from public, anon, authenticated).
+  "deal_sector_from_cpv",
+  "deal_sector_from_cofog",
+  "deal_sector_from_text",
+  "fold_utility_buyer_sector",
 ]);
 
 export type Acl = {

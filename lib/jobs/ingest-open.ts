@@ -7,6 +7,7 @@ import {
 } from "@/ingestion/core/http";
 import { runIngestion } from "@/ingestion/core/pipeline";
 import { defaultSleep } from "@/ingestion/core/retry";
+import { createPublicContractsScotlandFetch } from "@/ingestion/core/tls";
 import { createContractsFinderAdapter } from "@/ingestion/sources/contracts-finder/adapter";
 import {
   CONTRACTS_FINDER_FETCH_POLICY,
@@ -56,9 +57,21 @@ import {
   GCA_PIPELINE_SOURCE_KEY,
 } from "@/ingestion/sources/gca/constants";
 import { createGcaPipelineAdapter } from "@/ingestion/sources/gca/pipeline";
-import type { SourceAdapter } from "@/ingestion/core/types";
+import type { IngestionStatus, SourceAdapter } from "@/ingestion/core/types";
 import type { IngestionStore } from "@/ingestion/store/types";
 import { rebuildChangedPreviews } from "@/lib/jobs/previews";
+
+export {
+  TLS_CERTIFICATE_ERROR_CODES,
+  isNonBlockingTlsErrors,
+  isNonBlockingTlsFailure,
+  isTlsCertificateError,
+  isTlsNonBlockingSource,
+  tlsCertificateWarningLine,
+  tlsNonBlockingSources,
+} from "@/lib/jobs/tls-errors";
+
+export { RUN_TIMEOUT_MS, STALE_RUN_LIMIT_MS } from "@/lib/jobs/run-timeouts";
 
 export type OpenIngestCounts = {
   fetched: number;
@@ -83,6 +96,7 @@ export type OpenIngestResult = {
   counts: OpenIngestCounts;
   changedDealIds: string[];
   errors: OpenIngestError[];
+  metadata?: Record<string, unknown>;
 };
 
 const MISSING_PREVIEW_CAP = 500;
@@ -202,6 +216,86 @@ export function openIngestShouldFail(result: OpenIngestResult): boolean {
     return succeeded === 0;
   }
   return result.status === "PARTIAL" && result.counts.capped === 0 && result.counts.failed > 0;
+}
+
+export const ZERO_RECORD_SOURCE_KEYS = [
+  PUBLIC_CONTRACTS_SCOTLAND_SOURCE_KEY,
+  SELL2WALES_SOURCE_KEY,
+] as const;
+
+export type ZeroRecordRunClassification = {
+  status: OpenIngestResult["status"];
+  zeroRecords: boolean;
+  reason: string | null;
+  metadata?: { zero_records: true; zero_records_reason: string };
+};
+
+export function isZeroRecordSource(sourceKey: string): boolean {
+  return (ZERO_RECORD_SOURCE_KEYS as readonly string[]).includes(sourceKey);
+}
+
+/** A quiet empty response from PCS/Sell2Wales is not a successful run. */
+export function classifyZeroRecordRun(input: {
+  sourceKey: string;
+  status: OpenIngestResult["status"];
+  fetched: number;
+  discovered?: number;
+}): ZeroRecordRunClassification {
+  const records = input.fetched + (input.discovered ?? 0);
+  if (
+    !isZeroRecordSource(input.sourceKey) ||
+    input.status === "SKIPPED" ||
+    input.status === "FAILED" ||
+    records > 0
+  ) {
+    return { status: input.status, zeroRecords: false, reason: null };
+  }
+  const reason = `${input.sourceKey} returned 0 records`;
+  return {
+    status: "PARTIAL",
+    zeroRecords: true,
+    reason,
+    metadata: { zero_records: true, zero_records_reason: reason },
+  };
+}
+
+function escapeAnnotationProperty(value: string): string {
+  return value
+    .replace(/%/g, "%25")
+    .replace(/\r/g, "%0D")
+    .replace(/\n/g, "%0A")
+    .replace(/:/g, "%3A")
+    .replace(/,/g, "%2C");
+}
+
+function escapeAnnotationData(value: string): string {
+  return value.replace(/%/g, "%25").replace(/\r/g, "%0D").replace(/\n/g, "%0A");
+}
+
+export function zeroRecordWarningLine(
+  source: string,
+  reason = "No records fetched or discovered; run marked PARTIAL",
+): string {
+  return `::warning title=${escapeAnnotationProperty(
+    `${source} returned 0 records`,
+  )}::${escapeAnnotationData(reason)}`;
+}
+
+function classifyIngestionRun(input: {
+  sourceKey: string;
+  status: IngestionStatus;
+  counters: { fetched: number; discovered: number };
+}): { status: IngestionStatus; metadata?: Record<string, unknown> } {
+  const classification = classifyZeroRecordRun({
+    sourceKey: input.sourceKey,
+    status: input.status as OpenIngestResult["status"],
+    fetched: input.counters.fetched,
+    discovered: input.counters.discovered,
+  });
+  return {
+    status: classification.status,
+    metadata: classification.metadata,
+  };
 }
 
 function publicStatus(error: OpenIngestError): string {
@@ -334,13 +428,21 @@ export async function runOpenFindATenderIngest(options: {
   phase?: "ingest" | "previews" | "all";
   dealIds?: string[];
   sourceKey?: OpenIngestSourceKey;
+  timeoutMs?: number;
+  staleRunLimitMs?: number;
 }): Promise<OpenIngestResult> {
   const now = options.now ?? new Date();
   const sleep = options.sleep ?? defaultSleep;
   const sourceKey = options.sourceKey ?? FIND_A_TENDER_SOURCE_KEY;
   const pace = createRequestPacer({ sleep, ...openIngestPacerOptions(sourceKey) });
   const http =
-    options.http ?? createAllowlistedJsonClient(fetchPolicyFor(sourceKey));
+    options.http ??
+    createAllowlistedJsonClient(
+      fetchPolicyFor(sourceKey),
+      sourceKey === PUBLIC_CONTRACTS_SCOTLAND_SOURCE_KEY
+        ? { fetchImpl: createPublicContractsScotlandFetch() }
+        : undefined,
+    );
   const paced: JsonHttpClient = {
     async getJson(url: string) {
       await pace();
@@ -392,6 +494,9 @@ export async function runOpenFindATenderIngest(options: {
         dryRun: options.dryRun,
         skipPreview: true,
         failureMode: "partial",
+        staleRunLimitMs: options.staleRunLimitMs,
+        timeoutMs: options.timeoutMs,
+        classifyResult: classifyIngestionRun,
         onPersisted: (info) => {
           if (info.outcome === "new" || info.outcome === "updated" || info.outcome === "linked") {
             changed.add(info.dealId);
@@ -487,12 +592,24 @@ export async function runOpenFindATenderIngest(options: {
     status = "SUCCEEDED";
   }
 
+  let metadata: Record<string, unknown> | undefined;
+  if (phase !== "previews") {
+    const zeroRecord = classifyZeroRecordRun({
+      sourceKey,
+      status,
+      fetched: counts.fetched,
+    });
+    status = zeroRecord.status;
+    metadata = zeroRecord.metadata;
+  }
+
   return {
     status,
     dryRun: options.dryRun,
     counts,
     changedDealIds: phase === "previews" ? [] : [...changed],
     errors,
+    metadata,
   };
 }
 
@@ -601,6 +718,8 @@ export async function runOpenCatalogueIngest(options: {
   limit?: number;
   phase?: "ingest" | "previews" | "all";
   dealIds?: string[];
+  timeoutMs?: number;
+  staleRunLimitMs?: number;
 }): Promise<OpenIngestResult> {
   const now = options.now ?? new Date();
   const sleep = options.sleep ?? defaultSleep;
@@ -650,6 +769,9 @@ export async function runOpenCatalogueIngest(options: {
       dryRun: options.dryRun,
       skipPreview: true,
       failureMode: "partial",
+      staleRunLimitMs: options.staleRunLimitMs,
+      timeoutMs: options.timeoutMs,
+      classifyResult: classifyIngestionRun,
       onPersisted: (info) => {
         if (info.outcome === "new" || info.outcome === "updated" || info.outcome === "linked") {
           changed.add(info.dealId);
@@ -722,12 +844,24 @@ export async function runOpenCatalogueIngest(options: {
     status = "SUCCEEDED";
   }
 
+  let metadata: Record<string, unknown> | undefined;
+  if (phase !== "previews") {
+    const zeroRecord = classifyZeroRecordRun({
+      sourceKey,
+      status,
+      fetched: counts.fetched,
+    });
+    status = zeroRecord.status;
+    metadata = zeroRecord.metadata;
+  }
+
   return {
     status,
     dryRun: options.dryRun,
     counts,
     changedDealIds: phase === "previews" ? [] : [...changed],
     errors,
+    metadata,
   };
 }
 

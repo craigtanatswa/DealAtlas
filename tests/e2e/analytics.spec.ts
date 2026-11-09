@@ -1,5 +1,9 @@
 import { expect, test, type Page } from "@playwright/test";
 
+import {
+  ANALYTICS_CONSENT_COOKIE,
+  ANALYTICS_CONSENT_STORAGE_KEY,
+} from "../../lib/analytics/storage-keys";
 import { SEEDED_PROTECTED_MARKERS } from "../helpers/protected-leak";
 import { loginAs } from "./helpers/auth";
 import { captureIngest, capturedPathnames, type CapturedIngest } from "./helpers/ingest";
@@ -73,6 +77,28 @@ test.describe("Analytics payloads carry no deal data", () => {
   test.use({
     userAgent:
       "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36",
+  });
+
+  // Analytics is consent-gated, so grant it before the first navigation.
+  test.beforeEach(async ({ context }) => {
+    await context.addInitScript(
+      ({ storageKey, cookieName }) => {
+        try {
+          window.localStorage.setItem(storageKey, "granted");
+        } catch {
+          // Storage can be unavailable before the real document loads.
+        }
+        try {
+          document.cookie = `${cookieName}=granted; Path=/; SameSite=Lax`;
+        } catch {
+          // The init script runs again once the target document exists.
+        }
+      },
+      {
+        storageKey: ANALYTICS_CONSENT_STORAGE_KEY,
+        cookieName: ANALYTICS_CONSENT_COOKIE,
+      },
+    );
   });
 
   test("free user: public and workspace deal pages", async ({ page }) => {

@@ -216,6 +216,8 @@ function main(): void {
     fs.rmSync(RAW_DIR, { recursive: true, force: true });
   }
   console.log(markdown.split("\n").slice(0, 6).join("\n"));
+  // Echo failure ids/codes to the job log too (no response bodies), so failures are diagnosable without artifacts.
+  for (const f of failures.slice(0, 50)) console.log(`FAILURE ${f.probe_id} ${f.role} ${f.instance}: ${(f.codes as string[]).join(", ")}`);
   console.log(`summary.json pass=${finalPass}; ${failures.length} failure(s)`);
   process.exit(finalPass ? 0 : 1);
 }
