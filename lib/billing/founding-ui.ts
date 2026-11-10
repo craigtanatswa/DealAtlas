@@ -1,13 +1,16 @@
 import { SIGNUP_PATH } from "@/lib/auth/redirect";
-import { FOUNDING_NOT_ELIGIBLE_MESSAGE } from "@/lib/billing/founding";
+import {
+  FOUNDING_NOT_ELIGIBLE_MESSAGE,
+  FOUNDING_UNAVAILABLE_MESSAGE,
+} from "@/lib/billing/founding";
 import type { CheckoutPlanKey } from "@/lib/billing/types";
 import { DISPLAY_PRICING } from "@/lib/constants";
 
-/** Checkout plan key for the founding offer. Shared with the #49 UI. */
-export const FOUNDING_PLAN_KEY = "FOUNDING" satisfies CheckoutPlanKey;
+/** Checkout plan key for the lifetime offer. Shared with the #49 UI. */
+export const FOUNDING_PLAN_KEY = "founding_lifetime" satisfies CheckoutPlanKey;
 
 /** Fallback copy for a FOUNDING_CAP_FULL error when the server sends no message. */
-export const FOUNDING_FULL_MESSAGE = `Founding places are all taken. You can still subscribe to Pro annual at ${DISPLAY_PRICING.proAnnual}.`;
+export const FOUNDING_FULL_MESSAGE = FOUNDING_UNAVAILABLE_MESSAGE;
 
 /** /checkout for the founding plan. */
 export function foundingCheckoutPath(): string {
@@ -37,16 +40,21 @@ function parseGbpMonth(value: string): number | null {
   return match ? Number(match[1]) : null;
 }
 
-/** Founding annual price in short form, e.g. "£290/yr". */
+function parseGbpOneTime(value: string): number | null {
+  const match = value.match(/£(\d+)\s+one-time/);
+  return match ? Number(match[1]) : null;
+}
+
+/** Lifetime price in short form, e.g. "£250 one-time". */
 export function foundingAnnualShort(): string {
-  return DISPLAY_PRICING.foundingAnnual.replace("/year", "/yr");
+  return DISPLAY_PRICING.proLifetime;
 }
 
 function foundingLessThanAnnual(): string {
   const annual = parseGbpYear(DISPLAY_PRICING.proAnnual);
-  const founding = parseGbpYear(DISPLAY_PRICING.foundingAnnual);
-  if (annual && founding && annual > founding) {
-    return `£${annual - founding} less than standard annual`;
+  const lifetime = parseGbpOneTime(DISPLAY_PRICING.proLifetime);
+  if (annual && lifetime && annual > lifetime) {
+    return `£${annual - lifetime} less than standard annual`;
   }
   return "Less than standard annual";
 }
@@ -66,11 +74,9 @@ function annualSaveVsMonthly(): string {
   return pct ? `Save ${pct}% vs monthly.` : "Save vs monthly.";
 }
 
-/** Founding annual price shown per month, e.g. "£24.17". Derived, never hardcoded. */
+/** Lifetime access has no monthly equivalent. */
 export function foundingMonthlyEquivalent(): string | null {
-  const founding = parseGbpYear(DISPLAY_PRICING.foundingAnnual);
-  if (!founding) return null;
-  return `£${(founding / 12).toFixed(2)}`;
+  return null;
 }
 
 /** Pro annual price in short form, e.g. "£350/yr". */
@@ -101,15 +107,15 @@ export function proMonthlyWasLabel(): string {
   return monthly ? `was £${monthly} a month` : "was the standard monthly price";
 }
 
-/** "billed £290/yr, VAT included" */
+/** "£250 one-time, VAT included" */
 export function foundingBilledLine(): string {
-  return `billed ${DISPLAY_PRICING.foundingAnnual.replace("/year", "/yr")}, VAT included`;
+  return `${DISPLAY_PRICING.proLifetime}, VAT included`;
 }
 
-/** "£290.00" */
+/** "£250.00" */
 export function foundingDueToday(): string {
-  const founding = parseGbpYear(DISPLAY_PRICING.foundingAnnual);
-  return founding ? `£${founding.toFixed(2)}` : DISPLAY_PRICING.foundingAnnual;
+  const lifetime = parseGbpOneTime(DISPLAY_PRICING.proLifetime);
+  return lifetime ? `£${lifetime.toFixed(2)}` : DISPLAY_PRICING.proLifetime;
 }
 
 export function foundingUiState(
@@ -134,23 +140,23 @@ export function foundingPaywallPlaces(): string {
 
 /** Sold-out note. Deliberately carries no count or cap. */
 export function foundingSoldOutNote(): string {
-  return `Founding membership is full. ${FOUNDING_FULL_MESSAGE}`;
+  return FOUNDING_FULL_MESSAGE;
 }
 
 export const FOUNDING_COPY = {
-  badge: "Founding member",
-  title: "Founding member Pro",
-  firstMembers: "Founding places are limited",
+  badge: "Lifetime deal",
+  title: "Pro Lifetime deal",
+  firstMembers: "Limited places",
   lessThanAnnual: foundingLessThanAnnual(),
-  priceLocked: `${foundingAnnualShort()} for as long as you stay subscribed`,
+  priceLocked: `${DISPLAY_PRICING.proLifetime}, lifetime access`,
   rechecked: "Availability is re-checked at checkout.",
-  cta: "Become a founding member",
-  cancelTerms: `If you cancel, you lose founding status and the ${DISPLAY_PRICING.foundingAnnual.replace("/year", "/yr")} price.`,
-  paywallCta: `Become a founding member – ${foundingAnnualShort()}`,
+  cta: "Get the Lifetime deal",
+  cancelTerms: `The Lifetime deal is a one-time payment and never renews.`,
+  paywallCta: `Get the Lifetime deal – ${foundingAnnualShort()}`,
   paywallMonthly: `or standard Pro ${DISPLAY_PRICING.proMonthly.replace("/month", "/mo")}`,
   soldOutMonthly: `Start Pro – ${DISPLAY_PRICING.proMonthly.replace("/month", "/mo")}`,
   soldOutAnnual: "Or Pro annual",
-  raceLead: "Founding places just filled up. You haven't been charged.",
+  raceLead: "The Lifetime deal just sold out. You haven't been charged.",
   notEligibleLead: FOUNDING_NOT_ELIGIBLE_MESSAGE,
   raceBody: `Continue with standard annual at ${DISPLAY_PRICING.proAnnual.replace("/year", "/yr")}?`,
   raceAnnual: "Continue with annual",

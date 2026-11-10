@@ -3,7 +3,7 @@ import "server-only";
 import { Checkout } from "@dodopayments/nextjs";
 import { NextRequest, NextResponse } from "next/server";
 
-import { checkoutMetadata } from "@/lib/billing/metadata";
+import { buildCheckoutSessionBody } from "@/lib/billing/checkout-session";
 import {
   ALREADY_SUBSCRIBED_MESSAGE,
   CHECKOUT_ERROR_CODES,
@@ -14,12 +14,12 @@ import {
   parseCheckoutRequest,
   selectCheckoutProduct,
   shouldReserveFoundingSlot,
-  subscriptionPlanKeyFor,
 } from "@/lib/billing/plans";
 import { hasLiveSubscription } from "@/lib/billing/live-subscription";
 import { reserveFoundingSlot } from "@/lib/billing/founding-db";
 import { requireDodoCheckoutConfig } from "@/lib/billing/config";
 import { BillingConfigError } from "@/lib/billing/errors";
+import { LIFETIME_FULL_PATH } from "@/lib/billing/paths";
 import { checkoutReturnUrl, parseCheckoutReturnTo } from "@/lib/deals/paths";
 import type { AppProfile } from "@/lib/auth/types";
 
@@ -156,11 +156,10 @@ export async function createAuthenticatedCheckoutResponse(input: {
     if (returnTo) query.set("next", returnTo);
     if (notEligible) query.set("reason", "not_eligible");
     const qs = query.toString();
-    const foundingFullPath = qs ? `/checkout/founding-full?${qs}` : "/checkout/founding-full";
-    return NextResponse.redirect(new URL(foundingFullPath, input.request.url), 303);
+    const lifetimeFullPath = qs ? `${LIFETIME_FULL_PATH}?${qs}` : LIFETIME_FULL_PATH;
+    return NextResponse.redirect(new URL(lifetimeFullPath, input.request.url), 303);
   }
 
-  const subscriptionPlanKey = subscriptionPlanKeyFor(parsed.planKey);
   const returnUrl = checkoutReturnUrl(config.returnUrl, returnTo);
   const checkout = Checkout({
     bearerToken: config.bearerToken,
@@ -172,23 +171,16 @@ export async function createAuthenticatedCheckoutResponse(input: {
   const sessionRequest = new NextRequest(input.request.url, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      product_cart: [{ product_id: chosen.productId, quantity: 1 }],
-      customer: {
-        email,
-        name: checkoutCustomerName(input.profile, email),
-      },
-      metadata: checkoutMetadata({
+    body: JSON.stringify(
+      buildCheckoutSessionBody({
+        planKey: parsed.planKey,
+        productId: chosen.productId,
         userId: input.user.id,
-        planKey: subscriptionPlanKey,
+        email,
+        customerName: checkoutCustomerName(input.profile, email),
+        returnUrl,
       }),
-      return_url: returnUrl,
-      billing_currency: "GBP",
-      feature_flags: {
-        allow_customer_editing_email: false,
-        allow_discount_code: true,
-      },
-    }),
+    ),
   });
 
   const response = await checkout(sessionRequest);

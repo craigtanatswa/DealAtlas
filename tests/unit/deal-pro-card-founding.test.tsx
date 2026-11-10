@@ -22,21 +22,21 @@ function planKeys(container: HTMLElement): (string | null)[] {
 }
 
 describe("deal page founding button", () => {
-  it("posts FOUNDING for a signed-in free user", () => {
+  it("posts the lifetime plan for a signed-in free user", () => {
     const { container } = render(
       <DealProCard mode="free" founding={open} returnTo={returnTo} alertsHref="/app/alerts" />,
     );
-    const button = screen.getByRole("button", { name: /founding member/i });
+    const button = screen.getByRole("button", { name: /Lifetime deal/i });
     const form = button.closest("form")!;
     expect(form.querySelector("input[name='planKey']")?.getAttribute("value")).toBe(
       FOUNDING_PLAN_KEY,
     );
-    expect(FOUNDING_PLAN_KEY).toBe("FOUNDING");
+    expect(FOUNDING_PLAN_KEY).toBe("founding_lifetime");
     expect(form.querySelector("input[name='returnTo']")?.getAttribute("value")).toBe(returnTo);
     expect(form.getAttribute("data-analytics-plan")).toBe("founding");
     expect(planKeys(container)).not.toContain("PRO_ANNUAL");
     expect(screen.getByText("Limited places")).toBeTruthy();
-    expect(container.textContent).toContain("(£290/yr)");
+    expect(container.textContent).toContain("£250 one-time");
     expect(container.textContent).not.toMatch(/billed|VAT incl/i);
     expect(container.textContent).not.toMatch(/\d+\s+places?\s+left/i);
   });
@@ -44,7 +44,7 @@ describe("deal page founding button", () => {
   it("sends signed-out visitors to signup then the founding checkout", () => {
     render(<DealProCard mode="anonymous" founding={open} alertsHref="/signup" />);
     expect(
-      screen.getByRole("link", { name: /founding member/i }).getAttribute("href"),
+      screen.getByRole("link", { name: /Lifetime deal/i }).getAttribute("href"),
     ).toBe(foundingSignupPath());
   });
 
@@ -57,7 +57,7 @@ describe("deal page founding button", () => {
       <DealProCard mode="free" founding={founding} returnTo={returnTo} alertsHref="/app/alerts" />,
     );
     expect(screen.queryByText(/founding/i)).toBeNull();
-    expect(container.textContent).not.toMatch(/£290|places left|for as long as you stay subscribed/);
+    expect(container.textContent).not.toMatch(/£290|places left|for as long as you stay subscribed|founding/i);
     expect(container.textContent).not.toMatch(/\d+\s+places?\s+left/i);
     expect(planKeys(container)).not.toContain(FOUNDING_PLAN_KEY);
   });

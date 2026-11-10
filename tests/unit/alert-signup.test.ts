@@ -480,6 +480,7 @@ describe("free vs Pro alert email anti-bypass", () => {
     cancelAtPeriodEnd: false,
     billingInterval: "MONTHLY",
     planKey: "PRO_MONTHLY",
+    term: "monthly",
   };
 
   it("keeps free subscriber alert email free of protected values and keys", () => {

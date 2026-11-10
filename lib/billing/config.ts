@@ -10,6 +10,7 @@ export function assertDistinctLegacyProductIds(products: PlanProductMap): void {
     products.PRO_MONTHLY,
     products.PRO_ANNUAL,
     products.FOUNDING_ANNUAL,
+    products.FOUNDING_LIFETIME,
   ].filter((id): id is string => Boolean(id));
   if (
     products.PRO_ANNUAL_LEGACY.some((legacyId) =>
@@ -28,6 +29,7 @@ export function getPlanProductMap(): PlanProductMap | null {
     return null;
   }
   const founding = env.DODO_FOUNDING_PRODUCT_ID;
+  const lifetime = env.DODO_FOUNDING_LIFETIME_PRODUCT_ID;
   const products: PlanProductMap = {
     PRO_MONTHLY: env.DODO_PRO_MONTHLY_PRODUCT_ID,
     PRO_ANNUAL: env.DODO_PRO_ANNUAL_PRODUCT_ID,
@@ -37,6 +39,7 @@ export function getPlanProductMap(): PlanProductMap | null {
       ),
     ],
     ...(founding ? { FOUNDING_ANNUAL: founding } : {}),
+    ...(lifetime ? { FOUNDING_LIFETIME: lifetime } : {}),
   };
   assertDistinctLegacyProductIds(products);
   return products;

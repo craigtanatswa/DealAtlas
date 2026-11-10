@@ -4,6 +4,7 @@ import type { WebhookPayload } from "@dodopayments/core/schemas";
 import { toIsoDate } from "@/lib/billing/event-id";
 import { CHECKOUT_METADATA_KEYS, readMetadataString } from "@/lib/billing/metadata";
 import {
+  isLifetimeProduct,
   mapProductId,
   webhookAcceptedProductIds,
   type PlanProductMap,
@@ -90,7 +91,28 @@ function extractSubscription(
   return snapshotFromSubscriptionFields(data, products);
 }
 
-function extractPayment(data: Record<string, unknown>): PaymentSnapshot | null {
+function readProductIds(data: Record<string, unknown>): string[] {
+  const cart = Array.isArray(data.product_cart) ? data.product_cart : [];
+  return cart
+    .map((item) => readString(asRecord(item).product_id))
+    .filter((id): id is string => Boolean(id));
+}
+
+function readNumber(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+}
+
+function extractPayment(
+  data: Record<string, unknown>,
+  products: PlanProductMap,
+): PaymentSnapshot | null {
   if (readString(data.payload_type) !== "Payment") {
     return null;
   }
@@ -99,13 +121,71 @@ function extractPayment(data: Record<string, unknown>): PaymentSnapshot | null {
     return null;
   }
   const customer = asRecord(data.customer);
+  const metadata = asRecord(data.metadata);
   const status = readString(data.status);
+  const productIds = readProductIds(data);
+  const lifetimeProductId = products.FOUNDING_LIFETIME ?? null;
   return {
     paymentId,
     subscriptionId: readString(data.subscription_id),
     customerId: readString(customer.customer_id),
     succeeded: status === "succeeded",
+    productIds,
+    userId: metadataUserId(metadata) ?? metadataUserId(asRecord(customer.metadata)),
+    planKey: readMetadataString(metadata, CHECKOUT_METADATA_KEYS.planKey),
+    totalAmount: readNumber(data.total_amount),
+    currency: readString(data.currency),
+    lifetime: productIds.some((id) =>
+      isLifetimeProduct(id, products),
+    ),
+    lifetimeProductId,
   };
+}
+
+const REVERSING_DISPUTE_EVENT_TYPES = new Set([
+  "dispute.accepted",
+  "dispute.lost",
+]);
+
+const LOG_ONLY_DISPUTE_EVENT_TYPES = new Set([
+  "dispute.opened",
+  "dispute.challenged",
+]);
+
+function extractReversal(
+  eventType: string,
+  data: Record<string, unknown>,
+): IncomingBillingEvent["reversal"] {
+  if (eventType === "refund.succeeded") {
+    const paymentId = readString(data.payment_id);
+    if (!paymentId) {
+      return null;
+    }
+    return {
+      paymentId,
+      kind: "refund",
+      refundAmount: readNumber(data.amount),
+      refundCurrency: readString(data.currency),
+      isPartial:
+        typeof data.is_partial === "boolean" ? data.is_partial : null,
+    };
+  }
+  if (REVERSING_DISPUTE_EVENT_TYPES.has(eventType)) {
+    const paymentId = readString(data.payment_id);
+    return paymentId ? { paymentId, kind: "dispute" } : null;
+  }
+  return null;
+}
+
+function extractDisputeNotice(
+  eventType: string,
+  data: Record<string, unknown>,
+): IncomingBillingEvent["disputeNotice"] {
+  if (!LOG_ONLY_DISPUTE_EVENT_TYPES.has(eventType)) {
+    return null;
+  }
+  const paymentId = readString(data.payment_id);
+  return paymentId ? { paymentId, eventType } : null;
 }
 
 export function extractBillingEvent(
@@ -116,7 +196,9 @@ export function extractBillingEvent(
 ): IncomingBillingEvent {
   const data = asRecord(payload.data);
   const subscription = extractSubscription(data, products);
-  const payment = extractPayment(data);
+  const payment = extractPayment(data, products);
+  const reversal = extractReversal(payload.type, data);
+  const disputeNotice = extractDisputeNotice(payload.type, data);
   const payloadHash = hashWebhookPayload(rawBody);
   const occurredAt = toIsoDate(payload.timestamp);
 
@@ -127,7 +209,8 @@ export function extractBillingEvent(
       payloadHash,
       occurredAt,
       subscriptionId: subscription?.dodoSubscriptionId ?? payment?.subscriptionId,
-      paymentId: payment?.paymentId,
+      paymentId:
+        payment?.paymentId ?? reversal?.paymentId ?? disputeNotice?.paymentId,
     }),
     eventType: payload.type,
     payloadHash,
@@ -135,6 +218,8 @@ export function extractBillingEvent(
     occurredAt,
     subscription,
     payment,
+    reversal,
+    disputeNotice,
   };
 }
 
@@ -154,4 +239,16 @@ export const HANDLED_SUBSCRIPTION_EVENTS = [
 export const HANDLED_PAYMENT_EVENTS = [
   "payment.succeeded",
   "payment.failed",
+] as const;
+
+export const HANDLED_REFUND_EVENTS = ["refund.succeeded"] as const;
+
+export const HANDLED_DISPUTE_EVENTS = [
+  "dispute.opened",
+  "dispute.won",
+  "dispute.lost",
+  "dispute.cancelled",
+  "dispute.expired",
+  "dispute.accepted",
+  "dispute.challenged",
 ] as const;

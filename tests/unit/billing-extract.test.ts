@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { WebhookPayloadSchema } from "@dodopayments/core/schemas";
+import {
+  WebhookPayloadSchema,
+  type WebhookPayload,
+} from "@dodopayments/core/schemas";
 
 import {
   BILLING_FIXTURE_PRODUCTS,
@@ -52,4 +55,52 @@ describe("billing webhook extract", () => {
     expect(event.subscription?.productKnown).toBe(false);
     expect(event.subscription?.status).toBe("UNKNOWN");
   });
+});
+
+describe("dispute reversal is decided by event type", () => {
+  function disputeWithoutStatus(type: string) {
+    const payload = billingWebhookFixtures.lifetimeDispute(type, {
+      payment_id: "pay_lifetime_1",
+    });
+    delete payload.data.dispute_status;
+    return extractBillingEvent(
+      // The provider schema requires dispute_status; this test proves the
+      // extractor still decides by event type when a payload omits it.
+      payload as unknown as WebhookPayload,
+      JSON.stringify(payload),
+      `evt_${type}`,
+      BILLING_FIXTURE_PRODUCTS,
+    );
+  }
+
+  it.each(["dispute.accepted", "dispute.lost"])(
+    "reverses on %s even when dispute_status is missing",
+    (type) => {
+      expect(disputeWithoutStatus(type).reversal).toEqual({
+        paymentId: "pay_lifetime_1",
+        kind: "dispute",
+      });
+    },
+  );
+
+  it.each(["dispute.opened", "dispute.challenged"])(
+    "records %s as a log-only dispute notice",
+    (type) => {
+      const event = disputeWithoutStatus(type);
+      expect(event.reversal).toBeNull();
+      expect(event.disputeNotice).toEqual({
+        paymentId: "pay_lifetime_1",
+        eventType: type,
+      });
+    },
+  );
+
+  it.each(["dispute.won", "dispute.cancelled", "dispute.expired"])(
+    "records and ignores %s without a reversal",
+    (type) => {
+      const event = disputeWithoutStatus(type);
+      expect(event.reversal).toBeNull();
+      expect(event.disputeNotice).toBeNull();
+    },
+  );
 });

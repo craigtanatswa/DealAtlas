@@ -37,11 +37,11 @@ export function HomeFoundingCta({
                 id="home-founding-heading"
                 className="font-heading text-xl font-bold tracking-tight text-foreground sm:text-2xl"
               >
-                Become a founding member
+                Get the Lifetime deal
               </h2>
               <p className="mt-2 max-w-xl text-sm leading-relaxed text-foreground/80 sm:text-[15px]">
-                Full Pro access at a locked founding rate. Same features as Pro — buyer,
-                documents, contacts and alerts — while places last.
+                Full Pro access for one payment. Same features as Pro — buyer,
+                documents, contacts and alerts — while lifetime places last.
               </p>
               <ul className="mt-4 space-y-2 text-sm text-foreground/80">
                 <li className="flex gap-2">

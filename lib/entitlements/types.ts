@@ -26,6 +26,14 @@ export type SubscriptionMirror = {
   dodoProductId?: string | null;
 };
 
+export type BillingTerm = "monthly" | "annual" | "lifetime";
+
+export type LifetimeAccess = {
+  status: "active" | "revoked";
+  dodoProductId: string | null;
+  grantedAt: string | null;
+};
+
 export type EntitlementSnapshot = {
   plan: Plan;
   status: SubscriptionStatus | "NONE";
@@ -33,6 +41,7 @@ export type EntitlementSnapshot = {
   cancelAtPeriodEnd: boolean;
   billingInterval: BillingInterval | null;
   planKey: string | null;
+  term: BillingTerm | null;
 };
 
 export type Entitlement = Plan;
