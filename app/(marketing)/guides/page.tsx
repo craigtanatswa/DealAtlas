@@ -41,7 +41,7 @@ export default function GuidesIndexPage() {
             <li key={guide.slug}>
               <Link
                 href={guide.path}
-                className="group flex h-full flex-col gap-3 rounded-lg border border-border bg-background p-5 transition-colors hover:border-foreground/30 focus-visible:ring-3 focus-visible:ring-ring focus-visible:outline-none"
+                className="group flex h-full flex-col gap-3 rounded-lg border border-control-border bg-background p-5 transition-colors hover:border-foreground focus-visible:ring-3 focus-visible:ring-ring focus-visible:outline-none"
               >
                 <h2 className="font-heading text-lg font-semibold leading-snug group-hover:underline group-hover:underline-offset-4">
                   {guide.h1}
