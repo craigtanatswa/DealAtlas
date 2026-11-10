@@ -515,6 +515,17 @@ describe("guide CTA analytics", () => {
     expect(html).not.toMatch(/data-guide-cta-[a-z]+="[^"]*(\d{4,}|deal-)/);
   });
 
+  it("keeps the construction guide free of pricing CTAs and category CTA markers", () => {
+    const guide = getPublishedGuide(SLUG_8)!;
+    const html = renderToStaticMarkup(
+      <GuideMarkdown blocks={guide.blocks} publishedGuidePaths={publishedGuidePaths()} />,
+    );
+    expect(html).not.toMatch(/href="\/pricing/);
+    expect(html).not.toMatch(new RegExp(`${GUIDE_CTA_TARGET_ATTR}="pricing"`));
+    expect(html).not.toMatch(new RegExp(`${GUIDE_CTA_TARGET_ATTR}="[^"]*" ${GUIDE_CTA_POSITION_ATTR}="[^"]*" href="/categories`));
+    expect(html).not.toMatch(/data-guide-cta-[a-z]+="[^"]*(\d{4,}|deal-)/);
+  });
+
   it("classifies only exact CTA paths", () => {
     expect(guideCtaTarget("/deals")).toBe("deals");
     expect(guideCtaTarget("/pricing")).toBe("pricing");
