@@ -7,7 +7,7 @@ import type { CheckoutPlanKey } from "@/lib/billing/types";
 export const PLAN_KEY_LABELS: Record<CheckoutPlanKey, string> = {
   PRO_MONTHLY: "Pro monthly",
   PRO_ANNUAL: "Pro annual",
-  FOUNDING: "Lifetime",
+  FOUNDING: "Lifetime deal",
 };
 
 export const STATUS_LABELS: Record<string, string> = {

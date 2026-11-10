@@ -63,7 +63,7 @@ export function FoundingCheckoutSummary({
         </dl>
       </section>
       <p className="rounded-lg border border-border bg-muted px-4 py-3 text-xs text-muted-foreground">
-        Availability is re-checked when you continue. If Lifetime sells out first, you
+        Availability is re-checked when you continue. If the Lifetime deal sells out first, you
         won’t be charged and can choose a standard plan.
       </p>
       <div className="flex flex-col gap-2">

@@ -132,7 +132,7 @@ export function foundingSoldOutNote(): string {
 
 export const FOUNDING_COPY = {
   badge: PLAN_PUBLIC_NAME,
-  title: "Lifetime access",
+  title: PLAN_PUBLIC_NAME,
   priceLocked: LIFETIME_SINGLE_PAYMENT_NOTE,
   rechecked: "Availability is re-checked at checkout.",
   cta: LIFETIME_BUTTON,
@@ -140,8 +140,8 @@ export const FOUNDING_COPY = {
   paywallMonthly: `or standard Pro ${DISPLAY_PRICING.proMonthly.replace("/month", "/mo")}`,
   soldOutMonthly: `Start Pro – ${DISPLAY_PRICING.proMonthly.replace("/month", "/mo")}`,
   soldOutAnnual: "Or Pro annual",
-  raceLead: "Lifetime places just filled up. You haven't been charged.",
-  notEligibleLead: `Lifetime access can't be purchased again on this account. You can still subscribe to Pro annual at ${DISPLAY_PRICING.proAnnual}.`,
+  raceLead: "The Lifetime deal just sold out. You haven't been charged.",
+  notEligibleLead: `The Lifetime deal can't be bought again on this account. You can still subscribe to Pro annual at ${DISPLAY_PRICING.proAnnual}.`,
   raceBody: `Continue with standard annual at ${DISPLAY_PRICING.proAnnual.replace("/year", "/yr")}?`,
   raceAnnual: "Continue with annual",
   raceMonthly: `Choose monthly – ${DISPLAY_PRICING.proMonthly.replace("/month", "/mo")}`,

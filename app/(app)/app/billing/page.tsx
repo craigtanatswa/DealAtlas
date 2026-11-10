@@ -46,14 +46,14 @@ export default async function BillingPage({
         title="Billing"
         description={
           lifetime
-            ? "Your DealAtlas Lifetime access. Receipts are in the Dodo customer portal. Access is not granted from a checkout redirect."
+            ? "Your DealAtlas Lifetime deal. Receipts are in the Dodo customer portal. Access is not granted from a checkout redirect."
             : "Manage DealAtlas Pro. Invoices, payment methods, and cancellation are handled in the Dodo customer portal. Access is not granted from a checkout redirect."
         }
       />
       {alreadySubscribed ? (
         <p role="status" className="rounded-md border p-4 text-sm">
           {lifetime
-            ? "You already have DealAtlas Lifetime access. There is nothing more to buy."
+            ? "You already have the DealAtlas Lifetime deal. There is nothing more to buy."
             : "You already have an active DealAtlas Pro subscription. Use the billing portal below to change or cancel it."}
         </p>
       ) : null}

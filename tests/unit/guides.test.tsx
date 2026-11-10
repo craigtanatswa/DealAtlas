@@ -292,7 +292,7 @@ describe("guide markdown sanitising", () => {
       <GuideMarkdown blocks={guide.blocks} publishedGuidePaths={publishedGuidePaths()} />,
     );
     const jsonLd = JSON.stringify(guideJsonLd(ORIGIN, guide));
-    expect(html).toContain("Lifetime access: £250 one-time (VAT included).");
+    expect(html).toContain("Lifetime deal: £250 one-time (VAT included). Limited places.");
     for (const output of [html, jsonLd, guide.title, guide.description]) {
       expect(output).not.toContain("£290");
       expect(output).not.toContain("£24.17");

@@ -37,7 +37,7 @@ export function HomeFoundingCta({
                 id="home-founding-heading"
                 className="font-heading text-xl font-bold tracking-tight text-foreground sm:text-2xl"
               >
-                Get lifetime access
+                Get the Lifetime deal
               </h2>
               <p className="mt-2 max-w-xl text-sm leading-relaxed text-foreground/80 sm:text-[15px]">
                 Full Pro access for a single payment. Same features as Pro — buyer,

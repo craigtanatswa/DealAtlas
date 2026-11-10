@@ -97,7 +97,13 @@ describe("founding UI only receives the public count shape", () => {
     for (const surface of surfaces) {
       const html = renderToString(surface);
       htmlLeaks(html);
-      expect(html).not.toContain("Limited places");
+      if (html.includes("Get the Lifetime deal") || html.includes("Continue to payment")) {
+        expect(html).toContain("Limited places");
+        expect((html.match(/Limited places/g) ?? []).length).toBe(1);
+        expect(html).not.toMatch(/\d+\s*places?/i);
+      } else {
+        expect(html).not.toContain("Limited places");
+      }
       expect(html).not.toMatch(/£290|£24\.17/);
     }
   });
@@ -143,14 +149,14 @@ describe("founding UI only receives the public count shape", () => {
     const pricing = renderToString(await PricingPage());
     htmlLeaks(pricing);
     expect(visibleText(pricing)).not.toMatch(/founding/i);
-    expect(pricing).toContain("Lifetime access: £250 one-time (VAT included).");
-    expect(pricing).not.toContain("Limited places");
+    expect(pricing).toContain("Lifetime deal: £250 one-time (VAT included). Limited places.");
+    expect(pricing).toContain("Limited places");
 
     const home = renderToString(await HomePage());
     htmlLeaks(home);
     expect(visibleText(home)).not.toMatch(/founding/i);
-    expect(home).toContain("Lifetime access: £250 one-time (VAT included).");
-    expect(home).not.toContain("Limited places");
+    expect(home).toContain("Lifetime deal: £250 one-time (VAT included). Limited places.");
+    expect(home).toContain("Limited places");
   });
 });
 

@@ -44,7 +44,7 @@ export function BillingSummary({
         <CardTitle>Current plan</CardTitle>
         <CardDescription>
           {lifetime
-            ? "Lifetime access is a one-time payment. There is nothing to renew or cancel."
+            ? "The Lifetime deal is a one-time payment. There is nothing to renew or cancel."
             : "Pro is granted only after Dodo confirms the subscription. Checkout redirects and query flags are ignored."}
         </CardDescription>
       </CardHeader>

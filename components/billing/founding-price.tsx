@@ -9,8 +9,6 @@ import {
   LIFETIME_ANCHOR,
   LIFETIME_PLAN_LINE,
   LIFETIME_PRICE_SHORT,
-  LIMITED_PLACES_TEXT,
-  SHOW_LIMITED_PLACES,
 } from "@/lib/billing/lifetime-copy";
 import { cn } from "@/lib/utils";
 
@@ -52,9 +50,6 @@ export function FoundingPriceLead({
         )}
       />
       <p className="mt-1 text-sm text-foreground/80">{LIFETIME_PLAN_LINE}</p>
-      {SHOW_LIMITED_PLACES ? (
-        <p className="mt-1 text-sm text-muted-foreground">{LIMITED_PLACES_TEXT}</p>
-      ) : null}
     </div>
   );
 }

@@ -25,7 +25,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-const PLAN_LINE = "Lifetime access: £250 one-time (VAT included).";
+const PLAN_LINE = "Lifetime deal: £250 one-time (VAT included). Limited places.";
 
 function planKeyOf(form: Element): string | null | undefined {
   return form.querySelector("input[name='planKey']")?.getAttribute("value");
@@ -44,7 +44,7 @@ function lifetimeButtonScope(button: HTMLElement, buttonText: string): HTMLEleme
   return scope!;
 }
 
-function expectFoundingPriceInside(button: HTMLElement, buttonText = "Get lifetime access") {
+function expectFoundingPriceInside(button: HTMLElement, buttonText = "Get the Lifetime deal") {
   const scope = lifetimeButtonScope(button, buttonText);
   const was = scope.querySelector("s");
   expect(was?.textContent).toBe("£350/yr");
@@ -54,7 +54,7 @@ function expectFoundingPriceInside(button: HTMLElement, buttonText = "Get lifeti
   expect(scope.textContent).toContain(PLAN_LINE);
 }
 
-function expectLifetimeAction(button: HTMLElement, buttonText = "Get lifetime access") {
+function expectLifetimeAction(button: HTMLElement, buttonText = "Get the Lifetime deal") {
   const scope = lifetimeButtonScope(button, buttonText);
   expect(scope.textContent).toContain(PLAN_LINE);
 }
@@ -72,7 +72,9 @@ describe("lifetime price lead", () => {
     expect(struck?.nextElementSibling?.textContent).toBe("£250 once");
     expect(container.textContent).toContain("£350/yr£250 once");
     expect(screen.getByText(PLAN_LINE)).toBeTruthy();
-    expect(screen.queryByText("Limited places")).toBeNull();
+    expect((container.textContent?.match(/Limited places/g) ?? []).length).toBe(1);
+    expect(container.textContent).not.toMatch(/\d+\s*places?/i);
+    expect(container.textContent).not.toMatch(/\d+\s*places?\s*(left|remaining)|of\s*\d+/i);
     expect(screen.queryByText("£290/yr for as long as you stay subscribed")).toBeNull();
     expect(container.textContent).not.toMatch(/billed|places left/i);
     expect(container.textContent).not.toMatch(/founding|£290|£24\.17|stay subscribed/i);
@@ -80,13 +82,15 @@ describe("lifetime price lead", () => {
 });
 
 describe("lifetime pricing cards", () => {
-  it("shows the Lifetime offer without a limited-places label or old founding price", () => {
+  it("shows the Lifetime offer with a count-free limited-places label and no old founding price", () => {
     const { container } = render(
       <PricingPlans signedIn founding={openCount} />,
     );
 
     expect(screen.getByRole("heading", { name: "Pricing" })).toBeTruthy();
-    expect(screen.queryByText("Limited places")).toBeNull();
+    expect((container.textContent?.match(/Limited places/g) ?? []).length).toBe(1);
+    expect(container.textContent).not.toMatch(/\d+\s*places?/i);
+    expect(container.textContent).not.toMatch(/\d+\s*places?\s*(left|remaining)|of\s*\d+/i);
     expect(container.textContent).not.toContain("Founding places available");
     expect(container.textContent).not.toMatch(/\d+\s+places?\s+left/i);
     expect(screen.getByText(PLAN_LINE)).toBeTruthy();
@@ -105,16 +109,18 @@ describe("lifetime pricing cards", () => {
     const foundingForms = forms.filter((form) => planKeyOf(form) === FOUNDING_PLAN_KEY);
     const annualForms = forms.filter((form) => planKeyOf(form) === "PRO_ANNUAL");
     expect(foundingForms).toHaveLength(1);
-    expect(foundingForms[0]?.textContent).toMatch(/Get lifetime access/);
+    expect(foundingForms[0]?.textContent).toMatch(/Get the Lifetime deal/);
     expect(annualForms).toHaveLength(1);
     expect(annualForms[0]?.textContent).toMatch(/Start Pro annual/);
     expect(forms.map(planKeyOf)).not.toContain("FOUNDING");
     expect(forms.every((form) => !form.querySelector("input[name='product_id']"))).toBe(true);
   });
 
-  it("shows no limited-places label and no extra urgency", () => {
+  it("shows a count-free limited-places label and no extra urgency", () => {
     const { container } = render(<PricingPlans signedIn founding={openCount} />);
-    expect(screen.queryByText("Limited places")).toBeNull();
+    expect((container.textContent?.match(/Limited places/g) ?? []).length).toBe(1);
+    expect(container.textContent).not.toMatch(/\d+\s*places?/i);
+    expect(container.textContent).not.toMatch(/\d+\s*places?\s*(left|remaining)|of\s*\d+/i);
     expect(container.textContent).not.toMatch(/\d+\s+places?\s+left/i);
     expect(container.textContent).not.toMatch(/only today|hurry|almost gone/i);
     expect(container.textContent).not.toMatch(/founding|£290|£24\.17|stay subscribed/i);
@@ -124,7 +130,7 @@ describe("lifetime pricing cards", () => {
     const { container } = render(
       <PricingPlans signedIn={false} founding={soldOutCount} />,
     );
-    expect(screen.getByText(/Lifetime access is sold out\./)).toBeTruthy();
+    expect(screen.getByText(/The Lifetime deal is sold out\./)).toBeTruthy();
     expect(container.textContent).not.toMatch(/founding|£290|£24\.17|stay subscribed/i);
     expect(screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent)).toEqual([
       "Free",
@@ -132,8 +138,8 @@ describe("lifetime pricing cards", () => {
       "Pro annual",
     ]);
     expect(screen.getByText("Recommended")).toBeTruthy();
-    expect(screen.queryByText("Get lifetime access")).toBeNull();
-    expect(screen.queryByRole("heading", { name: "Lifetime access" })).toBeNull();
+    expect(screen.queryByText("Get the Lifetime deal")).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Lifetime deal" })).toBeNull();
     expect(container.querySelector("input[name='offer']")).toBeNull();
     expect(screen.getByRole("link", { name: /Start Pro annual/ })).toBeTruthy();
     expect(screen.getByRole("link", { name: "Create free account" })).toBeTruthy();
@@ -149,9 +155,11 @@ describe("lifetime deal paywall", () => {
         returnTo="/app/deals/22222222-2222-4222-8222-222222222222"
       />,
     );
-    const cta = screen.getByRole("button", { name: /^Get lifetime access/ });
+    const cta = screen.getByRole("button", { name: /^Get the Lifetime deal/ });
     expectLifetimeAction(cta);
-    expect(screen.queryByText("Limited places")).toBeNull();
+    expect((container.textContent?.match(/Limited places/g) ?? []).length).toBe(1);
+    expect(container.textContent).not.toMatch(/\d+\s*places?/i);
+    expect(container.textContent).not.toMatch(/\d+\s*places?\s*(left|remaining)|of\s*\d+/i);
     expect(screen.getByText(PLAN_LINE)).toBeTruthy();
     expect(container.textContent).not.toMatch(/founding|£290|£24\.17|stay subscribed/i);
     expect(container.textContent).not.toMatch(/billed/i);
@@ -159,7 +167,7 @@ describe("lifetime deal paywall", () => {
     const founding = planForms(container).find(
       (form) =>
         planKeyOf(form) === FOUNDING_PLAN_KEY &&
-        form.querySelector("button")?.textContent?.includes("lifetime access"),
+        form.querySelector("button")?.textContent?.includes("Lifetime deal"),
     );
     expect(founding?.querySelector("input[name='returnTo']")?.getAttribute("value")).toBe(
       "/app/deals/22222222-2222-4222-8222-222222222222",
@@ -196,7 +204,7 @@ describe("Lifetime checkout race", () => {
       />,
     );
     expect(
-      screen.getByText("Lifetime places just filled up. You haven't been charged."),
+      screen.getByText("The Lifetime deal just sold out. You haven't been charged."),
     ).toBeTruthy();
     expect(screen.getByRole("button", { name: /Continue with annual/ })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Choose monthly – £39/mo" })).toBeTruthy();
@@ -246,8 +254,8 @@ describe("Lifetime checkout summary", () => {
     ]) {
       const { container, unmount } = render(ui);
       const node =
-        screen.queryByRole("button", { name: /^Get lifetime access/ }) ??
-        screen.getByRole("link", { name: /^Get lifetime access/ });
+        screen.queryByRole("button", { name: /^Get the Lifetime deal/ }) ??
+        screen.getByRole("link", { name: /^Get the Lifetime deal/ });
       if (hasPrice) {
         expectFoundingPriceInside(node);
       } else {
@@ -258,9 +266,11 @@ describe("Lifetime checkout summary", () => {
     }
   });
 
-  it("shows the one-time price, due today and no limited-places label", () => {
+  it("shows the one-time price, due today and a count-free limited-places label", () => {
     const { container } = render(<FoundingCheckoutSummary founding={openCount} />);
-    expect(screen.queryByText("Limited places")).toBeNull();
+    expect((container.textContent?.match(/Limited places/g) ?? []).length).toBe(1);
+    expect(container.textContent).not.toMatch(/\d+\s*places?/i);
+    expect(container.textContent).not.toMatch(/\d+\s*places?\s*(left|remaining)|of\s*\d+/i);
     expect(container.textContent).not.toMatch(/\d+\s+places?\s+left/i);
     expect(screen.getByText(PLAN_LINE)).toBeTruthy();
     expect(container.textContent).not.toMatch(/founding|£290|£24\.17|stay subscribed/i);
@@ -282,14 +292,14 @@ describe("Lifetime plan key", () => {
   it("is founding_lifetime and the full Lifetime copy matches the server", () => {
     expect(FOUNDING_PLAN_KEY).toBe("founding_lifetime");
     expect(FOUNDING_FULL_MESSAGE).toBe(
-      "Lifetime access is sold out. You can still subscribe to Pro annual at £350/year.",
+      "The Lifetime deal is sold out. You can still subscribe to Pro annual at £350/year.",
     );
     expect(FOUNDING_FULL_MESSAGE).not.toMatch(/founding/i);
   });
 
   it("sends signed-out Lifetime CTAs to signup then the Lifetime checkout", () => {
     const { container } = render(<PricingPlans signedIn={false} founding={openCount} />);
-    const link = screen.getByRole("link", { name: /Get lifetime access/i });
+    const link = screen.getByRole("link", { name: /Get the Lifetime deal/i });
     expect(link.getAttribute("href")).toBe(foundingSignupPath());
     expect(decodeURIComponent(foundingSignupPath())).toContain("/checkout?plan=founding_lifetime");
     expect(container.textContent).not.toMatch(/founding|£290|£24\.17/);
@@ -315,8 +325,8 @@ function stubCheckoutResponse(status: number, body: unknown) {
 
 describe("Lifetime full error state", () => {
   it.each([
-    ["pricing", () => <PricingPlans signedIn founding={openCount} />, /Get lifetime access/],
-    ["homepage band", () => <HomeFoundingCta signedIn founding={openCount} />, /Get lifetime access/],
+    ["pricing", () => <PricingPlans signedIn founding={openCount} />, /Get the Lifetime deal/],
+    ["homepage band", () => <HomeFoundingCta signedIn founding={openCount} />, /Get the Lifetime deal/],
     ["checkout", () => <FoundingCheckoutSummary founding={openCount} />, /Continue to payment/],
   ])("shows the full Lifetime message with a Pro annual fallback on %s", async (_where, ui, buttonName) => {
     const fetchMock = stubCheckoutResponse(409, { code: "FOUNDING_CAP_FULL", message: FOUNDING_FULL_MESSAGE });
@@ -338,8 +348,8 @@ describe("Lifetime full error state", () => {
 
   it("ignores a Founding server message for FOUNDING_CAP_FULL and shows the Lifetime full message", async () => {
     stubCheckoutResponse(409, { code: "FOUNDING_CAP_FULL", message: "Founding places are all taken." });
-    render(<FoundingCheckoutButton label="Get lifetime access" returnTo="/pricing" />);
-    fireEvent.click(screen.getByRole("button", { name: "Get lifetime access" }));
+    render(<FoundingCheckoutButton label="Get the Lifetime deal" returnTo="/pricing" />);
+    fireEvent.click(screen.getByRole("button", { name: "Get the Lifetime deal" }));
     const alert = await screen.findByRole("alert");
     expect(alert.textContent).toContain(FOUNDING_FULL_MESSAGE);
     expect(alert.textContent).not.toContain("Founding places are all taken.");
@@ -348,8 +358,8 @@ describe("Lifetime full error state", () => {
 
   it("falls back to the local Lifetime copy when FOUNDING_CAP_FULL has no message", async () => {
     stubCheckoutResponse(409, { code: "FOUNDING_CAP_FULL" });
-    render(<FoundingCheckoutButton label="Get lifetime access" returnTo="/pricing" />);
-    fireEvent.click(screen.getByRole("button", { name: "Get lifetime access" }));
+    render(<FoundingCheckoutButton label="Get the Lifetime deal" returnTo="/pricing" />);
+    fireEvent.click(screen.getByRole("button", { name: "Get the Lifetime deal" }));
     expect((await screen.findByRole("alert")).textContent).toContain(FOUNDING_FULL_MESSAGE);
   });
 
@@ -359,8 +369,8 @@ describe("Lifetime full error state", () => {
     ["unknown error", 500, { code: "SOMETHING_ELSE", message: "Internal detail" }],
   ])("shows a generic error with no annual fallback for %s", async (_name, status, body) => {
     stubCheckoutResponse(status, body);
-    render(<FoundingCheckoutButton label="Get lifetime access" returnTo="/pricing" />);
-    fireEvent.click(screen.getByRole("button", { name: "Get lifetime access" }));
+    render(<FoundingCheckoutButton label="Get the Lifetime deal" returnTo="/pricing" />);
+    fireEvent.click(screen.getByRole("button", { name: "Get the Lifetime deal" }));
     const alert = await screen.findByRole("alert");
     expect(alert.textContent).toBe("Checkout could not be started. Try again.");
     expect(screen.queryByRole("button", { name: /Start Pro annual/ })).toBeNull();
@@ -370,8 +380,8 @@ describe("Lifetime full error state", () => {
     const assign = vi.fn();
     vi.stubGlobal("location", { ...window.location, assign });
     stubCheckoutResponse(200, { checkout_url: "https://checkout.example/session" });
-    render(<FoundingCheckoutButton label="Get lifetime access" returnTo="/pricing" />);
-    fireEvent.click(screen.getByRole("button", { name: "Get lifetime access" }));
+    render(<FoundingCheckoutButton label="Get the Lifetime deal" returnTo="/pricing" />);
+    fireEvent.click(screen.getByRole("button", { name: "Get the Lifetime deal" }));
     await vi.waitFor(() => expect(assign).toHaveBeenCalledWith("https://checkout.example/session"));
   });
 

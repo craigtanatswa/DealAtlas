@@ -8,7 +8,6 @@ import { signupPathForPlan } from "@/lib/auth/redirect";
 import {
   FOUNDING_COPY,
   foundingSignupPath,
-  foundingPaywallPlaces,
   foundingUiState,
   type FoundingPublicCount,
   type FoundingUiState,
@@ -30,7 +29,6 @@ export function FoundingUnlockActions({
   returnTo?: string;
 }) {
   const state = founding ? foundingUiState(founding) : (stateProp ?? "hidden");
-  const places = foundingPaywallPlaces();
 
   if (state === "hidden") return null;
 
@@ -86,12 +84,6 @@ export function FoundingUnlockActions({
         </Button>
       )}
       <p className="text-center text-[0.8125rem] leading-5 text-pretty text-muted-foreground">
-        {places ? (
-          <>
-            <span>{places}</span>
-            {" · "}
-          </>
-        ) : null}
         <span>{FOUNDING_COPY.planLine}</span>
       </p>
       {mode === "free" ? (

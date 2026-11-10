@@ -121,10 +121,10 @@ beforeEach(() => {
 });
 
 describe("Lifetime public copy constants", () => {
-  it("uses the exact plan line, public name and no limited-places line", () => {
-    expect(LIFETIME_PLAN_LINE).toBe("Lifetime access: £250 one-time (VAT included).");
-    expect(PLAN_PUBLIC_NAME).toBe("Lifetime");
-    expect(SHOW_LIMITED_PLACES).toBe(false);
+  it("uses the exact plan line, public name and a count-free limited-places line", () => {
+    expect(LIFETIME_PLAN_LINE).toBe("Lifetime deal: £250 one-time (VAT included). Limited places.");
+    expect(PLAN_PUBLIC_NAME).toBe("Lifetime deal");
+    expect(SHOW_LIMITED_PLACES).toBe(true);
   });
 });
 
@@ -135,7 +135,9 @@ describe("Lifetime marketing pages", () => {
       expect(html).toMatch(/<s[^>]*>£350\/yr<\/s>/);
       expect(html).toContain("£250 once");
       expect(visibleText(html)).not.toMatch(/founding/i);
-      expect(html).not.toContain("Limited places");
+      expect((html.match(/Limited places/g) ?? []).length).toBe(1);
+      expect(html).not.toMatch(/\d+\s*places?/i);
+      expect(html).not.toMatch(/\d+\s*places?\s*(left|remaining)/i);
       expect(html).not.toContain("£290");
       expect(html).not.toContain("£24.17");
       expect(html).not.toContain("stay subscribed");
@@ -152,11 +154,12 @@ describe("Lifetime marketing pages", () => {
     const home = await renderHome(soldOut);
 
     for (const html of [pricing, home]) {
-      expect(html).not.toContain("Get lifetime access");
+      expect(html).not.toContain("Get the Lifetime deal");
       expect(html).not.toContain(LIFETIME_PLAN_LINE);
+      expect(html).not.toContain("Limited places");
       expect(html).not.toMatch(/founding/i);
     }
-    expect(pricing).toContain("Lifetime access is sold out.");
+    expect(pricing).toContain("The Lifetime deal is sold out.");
   });
 });
 
@@ -178,7 +181,11 @@ describe("Lifetime public components", () => {
       expect(html).not.toContain("£290");
       expect(html).not.toContain("£24.17");
       expect(html).not.toContain("stay subscribed");
-      expect(html).not.toContain("Limited places");
+      if (html.includes("Get the Lifetime deal") || html.includes("Continue to payment")) {
+        expect(html).toContain("Limited places");
+      } else {
+        expect(html).not.toContain("Limited places");
+      }
     }
   });
 });
@@ -196,7 +203,7 @@ describe("Lifetime guide copy", () => {
         expect(output).not.toContain("£24.17");
         expect(output).not.toContain("24.17");
         expect(output).not.toContain("stay subscribed");
-        expect(output).not.toContain("Limited places");
+        expect(output).not.toMatch(/\d+\s*places?/i);
         expect(output).not.toContain("{{LIFETIME_PLAN_LINE}}");
         expect(output).not.toContain("utm_campaign=founding");
       }
@@ -253,7 +260,8 @@ describe("Lifetime billing view", () => {
       <BillingSummary entitlement={lifetimeEntitlement} hasCustomerPortal />,
     );
     expect(isLifetimeTerm(lifetimeEntitlement)).toBe(true);
-    expect(html.match(/Lifetime/g)?.length ?? 0).toBeGreaterThanOrEqual(2);
+    expect(html.match(/Lifetime deal/g)?.length ?? 0).toBeGreaterThanOrEqual(2);
+    expect(html).toContain("The Lifetime deal is a one-time payment. There is nothing to renew or cancel.");
     expect(html).toContain("One-time payment");
     expect(html).toContain("View receipts");
     expect(html).not.toContain("Renewal / period end");

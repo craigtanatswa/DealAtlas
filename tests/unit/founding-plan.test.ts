@@ -171,21 +171,25 @@ describe("founding member checkout", () => {
     expect(foundingUiState({ offered: true, sold_out: false })).toBe("available");
     expect(foundingUiState({ offered: true, sold_out: true })).toBe("sold_out");
     expect(FOUNDING_LIMITED_PLACES).toBe("Limited places");
-    expect(foundingPlacesLabel()).toBeNull();
-    expect(foundingPaywallPlaces()).toBeNull();
+    expect(foundingPlacesLabel()).toBe(FOUNDING_LIMITED_PLACES);
+    expect(foundingPaywallPlaces()).toBe(FOUNDING_LIMITED_PLACES);
+    for (const label of [foundingPlacesLabel(), foundingPaywallPlaces()]) {
+      expect(label).not.toMatch(/\d+\s+places?\s+left/i);
+      expect(label).not.toMatch(/\d/);
+    }
     expect(foundingSoldOutNote()).toBe(FOUNDING_FULL_MESSAGE);
     expect(foundingSoldOutNote()).not.toMatch(/founding/i);
     expect(foundingSoldOutNote()).not.toMatch(/\d+\s*(places?|customers?|remaining|cap)/i);
     expect(foundingSoldOutNote()).not.toContain("Founding places available");
-    expect(FOUNDING_COPY.badge).toBe("Lifetime");
-    expect(FOUNDING_COPY.title).toBe("Lifetime access");
-    expect(FOUNDING_COPY.cta).toBe("Get lifetime access");
+    expect(FOUNDING_COPY.badge).toBe("Lifetime deal");
+    expect(FOUNDING_COPY.title).toBe("Lifetime deal");
+    expect(FOUNDING_COPY.cta).toBe("Get the Lifetime deal");
     expect(FOUNDING_COPY.priceLocked).toBe(
       "One payment. No subscription, nothing to renew.",
     );
-    expect(FOUNDING_COPY.paywallCta).toBe("Get lifetime access – £250 once");
+    expect(FOUNDING_COPY.paywallCta).toBe("Get the Lifetime deal – £250 once");
     expect(FOUNDING_COPY.planLine).toBe(
-      "Lifetime access: £250 one-time (VAT included).",
+      "Lifetime deal: £250 one-time (VAT included). Limited places.",
     );
   });
 

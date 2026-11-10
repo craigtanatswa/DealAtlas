@@ -9,7 +9,6 @@ import { signupPathForPlan } from "@/lib/auth/redirect";
 import {
   FOUNDING_COPY,
   foundingSignupPath,
-  foundingPaywallPlaces,
   foundingUiState,
   type FoundingPublicCount,
 } from "@/lib/billing/founding-ui";
@@ -91,7 +90,6 @@ export function DealProCard({
   const state = foundingUiState(founding);
   const foundingActive = state === "available";
   const monthlyShort = DISPLAY_PRICING.proMonthly.replace("/month", "/mo");
-  const places = foundingPaywallPlaces();
 
   return (
     <aside
@@ -172,12 +170,6 @@ export function DealProCard({
               </Button>
             )}
             <p className="mt-2 text-center text-xs font-medium text-foreground/80">
-              {places ? (
-                <>
-                  <span className="text-emerald-700">{places}</span>
-                  {" · "}
-                </>
-              ) : null}
               <span>{FOUNDING_COPY.planLine}</span>
             </p>
             {mode === "free" ? (

@@ -26,7 +26,7 @@ describe("deal page founding button", () => {
     const { container } = render(
       <DealProCard mode="free" founding={open} returnTo={returnTo} alertsHref="/app/alerts" />,
     );
-    const button = screen.getByRole("button", { name: /Get lifetime access/ });
+    const button = screen.getByRole("button", { name: /Get the Lifetime deal/ });
     const form = button.closest("form")!;
     expect(form.querySelector("input[name='planKey']")?.getAttribute("value")).toBe(
       FOUNDING_PLAN_KEY,
@@ -35,8 +35,9 @@ describe("deal page founding button", () => {
     expect(form.querySelector("input[name='returnTo']")?.getAttribute("value")).toBe(returnTo);
     expect(form.getAttribute("data-analytics-plan")).toBe("founding");
     expect(planKeys(container)).not.toContain("PRO_ANNUAL");
-    expect(screen.queryByText("Limited places")).toBeNull();
-    expect(screen.getByText("Lifetime access: £250 one-time (VAT included).")).toBeTruthy();
+    expect(screen.getByText("Lifetime deal: £250 one-time (VAT included). Limited places.")).toBeTruthy();
+    expect((container.textContent?.match(/Limited places/g) ?? []).length).toBe(1);
+    expect(container.textContent).not.toMatch(/\d+\s*places?/i);
     expect(container.textContent).not.toMatch(/billed/i);
     expect(container.textContent).not.toMatch(/founding|£290|£24\.17|stay subscribed/i);
     expect(container.textContent).not.toMatch(/\d+\s+places?\s+left/i);
@@ -45,7 +46,7 @@ describe("deal page founding button", () => {
   it("sends signed-out visitors to signup then the founding checkout", () => {
     render(<DealProCard mode="anonymous" founding={open} alertsHref="/signup" />);
     expect(
-      screen.getByRole("link", { name: /Get lifetime access/ }).getAttribute("href"),
+      screen.getByRole("link", { name: /Get the Lifetime deal/ }).getAttribute("href"),
     ).toBe(foundingSignupPath());
   });
 
@@ -59,6 +60,7 @@ describe("deal page founding button", () => {
     );
     expect(screen.queryByText(/founding/i)).toBeNull();
     expect(screen.queryByText(/lifetime/i)).toBeNull();
+    expect(screen.queryByText("Limited places")).toBeNull();
     expect(container.textContent).not.toMatch(/£290|places left|for as long as you stay subscribed/);
     expect(container.textContent).not.toMatch(/\d+\s+places?\s+left/i);
     expect(planKeys(container)).not.toContain(FOUNDING_PLAN_KEY);
