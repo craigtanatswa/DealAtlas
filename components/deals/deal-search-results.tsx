@@ -69,7 +69,7 @@ export function DealSearchResults({
                   1,
                   path,
                 )}
-                className="font-medium text-foreground underline-offset-4 hover:underline focus-visible:rounded-sm focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+                className="font-medium text-foreground underline-offset-4 hover:underline focus-visible:rounded-sm focus-visible:ring-3 focus-visible:ring-ring focus-visible:outline-none"
               >
                 {term}
               </Link>

@@ -42,6 +42,8 @@
   --color-secondary: var(--secondary);
   --color-primary-foreground: var(--primary-foreground);
   --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-control-border: var(--control-border);
   --color-popover-foreground: var(--popover-foreground);
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
@@ -83,6 +85,7 @@
   --popover-foreground: var(--navy);
   --primary: var(--atlas-blue);
   --primary-foreground: #ffffff;
+  --primary-hover: #1d4ed8;
   --secondary: var(--slate-100);
   --secondary-foreground: var(--navy);
   --muted: var(--slate-50);
@@ -99,6 +102,7 @@
   --intelligence-foreground: var(--navy);
   --border: var(--slate-200);
   --input: var(--slate-200);
+  --control-border: var(--slate-500);
   --ring: var(--atlas-blue);
   --chart-1: var(--atlas-blue);
   --chart-2: var(--teal);
@@ -125,6 +129,7 @@
   --popover-foreground: #ffffff;
   --primary: var(--atlas-blue);
   --primary-foreground: #ffffff;
+  --primary-hover: #1d4ed8;
   --secondary: #16344d;
   --secondary-foreground: #ffffff;
   --muted: #16344d;
@@ -141,6 +146,7 @@
   --intelligence-foreground: #ffffff;
   --border: color-mix(in srgb, white 14%, var(--navy));
   --input: color-mix(in srgb, white 16%, var(--navy));
+  --control-border: color-mix(in srgb, white 55%, var(--navy));
   --ring: #93c5fd;
   --chart-1: #93c5fd;
   --chart-2: var(--teal);
@@ -165,7 +171,7 @@
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border outline-ring;
   }
   html {
     @apply font-sans;

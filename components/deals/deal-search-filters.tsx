@@ -222,7 +222,7 @@ export function DealActiveFilters({
           <Link
             key={chip.key}
             href={searchHref(nextFilters, 1, path)}
-            className="inline-flex min-h-8 items-center rounded-md border border-border bg-background px-2 py-1 text-[0.8125rem] leading-5 text-foreground hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+            className="inline-flex min-h-8 items-center rounded-md border border-control-border bg-background px-2 py-1 text-[0.8125rem] leading-5 text-foreground hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring focus-visible:outline-none"
           >
             <span className="text-muted-foreground">{chip.label}:</span>
             <span className="ml-1 font-medium">{value}</span>

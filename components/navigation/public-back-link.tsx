@@ -103,7 +103,7 @@ export function PublicBackLink({ className }: { className?: string }) {
         }
       }}
       className={cn(
-        "inline-flex min-h-11 items-center self-start text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:rounded-md focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none",
+        "inline-flex min-h-11 items-center self-start text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:rounded-md focus-visible:ring-3 focus-visible:ring-ring focus-visible:outline-none",
         className,
       )}
     >
