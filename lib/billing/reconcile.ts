@@ -25,3 +25,13 @@ export async function reconcileDodoSubscription(
     products,
   );
 }
+
+/** Immediately stop future charges after a refund or lost chargeback. */
+export async function cancelDodoSubscription(
+  dodoSubscriptionId: string,
+): Promise<void> {
+  const client = createDodoClient();
+  await client.subscriptions.update(dodoSubscriptionId, {
+    status: "cancelled",
+  });
+}

@@ -65,6 +65,11 @@ export const entitlementSubscriptionFixtures = {
     createSubscriptionFixture({
       status: "FAILED",
     }),
+  revoked: () =>
+    createSubscriptionFixture({
+      status: "EXPIRED",
+      revokedAt: "2026-06-10T00:00:00.000Z",
+    }),
   pending: () =>
     createSubscriptionFixture({
       status: "PENDING",
