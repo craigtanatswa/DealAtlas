@@ -30,11 +30,10 @@ export function classifyRefund({
   ) {
     return "unknown";
   }
-  if (
-    refundCurrency !== null &&
-    paidCurrency !== null &&
-    refundCurrency !== paidCurrency
-  ) {
+  if (!refundCurrency || !paidCurrency) {
+    return "unknown";
+  }
+  if (refundCurrency !== paidCurrency) {
     return "unknown";
   }
   return refundAmount >= paidTotal ? "full" : "partial";

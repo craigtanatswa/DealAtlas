@@ -316,6 +316,24 @@ describe("subscription refund and chargeback revocation", () => {
     expect(cancel).not.toHaveBeenCalled();
   });
 
+  it("keeps Pro and flags review when the refund currency is null", async () => {
+    const store = await activeStore();
+    const cancel = vi.fn(async () => {});
+
+    const event = incoming(
+      subscriptionRefund({ amount: MONTHLY_TOTAL, currency: null }),
+      "evt_refund_null_currency",
+    );
+    await applyBillingEvent(event, store, { cancelSubscription: cancel });
+
+    expect(entitlementFromStore(store).plan).toBe("PRO");
+    expect(store.subscriptions[0]?.revokedAt).toBeNull();
+    expect(store.events.get(event.providerEventId)?.processingError).toBe(
+      SUBSCRIPTION_REFUND_REVIEW_FLAG,
+    );
+    expect(cancel).not.toHaveBeenCalled();
+  });
+
   it("falls back to a read-only provider payment lookup when no local event exists", async () => {
     const store = await activeStore({ seedPayment: false });
     const cancel = vi.fn(async () => {});
@@ -336,13 +354,11 @@ describe("subscription refund and chargeback revocation", () => {
     expect(cancel).toHaveBeenCalledTimes(1);
   });
 
-  it("does not revoke, flag and never cancels when the payment cannot be resolved", async () => {
+  it("flags review and never cancels when provider lookup returns no payment", async () => {
     const store = await activeStore({ seedPayment: false });
     const cancel = vi.fn(async () => {});
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-    const retrievePayment = vi.fn(async () => {
-      throw new Error("provider unavailable");
-    });
+    const retrievePayment = vi.fn(async () => null);
 
     const event = incoming(
       subscriptionRefund(),
@@ -367,6 +383,86 @@ describe("subscription refund and chargeback revocation", () => {
     });
     expect(cancel).not.toHaveBeenCalled();
     expect(retrievePayment).toHaveBeenCalledWith(PAYMENT_ID);
+  });
+
+  it("fails the event when the provider payment lookup throws so Dodo retries", async () => {
+    const store = await activeStore({ seedPayment: false });
+    const cancel = vi.fn(async () => {});
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const retrievePayment = vi.fn(async () => {
+      throw new Error("provider unavailable");
+    });
+
+    const event = incoming(
+      subscriptionRefund({ refund_id: "ref_lookup_failure_fixture" }),
+      "evt_refund_lookup_failure",
+    );
+    try {
+      await expect(
+        applyBillingEvent(event, store, {
+          cancelSubscription: cancel,
+          retrievePayment,
+        }),
+      ).rejects.toThrow("provider unavailable");
+    } finally {
+      // Read the captured warnings before restoring the spy.
+    }
+
+    expect(entitlementFromStore(store).plan).toBe("PRO");
+    expect(store.subscriptions[0]?.revokedAt).toBeNull();
+    expect(store.events.get(event.providerEventId)?.status).toBe("FAILED");
+    expect(cancel).not.toHaveBeenCalled();
+    expect(retrievePayment).toHaveBeenCalledWith(PAYMENT_ID);
+
+    const logs = warn.mock.calls.map((call) => call.map(String).join(" ")).join("\n");
+    expect(logs).toContain(SUBSCRIPTION_REVERSAL_UNRESOLVED_FLAG);
+    expect(logs).not.toContain(BILLING_FIXTURE_SUBSCRIPTION_ID);
+    expect(logs).not.toContain(PAYMENT_ID);
+    warn.mockRestore();
+  });
+
+  it("revokes and cancels once when the failed lookup recovers on redelivery", async () => {
+    const store = await activeStore({ seedPayment: false });
+    const cancel = vi.fn(async () => {});
+    const failing = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const event = incoming(
+      subscriptionRefund({ refund_id: "ref_lookup_recovery_fixture" }),
+      "evt_refund_lookup_recovery",
+    );
+
+    try {
+      await expect(
+        applyBillingEvent(event, store, {
+          cancelSubscription: cancel,
+          retrievePayment: async () => {
+            throw new Error("provider unavailable");
+          },
+        }),
+      ).rejects.toThrow("provider unavailable");
+    } finally {
+      failing.mockRestore();
+    }
+
+    expect(store.events.get(event.providerEventId)?.status).toBe("FAILED");
+    expect(cancel).not.toHaveBeenCalled();
+
+    const retrievePayment = vi.fn(async () => ({
+      subscriptionId: BILLING_FIXTURE_SUBSCRIPTION_ID,
+      totalAmount: MONTHLY_TOTAL,
+      currency: "GBP",
+    }));
+    expect(
+      await applyBillingEvent(event, store, {
+        cancelSubscription: cancel,
+        retrievePayment,
+      }),
+    ).toEqual({ outcome: "applied" });
+
+    expect(entitlementFromStore(store).plan).toBe("FREE");
+    expect(store.subscriptions[0]?.revokedAt).toBeTruthy();
+    expect(store.events.get(event.providerEventId)?.status).toBe("PROCESSED");
+    expect(cancel).toHaveBeenCalledTimes(1);
+    expect(cancel).toHaveBeenCalledWith(BILLING_FIXTURE_SUBSCRIPTION_ID);
   });
 
   it("flags review without cancelling when no payment lookup is available", async () => {
@@ -531,7 +627,7 @@ describe("subscription refund and chargeback revocation", () => {
       });
       expect(store.subscriptions[0]?.revokedAt).toBeTruthy();
       expect(entitlementFromStore(store).plan).toBe("FREE");
-      expect(cancel).toHaveBeenCalledTimes(1);
+      expect(cancel).toHaveBeenCalledTimes(2);
     },
   );
 
@@ -592,5 +688,227 @@ describe("subscription refund and chargeback revocation", () => {
     expect(logs).not.toContain(PAYMENT_ID);
     expect(logs).not.toContain("pro@example.com");
     warn.mockRestore();
+  });
+
+  it.each([
+    ["subscription.renewed", () => billingWebhookFixtures.renewed()],
+    ["subscription.active", () => billingWebhookFixtures.monthlyActive()],
+  ])(
+    "retries provider cancellation on a later %s for a revoked subscription",
+    async (_label, fixture) => {
+      const store = await activeStore();
+      const info = vi.spyOn(console, "log").mockImplementation(() => {});
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const cancel = vi
+        .fn()
+        .mockRejectedValueOnce(new Error("provider unavailable"))
+        .mockResolvedValue(undefined);
+
+      try {
+        const refund = incoming(
+          subscriptionRefund(),
+          "evt_refund_retry_cancel",
+        );
+        await applyBillingEvent(refund, store, {
+          cancelSubscription: cancel,
+        });
+        expect(store.events.get(refund.providerEventId)).toMatchObject({
+          status: "PROCESSED",
+          processingError: SUBSCRIPTION_CANCEL_FAILED_FLAG,
+        });
+
+        const event = incoming(fixture(), "evt_retry_cancel_later");
+        expect(
+          await applyBillingEvent(event, store, {
+            cancelSubscription: cancel,
+          }),
+        ).toEqual({ outcome: "ignored" });
+
+        expect(cancel).toHaveBeenCalledTimes(2);
+        expect(cancel).toHaveBeenLastCalledWith(BILLING_FIXTURE_SUBSCRIPTION_ID);
+        expect(store.events.get(event.providerEventId)).toMatchObject({
+          status: "IGNORED",
+          processingError: SUBSCRIPTION_REVOKED_TERMINAL_NOTE,
+        });
+        expect(store.subscriptions[0]).toMatchObject({
+          status: "EXPIRED",
+          revokeReason: "refund",
+        });
+        expect(store.subscriptions[0]?.revokedAt).toBeTruthy();
+        expect(entitlementFromStore(store).plan).toBe("FREE");
+
+        const infoLogs = info.mock.calls
+          .map((call) => call.map(String).join(" "))
+          .join("\n");
+        expect(infoLogs).toContain('"event":"subscription_cancel_retried"');
+        expect(infoLogs).not.toContain(BILLING_FIXTURE_SUBSCRIPTION_ID);
+        expect(infoLogs).not.toContain(PAYMENT_ID);
+      } finally {
+        info.mockRestore();
+        warn.mockRestore();
+      }
+    },
+  );
+
+  it("flags review without throwing when the retried cancellation fails again", async () => {
+    const store = await activeStore();
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const cancel = vi.fn(async () => {
+      throw new Error("provider unavailable");
+    });
+
+    try {
+      await applyBillingEvent(
+        incoming(subscriptionRefund(), "evt_refund_retry_fail"),
+        store,
+        { cancelSubscription: cancel },
+      );
+
+      const event = incoming(
+        billingWebhookFixtures.renewed(),
+        "evt_retry_cancel_fails_again",
+      );
+      expect(
+        await applyBillingEvent(event, store, {
+          cancelSubscription: cancel,
+        }),
+      ).toEqual({ outcome: "ignored" });
+
+      expect(cancel).toHaveBeenCalledTimes(2);
+      expect(store.events.get(event.providerEventId)).toMatchObject({
+        status: "IGNORED",
+        processingError: SUBSCRIPTION_CANCEL_FAILED_FLAG,
+      });
+      expect(store.subscriptions[0]?.revokedAt).toBeTruthy();
+      expect(entitlementFromStore(store).plan).toBe("FREE");
+
+      const logs = warn.mock.calls
+        .map((call) => call.map(String).join(" "))
+        .join("\n");
+      expect(logs).toContain('"event":"subscription_cancel_failed"');
+      expect(logs).not.toContain(BILLING_FIXTURE_SUBSCRIPTION_ID);
+      expect(logs).not.toContain(PAYMENT_ID);
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it.each([
+    ["subscription.cancelled", () => billingWebhookFixtures.cancelledImmediate()],
+    ["subscription.expired", () => billingWebhookFixtures.expired()],
+  ])(
+    "does not retry cancellation for a terminal %s on a revoked subscription",
+    async (_label, fixture) => {
+      const store = await activeStore();
+      const cancel = vi.fn(async () => {});
+      await applyBillingEvent(
+        incoming(subscriptionRefund(), "evt_refund_terminal_cancel"),
+        store,
+        { cancelSubscription: cancel },
+      );
+
+      const event = incoming(fixture(), "evt_terminal_cancel_later");
+      expect(
+        await applyBillingEvent(event, store, {
+          cancelSubscription: cancel,
+        }),
+      ).toEqual({ outcome: "ignored" });
+
+      expect(cancel).toHaveBeenCalledTimes(1);
+      expect(store.events.get(event.providerEventId)).toMatchObject({
+        status: "IGNORED",
+        processingError: SUBSCRIPTION_REVOKED_TERMINAL_NOTE,
+      });
+      expect(store.subscriptions[0]?.revokedAt).toBeTruthy();
+      expect(entitlementFromStore(store).plan).toBe("FREE");
+    },
+  );
+
+  it("retries cancellation for a renewal payment on a revoked subscription without re-granting", async () => {
+    const store = await activeStore();
+    const cancel = vi.fn(async () => {});
+    await applyBillingEvent(
+      incoming(subscriptionRefund(), "evt_refund_before_renewal_payment"),
+      store,
+      { cancelSubscription: cancel },
+    );
+
+    const renewal = incoming(
+      paymentWebhookFixture("payment.succeeded", {
+        payment_id: "pay_renewal_fixture",
+        subscription_id: BILLING_FIXTURE_SUBSCRIPTION_ID,
+        total_amount: MONTHLY_TOTAL,
+        currency: "GBP",
+        metadata: {},
+      }),
+      "evt_renewal_payment_revoked",
+    );
+
+    expect(
+      await applyBillingEvent(renewal, store, { cancelSubscription: cancel }),
+    ).toEqual({ outcome: "applied" });
+    expect(cancel).toHaveBeenCalledTimes(2);
+    expect(cancel).toHaveBeenLastCalledWith(BILLING_FIXTURE_SUBSCRIPTION_ID);
+    expect(store.events.get(renewal.providerEventId)).toMatchObject({
+      status: "PROCESSED",
+      processingError: null,
+    });
+    expect(store.subscriptions[0]?.revokedAt).toBeTruthy();
+    expect(entitlementFromStore(store).plan).toBe("FREE");
+
+    // Replaying the same provider event is a duplicate no-op, not a second cancel.
+    expect(
+      await applyBillingEvent(renewal, store, { cancelSubscription: cancel }),
+    ).toEqual({ outcome: "duplicate" });
+    expect(cancel).toHaveBeenCalledTimes(2);
+  });
+
+  it("flags a renewal payment retry cancellation failure without re-granting", async () => {
+    const store = await activeStore();
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const cancel = vi
+      .fn()
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new Error("provider unavailable"));
+
+    try {
+      await applyBillingEvent(
+        incoming(subscriptionRefund(), "evt_refund_before_renewal_fail"),
+        store,
+        { cancelSubscription: cancel },
+      );
+
+      const renewal = incoming(
+        paymentWebhookFixture("payment.succeeded", {
+          payment_id: "pay_renewal_fails_fixture",
+          subscription_id: BILLING_FIXTURE_SUBSCRIPTION_ID,
+          total_amount: MONTHLY_TOTAL,
+          currency: "GBP",
+          metadata: {},
+        }),
+        "evt_renewal_payment_cancel_fails",
+      );
+      expect(
+        await applyBillingEvent(renewal, store, {
+          cancelSubscription: cancel,
+        }),
+      ).toEqual({ outcome: "applied" });
+
+      expect(cancel).toHaveBeenCalledTimes(2);
+      expect(store.events.get(renewal.providerEventId)).toMatchObject({
+        status: "PROCESSED",
+        processingError: SUBSCRIPTION_CANCEL_FAILED_FLAG,
+      });
+      expect(store.subscriptions[0]?.revokedAt).toBeTruthy();
+      expect(entitlementFromStore(store).plan).toBe("FREE");
+
+      const logs = warn.mock.calls
+        .map((call) => call.map(String).join(" "))
+        .join("\n");
+      expect(logs).toContain('"event":"subscription_cancel_failed"');
+      expect(logs).not.toContain(BILLING_FIXTURE_SUBSCRIPTION_ID);
+    } finally {
+      warn.mockRestore();
+    }
   });
 });

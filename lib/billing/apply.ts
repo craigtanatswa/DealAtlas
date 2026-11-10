@@ -134,6 +134,7 @@ async function applySnapshot(
   snapshot: SubscriptionSnapshot,
   store: BillingStore,
   reconcile?: ReconcileFn,
+  cancelSubscription?: CancelSubscriptionFn,
 ): Promise<ApplyResult> {
   warnIfUnknownProduct(snapshot);
   const userId = await resolveUserId(snapshot, store);
@@ -157,12 +158,24 @@ async function applySnapshot(
     existing.dodoSubscriptionId === snapshot.dodoSubscriptionId &&
     existing.revokedAt
   ) {
-    await store.markEvent(
-      event.providerEventId,
-      "IGNORED",
-      SUBSCRIPTION_REVOKED_TERMINAL_NOTE,
+    if (PROVIDER_TERMINAL_SUBSCRIPTION_STATUSES.has(snapshot.status)) {
+      await store.markEvent(
+        event.providerEventId,
+        "IGNORED",
+        SUBSCRIPTION_REVOKED_TERMINAL_NOTE,
+      );
+      return { outcome: "ignored" };
+    }
+    return retryCancelForRevokedSubscription(
+      event,
+      store,
+      snapshot.dodoSubscriptionId,
+      cancelSubscription,
+      {
+        markStatus: "IGNORED",
+        successNote: SUBSCRIPTION_REVOKED_TERMINAL_NOTE,
+      },
     );
-    return { outcome: "ignored" };
   }
 
   const incomingTime = event.occurredAt;
@@ -219,12 +232,13 @@ async function markFailedAndThrow(
   event: IncomingBillingEvent,
   store: BillingStore,
   error: unknown,
+  processingError = "lifetime grant update failed",
 ): Promise<never> {
   try {
     await store.markEvent(
       event.providerEventId,
       "FAILED",
-      "lifetime grant update failed",
+      processingError,
     );
   } catch {
     // Re-throw the original failure so the provider retries.
@@ -322,9 +336,23 @@ async function resolveReversalPayment(
       if (remote) {
         return remote;
       }
-    } catch {
-      // A provider lookup failure must never reject the webhook. Fall through
-      // to whatever we already know locally.
+    } catch (error) {
+      // The local lookup did not resolve a subscription id, so a failed
+      // provider lookup leaves us unable to reverse the payment. Fail the
+      // event (non-terminal) so Dodo retries instead of silently losing the
+      // revoke.
+      structuredLog({
+        level: "warn",
+        msg: SUBSCRIPTION_REVERSAL_UNRESOLVED_FLAG,
+        event: "subscription_reversal_lookup_failed",
+        job: "dodo-webhook",
+      });
+      await markFailedAndThrow(
+        event,
+        store,
+        error,
+        "Reversal payment lookup failed; provider retry required.",
+      );
     }
   }
 
@@ -370,6 +398,7 @@ async function cancelRevokedSubscription(
     structuredLog({
       level: "warn",
       msg: SUBSCRIPTION_CANCEL_FAILED_FLAG,
+      event: "subscription_cancel_failed",
       job: "dodo-webhook",
     });
     await store.markEvent(
@@ -378,6 +407,64 @@ async function cancelRevokedSubscription(
       SUBSCRIPTION_CANCEL_FAILED_FLAG,
     );
     return { outcome: "applied" };
+  }
+}
+
+const PROVIDER_TERMINAL_SUBSCRIPTION_STATUSES = new Set([
+  "CANCELLED",
+  "EXPIRED",
+  "FAILED",
+]);
+
+async function retryCancelForRevokedSubscription(
+  event: IncomingBillingEvent,
+  store: BillingStore,
+  dodoSubscriptionId: string,
+  cancelSubscription: CancelSubscriptionFn | undefined,
+  options: {
+    markStatus: "PROCESSED" | "IGNORED";
+    successNote: string | null;
+  },
+): Promise<ApplyResult> {
+  const outcome: ApplyResult["outcome"] =
+    options.markStatus === "PROCESSED" ? "applied" : "ignored";
+
+  if (!cancelSubscription) {
+    await store.markEvent(
+      event.providerEventId,
+      options.markStatus,
+      options.successNote,
+    );
+    return { outcome };
+  }
+
+  try {
+    await cancelSubscription(dodoSubscriptionId);
+    structuredLog({
+      level: "info",
+      msg: "subscription_cancel_retried: provider cancellation retried for a revoked subscription.",
+      event: "subscription_cancel_retried",
+      job: "dodo-webhook",
+    });
+    await store.markEvent(
+      event.providerEventId,
+      options.markStatus,
+      options.successNote,
+    );
+    return { outcome };
+  } catch {
+    structuredLog({
+      level: "warn",
+      msg: SUBSCRIPTION_CANCEL_FAILED_FLAG,
+      event: "subscription_cancel_failed",
+      job: "dodo-webhook",
+    });
+    await store.markEvent(
+      event.providerEventId,
+      options.markStatus,
+      SUBSCRIPTION_CANCEL_FAILED_FLAG,
+    );
+    return { outcome };
   }
 }
 
@@ -605,6 +692,7 @@ async function applyPayment(
   event: IncomingBillingEvent,
   store: BillingStore,
   reconcile?: ReconcileFn,
+  cancelSubscription?: CancelSubscriptionFn,
 ): Promise<ApplyResult> {
   const payment = event.payment;
   if (!payment) {
@@ -618,6 +706,18 @@ async function applyPayment(
   }
 
   const existing = await store.getSubscriptionByDodoId(payment.subscriptionId);
+  if (existing?.revokedAt) {
+    // A renewal charge on a revoked subscription. Retry the provider cancel,
+    // but never re-grant or rewrite the revoked row.
+    return retryCancelForRevokedSubscription(
+      event,
+      store,
+      payment.subscriptionId,
+      cancelSubscription,
+      { markStatus: "PROCESSED", successNote: null },
+    );
+  }
+
   if (!existing || existing.status !== "ON_HOLD") {
     await store.markEvent(event.providerEventId, "PROCESSED");
     return { outcome: "ignored" };
@@ -642,6 +742,8 @@ async function applyPayment(
     },
     reconciled,
     store,
+    undefined,
+    cancelSubscription,
   );
 }
 
@@ -696,11 +798,22 @@ export async function applyBillingEvent(
   }
 
   if (event.subscription) {
-    return applySnapshot(event, event.subscription, store, options.reconcile);
+    return applySnapshot(
+      event,
+      event.subscription,
+      store,
+      options.reconcile,
+      options.cancelSubscription,
+    );
   }
 
   if (event.payment) {
-    return applyPayment(event, store, options.reconcile);
+    return applyPayment(
+      event,
+      store,
+      options.reconcile,
+      options.cancelSubscription,
+    );
   }
 
   await store.markEvent(

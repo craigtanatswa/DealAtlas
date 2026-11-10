@@ -535,9 +535,16 @@ describe("classifyRefund", () => {
     expect(
       classifyRefund({ ...base, refundCurrency: "USD", paidCurrency: "GBP" }),
     ).toBe("unknown");
-    expect(
-      classifyRefund({ ...base, refundCurrency: null, paidCurrency: "GBP" }),
-    ).toBe("full");
+  });
+
+  it.each([
+    ["refund currency is null", { refundCurrency: null }],
+    ["refund currency is empty", { refundCurrency: "" }],
+    ["paid currency is null", { paidCurrency: null }],
+    ["paid currency is empty", { paidCurrency: "" }],
+    ["both currencies are null", { refundCurrency: null, paidCurrency: null }],
+  ])("treats a missing currency as unknown when %s", (_label, overrides) => {
+    expect(classifyRefund({ ...base, ...overrides })).toBe("unknown");
   });
 
   it("treats a refund at or above the paid total as full", () => {
