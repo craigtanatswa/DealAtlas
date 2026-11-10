@@ -31,14 +31,14 @@ export function CookieConsent() {
         <div className="flex flex-wrap gap-2 sm:shrink-0">
           <button
             type="button"
-            className="rounded-md bg-primary px-3 py-2 font-medium text-primary-foreground hover:opacity-90 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+            className="rounded-md bg-primary px-3 py-2 font-medium text-primary-foreground hover:bg-primary-hover focus-visible:ring-3 focus-visible:ring-ring focus-visible:outline-none"
             onClick={() => setAnalyticsConsent(false)}
           >
             Reject
           </button>
           <button
             type="button"
-            className="rounded-md bg-primary px-3 py-2 font-medium text-primary-foreground hover:opacity-90 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+            className="rounded-md bg-primary px-3 py-2 font-medium text-primary-foreground hover:bg-primary-hover focus-visible:ring-3 focus-visible:ring-ring focus-visible:outline-none"
             onClick={() => {
               setAnalyticsConsent(true);
               startFirstTouchAfterConsent();

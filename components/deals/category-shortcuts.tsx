@@ -27,7 +27,7 @@ export function CategoryShortcuts({
             <li key={category.slug}>
               <Link
                 href={categorySearchHref(category.name, path)}
-                className="flex items-center gap-3 rounded-lg border border-border bg-background px-3 py-3 text-sm font-medium text-foreground transition-colors hover:border-primary/30 hover:bg-muted/40 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+                className="flex items-center gap-3 rounded-lg border border-control-border bg-background px-3 py-3 text-sm font-medium text-foreground transition-colors hover:border-primary hover:bg-muted/40 focus-visible:ring-3 focus-visible:ring-ring focus-visible:outline-none"
               >
                 <Icon className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                 <span className="min-w-0 leading-snug">{category.name}</span>

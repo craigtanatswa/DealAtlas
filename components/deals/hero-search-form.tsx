@@ -37,7 +37,7 @@ export function HeroSearchForm({
             <span key={chip.href}>
               <Link
                 href={chip.href}
-                className="font-medium text-foreground underline-offset-4 hover:underline focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:rounded-sm focus-visible:outline-none"
+                className="font-medium text-foreground underline-offset-4 hover:underline focus-visible:ring-3 focus-visible:ring-ring focus-visible:rounded-sm focus-visible:outline-none"
               >
                 {chip.label}
               </Link>

@@ -10,7 +10,7 @@ import { blockCtaPositions, type Block, type BlockCtaPosition, type Inline } fro
 import { cn } from "@/lib/utils";
 
 const LINK_CLASS =
-  "font-medium text-foreground underline underline-offset-4 decoration-border hover:decoration-foreground focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:rounded-sm focus-visible:outline-none";
+  "font-medium text-foreground underline underline-offset-4 decoration-border hover:decoration-foreground focus-visible:ring-3 focus-visible:ring-ring focus-visible:rounded-sm focus-visible:outline-none";
 
 type RenderOptions = {
   /** Same-site /guides/* paths that are live. Links to any other guide render as plain text. */
