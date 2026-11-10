@@ -43,6 +43,7 @@ export const DISPLAY_PRICING = {
   proMonthly: "£39/month",
   proAnnual: "£350/year",
   foundingAnnual: "£290/year",
+  proLifetime: "£250 one-time",
 } as const;
 
 export const PUBLIC_NAV = [

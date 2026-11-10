@@ -5,8 +5,10 @@
  */
 export type {
   BillingInterval,
+  BillingTerm,
   Entitlement,
   EntitlementSnapshot,
+  LifetimeAccess,
   ProCanonicalAccess,
   SubscriptionMirror,
   SubscriptionStatus,

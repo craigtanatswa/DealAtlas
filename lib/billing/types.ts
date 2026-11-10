@@ -3,7 +3,11 @@ import type {
   SubscriptionStatus,
 } from "@/lib/entitlements/types";
 
-export const CHECKOUT_PLAN_KEYS = ["PRO_MONTHLY", "PRO_ANNUAL", "FOUNDING"] as const;
+export const CHECKOUT_PLAN_KEYS = [
+  "PRO_MONTHLY",
+  "PRO_ANNUAL",
+  "founding_lifetime",
+] as const;
 
 export type CheckoutPlanKey = (typeof CHECKOUT_PLAN_KEYS)[number];
 
@@ -16,6 +20,7 @@ export type PlanProductMap = {
   PRO_ANNUAL: string;
   PRO_ANNUAL_LEGACY: string[];
   FOUNDING_ANNUAL?: string;
+  FOUNDING_LIFETIME?: string;
 };
 
 export type FoundingReservation = "reserved" | "ineligible" | "sold_out" | "unavailable";
@@ -46,6 +51,17 @@ export type PaymentSnapshot = {
   subscriptionId: string | null;
   customerId: string | null;
   succeeded: boolean;
+  productIds: string[];
+  userId: string | null;
+  planKey: string | null;
+  totalAmount: number | null;
+  lifetime: boolean;
+  lifetimeProductId: string | null;
+};
+
+export type LifetimeReversal = {
+  paymentId: string;
+  kind: "refund" | "dispute";
 };
 
 export type IncomingBillingEvent = {
@@ -56,6 +72,7 @@ export type IncomingBillingEvent = {
   occurredAt: string | null;
   subscription: SubscriptionSnapshot | null;
   payment: PaymentSnapshot | null;
+  reversal: LifetimeReversal | null;
 };
 
 export type BillingEventRecord = {
@@ -92,6 +109,48 @@ export type ApplyResult = {
   outcome: ApplyOutcome;
 };
 
+export type LifetimeGrantStatus = "active" | "revoked";
+
+export type LifetimeGrant = {
+  userId: string;
+  dodoPaymentId: string;
+  dodoCustomerId: string | null;
+  dodoProductId: string;
+  status: LifetimeGrantStatus;
+  grantedAt: string;
+  revokedAt: string | null;
+  revokeReason: string | null;
+  grantEventId: string;
+  revokeEventId: string | null;
+};
+
+export type GrantLifetimeInput = {
+  eventId: string;
+  paymentId: string;
+  userId: string;
+  customerId: string | null;
+  productId: string;
+};
+
+export type GrantLifetimeResult =
+  | "granted"
+  | "granted_over_cap"
+  | "duplicate"
+  | "duplicate_user"
+  | "invalid";
+
+export type RevokeLifetimeInput = {
+  eventId: string;
+  paymentId: string;
+  reason: string | null;
+};
+
+export type RevokeLifetimeResult =
+  | "revoked"
+  | "already_revoked"
+  | "not_found"
+  | "invalid";
+
 export type ReconcileFn = (
   dodoSubscriptionId: string,
 ) => Promise<SubscriptionSnapshot | null>;
@@ -117,4 +176,6 @@ export type BillingStore = {
     userId: string,
   ): Promise<StoredSubscription | null>;
   upsertCurrentSubscription(row: StoredSubscription): Promise<void>;
+  grantLifetime(input: GrantLifetimeInput): Promise<GrantLifetimeResult>;
+  revokeLifetime(input: RevokeLifetimeInput): Promise<RevokeLifetimeResult>;
 };

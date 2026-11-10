@@ -16,7 +16,7 @@ import {
   type FoundingPublicCount,
 } from "@/lib/billing/founding-ui";
 
-/** Founding plan summary on /checkout. Renders only while the offer is available. */
+/** Lifetime plan summary on /checkout. Renders only while the offer is available. */
 export function FoundingCheckoutSummary({
   founding,
 }: {
@@ -58,12 +58,12 @@ export function FoundingCheckoutSummary({
           </div>
           <div className="flex justify-between gap-4">
             <dt className="text-muted-foreground">Billing</dt>
-            <dd className="text-foreground">Yearly · renews at founding rate</dd>
+            <dd className="text-foreground">One-time payment · Lifetime deal</dd>
           </div>
         </dl>
       </section>
       <p className="rounded-lg border border-border bg-muted px-4 py-3 text-xs text-muted-foreground">
-        Availability is re-checked when you continue. If founding places fill, you
+        Availability is re-checked when you continue. If lifetime places fill, you
         won’t be charged and can choose a standard plan.
       </p>
       <div className="flex flex-col gap-2">

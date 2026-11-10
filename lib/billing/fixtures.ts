@@ -11,10 +11,14 @@ export type WebhookFixtureEnvelope = {
 export const BILLING_FIXTURE_LEGACY_PRODUCT_ID =
   "pdt_dealatlas_pro_annual_legacy";
 
+export const BILLING_FIXTURE_LIFETIME_PRODUCT_ID =
+  "pdt_dealatlas_founding_lifetime";
+
 export const BILLING_FIXTURE_PRODUCTS: PlanProductMap = {
   PRO_MONTHLY: "pdt_dealatlas_pro_monthly",
   PRO_ANNUAL: "pdt_dealatlas_pro_annual",
   PRO_ANNUAL_LEGACY: [BILLING_FIXTURE_LEGACY_PRODUCT_ID],
+  FOUNDING_LIFETIME: BILLING_FIXTURE_LIFETIME_PRODUCT_ID,
 };
 
 export const BILLING_FIXTURE_USER_ID = ENTITLEMENT_FIXTURE_USER_ID;
@@ -144,6 +148,96 @@ export function paymentWebhookFixture(
   });
 }
 
+export function lifetimePaymentWebhookFixture(
+  type = "payment.succeeded",
+  overrides: Record<string, unknown> = {},
+  timestamp = "2026-06-01T12:00:00.000Z",
+): WebhookFixtureEnvelope {
+  return fixtureWebhookPayload({
+    type,
+    timestamp,
+    data: fixturePaymentData({
+      payment_id: "pay_dealatlas_lifetime",
+      subscription_id: null,
+      product_cart: [
+        { product_id: BILLING_FIXTURE_LIFETIME_PRODUCT_ID, quantity: 1 },
+      ],
+      metadata: {
+        user_id: BILLING_FIXTURE_USER_ID,
+        plan_key: "founding_lifetime",
+      },
+      total_amount: 25000,
+      settlement_amount: 25000,
+      ...overrides,
+    }),
+  });
+}
+
+export function refundWebhookFixture(
+  type = "refund.succeeded",
+  overrides: Record<string, unknown> = {},
+  timestamp = "2026-06-02T12:00:00.000Z",
+): WebhookFixtureEnvelope {
+  return fixtureWebhookPayload({
+    type,
+    timestamp,
+    data: {
+      payload_type: "Refund",
+      brand_id: "brand_dealatlas",
+      business_id: BILLING_FIXTURE_BUSINESS_ID,
+      created_at: "2026-06-02T12:00:00.000Z",
+      customer: {
+        customer_id: BILLING_FIXTURE_CUSTOMER_ID,
+        email: "pro@example.com",
+        name: "Pro User",
+      },
+      is_partial: false,
+      metadata: {
+        user_id: BILLING_FIXTURE_USER_ID,
+        plan_key: "founding_lifetime",
+      },
+      payment_id: "pay_dealatlas_lifetime",
+      refund_id: "ref_dealatlas_fixture",
+      status: "succeeded",
+      ...overrides,
+    },
+  });
+}
+
+export function disputeWebhookFixture(
+  type = "dispute.opened",
+  overrides: Record<string, unknown> = {},
+  timestamp = "2026-06-02T12:00:00.000Z",
+): WebhookFixtureEnvelope {
+  const status =
+    typeof overrides.dispute_status === "string"
+      ? overrides.dispute_status
+      : type.replace(".", "_");
+  return fixtureWebhookPayload({
+    type,
+    timestamp,
+    data: {
+      payload_type: "Dispute",
+      amount: "25000",
+      brand_id: "brand_dealatlas",
+      business_id: BILLING_FIXTURE_BUSINESS_ID,
+      created_at: "2026-06-02T12:00:00.000Z",
+      currency: "GBP",
+      customer: {
+        customer_id: BILLING_FIXTURE_CUSTOMER_ID,
+        email: "pro@example.com",
+        name: "Pro User",
+      },
+      dispute_id: "dsp_dealatlas_fixture",
+      dispute_stage: "dispute",
+      dispute_status: status,
+      payment_id: "pay_dealatlas_lifetime",
+      payment_provider: "dodo",
+      ...overrides,
+    },
+  });
+}
+
 export const billingWebhookFixtures = {
   monthlyActive: () => subscriptionWebhookFixture("subscription.active"),
   annualActive: () =>
@@ -255,4 +349,12 @@ export const billingWebhookFixtures = {
   paymentSucceeded: () => paymentWebhookFixture("payment.succeeded"),
   paymentFailed: () =>
     paymentWebhookFixture("payment.failed", { status: "failed" }),
+  lifetimePayment: (overrides: Record<string, unknown> = {}) =>
+    lifetimePaymentWebhookFixture("payment.succeeded", overrides),
+  lifetimeRefund: (overrides: Record<string, unknown> = {}) =>
+    refundWebhookFixture("refund.succeeded", overrides),
+  lifetimeDispute: (
+    type = "dispute.opened",
+    overrides: Record<string, unknown> = {},
+  ) => disputeWebhookFixture(type, overrides),
 };

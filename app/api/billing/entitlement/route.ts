@@ -24,5 +24,6 @@ export async function GET(request: NextRequest) {
     cancelAtPeriodEnd: entitlement.cancelAtPeriodEnd,
     billingInterval: entitlement.billingInterval,
     planKey: entitlement.planKey,
+    term: entitlement.term,
   });
 }

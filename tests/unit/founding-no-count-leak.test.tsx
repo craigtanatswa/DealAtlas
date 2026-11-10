@@ -109,7 +109,7 @@ describe("founding UI only receives the public count shape", () => {
             alertsHref="/app/alerts"
           />,
         ),
-      ).not.toMatch(/founding member/i);
+      ).not.toMatch(/founding/i);
     }
   });
 
@@ -121,12 +121,12 @@ describe("founding UI only receives the public count shape", () => {
 
     const pricing = renderToString(await PricingPage());
     htmlLeaks(pricing);
-    expect(pricing).toMatch(/founding member/i);
+    expect(pricing).toMatch(/lifetime access/i);
     expect(pricing).toContain("Limited places");
 
     const home = renderToString(await HomePage());
     htmlLeaks(home);
-    expect(home).toMatch(/founding member/i);
+    expect(home).toMatch(/lifetime access/i);
     expect(home).toContain("Limited places");
   });
 });

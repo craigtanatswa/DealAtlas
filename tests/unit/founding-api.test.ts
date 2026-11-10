@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 
 const state = vi.hoisted(() => ({
-  env: { DODO_FOUNDING_PRODUCT_ID: "pdt_test_founding" } as Record<string, string | undefined>,
+  env: { DODO_FOUNDING_LIFETIME_PRODUCT_ID: "pdt_test_lifetime" } as Record<string, string | undefined>,
   remaining: 24 as unknown,
   role: "anon" as "anon" | "free" | "pro",
 }));
@@ -34,7 +34,7 @@ async function body(): Promise<{ text: string; json: Record<string, unknown> }> 
 }
 
 beforeEach(() => {
-  state.env = { DODO_FOUNDING_PRODUCT_ID: "pdt_test_founding" };
+  state.env = { DODO_FOUNDING_LIFETIME_PRODUCT_ID: "pdt_test_lifetime" };
   state.remaining = 24;
   state.role = "anon";
 });
@@ -62,7 +62,7 @@ describe("public /api/founding", () => {
   });
 });
 
-describe("missing DODO_FOUNDING_PRODUCT_ID fails closed", () => {
+describe("missing DODO_FOUNDING_LIFETIME_PRODUCT_ID fails closed", () => {
   it("API says sold out and the page state hides founding", async () => {
     state.env = {};
     expect((await body()).json).toEqual({ sold_out: true });
