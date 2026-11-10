@@ -17,6 +17,66 @@ import type {
 type SubscriptionRow = Database["public"]["Tables"]["subscriptions"]["Row"];
 type BillingEventRow = Database["public"]["Tables"]["billing_events"]["Row"];
 
+const SUBSCRIPTION_COLUMNS = [
+  "user_id",
+  "dodo_customer_id",
+  "dodo_subscription_id",
+  "dodo_product_id",
+  "plan_key",
+  "status",
+  "billing_interval",
+  "current_period_start",
+  "current_period_end",
+  "cancel_at_period_end",
+  "cancelled_at",
+  "last_provider_event_at",
+  "is_current",
+] as const;
+
+const SUBSCRIPTION_REVOKE_COLUMNS = ["revoked_at", "revoke_reason"] as const;
+
+const SUBSCRIPTION_COLUMNS_WITH_REVOCATION = [
+  ...SUBSCRIPTION_COLUMNS,
+  ...SUBSCRIPTION_REVOKE_COLUMNS,
+] as const;
+
+type SubscriptionReadRow = Pick<
+  SubscriptionRow,
+  (typeof SUBSCRIPTION_COLUMNS)[number]
+> & {
+  revoked_at?: string | null;
+  revoke_reason?: string | null;
+};
+
+function isMissingColumnError(
+  error: { code?: string } | null | undefined,
+): boolean {
+  return error?.code === "42703" || error?.code === "PGRST204";
+}
+
+/**
+ * revoked_at/revoke_reason arrive with migration 0064. Until it is applied,
+ * retry reads without them (Postgres 42703 = undefined column). Before 0064 no
+ * revocation can have been recorded, so a missing column maps to null.
+ */
+async function withSubscriptionRevocationFallback<
+  R extends { error: { code?: string } | null },
+>(
+  columns: readonly string[],
+  run: (columns: string) => PromiseLike<R>,
+): Promise<R> {
+  const first = await run(columns.join(", "));
+  if (first.error?.code !== "42703") return first;
+  return run(
+    columns
+      .filter(
+        (column) =>
+          !(SUBSCRIPTION_REVOKE_COLUMNS as readonly string[]).includes(column),
+      )
+      .join(", "),
+  );
+}
+
 function mapEvent(row: BillingEventRow): BillingEventRecord {
   return {
     providerEventId: row.provider_event_id,
@@ -26,7 +86,7 @@ function mapEvent(row: BillingEventRow): BillingEventRecord {
   };
 }
 
-function mapSubscription(row: SubscriptionRow): StoredSubscription {
+function mapSubscription(row: SubscriptionReadRow): StoredSubscription {
   return {
     userId: row.user_id,
     dodoCustomerId: row.dodo_customer_id,
@@ -41,8 +101,8 @@ function mapSubscription(row: SubscriptionRow): StoredSubscription {
     cancelledAt: row.cancelled_at,
     lastProviderEventAt: row.last_provider_event_at,
     isCurrent: row.is_current,
-    revokedAt: row.revoked_at,
-    revokeReason: row.revoke_reason,
+    revokedAt: row.revoked_at ?? null,
+    revokeReason: row.revoke_reason ?? null,
   };
 }
 
@@ -158,65 +218,78 @@ export function createBillingStore(): BillingStore {
     },
 
     async getSubscriptionByDodoId(dodoSubscriptionId) {
-      const { data, error } = await admin
-        .from("subscriptions")
-        .select(
-          "user_id, dodo_customer_id, dodo_subscription_id, dodo_product_id, plan_key, status, billing_interval, current_period_start, current_period_end, cancel_at_period_end, cancelled_at, last_provider_event_at, is_current, revoked_at, revoke_reason",
-        )
-        .eq("dodo_subscription_id", dodoSubscriptionId)
-        .maybeSingle();
+      const { data, error } = await withSubscriptionRevocationFallback(
+        SUBSCRIPTION_COLUMNS_WITH_REVOCATION,
+        (columns) =>
+          admin
+            .from("subscriptions")
+            .select(columns)
+            .eq("dodo_subscription_id", dodoSubscriptionId)
+            .maybeSingle(),
+      );
       const row = throwIfQueryError("Failed to load subscription", {
         data,
         error,
       });
-      return row ? mapSubscription(row as SubscriptionRow) : null;
+      return row ? mapSubscription(row as unknown as SubscriptionReadRow) : null;
     },
 
     async getSubscriptionByCustomerId(dodoCustomerId) {
-      const { data, error } = await admin
-        .from("subscriptions")
-        .select(
-          "user_id, dodo_customer_id, dodo_subscription_id, dodo_product_id, plan_key, status, billing_interval, current_period_start, current_period_end, cancel_at_period_end, cancelled_at, last_provider_event_at, is_current, revoked_at, revoke_reason",
-        )
-        .eq("dodo_customer_id", dodoCustomerId)
-        .eq("is_current", true)
-        .maybeSingle();
+      const { data, error } = await withSubscriptionRevocationFallback(
+        SUBSCRIPTION_COLUMNS_WITH_REVOCATION,
+        (columns) =>
+          admin
+            .from("subscriptions")
+            .select(columns)
+            .eq("dodo_customer_id", dodoCustomerId)
+            .eq("is_current", true)
+            .maybeSingle(),
+      );
       const row = throwIfQueryError("Failed to load subscription by customer", {
         data,
         error,
       });
-      return row ? mapSubscription(row as SubscriptionRow) : null;
+      return row ? mapSubscription(row as unknown as SubscriptionReadRow) : null;
     },
 
     async getCurrentSubscription(userId) {
-      const { data, error } = await admin
-        .from("subscriptions")
-        .select(
-          "user_id, dodo_customer_id, dodo_subscription_id, dodo_product_id, plan_key, status, billing_interval, current_period_start, current_period_end, cancel_at_period_end, cancelled_at, last_provider_event_at, is_current, revoked_at, revoke_reason",
-        )
-        .eq("user_id", userId)
-        .eq("is_current", true)
-        .maybeSingle();
+      const { data, error } = await withSubscriptionRevocationFallback(
+        SUBSCRIPTION_COLUMNS_WITH_REVOCATION,
+        (columns) =>
+          admin
+            .from("subscriptions")
+            .select(columns)
+            .eq("user_id", userId)
+            .eq("is_current", true)
+            .maybeSingle(),
+      );
       const row = throwIfQueryError("Failed to load current subscription", {
         data,
         error,
       });
-      return row ? mapSubscription(row as SubscriptionRow) : null;
+      return row ? mapSubscription(row as unknown as SubscriptionReadRow) : null;
     },
 
     async upsertCurrentSubscription(row: StoredSubscription) {
       // Revoked is terminal for the same provider subscription id. Read first
       // so a late provider event cannot clear the marker or re-grant Pro.
-      const { data: existing, error: existingError } = await admin
-        .from("subscriptions")
-        .select("dodo_subscription_id, revoked_at")
-        .eq("dodo_subscription_id", row.dodoSubscriptionId ?? "__none__")
-        .maybeSingle();
+      const { data: existing, error: existingError } =
+        await withSubscriptionRevocationFallback(
+          ["dodo_subscription_id", "revoked_at"],
+          (columns) =>
+            admin
+              .from("subscriptions")
+              .select(columns)
+              .eq("dodo_subscription_id", row.dodoSubscriptionId ?? "__none__")
+              .maybeSingle(),
+        );
       throwIfQueryError("Failed to load existing subscription", {
         data: existing,
         error: existingError,
       });
-      if (existing?.revoked_at) {
+      const existingSubscription =
+        existing as unknown as { revoked_at?: string | null } | null;
+      if (existingSubscription?.revoked_at) {
         return;
       }
 
@@ -246,14 +319,35 @@ export function createBillingStore(): BillingStore {
         cancelled_at: row.cancelledAt,
         last_provider_event_at: row.lastProviderEventAt,
         is_current: true,
+        updated_at: new Date().toISOString(),
+      };
+      const revocationPayload = {
         revoked_at: row.revokedAt ?? null,
         revoke_reason: row.revokeReason ?? null,
-        updated_at: new Date().toISOString(),
       };
 
       const { error } = await admin
         .from("subscriptions")
-        .upsert(payload, { onConflict: "dodo_subscription_id" });
+        .upsert(
+          { ...payload, ...revocationPayload },
+          { onConflict: "dodo_subscription_id" },
+        );
+
+      if (
+        isMissingColumnError(error) &&
+        row.revokedAt == null &&
+        row.revokeReason == null
+      ) {
+        const { error: retryError } = await admin
+          .from("subscriptions")
+          .upsert(payload, { onConflict: "dodo_subscription_id" });
+        throwIfQueryError("Failed to upsert subscription", {
+          data: null,
+          error: retryError,
+        });
+        return;
+      }
+
       throwIfQueryError("Failed to upsert subscription", { data: null, error });
     },
 
