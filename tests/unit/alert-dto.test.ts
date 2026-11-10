@@ -66,6 +66,7 @@ const PRO_ENTITLEMENT: EntitlementSnapshot = {
   cancelAtPeriodEnd: false,
   billingInterval: "MONTHLY",
   planKey: "PRO_MONTHLY",
+  term: "monthly",
 };
 
 describe("alert DTO entitlement boundary", () => {

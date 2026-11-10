@@ -137,6 +137,15 @@ describe("founding UI only receives the public count shape", () => {
           />,
         ),
       ).not.toMatch(/lifetime/i);
+      expect(
+        renderToString(
+          <DealProCard
+            mode="free"
+            founding={founding}
+            alertsHref="/app/alerts"
+          />,
+        ),
+      ).not.toMatch(/founding/i);
     }
   });
 

@@ -101,7 +101,7 @@ function PlanCta({
   analyticsPlan,
 }: {
   signedIn: boolean;
-  planKey: Exclude<CheckoutPlanKey, "FOUNDING">;
+  planKey: CheckoutPlanKey;
   label: ReactNode;
   variant?: "default" | "outline";
   buttonClassName?: string;

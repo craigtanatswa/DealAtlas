@@ -213,6 +213,7 @@ jobs:
       # same fixture allowlist as tests/leak/start-app.sh and the Pro seed.
       DODO_PRO_MONTHLY_PRODUCT_ID: pdt_dealatlas_pro_monthly
       DODO_PRO_ANNUAL_PRODUCT_ID: pdt_dealatlas_pro_annual
+      DODO_FOUNDING_LIFETIME_PRODUCT_ID: pdt_dealatlas_founding_lifetime
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:

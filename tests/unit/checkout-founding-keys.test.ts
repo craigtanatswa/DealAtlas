@@ -10,6 +10,7 @@ import {
   ALREADY_SUBSCRIBED_MESSAGE,
   FOUNDING_UNAVAILABLE_MESSAGE,
 } from "@/lib/billing/founding";
+import { FOUNDING_PLAN_KEY } from "@/lib/billing/founding-ui";
 import type {
   FoundingReservation,
   PlanProductMap,
@@ -24,7 +25,7 @@ const mocks = vi.hoisted(() => ({
     PRO_MONTHLY: "pdt_test_monthly",
     PRO_ANNUAL: "pdt_test_annual",
     PRO_ANNUAL_LEGACY: ["pdt_test_annual_legacy"],
-    FOUNDING_ANNUAL: "pdt_test_founding",
+    FOUNDING_LIFETIME: "pdt_test_lifetime",
   } as PlanProductMap,
   sessions: [] as Array<Record<string, unknown>>,
 }));
@@ -113,7 +114,7 @@ beforeEach(() => {
     PRO_MONTHLY: "pdt_test_monthly",
     PRO_ANNUAL: "pdt_test_annual",
     PRO_ANNUAL_LEGACY: ["pdt_test_annual_legacy"],
-    FOUNDING_ANNUAL: "pdt_test_founding",
+    FOUNDING_LIFETIME: "pdt_test_lifetime",
   };
   mocks.readFoundingMember.mockResolvedValue(false);
   mocks.reserveFoundingSlot.mockResolvedValue("reserved");
@@ -155,13 +156,13 @@ describe("checkout founding plan keys", () => {
   });
 
   it("reserves exactly once for an open founding checkout", async () => {
-    const response = await checkout({ planKey: "FOUNDING" });
+    const response = await checkout({ planKey: "founding_lifetime" });
 
     expect(response.status).toBe(200);
     expect(mocks.reserveFoundingSlot).toHaveBeenCalledTimes(1);
     expect(mocks.sessions).toHaveLength(1);
     expect(sessionProduct(mocks.sessions[0])).toBe(
-      mocks.products.FOUNDING_ANNUAL,
+      mocks.products.FOUNDING_LIFETIME,
     );
   });
 
@@ -172,7 +173,7 @@ describe("checkout founding plan keys", () => {
       mocks.readFoundingMember.mockResolvedValue(false);
       mocks.reserveFoundingSlot.mockResolvedValue(reservation);
 
-      const response = await checkout({ planKey: "FOUNDING" });
+      const response = await checkout({ planKey: "founding_lifetime" });
 
       expect(response.status).toBe(409);
       expect((await response.json()).error).toBe(FOUNDING_UNAVAILABLE_MESSAGE);
@@ -186,7 +187,7 @@ describe("checkout founding plan keys", () => {
 
     const response = await createAuthenticatedCheckoutResponse({
       request: formRequest({
-        planKey: "FOUNDING",
+        planKey: "founding_lifetime",
         returnTo: "/pricing",
       }),
       user: USER,
@@ -195,18 +196,19 @@ describe("checkout founding plan keys", () => {
 
     expect(response.status).toBe(303);
     const location = response.headers.get("location") ?? "";
-    expect(location).toContain("/checkout/founding-full");
+    expect(location).toContain("/checkout/lifetime-full");
+    expect(location).not.toContain("founding-full");
     expect(location).toContain("next=%2Fpricing");
     expect(mocks.checkoutHandler).not.toHaveBeenCalled();
     expect(mocks.sessions).toHaveLength(0);
   });
 
   it("fails closed when the founding product is not configured", async () => {
-    const { FOUNDING_ANNUAL: _founding, ...withoutFounding } = mocks.products;
+    const { FOUNDING_LIFETIME: _founding, ...withoutFounding } = mocks.products;
     void _founding;
     mocks.products = withoutFounding;
 
-    const response = await checkout({ planKey: "FOUNDING" });
+    const response = await checkout({ planKey: "founding_lifetime" });
 
     expect(response.status).toBe(409);
     expect(mocks.reserveFoundingSlot).not.toHaveBeenCalled();
@@ -225,7 +227,7 @@ describe("checkout founding plan keys", () => {
     });
 
     const founding = Array.from({ length: 40 }, (_, index) =>
-      checkout({ planKey: "FOUNDING" }, userFor(index)),
+      checkout({ planKey: "founding_lifetime" }, userFor(index)),
     );
     const annual = Array.from({ length: 20 }, (_, index) =>
       checkout({ planKey: "PRO_ANNUAL" }, userFor(100 + index)),
@@ -242,7 +244,7 @@ describe("checkout founding plan keys", () => {
     expect(taken).toBe(25);
 
     const foundingSessions = mocks.sessions.filter(
-      (session) => sessionProduct(session) === mocks.products.FOUNDING_ANNUAL,
+      (session) => sessionProduct(session) === mocks.products.FOUNDING_LIFETIME,
     );
     const annualSessions = mocks.sessions.filter(
       (session) => sessionProduct(session) === mocks.products.PRO_ANNUAL,
@@ -254,14 +256,14 @@ describe("checkout founding plan keys", () => {
   it("rejects tampered and unknown plan keys without reserving or creating a session", async () => {
     const bodies: unknown[] = [
       { planKey: "PRO_ANNUAL_LEGACY" },
-      { planKey: "FOUNDING_ANNUAL" },
+      { planKey: "FOUNDING_LIFETIME" },
       { planKey: "founding" },
       { planKey: "" },
       { planKey: 123 },
       { planKey: null },
-      { planKey: "FOUNDING", productId: "pdt_test_annual" },
-      { planKey: "FOUNDING", product_id: "pdt_test_annual" },
-      { planKey: "FOUNDING", metadata: { plan_key: "FOUNDING" } },
+      { planKey: "founding_lifetime", productId: "pdt_test_annual" },
+      { planKey: "founding_lifetime", product_id: "pdt_test_annual" },
+      { planKey: "founding_lifetime", metadata: { plan_key: "founding_lifetime" } },
     ];
 
     for (const body of bodies) {
@@ -274,11 +276,15 @@ describe("checkout founding plan keys", () => {
     expect(mocks.sessions).toHaveLength(0);
   });
 
-  it("stores PRO_ANNUAL metadata for a founding checkout", async () => {
-    const response = await checkout({ planKey: "FOUNDING" });
+  it("stores the lifetime plan metadata for a lifetime checkout", async () => {
+    const response = await checkout({ planKey: "founding_lifetime" });
 
     expect(response.status).toBe(200);
-    expect(sessionMetadata(mocks.sessions[0]).plan_key).toBe("PRO_ANNUAL");
+    expect(sessionMetadata(mocks.sessions[0]).plan_key).toBe("founding_lifetime");
+    expect(mocks.sessions[0]?.subscription_data).toBeUndefined();
+    expect(mocks.sessions[0]?.product_cart).toEqual([
+      { product_id: mocks.products.FOUNDING_LIFETIME, quantity: 1 },
+    ]);
   });
 });
 
@@ -287,7 +293,7 @@ describe("selectCheckoutProduct matrix", () => {
     PRO_MONTHLY: "pdt_test_monthly",
     PRO_ANNUAL: "pdt_test_annual",
     PRO_ANNUAL_LEGACY: ["pdt_test_annual_legacy"],
-    FOUNDING_ANNUAL: "pdt_test_founding",
+    FOUNDING_LIFETIME: "pdt_test_lifetime",
   };
   const withoutFounding: PlanProductMap = {
     PRO_MONTHLY: "pdt_test_monthly",
@@ -326,7 +332,7 @@ describe("selectCheckoutProduct matrix", () => {
       {
         for (const reservation of reservations) {
           const selection = selectCheckoutProduct({
-            planKey: "FOUNDING",
+            planKey: "founding_lifetime",
             products,
             reservation,
           });
@@ -340,13 +346,13 @@ describe("selectCheckoutProduct matrix", () => {
             });
             continue;
           }
-          expect(selection.productId).toBe(products.FOUNDING_ANNUAL);
+          expect(selection.productId).toBe(products.FOUNDING_LIFETIME);
           expect(selection.productId).not.toBe(products.PRO_ANNUAL);
           expect(products.PRO_ANNUAL_LEGACY).not.toContain(
             selection.productId,
           );
           const eligible =
-            Boolean(products.FOUNDING_ANNUAL) &&
+            Boolean(products.FOUNDING_LIFETIME) &&
             reservation === "reserved";
           expect(eligible).toBe(true);
         }
@@ -378,7 +384,7 @@ describe("selectCheckoutProduct matrix", () => {
     expect(CHECKOUT_PLAN_KEYS).toEqual([
       "PRO_MONTHLY",
       "PRO_ANNUAL",
-      "FOUNDING",
+      "founding_lifetime",
     ]);
   });
 });
@@ -388,13 +394,14 @@ describe("checkout error contract for the UI", () => {
     mocks.readFoundingMember.mockResolvedValue(false);
     mocks.reserveFoundingSlot.mockResolvedValue("sold_out");
 
-    const response = await checkout({ planKey: "FOUNDING" });
+    const response = await checkout({ planKey: "founding_lifetime" });
 
+    expect(FOUNDING_PLAN_KEY).toBe("founding_lifetime");
     expect(response.status).toBe(409);
     const body = await response.json();
     expect(body.code).toBe("FOUNDING_CAP_FULL");
     expect(body.message).toBe(
-      "Founding places are all taken. You can still subscribe to Pro annual at £350/year.",
+      "The Lifetime deal is no longer available. You can still subscribe to Pro annual at £350/year.",
     );
     expect(body.checkout_url).toBeUndefined();
   });
@@ -402,13 +409,13 @@ describe("checkout error contract for the UI", () => {
   it("returns 409 FOUNDING_NOT_ELIGIBLE for an ex-founder even with places left", async () => {
     mocks.reserveFoundingSlot.mockResolvedValue("ineligible");
 
-    const response = await checkout({ planKey: "FOUNDING" });
+    const response = await checkout({ planKey: "founding_lifetime" });
 
     expect(response.status).toBe(409);
     const body = await response.json();
     expect(body.code).toBe("FOUNDING_NOT_ELIGIBLE");
     expect(body.message).toBe(
-      "Founding membership can't be rejoined after cancelling. You can still subscribe to Pro annual at £350/year.",
+      "The Lifetime deal can't be bought again on this account. You can still subscribe to Pro annual at £350/year.",
     );
     expect(body.error).toBe(body.message);
     expect(body.checkout_url).toBeUndefined();
@@ -420,14 +427,15 @@ describe("checkout error contract for the UI", () => {
     mocks.reserveFoundingSlot.mockResolvedValue("ineligible");
 
     const response = await createAuthenticatedCheckoutResponse({
-      request: formRequest({ planKey: "FOUNDING", returnTo: "/pricing" }),
+      request: formRequest({ planKey: "founding_lifetime", returnTo: "/pricing" }),
       user: USER,
       profile: PROFILE,
     });
 
     expect(response.status).toBe(303);
     const location = response.headers.get("location") ?? "";
-    expect(location).toContain("/checkout/founding-full");
+    expect(location).toContain("/checkout/lifetime-full");
+    expect(location).not.toContain("founding-full");
     expect(location).toContain("next=%2Fpricing");
     expect(location).toContain("reason=not_eligible");
     expect(mocks.checkoutHandler).not.toHaveBeenCalled();
@@ -443,18 +451,18 @@ describe("checkout error contract for the UI", () => {
     expect(mocks.reserveFoundingSlot).not.toHaveBeenCalled();
     expect(mocks.sessions).toHaveLength(1);
     expect(sessionProduct(mocks.sessions[0])).toBe(mocks.products.PRO_ANNUAL);
-    expect(sessionProduct(mocks.sessions[0])).not.toBe(mocks.products.FOUNDING_ANNUAL);
+    expect(sessionProduct(mocks.sessions[0])).not.toBe(mocks.products.FOUNDING_LIFETIME);
   });
 
   it("returns 400 INVALID_PLAN for tampered or unknown plan keys", async () => {
     for (const body of [
-      { planKey: "FOUNDING_ANNUAL" },
+      { planKey: "FOUNDING_LIFETIME" },
       { planKey: "PRO_ANNUAL_LEGACY" },
       { planKey: "founding" },
       { planKey: 7 },
       {},
-      { planKey: "FOUNDING", product_id: "pdt_test_annual" },
-      { planKey: "PRO_ANNUAL", metadata: { plan_key: "FOUNDING" } },
+      { planKey: "founding_lifetime", product_id: "pdt_test_annual" },
+      { planKey: "PRO_ANNUAL", metadata: { plan_key: "founding_lifetime" } },
     ]) {
       const response = await checkout(body);
       expect(response.status).toBe(400);
@@ -527,7 +535,7 @@ describe("checkout duplicate-subscription guard", () => {
   it("fails closed with 503 and no session when the subscription check errors", async () => {
     mocks.hasLiveSubscription.mockRejectedValue(new Error("db down"));
     const response = await createAuthenticatedCheckoutResponse({
-      request: jsonRequest({ planKey: "FOUNDING" }),
+      request: jsonRequest({ planKey: "founding_lifetime" }),
       user: USER,
       profile: PROFILE,
     });

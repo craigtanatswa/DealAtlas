@@ -50,7 +50,7 @@ const APP_ORG_PLACEHOLDERS: Record<string, string> = {
   suppliers: "/app/suppliers/[supplier]",
 };
 
-const CHECKOUT_STATIC = new Set(["success", "founding-full"]);
+const CHECKOUT_STATIC = new Set(["success", "lifetime-full", "founding-full"]);
 const AUTH_STATIC = new Set(["google", "callback", "confirm"]);
 const CATEGORY_SLUGS = new Set<string>(DEAL_CATEGORY_SLUGS);
 

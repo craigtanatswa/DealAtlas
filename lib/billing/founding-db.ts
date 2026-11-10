@@ -8,7 +8,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 /** Fails closed: unreadable env counts as not configured. */
 export function foundingConfigured(): boolean {
   try {
-    return Boolean(getServerEnv().DODO_FOUNDING_PRODUCT_ID);
+    return Boolean(getServerEnv().DODO_FOUNDING_LIFETIME_PRODUCT_ID);
   } catch {
     return false;
   }

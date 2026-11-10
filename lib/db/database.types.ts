@@ -3205,6 +3205,68 @@ export type Database = {
           },
         ]
       }
+      lifetime_grants: {
+        Row: {
+          created_at: string
+          currency: string | null
+          dodo_customer_id: string | null
+          dodo_payment_id: string
+          dodo_product_id: string
+          grant_event_id: string
+          granted_at: string
+          id: number
+          revoke_event_id: string | null
+          revoke_reason: string | null
+          revoked_at: string | null
+          status: string
+          total_amount: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          currency?: string | null
+          dodo_customer_id?: string | null
+          dodo_payment_id: string
+          dodo_product_id: string
+          grant_event_id: string
+          granted_at?: string
+          id?: number
+          revoke_event_id?: string | null
+          revoke_reason?: string | null
+          revoked_at?: string | null
+          status?: string
+          total_amount?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          currency?: string | null
+          dodo_customer_id?: string | null
+          dodo_payment_id?: string
+          dodo_product_id?: string
+          grant_event_id?: string
+          granted_at?: string
+          id?: string
+          revoke_event_id?: string | null
+          revoke_reason?: string | null
+          revoked_at?: string | null
+          status?: string
+          total_amount?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lifetime_grants_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       subscriptions: {
         Row: {
           billing_interval:
@@ -3334,6 +3396,26 @@ export type Database = {
       admin_merge_organizations: {
         Args: { p_drop: string; p_keep: string }
         Returns: undefined
+      }
+      grant_lifetime_access: {
+        Args: {
+          p_customer_id: string | null
+          p_currency?: string | null
+          p_event_id: string
+          p_payment_id: string
+          p_product_id: string
+          p_total_amount?: number | null
+          p_user_id: string
+        }
+        Returns: string
+      }
+      revoke_lifetime_access: {
+        Args: {
+          p_event_id: string
+          p_payment_id: string
+          p_reason: string | null
+        }
+        Returns: string
       }
       admin_release_preview_hold: {
         Args: { p_deal_id: string }

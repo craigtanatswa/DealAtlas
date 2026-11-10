@@ -351,6 +351,7 @@ describe("Lifetime billing view", () => {
     cancelAtPeriodEnd: false,
     billingInterval: "ANNUAL",
     planKey: "PRO_ANNUAL",
+    term: "annual",
   };
 
   it("shows a lifetime member as Lifetime with a one-time payment and receipts", () => {

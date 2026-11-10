@@ -22,7 +22,7 @@ function planKeys(container: HTMLElement): (string | null)[] {
 }
 
 describe("deal page founding button", () => {
-  it("posts FOUNDING for a signed-in free user", () => {
+  it("posts the lifetime plan for a signed-in free user", () => {
     const { container } = render(
       <DealProCard mode="free" founding={open} returnTo={returnTo} alertsHref="/app/alerts" />,
     );
@@ -61,7 +61,7 @@ describe("deal page founding button", () => {
     expect(screen.queryByText(/founding/i)).toBeNull();
     expect(screen.queryByText(/lifetime/i)).toBeNull();
     expect(screen.queryByText("Limited places")).toBeNull();
-    expect(container.textContent).not.toMatch(/£290|places left|for as long as you stay subscribed/);
+    expect(container.textContent).not.toMatch(/£290|places left|for as long as you stay subscribed|founding/i);
     expect(container.textContent).not.toMatch(/\d+\s+places?\s+left/i);
     expect(planKeys(container)).not.toContain(FOUNDING_PLAN_KEY);
   });

@@ -2,15 +2,28 @@ import type {
   BillingEventRecord,
   BillingStore,
   IncomingBillingEvent,
+  LifetimeGrant,
   StoredSubscription,
 } from "@/lib/billing/types";
+
+export const MEMORY_FOUNDING_CAP = 25;
+
+export type MemoryFoundingSlot = {
+  userId: string;
+  status: "active" | "ended" | "released";
+};
 
 export function createMemoryBillingStore(seed?: {
   profileIds?: string[];
   subscriptions?: StoredSubscription[];
+  lifetimeGrants?: LifetimeGrant[];
+  foundingSlots?: MemoryFoundingSlot[];
 }): BillingStore & {
   events: Map<string, BillingEventRecord & { payload?: unknown; processingError?: string | null }>;
   subscriptions: StoredSubscription[];
+  lifetimeGrants: LifetimeGrant[];
+  foundingSlots: MemoryFoundingSlot[];
+  foundingCapFallbacks: Array<{ userId: string; paymentId: string }>;
 } {
   const profileIds = new Set(seed?.profileIds ?? []);
   const events = new Map<
@@ -18,10 +31,16 @@ export function createMemoryBillingStore(seed?: {
     BillingEventRecord & { payload?: unknown; processingError?: string | null }
   >();
   const subscriptions = [...(seed?.subscriptions ?? [])];
+  const lifetimeGrants = [...(seed?.lifetimeGrants ?? [])];
+  const foundingSlots = [...(seed?.foundingSlots ?? [])];
+  const foundingCapFallbacks: Array<{ userId: string; paymentId: string }> = [];
 
   return {
     events,
     subscriptions,
+    lifetimeGrants,
+    foundingSlots,
+    foundingCapFallbacks,
     async getEvent(providerEventId) {
       return events.get(providerEventId) ?? null;
     },
@@ -82,6 +101,86 @@ export function createMemoryBillingStore(seed?: {
       } else {
         subscriptions.push({ ...row, isCurrent: true });
       }
+    },
+    async grantLifetime(input) {
+      if (!input.eventId || !input.paymentId || !input.userId || !input.productId) {
+        return "invalid";
+      }
+      if (lifetimeGrants.some((grant) => grant.dodoPaymentId === input.paymentId)) {
+        return "duplicate";
+      }
+      if (
+        lifetimeGrants.some(
+          (grant) =>
+            grant.userId === input.userId && grant.status === "active",
+        )
+      ) {
+        return "duplicate_user";
+      }
+      const now = new Date().toISOString();
+      lifetimeGrants.push({
+        userId: input.userId,
+        dodoPaymentId: input.paymentId,
+        dodoCustomerId: input.customerId,
+        dodoProductId: input.productId,
+        status: "active",
+        totalAmount: input.totalAmount ?? null,
+        currency: input.currency ?? null,
+        grantedAt: now,
+        revokedAt: null,
+        revokeReason: null,
+        grantEventId: input.eventId,
+        revokeEventId: null,
+      });
+      const activeSlots = foundingSlots.filter(
+        (slot) => slot.status === "active",
+      ).length;
+      if (activeSlots < MEMORY_FOUNDING_CAP) {
+        foundingSlots.push({ userId: input.userId, status: "active" });
+        return "granted";
+      }
+      foundingCapFallbacks.push({
+        userId: input.userId,
+        paymentId: input.paymentId,
+      });
+      return "granted_over_cap";
+    },
+    async revokeLifetime(input) {
+      if (!input.eventId || !input.paymentId) {
+        return "invalid";
+      }
+      const grant = lifetimeGrants.find(
+        (row) => row.dodoPaymentId === input.paymentId,
+      );
+      if (!grant) {
+        return "not_found";
+      }
+      if (grant.status === "revoked") {
+        return "already_revoked";
+      }
+      grant.status = "revoked";
+      grant.revokedAt = new Date().toISOString();
+      grant.revokeReason = input.reason;
+      grant.revokeEventId = input.eventId;
+      for (const slot of foundingSlots) {
+        if (slot.userId === grant.userId && slot.status === "active") {
+          slot.status = "ended";
+        }
+      }
+      return "revoked";
+    },
+    async getLifetimeGrantByPayment(paymentId) {
+      const grant = lifetimeGrants.find(
+        (row) => row.dodoPaymentId === paymentId,
+      );
+      if (!grant) {
+        return null;
+      }
+      return {
+        status: grant.status,
+        totalAmount: grant.totalAmount ?? null,
+        currency: grant.currency ?? null,
+      };
     },
   };
 }

@@ -52,8 +52,7 @@ export default async function CheckoutPage({
   }
   // plan=lifetime maps to the founding_lifetime plan key, posted by FoundingCheckoutSummary.
   const founding = rawPlan === LIFETIME_PLAN_QUERY;
-  const parsed = founding ? null : parseCheckoutPlan(rawPlan);
-  const plan = parsed === "FOUNDING" ? null : parsed;
+  const plan = founding ? null : parseCheckoutPlan(rawPlan);
   if (!founding && !plan) {
     redirect("/pricing");
   }

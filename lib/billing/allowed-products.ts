@@ -11,6 +11,7 @@ export type AllowedProductEnv = {
   DODO_PRO_MONTHLY_PRODUCT_ID?: string | null;
   DODO_PRO_ANNUAL_PRODUCT_ID?: string | null;
   DODO_FOUNDING_PRODUCT_ID?: string | null;
+  DODO_FOUNDING_LIFETIME_PRODUCT_ID?: string | null;
   DODO_PRO_ANNUAL_LEGACY_PRODUCT_IDS?: string | null;
 };
 
@@ -28,6 +29,7 @@ function readDeploymentEnv(): AllowedProductEnv {
       DODO_PRO_MONTHLY_PRODUCT_ID: env.DODO_PRO_MONTHLY_PRODUCT_ID,
       DODO_PRO_ANNUAL_PRODUCT_ID: env.DODO_PRO_ANNUAL_PRODUCT_ID,
       DODO_FOUNDING_PRODUCT_ID: env.DODO_FOUNDING_PRODUCT_ID,
+      DODO_FOUNDING_LIFETIME_PRODUCT_ID: env.DODO_FOUNDING_LIFETIME_PRODUCT_ID,
       DODO_PRO_ANNUAL_LEGACY_PRODUCT_IDS: env.DODO_PRO_ANNUAL_LEGACY_PRODUCT_IDS,
     };
   } catch {
@@ -47,6 +49,7 @@ export function getAllowedProductIds(env?: AllowedProductEnv): ReadonlySet<strin
   addProductId(allowed, source.DODO_PRO_MONTHLY_PRODUCT_ID);
   addProductId(allowed, source.DODO_PRO_ANNUAL_PRODUCT_ID);
   addProductId(allowed, source.DODO_FOUNDING_PRODUCT_ID);
+  addProductId(allowed, source.DODO_FOUNDING_LIFETIME_PRODUCT_ID);
   for (const id of parseProductIdList(source.DODO_PRO_ANNUAL_LEGACY_PRODUCT_IDS)) {
     addProductId(allowed, id);
   }

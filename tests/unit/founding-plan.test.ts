@@ -34,6 +34,9 @@ import {
   foundingPlacesLabel,
   foundingSoldOutNote,
   foundingUiState,
+  proAnnualBilledLine,
+  proAnnualMonthlyEquivalent,
+  proAnnualShort,
   proMonthlyWasLabel,
 } from "@/lib/billing/founding-ui";
 import { liveDodoConfigErrors } from "@/lib/env/production";
@@ -43,6 +46,7 @@ import { WebhookPayloadSchema } from "@dodopayments/core/schemas";
 const products: PlanProductMap = {
   ...BILLING_FIXTURE_PRODUCTS,
   FOUNDING_ANNUAL: "pdt_founding_annual",
+  FOUNDING_LIFETIME: "pdt_lifetime_access",
 };
 
 function foundingEvent(status: string, type = "subscription.active"): IncomingBillingEvent {
@@ -93,20 +97,20 @@ describe("founding member checkout", () => {
     for (const reservation of ["reserved"] as const) {
       expect(
         selectCheckoutProduct({
-          planKey: "FOUNDING",
+          planKey: "founding_lifetime",
           products,
           reservation,
         }),
       ).toEqual({
         ok: true,
-        productId: products.FOUNDING_ANNUAL,
+        productId: products.FOUNDING_LIFETIME,
         founding: true,
       });
     }
     for (const reservation of ["sold_out", "unavailable", null] as const) {
       expect(
         selectCheckoutProduct({
-          planKey: "FOUNDING",
+          planKey: "founding_lifetime",
           products,
           reservation,
         }),
@@ -114,7 +118,7 @@ describe("founding member checkout", () => {
     }
     expect(
       selectCheckoutProduct({
-        planKey: "FOUNDING",
+        planKey: "founding_lifetime",
         products: {
           PRO_MONTHLY: products.PRO_MONTHLY,
           PRO_ANNUAL: products.PRO_ANNUAL,
@@ -133,12 +137,12 @@ describe("founding member checkout", () => {
   });
 
   it("only reserves a founding slot for a non-founder choosing founding", () => {
-    expect(shouldReserveFoundingSlot("FOUNDING", products)).toBe(true);
+    expect(shouldReserveFoundingSlot("founding_lifetime", products)).toBe(true);
     expect(shouldReserveFoundingSlot("PRO_ANNUAL", products)).toBe(false);
     expect(shouldReserveFoundingSlot("PRO_MONTHLY", products)).toBe(false);
     expect(
       shouldReserveFoundingSlot(
-        "FOUNDING",
+        "founding_lifetime",
         {
           PRO_MONTHLY: products.PRO_MONTHLY,
           PRO_ANNUAL: products.PRO_ANNUAL,
@@ -146,7 +150,7 @@ describe("founding member checkout", () => {
         },
       ),
     ).toBe(false);
-    expect(subscriptionPlanKeyFor("FOUNDING")).toBe("PRO_ANNUAL");
+    expect(subscriptionPlanKeyFor("founding_lifetime")).toBe("PRO_ANNUAL");
     expect(subscriptionPlanKeyFor("PRO_ANNUAL")).toBe("PRO_ANNUAL");
     expect(FOUNDING_UNAVAILABLE_MESSAGE).toContain("Pro annual at £350/year");
   });
@@ -154,8 +158,12 @@ describe("founding member checkout", () => {
   it("ignores a client product id and rejects unknown plan keys", () => {
     expect(parseCheckoutRequest({ planKey: "PRO_ANNUAL", product_id: products.FOUNDING_ANNUAL }).ok).toBe(false);
     expect(parseCheckoutRequest({ planKey: "FOUNDING" })).toEqual({
+      ok: false,
+      error: "Choose a DealAtlas Pro plan.",
+    });
+    expect(parseCheckoutRequest({ planKey: "founding_lifetime" })).toEqual({
       ok: true,
-      planKey: "FOUNDING",
+      planKey: "founding_lifetime",
     });
     expect(parseCheckoutRequest({ planKey: "FOUNDING_ANNUAL" })).toEqual({
       ok: false,
@@ -197,6 +205,13 @@ describe("founding member checkout", () => {
     expect(foundingDueToday()).toBe("£250.00");
     expect(FOUNDING_COPY.annualSaving).toBe("Save 25% vs monthly.");
     expect(proMonthlyWasLabel()).toBe("was £39 a month");
+  });
+
+  it("derives the lifetime price display from the one-time amount", () => {
+    expect(proAnnualShort()).toBe("£350/yr");
+    expect(proAnnualMonthlyEquivalent()).toBe("£29.17");
+    expect(proAnnualBilledLine()).toBe("billed £350/yr, VAT included");
+    expect(foundingDueToday()).toBe("£250.00");
   });
 
   it("keeps the public offer count-free", () => {

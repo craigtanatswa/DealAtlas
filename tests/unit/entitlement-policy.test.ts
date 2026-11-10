@@ -63,6 +63,39 @@ describe("entitlement policy", () => {
     ).toBe(PLANS.FREE);
   });
 
+  it("sets the term only for Pro and derives it from the billing interval", () => {
+    expect(
+      resolveEntitlement(
+        createSubscriptionFixture({ billingInterval: "MONTHLY" }),
+        now,
+        allowed,
+      ).term,
+    ).toBe("monthly");
+    expect(
+      resolveEntitlement(
+        createSubscriptionFixture({ billingInterval: "ANNUAL" }),
+        now,
+        allowed,
+      ).term,
+    ).toBe("annual");
+  });
+
+  it("leaves the term null whenever the plan is FREE", () => {
+    for (const fixture of [
+      entitlementSubscriptionFixtures.expired(),
+      entitlementSubscriptionFixtures.onHold(),
+      entitlementSubscriptionFixtures.failed(),
+      entitlementSubscriptionFixtures.pending(),
+      entitlementSubscriptionFixtures.cancelledImmediate(),
+      entitlementSubscriptionFixtures.notCurrent(),
+    ]) {
+      const entitlement = resolveEntitlement(fixture, now, allowed);
+      expect(entitlement.plan).toBe(PLANS.FREE);
+      expect(entitlement.term).toBeNull();
+    }
+    expect(resolveEntitlement(null, now, allowed).term).toBeNull();
+  });
+
   it("fails closed when the paid-through period end is missing or invalid", () => {
     expect(isPaidThrough(null, now)).toBe(false);
     expect(isPaidThrough("not-a-date", now)).toBe(false);

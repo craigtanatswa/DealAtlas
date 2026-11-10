@@ -99,6 +99,7 @@ describe("lifetime pricing cards", () => {
     expect(screen.getByText("billed £350/yr, VAT included")).toBeTruthy();
     expect(container.querySelector('s[aria-label="was £350/yr"]')).toBeTruthy();
     expect(container.querySelector('s[aria-label="was £39 a month"]')).toBeTruthy();
+    expect(container.textContent).not.toContain("£24.17/mo");
     expect(container.textContent).not.toMatch(/of 25/);
     expect(container.querySelector('[role="progressbar"]')).toBeNull();
     expect(container.textContent).not.toMatch(/competitor/i);
@@ -131,6 +132,7 @@ describe("lifetime pricing cards", () => {
       <PricingPlans signedIn={false} founding={soldOutCount} />,
     );
     expect(screen.getByText(/The Lifetime deal is sold out\./)).toBeTruthy();
+    expect(screen.getByText(FOUNDING_FULL_MESSAGE)).toBeTruthy();
     expect(container.textContent).not.toMatch(/founding|£290|£24\.17|stay subscribed/i);
     expect(screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent)).toEqual([
       "Free",
@@ -227,14 +229,15 @@ describe("founding billing summary", () => {
           status: "ACTIVE",
           currentPeriodEnd: null,
           cancelAtPeriodEnd: false,
-          billingInterval: "ANNUAL",
-          planKey: "PRO_ANNUAL",
+          billingInterval: null,
+          planKey: "founding_lifetime",
+          term: "lifetime",
         }}
         hasCustomerPortal={false}
         foundingMember
       />,
     );
-    expect(screen.getByText("Pro annual")).toBeTruthy();
+    expect(screen.getAllByText("Lifetime deal").length).toBeGreaterThanOrEqual(1);
     expect(container.textContent).not.toContain("£290");
     expect(container.textContent).not.toContain("£24.17");
     expect(container.textContent).not.toContain("Founding");
@@ -394,7 +397,7 @@ describe("Lifetime full error state", () => {
       planKeyOf(screen.getByRole("button", { name: /Start Pro annual/ }).closest("form")!),
     ).toBe("PRO_ANNUAL");
     expect(container.querySelectorAll(`input[name='planKey'][value='${FOUNDING_PLAN_KEY}']`)).toHaveLength(0);
-    expect(container.textContent).not.toMatch(/founding|£24\.17|£290|stay subscribed|places left|Due today/i);
+    expect(container.textContent).not.toMatch(/founding|£24\.17|£290|£250|stay subscribed|places left|Due today/i);
     expect(container.textContent).not.toMatch(/\d+\s+places?\s+left/i);
     expect(screen.queryByRole("button", { name: "Continue to payment" })).toBeNull();
   });

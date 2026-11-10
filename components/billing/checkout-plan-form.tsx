@@ -17,7 +17,7 @@ export function CheckoutPlanForm({
   buttonClassName,
   analyticsPlan,
 }: {
-  planKey: Exclude<CheckoutPlanKey, "FOUNDING">;
+  planKey: CheckoutPlanKey;
   /** Only the founding CTA needs this; other plans follow the plan key. */
   analyticsPlan?: Extract<CheckoutAnalyticsPlan, "founding">;
   label: ReactNode;

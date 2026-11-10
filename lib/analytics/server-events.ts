@@ -20,6 +20,7 @@ import {
   type SanitizedProperties,
 } from "@/lib/analytics/sanitize";
 import { DISPLAY_PRICING } from "@/lib/constants";
+import { LIFETIME_PRICE } from "@/lib/billing/lifetime-copy";
 
 /**
  * Server events (Security condition 5) are built only from these allowlisted
@@ -68,7 +69,7 @@ export function planAmountGbp(plan: CheckoutAnalyticsPlan): number {
     case "annual":
       return poundsFromDisplay(DISPLAY_PRICING.proAnnual);
     case "founding":
-      return poundsFromLifetimeDisplay(DISPLAY_PRICING.foundingLifetime);
+      return poundsFromLifetimeDisplay(LIFETIME_PRICE);
   }
 }
 

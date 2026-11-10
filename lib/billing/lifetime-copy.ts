@@ -9,7 +9,7 @@ export const SHOW_LIMITED_PLACES = true;
 export const LIMITED_PLACES_TEXT = "Limited places";
 
 /** One-time Lifetime price, e.g. "£250". */
-export const LIFETIME_PRICE = DISPLAY_PRICING.foundingLifetime;
+export const LIFETIME_PRICE = DISPLAY_PRICING.proLifetime.replace(/\s*one-time$/, "");
 
 /** The exact plan line used on cards, guides and FAQ JSON-LD. */
 export const LIFETIME_PLAN_LINE = `${PLAN_PUBLIC_NAME}: ${LIFETIME_PRICE} one-time (VAT included).${SHOW_LIMITED_PLACES ? ` ${LIMITED_PLACES_TEXT}.` : ""}`;
