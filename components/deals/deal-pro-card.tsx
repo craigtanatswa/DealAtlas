@@ -9,7 +9,6 @@ import { signupPathForPlan } from "@/lib/auth/redirect";
 import {
   FOUNDING_COPY,
   foundingSignupPath,
-  foundingPaywallPlaces,
   foundingUiState,
   type FoundingPublicCount,
 } from "@/lib/billing/founding-ui";
@@ -171,11 +170,7 @@ export function DealProCard({
               </Button>
             )}
             <p className="mt-2 text-center text-xs font-medium text-foreground/80">
-              <span className="text-emerald-700">
-                {foundingPaywallPlaces()}
-              </span>
-              {" · "}
-              <span>{FOUNDING_COPY.priceLocked}</span>
+              <span>{FOUNDING_COPY.planLine}</span>
             </p>
             {mode === "free" ? (
               <CheckoutPlanForm

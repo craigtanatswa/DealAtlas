@@ -8,7 +8,6 @@ import { signupPathForPlan } from "@/lib/auth/redirect";
 import {
   FOUNDING_COPY,
   foundingSignupPath,
-  foundingPaywallPlaces,
   foundingUiState,
   type FoundingPublicCount,
   type FoundingUiState,
@@ -85,9 +84,7 @@ export function FoundingUnlockActions({
         </Button>
       )}
       <p className="text-center text-[0.8125rem] leading-5 text-pretty text-muted-foreground">
-        <span>{foundingPaywallPlaces()}</span>
-        {" · "}
-        <span>{FOUNDING_COPY.priceLocked}</span>
+        <span>{FOUNDING_COPY.planLine}</span>
       </p>
       {mode === "free" ? (
         <CheckoutPlanForm

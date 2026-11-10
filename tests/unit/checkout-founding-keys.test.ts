@@ -394,7 +394,7 @@ describe("checkout error contract for the UI", () => {
     mocks.readFoundingMember.mockResolvedValue(false);
     mocks.reserveFoundingSlot.mockResolvedValue("sold_out");
 
-    const response = await checkout({ planKey: FOUNDING_PLAN_KEY });
+    const response = await checkout({ planKey: "founding_lifetime" });
 
     expect(FOUNDING_PLAN_KEY).toBe("founding_lifetime");
     expect(response.status).toBe(409);
@@ -409,7 +409,7 @@ describe("checkout error contract for the UI", () => {
   it("returns 409 FOUNDING_NOT_ELIGIBLE for an ex-founder even with places left", async () => {
     mocks.reserveFoundingSlot.mockResolvedValue("ineligible");
 
-    const response = await checkout({ planKey: FOUNDING_PLAN_KEY });
+    const response = await checkout({ planKey: "founding_lifetime" });
 
     expect(response.status).toBe(409);
     const body = await response.json();

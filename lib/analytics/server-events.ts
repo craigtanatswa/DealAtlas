@@ -20,6 +20,7 @@ import {
   type SanitizedProperties,
 } from "@/lib/analytics/sanitize";
 import { DISPLAY_PRICING } from "@/lib/constants";
+import { LIFETIME_PRICE } from "@/lib/billing/lifetime-copy";
 
 /**
  * Server events (Security condition 5) are built only from these allowlisted
@@ -52,6 +53,14 @@ function poundsFromDisplay(value: string): number {
   return Number(match[1]);
 }
 
+function poundsFromLifetimeDisplay(value: string): number {
+  const match = /^£(\d+(?:\.\d{1,2})?)$/.exec(value);
+  if (!match?.[1]) {
+    throw new Error(`Unexpected display price format: ${value}`);
+  }
+  return Number(match[1]);
+}
+
 /** amount_gbp comes from our plan config (DISPLAY_PRICING), never from Dodo. */
 export function planAmountGbp(plan: CheckoutAnalyticsPlan): number {
   switch (plan) {
@@ -60,7 +69,7 @@ export function planAmountGbp(plan: CheckoutAnalyticsPlan): number {
     case "annual":
       return poundsFromDisplay(DISPLAY_PRICING.proAnnual);
     case "founding":
-      return poundsFromDisplay(DISPLAY_PRICING.foundingAnnual);
+      return poundsFromLifetimeDisplay(LIFETIME_PRICE);
   }
 }
 

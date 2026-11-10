@@ -35,7 +35,7 @@ export default async function PricingPage() {
           description: PUBLIC_PAGE_COPY.pricing.description,
         })}
       />
-      {/* Founding full or not offered: PricingPlans drops the founding card entirely. */}
+      {/* Lifetime sold out or not offered: PricingPlans drops the Lifetime card entirely. */}
       <PricingPlans signedIn={Boolean(user)} founding={founding} />
       <p className="text-center text-sm text-muted-foreground">
         All prices include VAT.

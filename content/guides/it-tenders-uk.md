@@ -103,7 +103,7 @@ There were 2 open cyber security opportunities at the time of writing: one for s
 
 Browse live [cyber security opportunities on DealAtlas](/deals?q=cyber).
 
-[Create a free DealAtlas account](/signup) to see every IT and software preview as it's published. Founding offer for DealAtlas Pro: ~~£39/mo~~ £24.17/mo (£290/yr), for as long as you stay subscribed. Limited places. [See Pro](/pricing?utm_source=dealatlas&utm_medium=organic&utm_campaign=founding&utm_content=it-tenders-uk)
+[Create a free DealAtlas account](/signup) to see every IT and software preview as it's published. {{LIFETIME_PLAN_LINE}} [See Pro](/pricing?utm_source=dealatlas&utm_medium=organic&utm_campaign=lifetime&utm_content=it-tenders-uk)
 
 ## Who this is for
 
@@ -154,7 +154,7 @@ For bid advice, read [how to win council contracts](/guides/how-to-win-council-c
 
 The free preview shows the type of work, value band, closing window and region where one is listed. Pro adds the buyer, the source, contacts and documents, plus saved searches and alerts, so you can decide quickly whether to bid.
 
-[Browse live IT opportunities](/deals) or [start free on DealAtlas](/signup), then [upgrade to Pro](/pricing?utm_source=dealatlas&utm_medium=organic&utm_campaign=founding&utm_content=it-tenders-uk) when an opportunity is worth pursuing. Founding price: ~~£39/mo~~ £24.17/mo (£290/yr), for as long as you stay subscribed. Limited places.
+[Browse live IT opportunities](/deals) or [start free on DealAtlas](/signup), then [upgrade to Pro](/pricing?utm_source=dealatlas&utm_medium=organic&utm_campaign=lifetime&utm_content=it-tenders-uk) when an opportunity is worth pursuing. {{LIFETIME_PLAN_LINE}}
 
 ## FAQ
 
@@ -190,6 +190,6 @@ Usually weeks, not months. At the time of writing, 37 of the 48 open IT opportun
 
 ### What does DealAtlas Pro add?
 
-The buyer, the source, contacts and documents, plus saved searches and alerts. Founding price: ~~£39/mo~~ £24.17/mo (£290/yr), for as long as you stay subscribed. Limited places. [See Pro](/pricing?utm_source=dealatlas&utm_medium=organic&utm_campaign=founding&utm_content=it-tenders-uk)
+The buyer, the source, contacts and documents, plus saved searches and alerts. {{LIFETIME_PLAN_LINE}} [See Pro](/pricing?utm_source=dealatlas&utm_medium=organic&utm_campaign=lifetime&utm_content=it-tenders-uk)
 
 [Create a free DealAtlas account](/signup)

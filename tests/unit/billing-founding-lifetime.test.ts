@@ -154,10 +154,12 @@ describe("lifetime checkout", () => {
     expect(copy).not.toMatch(/founding/i);
     expect(FOUNDING_UNAVAILABLE_MESSAGE).not.toMatch(/founding/i);
     expect(FOUNDING_NOT_ELIGIBLE_MESSAGE).not.toMatch(/founding/i);
-    expect(FOUNDING_FULL_MESSAGE).toBe(FOUNDING_UNAVAILABLE_MESSAGE);
+    expect(FOUNDING_FULL_MESSAGE).toBe(
+      "The Lifetime deal is sold out. You can still subscribe to Pro annual at £350/year.",
+    );
     expect(priceLabel("founding_lifetime")).toBe("£250 one-time");
     expect(planLabel("founding_lifetime", null, true, "lifetime")).toBe(
-      "Pro Lifetime deal",
+      "Lifetime deal",
     );
     expect(planLabel("PRO_ANNUAL", "ANNUAL", true)).toBe("Pro annual");
   });

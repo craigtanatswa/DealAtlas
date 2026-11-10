@@ -27,15 +27,16 @@ import {
 } from "@/lib/billing/founding";
 import {
   FOUNDING_COPY,
+  FOUNDING_FULL_MESSAGE,
   FOUNDING_LIMITED_PLACES,
-  foundingAnnualShort,
-  foundingBilledLine,
   foundingDueToday,
-  foundingMonthlyEquivalent,
   foundingPaywallPlaces,
   foundingPlacesLabel,
   foundingSoldOutNote,
   foundingUiState,
+  proAnnualBilledLine,
+  proAnnualMonthlyEquivalent,
+  proAnnualShort,
   proMonthlyWasLabel,
 } from "@/lib/billing/founding-ui";
 import { liveDodoConfigErrors } from "@/lib/env/production";
@@ -170,7 +171,7 @@ describe("founding member checkout", () => {
     });
   });
 
-  it("shows a limited-places label when founding is offered in the UI", () => {
+  it("keeps the Lifetime offer count-free when it is offered in the UI", () => {
     expect(foundingUiState(undefined)).toBe("hidden");
     expect(foundingUiState(null)).toBe("hidden");
     expect(foundingUiState({ offered: false, sold_out: false })).toBe("hidden");
@@ -182,27 +183,35 @@ describe("founding member checkout", () => {
     expect(foundingPaywallPlaces()).toBe(FOUNDING_LIMITED_PLACES);
     for (const label of [foundingPlacesLabel(), foundingPaywallPlaces()]) {
       expect(label).not.toMatch(/\d+\s+places?\s+left/i);
-      expect(label).not.toContain("Founding places available");
+      expect(label).not.toMatch(/\d/);
     }
-    expect(foundingSoldOutNote()).toBe(FOUNDING_UNAVAILABLE_MESSAGE);
+    expect(foundingSoldOutNote()).toBe(FOUNDING_FULL_MESSAGE);
+    expect(foundingSoldOutNote()).not.toMatch(/founding/i);
     expect(foundingSoldOutNote()).not.toMatch(/\d+\s*(places?|customers?|remaining|cap)/i);
     expect(foundingSoldOutNote()).not.toContain("Founding places available");
-    expect(FOUNDING_COPY.cancelTerms).toBe(
-      "The Lifetime deal is a one-time payment and never renews.",
+    expect(FOUNDING_COPY.badge).toBe("Lifetime deal");
+    expect(FOUNDING_COPY.title).toBe("Lifetime deal");
+    expect(FOUNDING_COPY.cta).toBe("Get the Lifetime deal");
+    expect(FOUNDING_COPY.priceLocked).toBe(
+      "One payment. No subscription, nothing to renew.",
     );
-    expect(FOUNDING_COPY.paywallCta).toContain("£250 one-time");
-    expect(FOUNDING_COPY.lessThanAnnual).toBe("£100 less than standard annual");
-    expect(FOUNDING_COPY.priceLocked).toBe("£250 one-time, lifetime access");
-    expect(FOUNDING_COPY.firstMembers).toBe("Limited places");
+    expect(FOUNDING_COPY.paywallCta).toBe("Get the Lifetime deal – £250 once");
+    expect(FOUNDING_COPY.planLine).toBe(
+      "Lifetime deal: £250 one-time (VAT included). Limited places.",
+    );
   });
 
-  it("derives the lifetime price display from the one-time amount", () => {
-    expect(foundingMonthlyEquivalent()).toBeNull();
-    expect(foundingAnnualShort()).toBe("£250 one-time");
-    expect(foundingBilledLine()).toBe("£250 one-time, VAT included");
+  it("uses the one-time Lifetime price without old annual-equivalent copy", () => {
     expect(foundingDueToday()).toBe("£250.00");
     expect(FOUNDING_COPY.annualSaving).toBe("Save 25% vs monthly.");
     expect(proMonthlyWasLabel()).toBe("was £39 a month");
+  });
+
+  it("derives the lifetime price display from the one-time amount", () => {
+    expect(proAnnualShort()).toBe("£350/yr");
+    expect(proAnnualMonthlyEquivalent()).toBe("£29.17");
+    expect(proAnnualBilledLine()).toBe("billed £350/yr, VAT included");
+    expect(foundingDueToday()).toBe("£250.00");
   });
 
   it("keeps the public offer count-free", () => {

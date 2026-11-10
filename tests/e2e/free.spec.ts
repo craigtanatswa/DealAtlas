@@ -60,9 +60,7 @@ test.describe("Free account journey", () => {
     });
     await expect(proCard).toBeVisible();
     await expect(
-      proCard.getByRole("button", {
-        name: /Start Pro – £39\/mo|Become a founding member|Get the Lifetime deal/,
-      }),
+      proCard.getByRole("button", { name: /Start Pro – £39\/mo|Get the Lifetime deal/ }),
     ).toBeVisible();
     await expectNoProtectedLeaks(page);
 

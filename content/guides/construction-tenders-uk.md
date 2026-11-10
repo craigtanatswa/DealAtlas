@@ -127,4 +127,4 @@ You can also see [all open construction deals](/deals?category=Construction%20%2
 
 ## Find your next construction contract
 
-DealAtlas lists {{LIVE_COUNT}} live opportunities in one search. Start from the [construction hub](/categories/construction-infrastructure) or [create your free DealAtlas account](/signup) to start building your shortlist.
+DealAtlas lists {{LIVE_COUNT}} live opportunities in one search. {{LIFETIME_PLAN_LINE}} Start from the [construction hub](/categories/construction-infrastructure) or [create your free DealAtlas account](/signup) to start building your shortlist.
