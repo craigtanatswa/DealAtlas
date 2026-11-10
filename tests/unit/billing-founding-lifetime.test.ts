@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { WebhookPayloadSchema } from "@dodopayments/core/schemas";
 
 import {
@@ -16,9 +16,14 @@ import {
   FOUNDING_UNAVAILABLE_MESSAGE,
 } from "@/lib/billing/founding";
 import {
+  DISPUTE_LOG_ONLY_NOTE,
+  DISPUTE_NO_ACTION_NOTE,
   LIFETIME_DUPLICATE_USER_FLAG,
   LIFETIME_OVER_CAP_FLAG,
+  LIFETIME_PARTIAL_REFUND_NOTE,
+  LIFETIME_REFUND_REVIEW_FLAG,
 } from "@/lib/billing/apply";
+import { classifyRefund } from "@/lib/billing/refund";
 import { planLabel, priceLabel } from "@/lib/billing/display";
 import {
   isLifetimeProduct,
@@ -26,7 +31,10 @@ import {
   selectCheckoutProduct,
   shouldReserveFoundingSlot,
 } from "@/lib/billing/plans";
-import type { PlanProductMap } from "@/lib/billing/types";
+import type {
+  PlanProductMap,
+  StoredSubscription,
+} from "@/lib/billing/types";
 import { liveDodoConfigErrors } from "@/lib/env/production";
 import { resolveEntitlement } from "@/lib/entitlements/policy";
 import {
@@ -60,6 +68,44 @@ function lifetimeGrantEvent(paymentId = "pay_lifetime_1", userId = BILLING_FIXTU
     }),
   );
 }
+
+function refundEvent(overrides: Record<string, unknown> = {}) {
+  return extract(
+    billingWebhookFixtures.lifetimeRefund({
+      payment_id: "pay_lifetime_1",
+      ...overrides,
+    }),
+  );
+}
+
+function disputeEvent(
+  type: string,
+  overrides: Record<string, unknown> = {},
+) {
+  return extract(
+    billingWebhookFixtures.lifetimeDispute(type, {
+      payment_id: "pay_lifetime_1",
+      ...overrides,
+    }),
+  );
+}
+
+function lifetimeEntitlement(status: "active" | "revoked") {
+  return resolveEntitlement(
+    null,
+    ENTITLEMENT_FIXTURE_NOW,
+    new Set([products.FOUNDING_LIFETIME!]),
+    {
+      status,
+      dodoProductId: products.FOUNDING_LIFETIME ?? null,
+      grantedAt: "2026-06-01T00:00:00.000Z",
+    },
+  );
+}
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 describe("lifetime checkout", () => {
   it("offers lifetime through its own plan key and never falls back to annual", () => {
@@ -221,6 +267,9 @@ describe("lifetime webhook extraction and application", () => {
     expect(refund.reversal).toEqual({
       paymentId: "pay_lifetime_1",
       kind: "refund",
+      refundAmount: 25000,
+      refundCurrency: "GBP",
+      isPartial: false,
     });
     expect(await applyBillingEvent(refund, store)).toEqual({
       outcome: "applied",
@@ -239,37 +288,155 @@ describe("lifetime webhook extraction and application", () => {
     expect(store.lifetimeGrants[0]?.status).toBe("revoked");
   });
 
-  it("revokes on a lost dispute but records and ignores a won dispute", async () => {
+  it.each([
+    ["dispute.opened", DISPUTE_LOG_ONLY_NOTE],
+    ["dispute.challenged", DISPUTE_LOG_ONLY_NOTE],
+    ["dispute.won", DISPUTE_NO_ACTION_NOTE],
+    ["dispute.cancelled", DISPUTE_NO_ACTION_NOTE],
+    ["dispute.expired", DISPUTE_NO_ACTION_NOTE],
+  ])("%s leaves lifetime access active and records the event", async (type, note) => {
     const store = createMemoryBillingStore({
       profileIds: [BILLING_FIXTURE_USER_ID],
     });
     await applyBillingEvent(lifetimeGrantEvent(), store);
 
-    const won = extract(
-      billingWebhookFixtures.lifetimeDispute("dispute.won", {
-        payment_id: "pay_lifetime_1",
-        dispute_status: "dispute_won",
-      }),
-    );
-    expect(won.reversal).toBeNull();
-    expect(await applyBillingEvent(won, store)).toEqual({ outcome: "ignored" });
-    expect(store.lifetimeGrants[0]?.status).toBe("active");
-
-    const lost = extract(
-      billingWebhookFixtures.lifetimeDispute("dispute.lost", {
-        payment_id: "pay_lifetime_1",
-        dispute_status: "dispute_lost",
-      }),
-    );
-    expect(lost.reversal).toEqual({
-      paymentId: "pay_lifetime_1",
-      kind: "dispute",
+    const event = disputeEvent(type);
+    expect(event.reversal).toBeNull();
+    expect(await applyBillingEvent(event, store)).toEqual({
+      outcome: "ignored",
     });
-    expect(await applyBillingEvent(lost, store)).toEqual({
+    expect(store.lifetimeGrants[0]?.status).toBe("active");
+    expect(store.foundingSlots[0]?.status).toBe("active");
+    expect(lifetimeEntitlement("active")).toMatchObject({
+      plan: "PRO",
+      term: "lifetime",
+    });
+    expect(store.events.get(event.providerEventId)).toMatchObject({
+      status: "IGNORED",
+      processingError: note,
+    });
+  });
+
+  it.each(["dispute.accepted", "dispute.lost"])(
+    "%s revokes lifetime access and the replayed event is idempotent",
+    async (type) => {
+      const store = createMemoryBillingStore({
+        profileIds: [BILLING_FIXTURE_USER_ID],
+      });
+      await applyBillingEvent(lifetimeGrantEvent(), store);
+
+      const event = disputeEvent(type);
+      expect(event.reversal).toEqual({
+        paymentId: "pay_lifetime_1",
+        kind: "dispute",
+      });
+      expect(await applyBillingEvent(event, store)).toEqual({
+        outcome: "applied",
+      });
+      expect(store.lifetimeGrants[0]?.status).toBe("revoked");
+      expect(store.foundingSlots[0]?.status).toBe("ended");
+      expect(lifetimeEntitlement("revoked").plan).toBe("FREE");
+
+      expect(await applyBillingEvent(event, store)).toEqual({
+        outcome: "duplicate",
+      });
+      expect(store.lifetimeGrants[0]?.status).toBe("revoked");
+    },
+  );
+
+  it.each([
+    ["equal to the total", 25000],
+    ["greater than the total", 30000],
+  ])("revokes on a full refund %s", async (_label, amount) => {
+    const store = createMemoryBillingStore({
+      profileIds: [BILLING_FIXTURE_USER_ID],
+    });
+    await applyBillingEvent(lifetimeGrantEvent(), store);
+
+    const refund = refundEvent({ amount });
+    expect(await applyBillingEvent(refund, store)).toEqual({
       outcome: "applied",
     });
     expect(store.lifetimeGrants[0]?.status).toBe("revoked");
+    expect(store.foundingSlots[0]?.status).toBe("ended");
   });
+
+  it.each([
+    ["below the paid total", { amount: 24000 }],
+    ["flagged partial", { amount: 25000, is_partial: true }],
+  ])("keeps access and flags a partial refund %s", async (_label, overrides) => {
+    const store = createMemoryBillingStore({
+      profileIds: [BILLING_FIXTURE_USER_ID],
+    });
+    await applyBillingEvent(lifetimeGrantEvent(), store);
+
+    const refund = refundEvent(overrides);
+    expect(await applyBillingEvent(refund, store)).toEqual({
+      outcome: "ignored",
+    });
+    expect(store.lifetimeGrants[0]?.status).toBe("active");
+    expect(store.foundingSlots[0]?.status).toBe("active");
+    expect(store.events.get(refund.providerEventId)).toMatchObject({
+      status: "PROCESSED",
+      processingError: LIFETIME_PARTIAL_REFUND_NOTE,
+    });
+  });
+
+  it.each([
+    {
+      label: "the refund amount is missing",
+      refundOverrides: { amount: null },
+      grantTotal: 25000,
+    },
+    {
+      label: "the grant total is missing",
+      refundOverrides: {},
+      grantTotal: null,
+    },
+    {
+      label: "the currencies do not match",
+      refundOverrides: { currency: "USD" },
+      grantTotal: 25000,
+    },
+  ])(
+    "keeps access and flags review when $label",
+    async ({ refundOverrides, grantTotal }) => {
+      const store = createMemoryBillingStore({
+        profileIds: [BILLING_FIXTURE_USER_ID],
+      });
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      if (grantTotal === null) {
+        await store.grantLifetime({
+          eventId: "evt_lifetime_seed",
+          paymentId: "pay_lifetime_1",
+          userId: BILLING_FIXTURE_USER_ID,
+          customerId: null,
+          productId: products.FOUNDING_LIFETIME!,
+          totalAmount: null,
+          currency: "GBP",
+        });
+      } else {
+        await applyBillingEvent(lifetimeGrantEvent(), store);
+      }
+
+      const refund = refundEvent(refundOverrides);
+      expect(await applyBillingEvent(refund, store)).toEqual({
+        outcome: "ignored",
+      });
+      expect(store.lifetimeGrants[0]?.status).toBe("active");
+      expect(store.events.get(refund.providerEventId)).toMatchObject({
+        status: "PROCESSED",
+        processingError: LIFETIME_REFUND_REVIEW_FLAG,
+      });
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining(LIFETIME_REFUND_REVIEW_FLAG),
+      );
+      expect(LIFETIME_REFUND_REVIEW_FLAG).not.toContain("pay_lifetime_1");
+      expect(LIFETIME_REFUND_REVIEW_FLAG).not.toContain(
+        BILLING_FIXTURE_USER_ID,
+      );
+    },
+  );
 
   it("ignores a refund for a payment with no lifetime grant", async () => {
     const store = createMemoryBillingStore();
@@ -279,6 +446,98 @@ describe("lifetime webhook extraction and application", () => {
     expect(await applyBillingEvent(refund, store)).toEqual({
       outcome: "ignored",
     });
+  });
+
+  it("never touches a subscription or subscription Pro on refund or lost dispute", async () => {
+    const subscription: StoredSubscription = {
+      userId: BILLING_FIXTURE_USER_ID,
+      dodoCustomerId: "cus_active_sub",
+      dodoSubscriptionId: "sub_active",
+      dodoProductId: products.PRO_MONTHLY,
+      planKey: "PRO",
+      status: "ACTIVE",
+      billingInterval: "MONTHLY",
+      currentPeriodStart: "2026-06-01T00:00:00.000Z",
+      currentPeriodEnd: "2026-07-01T00:00:00.000Z",
+      cancelAtPeriodEnd: false,
+      cancelledAt: null,
+      lastProviderEventAt: "2026-06-01T00:00:00.000Z",
+      isCurrent: true,
+    };
+    const store = createMemoryBillingStore({
+      profileIds: [BILLING_FIXTURE_USER_ID],
+      subscriptions: [subscription],
+    });
+    const snapshot = JSON.stringify(store.subscriptions);
+
+    const refund = refundEvent({ payment_id: "pay_subscription_refund" });
+    expect(await applyBillingEvent(refund, store)).toEqual({
+      outcome: "ignored",
+    });
+    const lost = disputeEvent("dispute.lost", {
+      payment_id: "pay_subscription_dispute",
+    });
+    expect(await applyBillingEvent(lost, store)).toEqual({
+      outcome: "ignored",
+    });
+
+    expect(store.subscriptions).toEqual([subscription]);
+    expect(JSON.stringify(store.subscriptions)).toBe(snapshot);
+    expect(store.lifetimeGrants).toHaveLength(0);
+    expect(store.events.get(refund.providerEventId)?.status).toBe("IGNORED");
+    expect(store.events.get(lost.providerEventId)?.status).toBe("IGNORED");
+
+    const entitlement = resolveEntitlement(
+      createSubscriptionFixture({ dodoProductId: products.PRO_MONTHLY }),
+      ENTITLEMENT_FIXTURE_NOW,
+      new Set([products.PRO_MONTHLY]),
+      null,
+    );
+    expect(entitlement.plan).toBe("PRO");
+    expect(entitlement.term).toBe("monthly");
+  });
+});
+
+describe("classifyRefund", () => {
+  const base = {
+    refundAmount: 25000,
+    refundCurrency: "GBP",
+    isPartial: false,
+    paidTotal: 25000,
+    paidCurrency: "GBP",
+  };
+
+  it("treats an explicit partial refund as partial before comparing amounts", () => {
+    expect(
+      classifyRefund({ ...base, isPartial: true, refundAmount: 25000 }),
+    ).toBe("partial");
+  });
+
+  it("treats missing or non-finite amounts as unknown", () => {
+    expect(classifyRefund({ ...base, refundAmount: null })).toBe("unknown");
+    expect(classifyRefund({ ...base, paidTotal: null })).toBe("unknown");
+    expect(classifyRefund({ ...base, refundAmount: Number.POSITIVE_INFINITY })).toBe(
+      "unknown",
+    );
+    expect(classifyRefund({ ...base, paidTotal: Number.NaN })).toBe("unknown");
+  });
+
+  it("treats mismatched known currencies as unknown", () => {
+    expect(
+      classifyRefund({ ...base, refundCurrency: "USD", paidCurrency: "GBP" }),
+    ).toBe("unknown");
+    expect(
+      classifyRefund({ ...base, refundCurrency: null, paidCurrency: "GBP" }),
+    ).toBe("full");
+  });
+
+  it("treats a refund at or above the paid total as full", () => {
+    expect(classifyRefund(base)).toBe("full");
+    expect(classifyRefund({ ...base, refundAmount: 30000 })).toBe("full");
+  });
+
+  it("treats a refund below the paid total as partial", () => {
+    expect(classifyRefund({ ...base, refundAmount: 24999 })).toBe("partial");
   });
 });
 

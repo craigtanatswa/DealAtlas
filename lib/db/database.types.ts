@@ -3208,6 +3208,7 @@ export type Database = {
       lifetime_grants: {
         Row: {
           created_at: string
+          currency: string | null
           dodo_customer_id: string | null
           dodo_payment_id: string
           dodo_product_id: string
@@ -3218,11 +3219,13 @@ export type Database = {
           revoke_reason: string | null
           revoked_at: string | null
           status: string
+          total_amount: number | null
           updated_at: string
           user_id: string
         }
         Insert: {
           created_at?: string
+          currency?: string | null
           dodo_customer_id?: string | null
           dodo_payment_id: string
           dodo_product_id: string
@@ -3233,11 +3236,13 @@ export type Database = {
           revoke_reason?: string | null
           revoked_at?: string | null
           status?: string
+          total_amount?: number | null
           updated_at?: string
           user_id: string
         }
         Update: {
           created_at?: string
+          currency?: string | null
           dodo_customer_id?: string | null
           dodo_payment_id?: string
           dodo_product_id?: string
@@ -3248,6 +3253,7 @@ export type Database = {
           revoke_reason?: string | null
           revoked_at?: string | null
           status?: string
+          total_amount?: number | null
           updated_at?: string
           user_id?: string
         }
@@ -3394,9 +3400,11 @@ export type Database = {
       grant_lifetime_access: {
         Args: {
           p_customer_id: string | null
+          p_currency?: string | null
           p_event_id: string
           p_payment_id: string
           p_product_id: string
+          p_total_amount?: number | null
           p_user_id: string
         }
         Returns: string

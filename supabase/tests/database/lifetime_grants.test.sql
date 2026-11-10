@@ -13,7 +13,9 @@ select is(
     'pay_lifetime_1',
     'a1000000-0000-4000-8000-000000000001',
     'cus_lifetime_1',
-    'pdt_lifetime_fixture'
+    'pdt_lifetime_fixture',
+    25000,
+    'GBP'
   ),
   'granted',
   'a paid lifetime payment grants access'
@@ -22,6 +24,16 @@ select is(
   (select status from public.lifetime_grants where dodo_payment_id = 'pay_lifetime_1'),
   'active',
   'the grant is active'
+);
+select is(
+  (select total_amount from public.lifetime_grants where dodo_payment_id = 'pay_lifetime_1'),
+  25000::bigint,
+  'the grant stores the paid total'
+);
+select is(
+  (select currency from public.lifetime_grants where dodo_payment_id = 'pay_lifetime_1'),
+  'GBP',
+  'the grant stores the payment currency'
 );
 select is(
   (select status from private.founding_slots where user_id = 'a1000000-0000-4000-8000-000000000001'),
@@ -178,8 +190,8 @@ select is(
 );
 
 select ok(
-  not has_function_privilege('anon', 'public.grant_lifetime_access(text, text, uuid, text, text)', 'execute')
-  and not has_function_privilege('authenticated', 'public.grant_lifetime_access(text, text, uuid, text, text)', 'execute')
+  not has_function_privilege('anon', 'public.grant_lifetime_access(text, text, uuid, text, text, bigint, text)', 'execute')
+  and not has_function_privilege('authenticated', 'public.grant_lifetime_access(text, text, uuid, text, text, bigint, text)', 'execute')
   and not has_function_privilege('anon', 'public.revoke_lifetime_access(text, text, text)', 'execute')
   and not has_function_privilege('authenticated', 'public.revoke_lifetime_access(text, text, text)', 'execute')
   and not has_table_privilege('anon', 'public.lifetime_grants', 'select')
@@ -205,7 +217,7 @@ select is(
   'no policy allows clients to write lifetime grants'
 );
 select ok(
-  has_function_privilege('service_role', 'public.grant_lifetime_access(text, text, uuid, text, text)', 'execute')
+  has_function_privilege('service_role', 'public.grant_lifetime_access(text, text, uuid, text, text, bigint, text)', 'execute')
   and has_function_privilege('service_role', 'public.revoke_lifetime_access(text, text, text)', 'execute')
   and has_table_privilege('service_role', 'public.lifetime_grants', 'select'),
   'service_role can apply and read lifetime grants'

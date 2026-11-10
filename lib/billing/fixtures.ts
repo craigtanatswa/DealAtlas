@@ -102,11 +102,11 @@ export function fixturePaymentData(
     payment_provider: "dodo",
     refunds: [],
     retry_attempt: 0,
-    settlement_amount: 3900,
+    settlement_amount: 25000,
     settlement_currency: "GBP",
     status: "succeeded",
     subscription_id: BILLING_FIXTURE_SUBSCRIPTION_ID,
-    total_amount: 3900,
+    total_amount: 25000,
     ...overrides,
   };
 }
@@ -183,9 +183,11 @@ export function refundWebhookFixture(
     timestamp,
     data: {
       payload_type: "Refund",
+      amount: 25000,
       brand_id: "brand_dealatlas",
       business_id: BILLING_FIXTURE_BUSINESS_ID,
       created_at: "2026-06-02T12:00:00.000Z",
+      currency: "GBP",
       customer: {
         customer_id: BILLING_FIXTURE_CUSTOMER_ID,
         email: "pro@example.com",

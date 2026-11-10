@@ -1,4 +1,5 @@
 import { isNewerProviderEvent } from "@/lib/billing/event-id";
+import { classifyRefund } from "@/lib/billing/refund";
 import { isLiveSubscriptionStatus, snapshotWouldGrantPro } from "@/lib/billing/status";
 import { structuredLog } from "@/lib/observability/log";
 import type {
@@ -21,6 +22,18 @@ export const LIFETIME_OVER_CAP_FLAG =
 
 export const LIFETIME_DUPLICATE_USER_FLAG =
   "lifetime_duplicate_user: user already holds lifetime access; flag for refund review.";
+
+export const DISPUTE_LOG_ONLY_NOTE =
+  "dispute_log_only: dispute opened or challenged; lifetime access unchanged.";
+
+export const DISPUTE_NO_ACTION_NOTE =
+  "dispute_no_action: dispute resolved without changing lifetime access.";
+
+export const LIFETIME_PARTIAL_REFUND_NOTE =
+  "lifetime_partial_refund: partial refund; lifetime access kept.";
+
+export const LIFETIME_REFUND_REVIEW_FLAG =
+  "lifetime_refund_amount_unknown: refund amount could not be compared with the payment total; access kept, review.";
 
 /** Fixed text. Must not include product ids, customer ids, or user ids. */
 export const UNKNOWN_PRODUCT_ENTITLEMENT_WARNING =
@@ -220,6 +233,8 @@ async function applyLifetimeGrant(
       userId,
       customerId: payment.customerId,
       productId,
+      totalAmount: payment.totalAmount,
+      currency: payment.currency,
     });
   } catch (error) {
     await markFailedAndThrow(event, store, error);
@@ -251,10 +266,67 @@ async function applyLifetimeReversal(
   event: IncomingBillingEvent,
   store: BillingStore,
 ): Promise<ApplyResult> {
+  if (event.disputeNotice) {
+    await store.markEvent(
+      event.providerEventId,
+      "IGNORED",
+      DISPUTE_LOG_ONLY_NOTE,
+    );
+    return { outcome: "ignored" };
+  }
+
   const reversal = event.reversal;
   if (!reversal) {
     await store.markEvent(event.providerEventId, "IGNORED");
     return { outcome: "ignored" };
+  }
+
+  if (reversal.kind === "refund") {
+    const grant = await store.getLifetimeGrantByPayment(reversal.paymentId);
+    if (!grant) {
+      await store.markEvent(
+        event.providerEventId,
+        "IGNORED",
+        "No lifetime grant found for the reversed payment.",
+      );
+      return { outcome: "ignored" };
+    }
+
+    const classification = classifyRefund({
+      refundAmount: reversal.refundAmount,
+      refundCurrency: reversal.refundCurrency,
+      isPartial: reversal.isPartial,
+      paidTotal: grant.totalAmount,
+      paidCurrency: grant.currency,
+    });
+
+    if (classification === "partial") {
+      structuredLog({
+        level: "info",
+        msg: LIFETIME_PARTIAL_REFUND_NOTE,
+        job: "dodo-webhook",
+      });
+      await store.markEvent(
+        event.providerEventId,
+        "PROCESSED",
+        LIFETIME_PARTIAL_REFUND_NOTE,
+      );
+      return { outcome: "ignored" };
+    }
+
+    if (classification === "unknown") {
+      structuredLog({
+        level: "warn",
+        msg: LIFETIME_REFUND_REVIEW_FLAG,
+        job: "dodo-webhook",
+      });
+      await store.markEvent(
+        event.providerEventId,
+        "PROCESSED",
+        LIFETIME_REFUND_REVIEW_FLAG,
+      );
+      return { outcome: "ignored" };
+    }
   }
 
   let result: RevokeLifetimeResult = "invalid";
@@ -353,8 +425,21 @@ export async function applyBillingEvent(
     }
   }
 
-  if (event.reversal) {
+  if (event.reversal || event.disputeNotice) {
     return applyLifetimeReversal(event, store);
+  }
+
+  if (
+    event.eventType === "dispute.won" ||
+    event.eventType === "dispute.cancelled" ||
+    event.eventType === "dispute.expired"
+  ) {
+    await store.markEvent(
+      event.providerEventId,
+      "IGNORED",
+      DISPUTE_NO_ACTION_NOTE,
+    );
+    return { outcome: "ignored" };
   }
 
   if (event.payment?.lifetime && !event.payment.subscriptionId) {

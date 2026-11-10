@@ -73,22 +73,34 @@ describe("dispute reversal is decided by event type", () => {
     );
   }
 
-  it.each([
-    "dispute.opened",
-    "dispute.challenged",
-    "dispute.accepted",
-    "dispute.lost",
-  ])("reverses on %s even when dispute_status is missing", (type) => {
-    expect(disputeWithoutStatus(type).reversal).toEqual({
-      paymentId: "pay_lifetime_1",
-      kind: "dispute",
-    });
-  });
+  it.each(["dispute.accepted", "dispute.lost"])(
+    "reverses on %s even when dispute_status is missing",
+    (type) => {
+      expect(disputeWithoutStatus(type).reversal).toEqual({
+        paymentId: "pay_lifetime_1",
+        kind: "dispute",
+      });
+    },
+  );
+
+  it.each(["dispute.opened", "dispute.challenged"])(
+    "records %s as a log-only dispute notice",
+    (type) => {
+      const event = disputeWithoutStatus(type);
+      expect(event.reversal).toBeNull();
+      expect(event.disputeNotice).toEqual({
+        paymentId: "pay_lifetime_1",
+        eventType: type,
+      });
+    },
+  );
 
   it.each(["dispute.won", "dispute.cancelled", "dispute.expired"])(
     "records and ignores %s without a reversal",
     (type) => {
-      expect(disputeWithoutStatus(type).reversal).toBeNull();
+      const event = disputeWithoutStatus(type);
+      expect(event.reversal).toBeNull();
+      expect(event.disputeNotice).toBeNull();
     },
   );
 });

@@ -213,12 +213,34 @@ export function createBillingStore(): BillingStore {
         p_user_id: input.userId,
         p_customer_id: input.customerId,
         p_product_id: input.productId,
+        p_total_amount: input.totalAmount ?? null,
+        p_currency: input.currency ?? null,
       });
       const result = throwIfQueryError("Failed to grant lifetime access", {
         data,
         error,
       });
       return result as GrantLifetimeResult;
+    },
+
+    async getLifetimeGrantByPayment(paymentId) {
+      const { data, error } = await admin
+        .from("lifetime_grants")
+        .select("status, total_amount, currency")
+        .eq("dodo_payment_id", paymentId)
+        .maybeSingle();
+      const row = throwIfQueryError("Failed to load lifetime grant", {
+        data,
+        error,
+      });
+      if (!row) {
+        return null;
+      }
+      return {
+        status: row.status as "active" | "revoked",
+        totalAmount: row.total_amount,
+        currency: row.currency,
+      };
     },
 
     async revokeLifetime(input) {

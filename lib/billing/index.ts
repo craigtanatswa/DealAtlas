@@ -39,6 +39,11 @@ export {
 } from "@/lib/billing/extract";
 export { applyBillingEvent } from "@/lib/billing/apply";
 export {
+  classifyRefund,
+  type ClassifyRefundInput,
+  type RefundClassification,
+} from "@/lib/billing/refund";
+export {
   BILLING_FIXTURE_CUSTOMER_ID,
   BILLING_FIXTURE_LEGACY_PRODUCT_ID,
   BILLING_FIXTURE_LIFETIME_PRODUCT_ID,
@@ -60,10 +65,12 @@ export type {
   ApplyOutcome,
   ApplyResult,
   BillingStore,
+  DisputeNotice,
   GrantLifetimeInput,
   GrantLifetimeResult,
   IncomingBillingEvent,
   LifetimeGrant,
+  LifetimeGrantSnapshot,
   LifetimeGrantStatus,
   LifetimeReversal,
   PaymentSnapshot,

@@ -55,13 +55,29 @@ export type PaymentSnapshot = {
   userId: string | null;
   planKey: string | null;
   totalAmount: number | null;
+  currency: string | null;
   lifetime: boolean;
   lifetimeProductId: string | null;
 };
 
-export type LifetimeReversal = {
+export type LifetimeRefundReversal = {
   paymentId: string;
-  kind: "refund" | "dispute";
+  kind: "refund";
+  refundAmount: number | null;
+  refundCurrency: string | null;
+  isPartial: boolean | null;
+};
+
+export type LifetimeDisputeReversal = {
+  paymentId: string;
+  kind: "dispute";
+};
+
+export type LifetimeReversal = LifetimeRefundReversal | LifetimeDisputeReversal;
+
+export type DisputeNotice = {
+  paymentId: string;
+  eventType: string;
 };
 
 export type IncomingBillingEvent = {
@@ -73,6 +89,7 @@ export type IncomingBillingEvent = {
   subscription: SubscriptionSnapshot | null;
   payment: PaymentSnapshot | null;
   reversal: LifetimeReversal | null;
+  disputeNotice: DisputeNotice | null;
 };
 
 export type BillingEventRecord = {
@@ -117,11 +134,19 @@ export type LifetimeGrant = {
   dodoCustomerId: string | null;
   dodoProductId: string;
   status: LifetimeGrantStatus;
+  totalAmount?: number | null;
+  currency?: string | null;
   grantedAt: string;
   revokedAt: string | null;
   revokeReason: string | null;
   grantEventId: string;
   revokeEventId: string | null;
+};
+
+export type LifetimeGrantSnapshot = {
+  status: LifetimeGrantStatus;
+  totalAmount: number | null;
+  currency: string | null;
 };
 
 export type GrantLifetimeInput = {
@@ -130,6 +155,8 @@ export type GrantLifetimeInput = {
   userId: string;
   customerId: string | null;
   productId: string;
+  totalAmount?: number | null;
+  currency?: string | null;
 };
 
 export type GrantLifetimeResult =
@@ -178,4 +205,7 @@ export type BillingStore = {
   upsertCurrentSubscription(row: StoredSubscription): Promise<void>;
   grantLifetime(input: GrantLifetimeInput): Promise<GrantLifetimeResult>;
   revokeLifetime(input: RevokeLifetimeInput): Promise<RevokeLifetimeResult>;
+  getLifetimeGrantByPayment(
+    paymentId: string,
+  ): Promise<LifetimeGrantSnapshot | null>;
 };

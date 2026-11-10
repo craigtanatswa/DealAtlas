@@ -9,6 +9,8 @@ create table if not exists public.lifetime_grants (
   dodo_payment_id text not null unique,
   dodo_customer_id text,
   dodo_product_id text not null,
+  total_amount bigint,
+  currency text,
   status text not null default 'active'
     check (status in ('active', 'revoked')),
   granted_at timestamptz not null default pg_catalog.now(),
@@ -34,7 +36,9 @@ create or replace function public.grant_lifetime_access(
   p_payment_id text,
   p_user_id uuid,
   p_customer_id text,
-  p_product_id text
+  p_product_id text,
+  p_total_amount bigint default null,
+  p_currency text default null
 )
 returns text
 language plpgsql
@@ -78,6 +82,8 @@ begin
       dodo_payment_id,
       dodo_customer_id,
       dodo_product_id,
+      total_amount,
+      currency,
       status,
       granted_at,
       grant_event_id
@@ -87,6 +93,8 @@ begin
       p_payment_id,
       p_customer_id,
       p_product_id,
+      p_total_amount,
+      p_currency,
       'active',
       pg_catalog.now(),
       p_event_id
@@ -187,10 +195,10 @@ begin
 end;
 $$;
 
-revoke all on function public.grant_lifetime_access(text, text, uuid, text, text) from public, anon, authenticated;
+revoke all on function public.grant_lifetime_access(text, text, uuid, text, text, bigint, text) from public, anon, authenticated;
 revoke all on function public.revoke_lifetime_access(text, text, text) from public, anon, authenticated;
 
-grant execute on function public.grant_lifetime_access(text, text, uuid, text, text) to service_role;
+grant execute on function public.grant_lifetime_access(text, text, uuid, text, text, bigint, text) to service_role;
 grant execute on function public.revoke_lifetime_access(text, text, text) to service_role;
 
 -- Pro is either a paid-through subscription or an active lifetime grant.

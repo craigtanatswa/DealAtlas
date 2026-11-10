@@ -72,7 +72,7 @@ describe("phase B ACL diff", () => {
   it("treats 0062 lifetime RPCs as intended only when anon and authenticated are false", () => {
     const functions = [
       {
-        signature: "grant_lifetime_access(text,text,uuid,text,text)",
+        signature: "grant_lifetime_access(text,text,uuid,text,text,bigint,text)",
         name: "grant_lifetime_access",
       },
       {
@@ -90,7 +90,7 @@ describe("phase B ACL diff", () => {
     const closedDiff = aclDiff(before, closed);
     expect(closedDiff.unintended).toEqual([]);
     expect(closedDiff.intended).toEqual([
-      "grant_lifetime_access(text,text,uuid,text,text): added",
+      "grant_lifetime_access(text,text,uuid,text,text,bigint,text): added",
       "revoke_lifetime_access(text,text,text): added",
     ]);
 

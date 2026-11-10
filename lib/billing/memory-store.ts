@@ -124,6 +124,8 @@ export function createMemoryBillingStore(seed?: {
         dodoCustomerId: input.customerId,
         dodoProductId: input.productId,
         status: "active",
+        totalAmount: input.totalAmount ?? null,
+        currency: input.currency ?? null,
         grantedAt: now,
         revokedAt: null,
         revokeReason: null,
@@ -166,6 +168,19 @@ export function createMemoryBillingStore(seed?: {
         }
       }
       return "revoked";
+    },
+    async getLifetimeGrantByPayment(paymentId) {
+      const grant = lifetimeGrants.find(
+        (row) => row.dodoPaymentId === paymentId,
+      );
+      if (!grant) {
+        return null;
+      }
+      return {
+        status: grant.status,
+        totalAmount: grant.totalAmount ?? null,
+        currency: grant.currency ?? null,
+      };
     },
   };
 }

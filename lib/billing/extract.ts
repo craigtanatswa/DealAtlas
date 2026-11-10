@@ -134,6 +134,7 @@ function extractPayment(
     userId: metadataUserId(metadata) ?? metadataUserId(asRecord(customer.metadata)),
     planKey: readMetadataString(metadata, CHECKOUT_METADATA_KEYS.planKey),
     totalAmount: readNumber(data.total_amount),
+    currency: readString(data.currency),
     lifetime: productIds.some((id) =>
       isLifetimeProduct(id, products),
     ),
@@ -142,10 +143,13 @@ function extractPayment(
 }
 
 const REVERSING_DISPUTE_EVENT_TYPES = new Set([
-  "dispute.opened",
-  "dispute.challenged",
   "dispute.accepted",
   "dispute.lost",
+]);
+
+const LOG_ONLY_DISPUTE_EVENT_TYPES = new Set([
+  "dispute.opened",
+  "dispute.challenged",
 ]);
 
 function extractReversal(
@@ -154,13 +158,34 @@ function extractReversal(
 ): IncomingBillingEvent["reversal"] {
   if (eventType === "refund.succeeded") {
     const paymentId = readString(data.payment_id);
-    return paymentId ? { paymentId, kind: "refund" } : null;
+    if (!paymentId) {
+      return null;
+    }
+    return {
+      paymentId,
+      kind: "refund",
+      refundAmount: readNumber(data.amount),
+      refundCurrency: readString(data.currency),
+      isPartial:
+        typeof data.is_partial === "boolean" ? data.is_partial : null,
+    };
   }
   if (REVERSING_DISPUTE_EVENT_TYPES.has(eventType)) {
     const paymentId = readString(data.payment_id);
     return paymentId ? { paymentId, kind: "dispute" } : null;
   }
   return null;
+}
+
+function extractDisputeNotice(
+  eventType: string,
+  data: Record<string, unknown>,
+): IncomingBillingEvent["disputeNotice"] {
+  if (!LOG_ONLY_DISPUTE_EVENT_TYPES.has(eventType)) {
+    return null;
+  }
+  const paymentId = readString(data.payment_id);
+  return paymentId ? { paymentId, eventType } : null;
 }
 
 export function extractBillingEvent(
@@ -173,6 +198,7 @@ export function extractBillingEvent(
   const subscription = extractSubscription(data, products);
   const payment = extractPayment(data, products);
   const reversal = extractReversal(payload.type, data);
+  const disputeNotice = extractDisputeNotice(payload.type, data);
   const payloadHash = hashWebhookPayload(rawBody);
   const occurredAt = toIsoDate(payload.timestamp);
 
@@ -183,7 +209,8 @@ export function extractBillingEvent(
       payloadHash,
       occurredAt,
       subscriptionId: subscription?.dodoSubscriptionId ?? payment?.subscriptionId,
-      paymentId: payment?.paymentId ?? reversal?.paymentId,
+      paymentId:
+        payment?.paymentId ?? reversal?.paymentId ?? disputeNotice?.paymentId,
     }),
     eventType: payload.type,
     payloadHash,
@@ -192,6 +219,7 @@ export function extractBillingEvent(
     subscription,
     payment,
     reversal,
+    disputeNotice,
   };
 }
 
