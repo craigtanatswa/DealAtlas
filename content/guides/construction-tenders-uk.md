@@ -82,7 +82,7 @@ See the current [installation deals](/deals?category=Construction%20%26%20Infras
 
 Construction buyers publish in many places, and each one has its own layout and search. DealAtlas puts them into one list with the same filters for category, value band, closing date and region. You can check every type of work above in a few minutes instead of working through each source in turn. The free preview shows what is being bought, the value band, the closing window and the region where one is listed. Browse the [construction and infrastructure category page](/categories/construction-infrastructure) for an overview of the sector.
 
-When you find a tender you want, read our guide to [writing a council bid that scores well](/guides/how-to-win-council-contracts).
+When you've picked a tender to bid for, read our guide to [writing a council bid that scores well](/guides/how-to-win-council-contracts).
 
 ## FAQ
 
