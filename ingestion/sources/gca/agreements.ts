@@ -15,7 +15,13 @@ import {
   gcaAgreementUrl,
 } from "@/ingestion/sources/gca/constants";
 import { agreementStatus, gcaCandidate } from "@/ingestion/sources/gca/map";
-import { blank, isRmNumber, normaliseRm, parseUkDate } from "@/ingestion/sources/gca/text";
+import {
+  blank,
+  isRmNumber,
+  normaliseRm,
+  parseUkDate,
+  toUkEndOfDayTimestamptz,
+} from "@/ingestion/sources/gca/text";
 
 export type GcaAgreementsAdapterOptions = {
   http?: JsonHttpClient;
@@ -117,6 +123,8 @@ export function mapGcaAgreement(record: unknown, now: Date) {
     });
   }
   const lots = Array.isArray(row?.lots) ? row.lots : [];
+  const tenderOpenDate = parseUkDate(row?.tenders_open_date);
+  const tenderCloseDate = parseUkDate(row?.tenders_close_date);
   return gcaCandidate({
     sourceKey: GCA_AGREEMENTS_SOURCE_KEY,
     rm,
@@ -128,12 +136,15 @@ export function mapGcaAgreement(record: unknown, now: Date) {
       terms: blank(asString(row?.terms)),
       regulationType: blank(asString(row?.regulation_type)),
       endDate: parseUkDate(row?.end_date),
+      tenderOpenDate,
+      tenderCloseDate,
       now,
     }),
     now,
+    submissionDeadline: toUkEndOfDayTimestamptz(tenderCloseDate),
     contractStartDate: parseUkDate(row?.start_date),
     contractEndDate: parseUkDate(row?.end_date),
-    nextProcurementDate: parseUkDate(row?.tenders_open_date),
+    nextProcurementDate: tenderOpenDate,
     lots: lots.flatMap((lot) => {
       const item = asRecord(lot);
       const lotTitle = blank(asString(item?.title));

@@ -23,29 +23,59 @@ export function dealTypeFromLabel(label: string | null): DealType {
   return "PROCUREMENT_PIPELINE";
 }
 
+function dateStart(value: string | null | undefined): number | null {
+  if (!value) {
+    return null;
+  }
+  const parsed = Date.parse(`${value}T00:00:00.000Z`);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function openStatus(dealType: DealType): GcaStatus {
+  return {
+    status: "OPEN",
+    stage: "LIVE",
+    dealType: dealType === "PROCUREMENT_PIPELINE" ? "FRAMEWORK" : dealType,
+  };
+}
+
 export function agreementStatus(input: {
   status: string | null;
   terms: string | null;
   regulationType: string | null;
   endDate: string | null;
+  tenderOpenDate?: string | null;
+  tenderCloseDate?: string | null;
   now: Date;
 }): GcaStatus {
   const label = `${input.terms ?? ""} ${input.regulationType ?? ""}`;
   const dealType = dealTypeFromLabel(label);
-  const end = input.endDate ? Date.parse(`${input.endDate}T00:00:00.000Z`) : Number.NaN;
-  if (Number.isFinite(end) && end < input.now.getTime()) {
+  const end = dateStart(input.endDate);
+  if (end !== null && end < input.now.getTime()) {
     return { status: "EXPIRED", stage: "ENDED", dealType };
   }
   const status = (input.status ?? "").toLowerCase();
+  const live = status.includes("underway") || status === "live";
+  const open = dateStart(input.tenderOpenDate);
+  const close = dateStart(input.tenderCloseDate);
+  const now = input.now.getTime();
+  if (live && close !== null && close < now) {
+    return { status: "ACTIVE", stage: "CONTRACT", dealType };
+  }
+  if (open !== null && open > now) {
+    return { status: "UPCOMING", stage: "PLANNING", dealType: "PROCUREMENT_PIPELINE" };
+  }
+  if (open !== null && close !== null && open <= now && now < close) {
+    return openStatus(dealType);
+  }
+  if (live && open === null && close === null) {
+    return { status: "ACTIVE", stage: "CONTRACT", dealType };
+  }
   if (status.includes("future") || status.includes("planned")) {
     return { status: "UPCOMING", stage: "PLANNING", dealType: "PROCUREMENT_PIPELINE" };
   }
-  if (status.includes("underway") || status === "live") {
-    return {
-      status: "OPEN",
-      stage: "LIVE",
-      dealType: dealType === "PROCUREMENT_PIPELINE" ? "FRAMEWORK" : dealType,
-    };
+  if (live) {
+    return openStatus(dealType);
   }
   if (status.includes("awarded")) {
     return { status: "AWARDED", stage: "AWARD", dealType };
@@ -53,16 +83,24 @@ export function agreementStatus(input: {
   return { status: "UPCOMING", stage: "PLANNING", dealType: "PROCUREMENT_PIPELINE" };
 }
 
-export function pipelineStatus(procurementStart: string | null, now: Date, agreementType: string | null): GcaStatus {
-  const start = procurementStart ? Date.parse(`${procurementStart}T00:00:00.000Z`) : Number.NaN;
+export function pipelineStatus(
+  procurementStart: string | null,
+  now: Date,
+  agreementType: string | null,
+  submissionDeadline?: string | null,
+): GcaStatus {
   const dealType = dealTypeFromLabel(agreementType);
-  if (!Number.isFinite(start) || start > now.getTime()) {
-    return { status: "UPCOMING", stage: "PLANNING", dealType };
+  const deadline = dateStart(submissionDeadline);
+  if (deadline !== null) {
+    if (deadline < now.getTime()) {
+      return { status: "ACTIVE", stage: "CONTRACT", dealType };
+    }
+    return openStatus(dealType);
   }
   return {
-    status: "OPEN",
-    stage: "LIVE",
-    dealType: dealType === "PROCUREMENT_PIPELINE" ? "FRAMEWORK" : dealType,
+    status: "UPCOMING",
+    stage: "PLANNING",
+    dealType,
   };
 }
 
@@ -81,6 +119,7 @@ export function gcaCandidate(input: {
   procurementMethod?: string | null;
   specialRegime?: string | null;
   exactValueText?: string | null;
+  submissionDeadline?: string | null;
   contractStartDate?: string | null;
   contractEndDate?: string | null;
   nextProcurementDate?: string | null;
@@ -134,9 +173,9 @@ export function gcaCandidate(input: {
     valueMinExVat: null,
     valueMaxExVat: null,
     exactValueText: input.exactValueText ?? null,
-    exactLocationText: null,
+    exactLocationText: "United Kingdom",
     enquiryDeadline: null,
-    submissionDeadline: null,
+    submissionDeadline: input.submissionDeadline ?? null,
     awardDecisionDate: null,
     contractStartDate: input.contractStartDate ?? null,
     contractEndDate: input.contractEndDate ?? null,
