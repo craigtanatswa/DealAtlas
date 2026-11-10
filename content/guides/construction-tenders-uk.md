@@ -10,6 +10,7 @@ updated: 2026-11-10
 primaryKeyword: "construction tenders UK"
 secondaryKeywords: ["public construction bids", "open construction bids", "construction contracts UK", "infrastructure tenders UK"]
 relatedGuides: ["council-tenders-uk", "how-to-win-council-contracts"]
+craigApprovedAt: 2026-11-10
 recheckBeforePublish: "Example closing months are based on live closing windows on 10 Nov 2026 and must be re-checked just before publishing."
 ---
 
