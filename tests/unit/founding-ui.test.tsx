@@ -301,7 +301,7 @@ describe("Lifetime plan key", () => {
     const { container } = render(<PricingPlans signedIn={false} founding={openCount} />);
     const link = screen.getByRole("link", { name: /Get the Lifetime deal/i });
     expect(link.getAttribute("href")).toBe(foundingSignupPath());
-    expect(decodeURIComponent(foundingSignupPath())).toContain("/checkout?plan=founding_lifetime");
+    expect(decodeURIComponent(foundingSignupPath())).toContain("/checkout?plan=lifetime");
     expect(container.textContent).not.toMatch(/founding|£290|£24\.17/);
   });
 

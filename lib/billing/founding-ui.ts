@@ -18,14 +18,20 @@ import { DISPLAY_PRICING } from "@/lib/constants";
  */
 export const FOUNDING_PLAN_KEY = "founding_lifetime" as const;
 
+/** Public /checkout?plan= value for the Lifetime deal. Mapped to FOUNDING_PLAN_KEY server-side in app/(marketing)/checkout/page.tsx. */
+export const LIFETIME_PLAN_QUERY = "lifetime" as const;
+
+/** Old inbound /checkout?plan= values that redirect to plan=lifetime. */
+export const LEGACY_LIFETIME_PLAN_QUERIES: readonly string[] = ["FOUNDING", FOUNDING_PLAN_KEY];
+
 export type FoundingPlanKey = typeof FOUNDING_PLAN_KEY;
 
 /** Fallback copy for a FOUNDING_CAP_FULL error when the server sends no message. */
 export const FOUNDING_FULL_MESSAGE = `${LIFETIME_FULL_NOTE} You can still subscribe to Pro annual at ${DISPLAY_PRICING.proAnnual}.`;
 
-/** /checkout for the founding plan. */
+/** /checkout for the Lifetime plan. */
 export function foundingCheckoutPath(): string {
-  return `/checkout?plan=${FOUNDING_PLAN_KEY}`;
+  return `/checkout?plan=${LIFETIME_PLAN_QUERY}`;
 }
 
 /** Signed-out founding CTA: create an account, then return to the founding checkout. */

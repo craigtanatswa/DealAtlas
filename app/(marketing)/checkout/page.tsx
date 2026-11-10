@@ -19,9 +19,11 @@ import { parseCheckoutPlan, signupPathForPlan } from "@/lib/auth/redirect";
 import { getCurrentAccount } from "@/lib/auth/session";
 import { priceLabel } from "@/lib/billing/display";
 import {
-  FOUNDING_PLAN_KEY,
+  foundingCheckoutPath,
   foundingSignupPath,
   foundingUiState,
+  LEGACY_LIFETIME_PLAN_QUERIES,
+  LIFETIME_PLAN_QUERY,
 } from "@/lib/billing/founding-ui";
 import { readFoundingPublicCount } from "@/lib/billing/founding-public";
 
@@ -45,10 +47,11 @@ export default async function CheckoutPage({
 }) {
   const params = await searchParams;
   const rawPlan = firstParam(params.plan);
-  if (rawPlan === "FOUNDING") {
-    redirect(`/checkout?plan=${FOUNDING_PLAN_KEY}`);
+  if (rawPlan && LEGACY_LIFETIME_PLAN_QUERIES.includes(rawPlan)) {
+    redirect(foundingCheckoutPath());
   }
-  const founding = rawPlan === FOUNDING_PLAN_KEY;
+  // plan=lifetime maps to the founding_lifetime plan key, posted by FoundingCheckoutSummary.
+  const founding = rawPlan === LIFETIME_PLAN_QUERY;
   const parsed = founding ? null : parseCheckoutPlan(rawPlan);
   const plan = parsed === "FOUNDING" ? null : parsed;
   if (!founding && !plan) {

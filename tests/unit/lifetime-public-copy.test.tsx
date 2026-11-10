@@ -43,6 +43,12 @@ import { DealProCard } from "@/components/deals/deal-pro-card";
 import { UnlockPanel } from "@/components/deals/unlock-panel";
 import { GuideMarkdown } from "@/components/guides/guide-markdown";
 import {
+  FOUNDING_PLAN_KEY,
+  foundingCheckoutPath,
+  foundingSignupPath,
+  LIFETIME_PLAN_QUERY,
+} from "@/lib/billing/founding-ui";
+import {
   LIFETIME_PLAN_LINE,
   PLAN_PUBLIC_NAME,
   SHOW_LIMITED_PLACES,
@@ -89,6 +95,17 @@ function foundingFormPlanKeys(html: string): string[] {
   return forms
     .filter((form) => /data-analytics-plan="founding"/.test(form))
     .map((form) => /name="planKey"[^>]*value="([^"]*)"/.exec(form)?.[1] ?? "");
+}
+
+function hrefsAndActions(html: string): string[] {
+  return Array.from(html.matchAll(/\b(?:href|action)="([^"]*)"/g)).map((match) => {
+    const decodedAmp = (match[1] ?? "").replace(/&amp;/g, "&");
+    try {
+      return decodeURIComponent(decodedAmp);
+    } catch {
+      return decodedAmp;
+    }
+  });
 }
 
 async function renderPricing(
@@ -187,6 +204,87 @@ describe("Lifetime public components", () => {
         expect(html).not.toContain("Limited places");
       }
     }
+  });
+});
+
+describe("Lifetime public URLs", () => {
+  it("never renders founding in an href or form action", async () => {
+    const pricingSignedIn = await renderPricing(available, true);
+    const pricingSignedOut = await renderPricing(available, false);
+    const homeSignedIn = await renderHome(available, true);
+    const homeSignedOut = await renderHome(available, false);
+
+    const dealFree = renderToStaticMarkup(
+      <DealProCard mode="free" founding={available} alertsHref="/app/alerts" />,
+    );
+    const dealAnonymous = renderToStaticMarkup(
+      <DealProCard mode="anonymous" founding={available} alertsHref="/signup" />,
+    );
+    const actionsAnonymous = renderToStaticMarkup(
+      <FoundingUnlockActions founding={available} mode="anonymous" />,
+    );
+    const actionsFree = renderToStaticMarkup(
+      <FoundingUnlockActions founding={available} mode="free" />,
+    );
+    const unlockFree = renderToStaticMarkup(
+      <UnlockPanel mode="free" founding={available} />,
+    );
+    const unlockAnonymous = renderToStaticMarkup(
+      <UnlockPanel mode="anonymous" founding={available} />,
+    );
+    const summary = renderToStaticMarkup(
+      <FoundingCheckoutSummary founding={available} />,
+    );
+    const fullNoticeSignedIn = renderToStaticMarkup(
+      <FoundingFullNotice signedIn loginHref="/login" />,
+    );
+    const fullNoticeSignedOut = renderToStaticMarkup(
+      <FoundingFullNotice signedIn={false} loginHref="/login" />,
+    );
+    const fullCheckout = renderToStaticMarkup(<FoundingFullCheckout />);
+
+    const surfaces = [
+      pricingSignedIn,
+      pricingSignedOut,
+      homeSignedIn,
+      homeSignedOut,
+      dealFree,
+      dealAnonymous,
+      actionsAnonymous,
+      actionsFree,
+      unlockFree,
+      unlockAnonymous,
+      summary,
+      fullNoticeSignedIn,
+      fullNoticeSignedOut,
+      fullCheckout,
+    ];
+
+    for (const html of surfaces) {
+      expect(hrefsAndActions(html).filter((url) => /founding/i.test(url))).toEqual([]);
+    }
+
+    const signedOutUrls = [
+      pricingSignedOut,
+      homeSignedOut,
+      dealAnonymous,
+      actionsAnonymous,
+      unlockAnonymous,
+      fullNoticeSignedOut,
+    ].flatMap(hrefsAndActions);
+    expect(signedOutUrls.some((url) => url.includes("/checkout?plan=lifetime"))).toBe(true);
+  });
+
+  it("keeps the public Lifetime URLs and constants stable", () => {
+    expect(foundingCheckoutPath()).toBe("/checkout?plan=lifetime");
+
+    const signup = decodeURIComponent(foundingSignupPath());
+    expect(signup).toContain("/checkout?plan=lifetime");
+    expect(signup).not.toMatch(/founding/i);
+    expect(foundingSignupPath()).not.toMatch(/founding/i);
+
+    expect(LIFETIME_PLAN_QUERY).toBe("lifetime");
+    expect(FOUNDING_PLAN_KEY).toBe("founding_lifetime");
   });
 });
 

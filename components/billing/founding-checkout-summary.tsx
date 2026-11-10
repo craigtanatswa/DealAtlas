@@ -86,7 +86,7 @@ export function FoundingCheckoutSummary({
 }
 
 /**
- * /checkout?plan=founding_lifetime when founding is full or not offered: no founding summary,
+ * /checkout?plan=lifetime when founding is full or not offered: no founding summary,
  * just the full-founding copy and the standard Pro annual option.
  */
 export function FoundingFullCheckout() {
