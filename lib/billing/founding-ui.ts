@@ -148,7 +148,7 @@ export const FOUNDING_COPY = {
   title: "Pro Lifetime deal",
   firstMembers: "Limited places",
   lessThanAnnual: foundingLessThanAnnual(),
-  priceLocked: `${DISPLAY_PRICING.proLifetime} once, lifetime access`,
+  priceLocked: `${DISPLAY_PRICING.proLifetime}, lifetime access`,
   rechecked: "Availability is re-checked at checkout.",
   cta: "Get the Lifetime deal",
   cancelTerms: `The Lifetime deal is a one-time payment and never renews.`,

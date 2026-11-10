@@ -192,7 +192,7 @@ describe("founding member checkout", () => {
     );
     expect(FOUNDING_COPY.paywallCta).toContain("£250 one-time");
     expect(FOUNDING_COPY.lessThanAnnual).toBe("£100 less than standard annual");
-    expect(FOUNDING_COPY.priceLocked).toBe("£250 one-time once, lifetime access");
+    expect(FOUNDING_COPY.priceLocked).toBe("£250 one-time, lifetime access");
     expect(FOUNDING_COPY.firstMembers).toBe("Limited places");
   });
 

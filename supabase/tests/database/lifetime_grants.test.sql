@@ -183,8 +183,26 @@ select ok(
   and not has_function_privilege('anon', 'public.revoke_lifetime_access(text, text, text)', 'execute')
   and not has_function_privilege('authenticated', 'public.revoke_lifetime_access(text, text, text)', 'execute')
   and not has_table_privilege('anon', 'public.lifetime_grants', 'select')
-  and not has_table_privilege('authenticated', 'public.lifetime_grants', 'select'),
-  'clients cannot read grants or call the lifetime functions'
+  and not has_table_privilege('authenticated', 'public.lifetime_grants', 'select')
+  and not has_table_privilege('anon', 'public.lifetime_grants', 'insert')
+  and not has_table_privilege('anon', 'public.lifetime_grants', 'update')
+  and not has_table_privilege('anon', 'public.lifetime_grants', 'delete')
+  and not has_table_privilege('authenticated', 'public.lifetime_grants', 'insert')
+  and not has_table_privilege('authenticated', 'public.lifetime_grants', 'update')
+  and not has_table_privilege('authenticated', 'public.lifetime_grants', 'delete'),
+  'clients cannot read, write or call the lifetime functions'
+);
+select ok(
+  (select relrowsecurity from pg_class where oid = 'public.lifetime_grants'::regclass),
+  'RLS is enabled on public.lifetime_grants'
+);
+select is(
+  (select count(*)::int from pg_policies
+   where schemaname = 'public'
+     and tablename = 'lifetime_grants'
+     and cmd in ('INSERT', 'UPDATE', 'DELETE', 'ALL')),
+  0,
+  'no policy allows clients to write lifetime grants'
 );
 select ok(
   has_function_privilege('service_role', 'public.grant_lifetime_access(text, text, uuid, text, text)', 'execute')

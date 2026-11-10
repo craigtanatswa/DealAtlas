@@ -49,7 +49,7 @@ describe("founding price lead", () => {
     expect(container.querySelector("s")).toBeNull();
     expect(container.querySelector("strong")?.textContent).toBe("£250 one-time");
     expect(screen.getByText("Limited places")).toBeTruthy();
-    expect(screen.getByText("£250 one-time once, lifetime access")).toBeTruthy();
+    expect(screen.getByText("£250 one-time, lifetime access")).toBeTruthy();
     expect(container.textContent).not.toMatch(/£290|£24\.17|billed|places left/i);
   });
 });
@@ -64,7 +64,7 @@ describe("founding pricing cards", () => {
     expect(screen.getByText("Limited places")).toBeTruthy();
     expect(container.textContent).not.toContain("Founding places available");
     expect(container.textContent).not.toMatch(/\d+\s+places?\s+left/i);
-    expect(screen.getByText("£250 one-time once, lifetime access")).toBeTruthy();
+    expect(screen.getByText("£250 one-time, lifetime access")).toBeTruthy();
     expect(container.textContent).toContain("£250 one-time");
     expect(container.textContent).not.toContain("£24.17/mo");
     expect(container.textContent).not.toContain("£290");
@@ -124,7 +124,7 @@ describe("founding deal paywall", () => {
     const cta = screen.getByRole("button", { name: /^Get the Lifetime deal/ });
     expectFoundingPriceInside(cta);
     expect(screen.getByText("Limited places")).toBeTruthy();
-    expect(screen.getByText("£250 one-time once, lifetime access")).toBeTruthy();
+    expect(screen.getByText("£250 one-time, lifetime access")).toBeTruthy();
     expect(container.textContent).toContain("£250 one-time");
     expect(container.textContent).not.toMatch(/billed|VAT incl/i);
     expect(container.textContent).not.toMatch(/\d+\s+places?\s+left/i);
@@ -200,7 +200,7 @@ describe("founding billing summary", () => {
     expect(container.textContent).toContain("£250 one-time");
     expect(container.textContent).not.toContain("£290");
     expect(container.textContent).not.toContain("Limited places");
-    expect(screen.getByText("£250 one-time once, lifetime access")).toBeTruthy();
+    expect(screen.getByText("£250 one-time, lifetime access")).toBeTruthy();
     expect(container.textContent).not.toMatch(/\d+\s+places?\s+left/i);
   });
 });
