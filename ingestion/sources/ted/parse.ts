@@ -67,6 +67,17 @@ const ISO3_COUNTRY: Record<string, { iso2: string; name: string }> = {
   SVN: { iso2: "SI", name: "Slovenia" },
   ESP: { iso2: "ES", name: "Spain" },
   SWE: { iso2: "SE", name: "Sweden" },
+  NOR: { iso2: "NO", name: "Norway" },
+  ISL: { iso2: "IS", name: "Iceland" },
+  LIE: { iso2: "LI", name: "Liechtenstein" },
+  CHE: { iso2: "CH", name: "Switzerland" },
+};
+
+const ISO2_COUNTRY_NAME: Record<string, string> = {
+  ...Object.fromEntries(
+    Object.values(ISO3_COUNTRY).map((country) => [country.iso2, country.name]),
+  ),
+  EL: "Greece",
 };
 
 export type TedSearchPage = {
@@ -368,15 +379,27 @@ function iso2(code: string | null): string | null {
   return code ? ISO3_COUNTRY[code]?.iso2 ?? null : null;
 }
 
+const NUTS_CODE = /^[A-Z]{2}[0-9A-Z]{1,3}$/;
+
 function countryNames(value: unknown): string[] {
   const names: string[] = [];
   for (const item of localizedList(value)) {
-    const country = ISO3_COUNTRY[item.toUpperCase()];
+    const code = item.trim().toUpperCase();
+    const country = ISO3_COUNTRY[code];
     if (country && !names.includes(country.name)) {
       names.push(country.name);
     }
-    if (item.toLowerCase() === "anyw-eea" && !names.includes("EEA")) {
+    if (code === "ANYW-EEA" && !names.includes("EEA")) {
       names.push("EEA");
+    }
+    if (country || code === "EEA") {
+      continue;
+    }
+    if (NUTS_CODE.test(code) && !code.startsWith("UK")) {
+      const name = ISO2_COUNTRY_NAME[code.slice(0, 2)];
+      if (name && !names.includes(name)) {
+        names.push(name);
+      }
     }
   }
   return names;

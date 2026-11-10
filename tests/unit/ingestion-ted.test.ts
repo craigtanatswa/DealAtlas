@@ -142,6 +142,42 @@ describe("TED notice parse", () => {
     expect(parseTedNotice(closed, NOW)).toBeNull();
   });
 
+  it("reduces NUTS place-of-performance codes to country names", () => {
+    const [candidate] = parseTedRaw(
+      {
+        ...readOpenNotice(),
+        "place-of-performance": ["IE061", "IRL"],
+        "buyer-country": ["IRL"],
+      },
+      NOW,
+    );
+    expect(candidate?.exactLocationText).toBe("Ireland");
+    expect(candidate?.exactLocationText).not.toContain("IE061");
+    expect(candidate?.lots[0]?.exactLocationText).toBe("Ireland");
+  });
+
+  it("maps Norway and other EEA country codes on the buyer", () => {
+    const [candidate] = parseTedRaw(
+      {
+        ...readOpenNotice(),
+        "buyer-country": ["NOR"],
+        "place-of-performance": ["NOR"],
+      },
+      NOW,
+    );
+    expect(candidate?.organizations[0]?.countryCode).toBe("NO");
+    expect(candidate?.exactLocationText).toBe("Norway");
+  });
+
+  it("derives a country from a NUTS-only place of performance", () => {
+    const [candidate] = parseTedRaw(
+      { ...readOpenNotice(), "place-of-performance": ["DE300"] },
+      NOW,
+    );
+    expect(candidate?.exactLocationText).toContain("Germany");
+    expect(candidate?.exactLocationText).not.toContain("DE300");
+  });
+
   it("accepts odd optional shapes and still rejects a missing title", () => {
     const notice = {
       ...readOpenNotice(),
