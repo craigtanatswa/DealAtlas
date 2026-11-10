@@ -5,6 +5,12 @@ import { resolveProtectedRouteRedirect } from "@/lib/auth/redirect";
 import type { PublicDatabase } from "@/lib/db/public-schema";
 import { parseDealIdParam } from "@/lib/deals/paths";
 import { dealPathGate, dealPreviewPathSlug } from "@/lib/deals/public-slug";
+import {
+  buildRedirectLocation,
+  resolveDealSlugRedirect,
+  slugRedirectResponse,
+  type SlugRedirectRow,
+} from "@/lib/deals/slug-redirect";
 import { getPublicEnv } from "@/lib/env/public";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
@@ -63,11 +69,14 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
   if (missing) {
     return copyCookies(supabaseResponse, unpublishedDealResponse());
   }
-  const slugGate = await publicDealSlugGate(pathname);
-  if (slugGate === "gone") {
+  const slugGate = await publicDealSlugGate(request);
+  if (slugGate.kind === "redirect") {
+    return copyCookies(supabaseResponse, slugRedirectResponse(slugGate.location));
+  }
+  if (slugGate.kind === "gone") {
     return copyCookies(supabaseResponse, goneSlugResponse());
   }
-  if (slugGate === "missing") {
+  if (slugGate.kind === "missing") {
     return copyCookies(supabaseResponse, unpublishedDealResponse());
   }
 
@@ -109,36 +118,134 @@ async function missingAppDealForFree(
   return !error && data === true;
 }
 
-async function publicDealSlugGate(pathname: string): Promise<"next" | "gone" | "missing"> {
+type PublicDealSlugGateResult =
+  | { kind: "next" | "gone" | "missing" }
+  | { kind: "redirect"; location: URL };
+
+type PreviewGateRow = {
+  slug: string;
+  deal_id: string;
+  is_published: boolean;
+  leakage_risk: string;
+  unpublished_by_admin: boolean;
+  main_category: string | null;
+};
+
+const PREVIEW_GATE_COLUMNS =
+  "slug, deal_id, is_published, leakage_risk, unpublished_by_admin, main_category";
+
+/**
+ * Only an unpublished LOW row that no admin holds can be an expired deal, so
+ * only then read the deal's deadline and status. Published pages and held rows
+ * never trigger the extra query.
+ */
+async function slugRowWithDeal(
+  admin: ReturnType<typeof createSupabaseAdminClient>,
+  preview: PreviewGateRow,
+): Promise<SlugRedirectRow> {
+  let submissionDeadline: string | null = null;
+  let dealStatus: string | null = null;
+  const expiryCandidate =
+    !preview.is_published &&
+    !preview.unpublished_by_admin &&
+    preview.leakage_risk === "LOW";
+  if (expiryCandidate) {
+    const { data: deal, error } = await admin
+      .from("deals")
+      .select("submission_deadline, status")
+      .eq("id", preview.deal_id)
+      .maybeSingle();
+    if (error) {
+      throw new Error("Deal slug gate query failed");
+    }
+    submissionDeadline = deal?.submission_deadline ?? null;
+    dealStatus = deal?.status ?? null;
+  }
+  return {
+    slug: preview.slug,
+    dealId: preview.deal_id,
+    isPublished: preview.is_published,
+    leakageRisk: preview.leakage_risk,
+    unpublishedByAdmin: preview.unpublished_by_admin,
+    mainCategory: preview.main_category,
+    submissionDeadline,
+    dealStatus,
+  };
+}
+
+async function publicDealSlugGate(
+  request: NextRequest,
+): Promise<PublicDealSlugGateResult> {
+  const pathname = request.nextUrl.pathname;
   const slug = dealPreviewPathSlug(pathname);
-  if (slug === null) return "next";
-  if (slug === "") return "missing";
+  if (slug === null) return { kind: "next" };
+  if (slug === "") return { kind: "missing" };
   try {
     const admin = createSupabaseAdminClient();
     const [{ data: retired, error: retiredError }, { data: row, error: rowError }] = await Promise.all([
       admin.rpc("preview_slug_is_retired", { p_slug: slug }),
       admin
         .from("deal_previews")
-        .select("slug, deal_id, is_published, leakage_risk, unpublished_by_admin")
+        .select(PREVIEW_GATE_COLUMNS)
         .eq("slug", slug)
         .maybeSingle(),
     ]);
-    if (retiredError || rowError) return "next";
-    return dealPathGate({
+    if (retiredError || rowError) return { kind: "next" };
+
+    let requested: SlugRedirectRow | null = null;
+    if (row) {
+      requested = await slugRowWithDeal(admin, row);
+    }
+
+    let aliasTarget: SlugRedirectRow | null = null;
+    if (!row && retired === true) {
+      const { data: aliasDealId, error: aliasError } = await admin.rpc(
+        "resolve_preview_slug_alias",
+        { p_slug: slug },
+      );
+      if (!aliasError && aliasDealId) {
+        const { data: aliasRow, error: aliasRowError } = await admin
+          .from("deal_previews")
+          .select(PREVIEW_GATE_COLUMNS)
+          .eq("deal_id", aliasDealId)
+          .maybeSingle();
+        if (aliasRowError) return { kind: "next" };
+        if (aliasRow) {
+          aliasTarget = await slugRowWithDeal(admin, aliasRow);
+        }
+      }
+    }
+
+    const gate = dealPathGate({
       pathname,
       retired: retired === true,
-      match: row
+      match: requested
         ? {
-            slug: row.slug,
-            dealId: row.deal_id,
-            isPublished: row.is_published,
-            leakageRisk: row.leakage_risk,
-            unpublishedByAdmin: row.unpublished_by_admin,
+            slug: requested.slug,
+            dealId: requested.dealId,
+            isPublished: requested.isPublished,
+            leakageRisk: requested.leakageRisk,
+            unpublishedByAdmin: requested.unpublishedByAdmin,
           }
         : null,
     });
+
+    const redirectPath = resolveDealSlugRedirect({
+      requested,
+      retired: retired === true,
+      aliasTarget,
+      now: new Date(),
+    });
+    if (redirectPath) {
+      return {
+        kind: "redirect",
+        location: buildRedirectLocation(redirectPath, request.nextUrl),
+      };
+    }
+
+    return { kind: gate };
   } catch {
-    return "next";
+    return { kind: "next" };
   }
 }
 

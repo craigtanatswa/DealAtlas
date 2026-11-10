@@ -20,7 +20,7 @@ Councils buy works, services and goods all year, often in contract sizes a small
 
 To win a council contract, find the right opportunity early on [DealAtlas](/deals), bid only where you meet the conditions of participation, and answer every question against the published award criteria and weightings, with evidence, a realistic price and specific social value commitments. You'll need to register on the government's central digital platform before you bid, so find the right opportunity on [DealAtlas](/deals) first.
 
-**Find your next contract faster.** [Create your free DealAtlas account](/signup) to filter live UK opportunities by category, value band, closing date and region. When a deal is worth pursuing, [DealAtlas Pro](/pricing) unlocks the buyer, documents, saved searches and alerts. Founding offer: ~~£39/mo~~ £24.17/mo (£290/yr), for as long as you stay subscribed. Limited places.
+**Find your next contract faster.** [Create your free DealAtlas account](/signup) to filter live UK opportunities by category, value band, closing date and region. When a deal is worth pursuing, [DealAtlas Pro](/pricing) unlocks the buyer, documents, saved searches and alerts. {{LIFETIME_PLAN_LINE}}
 
 ## How councils buy under the Procurement Act 2023
 

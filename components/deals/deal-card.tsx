@@ -62,7 +62,7 @@ export function DealCard({
           <h3 className="font-heading mt-3 text-lg leading-snug font-semibold text-balance">
             <Link
               href={destination}
-              className="rounded-sm hover:text-primary focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+              className="rounded-sm hover:text-primary focus-visible:ring-3 focus-visible:ring-ring focus-visible:outline-none"
             >
               {deal.previewTitle}
             </Link>
@@ -165,7 +165,7 @@ export function DealCard({
           ) : null}
           <Link
             href={destination}
-            className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground transition-[color,background-color,transform] duration-150 ease-out hover:bg-primary/80 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none active:scale-[0.96] motion-reduce:active:scale-100"
+            className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground transition-[color,background-color,transform] duration-150 ease-out hover:bg-primary-hover focus-visible:ring-3 focus-visible:ring-ring focus-visible:outline-none active:scale-[0.96] motion-reduce:active:scale-100"
           >
             View opportunity
           </Link>

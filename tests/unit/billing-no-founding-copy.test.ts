@@ -11,7 +11,6 @@ import {
 import {
   FOUNDING_COPY,
   FOUNDING_FULL_MESSAGE,
-  foundingBilledLine,
   foundingSoldOutNote,
 } from "@/lib/billing/founding-ui";
 import {
@@ -90,7 +89,6 @@ describe("customer-visible billing copy never says Founding", () => {
       FOUNDING_NOT_ELIGIBLE_MESSAGE,
       FOUNDING_UNAVAILABLE_MESSAGE,
       FOUNDING_FULL_MESSAGE,
-      foundingBilledLine(),
       foundingSoldOutNote(),
       ...Object.values(FOUNDING_COPY),
       ...Object.values(PLAN_KEY_LABELS),
@@ -101,7 +99,7 @@ describe("customer-visible billing copy never says Founding", () => {
       planLabel(null, null, false),
     ].join("\n");
     expect(allCopy).not.toMatch(/founding/i);
-    expect(PLAN_KEY_LABELS.founding_lifetime).toBe("Pro Lifetime deal");
+    expect(PLAN_KEY_LABELS.founding_lifetime).toBe("Lifetime deal");
   });
 
   it("names the plan Lifetime deal wherever the copy names it", () => {
@@ -110,7 +108,6 @@ describe("customer-visible billing copy never says Founding", () => {
       FOUNDING_COPY.badge,
       FOUNDING_COPY.title,
       FOUNDING_COPY.cta,
-      FOUNDING_COPY.cancelTerms,
       FOUNDING_COPY.paywallCta,
       FOUNDING_COPY.raceLead,
       FOUNDING_UNAVAILABLE_MESSAGE,

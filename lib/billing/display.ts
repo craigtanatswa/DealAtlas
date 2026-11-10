@@ -1,13 +1,14 @@
 import { format } from "date-fns";
 
 import { DISPLAY_PRICING } from "@/lib/constants";
+import { PLAN_PUBLIC_NAME } from "@/lib/billing/lifetime-copy";
 import type { EntitlementSnapshot } from "@/lib/entitlements/types";
 import type { CheckoutPlanKey } from "@/lib/billing/types";
 
 export const PLAN_KEY_LABELS: Record<CheckoutPlanKey, string> = {
   PRO_MONTHLY: "Pro monthly",
   PRO_ANNUAL: "Pro annual",
-  founding_lifetime: "Pro Lifetime deal",
+  founding_lifetime: PLAN_PUBLIC_NAME,
 };
 
 export const STATUS_LABELS: Record<string, string> = {

@@ -22,7 +22,7 @@ UK public buyers publish government tenders and other contract notices under the
 
 Start on [DealAtlas](/deals). Browse live UK public and private tenders and opportunities for SMEs in one place, filter by category, value band, closing date and region, then open [Pro](/pricing) for buyer details, documents, saved searches and alerts. Since 24 February 2025, buyers in England, Wales and Northern Ireland publish new above-threshold and advertised below-threshold notices on the central digital platform under the Act. Watch pipeline, preliminary market engagement and planned procurement notices to see work early, then follow each opportunity into the buyer's named system for documents and submission.
 
-**Find your next contract faster.** [Create your free DealAtlas account](/signup) to filter live UK opportunities by category, value band, closing date and region. When a deal is worth pursuing, [DealAtlas Pro](/pricing) unlocks the buyer, documents, saved searches and alerts. Founding offer: ~~£39/mo~~ £24.17/mo (£290/yr), for as long as you stay subscribed. Limited places.
+**Find your next contract faster.** [Create your free DealAtlas account](/signup) to filter live UK opportunities by category, value band, closing date and region. When a deal is worth pursuing, [DealAtlas Pro](/pricing) unlocks the buyer, documents, saved searches and alerts. {{LIFETIME_PLAN_LINE}}
 
 ## Who buys, and which rules they follow
 

@@ -80,7 +80,7 @@ export default async function GuidePage({ params }: PageProps) {
           <nav aria-label="Breadcrumb" className="text-sm font-medium text-muted-foreground">
             <Link
               href="/guides"
-              className="hover:underline focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:rounded-sm focus-visible:outline-none"
+              className="hover:underline focus-visible:ring-3 focus-visible:ring-ring focus-visible:rounded-sm focus-visible:outline-none"
             >
               Guides
             </Link>

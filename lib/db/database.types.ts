@@ -3561,6 +3561,14 @@ export type Database = {
       unpublish_stale_previews: { Args: { p_run_id?: string }; Returns: Json }
       resolve_preview_deal_id: { Args: { p_slug: string }; Returns: string }
       retire_preview_slug: { Args: { p_slug: string }; Returns: undefined }
+      record_preview_slug_alias: {
+        Args: { p_slug: string; p_deal_id: string }
+        Returns: undefined
+      }
+      resolve_preview_slug_alias: {
+        Args: { p_slug: string }
+        Returns: string | null
+      }
       search_deal_previews: {
         Args: {
           p_buyer_sector?: Database["public"]["Enums"]["buyer_sector"]

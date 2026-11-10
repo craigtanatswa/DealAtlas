@@ -49,7 +49,7 @@ export default function CategoriesIndexPage() {
           <li key={landing.slug}>
             <Link
               href={landing.path}
-              className="flex h-full flex-col gap-2 rounded-lg border border-border bg-background p-5 transition-colors hover:border-primary/30 hover:bg-muted/20 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+              className="flex h-full flex-col gap-2 rounded-lg border border-control-border bg-background p-5 transition-colors hover:border-primary hover:bg-muted/20 focus-visible:ring-3 focus-visible:ring-ring focus-visible:outline-none"
             >
               <h2 className="font-heading text-base font-semibold leading-snug">
                 {landing.name}

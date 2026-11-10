@@ -250,7 +250,7 @@ export function TestimonialCarousel() {
               type="button"
               aria-label={`Show testimonial from ${testimonial.name}`}
               aria-current={selected ? "true" : undefined}
-              className="flex size-11 items-center justify-center rounded-full transition-colors duration-300 ease-out focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+              className="flex size-11 items-center justify-center rounded-full transition-colors duration-300 ease-out focus-visible:ring-3 focus-visible:ring-ring focus-visible:outline-none"
               onClick={() => goToLogical(index)}
             >
               <span
