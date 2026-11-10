@@ -13,6 +13,27 @@ export type MemoryFoundingSlot = {
   status: "active" | "ended" | "released";
 };
 
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+function readString(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function readNumber(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+}
+
 export function createMemoryBillingStore(seed?: {
   profileIds?: string[];
   subscriptions?: StoredSubscription[];
@@ -175,13 +196,11 @@ export function createMemoryBillingStore(seed?: {
       return "revoked";
     },
     async revokeSubscription(input) {
-      if (!input.eventId || (!input.subscriptionId && !input.customerId)) {
+      if (!input.eventId || !input.subscriptionId) {
         return "invalid";
       }
-      const match = subscriptions.find((row) =>
-        input.subscriptionId
-          ? row.dodoSubscriptionId === input.subscriptionId
-          : row.dodoCustomerId === input.customerId && row.isCurrent,
+      const match = subscriptions.find(
+        (row) => row.dodoSubscriptionId === input.subscriptionId,
       );
       if (!match) {
         return "not_found";
@@ -193,8 +212,24 @@ export function createMemoryBillingStore(seed?: {
       match.revokedAt = new Date().toISOString();
       match.revokeReason = input.reason;
       match.cancelAtPeriodEnd = false;
-      match.isCurrent = true;
       return "revoked";
+    },
+    async getPaymentFacts(paymentId) {
+      for (const event of events.values()) {
+        if (event.eventType !== "payment.succeeded") {
+          continue;
+        }
+        const data = asRecord(asRecord(event.payload).data);
+        if (readString(data.payment_id) !== paymentId) {
+          continue;
+        }
+        return {
+          subscriptionId: readString(data.subscription_id),
+          totalAmount: readNumber(data.total_amount),
+          currency: readString(data.currency),
+        };
+      }
+      return null;
     },
     async getLifetimeGrantByPayment(paymentId) {
       const grant = lifetimeGrants.find(

@@ -8,6 +8,7 @@ import type {
   BillingStore,
   GrantLifetimeResult,
   IncomingBillingEvent,
+  PaymentFacts,
   RevokeLifetimeResult,
   RevokeSubscriptionResult,
   StoredSubscription,
@@ -40,10 +41,38 @@ function mapSubscription(row: SubscriptionRow): StoredSubscription {
     cancelledAt: row.cancelled_at,
     lastProviderEventAt: row.last_provider_event_at,
     isCurrent: row.is_current,
-    recurringAmount: row.recurring_amount,
-    recurringCurrency: row.recurring_currency,
     revokedAt: row.revoked_at,
     revokeReason: row.revoke_reason,
+  };
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+function readString(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function readNumber(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+}
+
+function mapPaymentFacts(payload: Json): PaymentFacts {
+  const data = asRecord(asRecord(payload).data);
+  return {
+    subscriptionId: readString(data.subscription_id),
+    totalAmount: readNumber(data.total_amount),
+    currency: readString(data.currency),
   };
 }
 
@@ -132,7 +161,7 @@ export function createBillingStore(): BillingStore {
       const { data, error } = await admin
         .from("subscriptions")
         .select(
-          "user_id, dodo_customer_id, dodo_subscription_id, dodo_product_id, plan_key, status, billing_interval, current_period_start, current_period_end, cancel_at_period_end, cancelled_at, last_provider_event_at, is_current, recurring_amount, recurring_currency, revoked_at, revoke_reason",
+          "user_id, dodo_customer_id, dodo_subscription_id, dodo_product_id, plan_key, status, billing_interval, current_period_start, current_period_end, cancel_at_period_end, cancelled_at, last_provider_event_at, is_current, revoked_at, revoke_reason",
         )
         .eq("dodo_subscription_id", dodoSubscriptionId)
         .maybeSingle();
@@ -147,7 +176,7 @@ export function createBillingStore(): BillingStore {
       const { data, error } = await admin
         .from("subscriptions")
         .select(
-          "user_id, dodo_customer_id, dodo_subscription_id, dodo_product_id, plan_key, status, billing_interval, current_period_start, current_period_end, cancel_at_period_end, cancelled_at, last_provider_event_at, is_current, recurring_amount, recurring_currency, revoked_at, revoke_reason",
+          "user_id, dodo_customer_id, dodo_subscription_id, dodo_product_id, plan_key, status, billing_interval, current_period_start, current_period_end, cancel_at_period_end, cancelled_at, last_provider_event_at, is_current, revoked_at, revoke_reason",
         )
         .eq("dodo_customer_id", dodoCustomerId)
         .eq("is_current", true)
@@ -163,7 +192,7 @@ export function createBillingStore(): BillingStore {
       const { data, error } = await admin
         .from("subscriptions")
         .select(
-          "user_id, dodo_customer_id, dodo_subscription_id, dodo_product_id, plan_key, status, billing_interval, current_period_start, current_period_end, cancel_at_period_end, cancelled_at, last_provider_event_at, is_current, recurring_amount, recurring_currency, revoked_at, revoke_reason",
+          "user_id, dodo_customer_id, dodo_subscription_id, dodo_product_id, plan_key, status, billing_interval, current_period_start, current_period_end, cancel_at_period_end, cancelled_at, last_provider_event_at, is_current, revoked_at, revoke_reason",
         )
         .eq("user_id", userId)
         .eq("is_current", true)
@@ -217,8 +246,6 @@ export function createBillingStore(): BillingStore {
         cancelled_at: row.cancelledAt,
         last_provider_event_at: row.lastProviderEventAt,
         is_current: true,
-        recurring_amount: row.recurringAmount ?? null,
-        recurring_currency: row.recurringCurrency ?? null,
         revoked_at: row.revokedAt ?? null,
         revoke_reason: row.revokeReason ?? null,
         updated_at: new Date().toISOString(),
@@ -245,6 +272,23 @@ export function createBillingStore(): BillingStore {
         error,
       });
       return result as GrantLifetimeResult;
+    },
+
+    async getPaymentFacts(paymentId) {
+      const { data, error } = await admin
+        .from("billing_events")
+        .select("payload")
+        .eq("provider", "DODO")
+        .eq("event_type", "payment.succeeded")
+        .filter("payload->data->>payment_id", "eq", paymentId)
+        .order("received_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      const row = throwIfQueryError("Failed to load payment facts", {
+        data,
+        error,
+      });
+      return row ? mapPaymentFacts(row.payload) : null;
     },
 
     async getLifetimeGrantByPayment(paymentId) {
@@ -284,7 +328,6 @@ export function createBillingStore(): BillingStore {
       const { data, error } = await admin.rpc("revoke_subscription_access", {
         p_event_id: input.eventId,
         p_subscription_id: input.subscriptionId,
-        p_customer_id: input.customerId,
         p_reason: input.reason,
       });
       const result = throwIfQueryError("Failed to revoke subscription", {

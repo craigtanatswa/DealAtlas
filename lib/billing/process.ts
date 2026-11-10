@@ -13,6 +13,7 @@ import { syncFoundingSlot } from "@/lib/billing/founding-db";
 import {
   cancelDodoSubscription,
   reconcileDodoSubscription,
+  retrieveDodoPayment,
 } from "@/lib/billing/reconcile";
 import { createBillingStore } from "@/lib/billing/store";
 import type { ApplyResult } from "@/lib/billing/types";
@@ -40,6 +41,7 @@ export async function processVerifiedDodoWebhook(input: {
       }
     },
     cancelSubscription: cancelDodoSubscription,
+    retrievePayment: retrieveDodoPayment,
   });
 
   // payment.failed is applied as "ignored" and still releases a reservation.

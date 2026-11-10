@@ -22,6 +22,7 @@ import {
   LIFETIME_OVER_CAP_FLAG,
   LIFETIME_PARTIAL_REFUND_NOTE,
   LIFETIME_REFUND_REVIEW_FLAG,
+  SUBSCRIPTION_REVERSAL_UNRESOLVED_FLAG,
 } from "@/lib/billing/apply";
 import { classifyRefund } from "@/lib/billing/refund";
 import { planLabel, priceLabel } from "@/lib/billing/display";
@@ -484,8 +485,14 @@ describe("lifetime webhook extraction and application", () => {
     expect(store.subscriptions).toEqual([subscription]);
     expect(JSON.stringify(store.subscriptions)).toBe(snapshot);
     expect(store.lifetimeGrants).toHaveLength(0);
-    expect(store.events.get(refund.providerEventId)?.status).toBe("IGNORED");
-    expect(store.events.get(lost.providerEventId)?.status).toBe("IGNORED");
+    expect(store.events.get(refund.providerEventId)).toMatchObject({
+      status: "PROCESSED",
+      processingError: SUBSCRIPTION_REVERSAL_UNRESOLVED_FLAG,
+    });
+    expect(store.events.get(lost.providerEventId)).toMatchObject({
+      status: "PROCESSED",
+      processingError: SUBSCRIPTION_REVERSAL_UNRESOLVED_FLAG,
+    });
 
     const entitlement = resolveEntitlement(
       createSubscriptionFixture({ dodoProductId: products.PRO_MONTHLY }),

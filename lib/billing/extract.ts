@@ -78,8 +78,6 @@ export function snapshotFromSubscriptionFields(
     cancelledAt: toIsoDate(data.cancelled_at as Date | string | null | undefined),
     productKnown:
       Boolean(mapped) && webhookAcceptedProductIds(products).includes(productId),
-    recurringAmount: readNumber(data.recurring_pre_tax_amount),
-    recurringCurrency: readString(data.currency),
   };
 }
 
@@ -203,7 +201,6 @@ export function extractBillingEvent(
   const disputeNotice = extractDisputeNotice(payload.type, data);
   const payloadHash = hashWebhookPayload(rawBody);
   const occurredAt = toIsoDate(payload.timestamp);
-  const customer = asRecord(data.customer);
   const refundId = readString(data.refund_id);
   const disputeId = readString(data.dispute_id);
 
@@ -216,7 +213,9 @@ export function extractBillingEvent(
       subscriptionId: subscription?.dodoSubscriptionId ?? payment?.subscriptionId,
       paymentId:
         payment?.paymentId ?? reversal?.paymentId ?? disputeNotice?.paymentId,
-      refundId,
+      // Only a successful refund reverses access. A failed refund keeps its
+      // normal header/hash identity so it cannot shadow a later success.
+      refundId: payload.type === "refund.succeeded" ? refundId : null,
       disputeId,
     }),
     eventType: payload.type,
@@ -229,8 +228,6 @@ export function extractBillingEvent(
     disputeNotice,
     refundId,
     disputeId,
-    paymentActionSubscriptionId: readString(data.subscription_id),
-    paymentActionCustomerId: readString(customer.customer_id),
   };
 }
 

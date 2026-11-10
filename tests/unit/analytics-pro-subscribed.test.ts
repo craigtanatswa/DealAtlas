@@ -20,6 +20,7 @@ vi.mock("@/lib/billing/founding-db", () => ({ syncFoundingSlot: vi.fn() }));
 vi.mock("@/lib/billing/reconcile", () => ({
   reconcileDodoSubscription: vi.fn(async () => null),
   cancelDodoSubscription: vi.fn(async () => {}),
+  retrieveDodoPayment: vi.fn(async () => null),
 }));
 
 import {

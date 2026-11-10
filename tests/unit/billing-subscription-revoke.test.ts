@@ -9,13 +9,19 @@ import {
   applyBillingEvent,
   billingWebhookFixtures,
   createMemoryBillingStore,
+  disputeWebhookFixture,
   extractBillingEvent,
+  paymentWebhookFixture,
+  refundWebhookFixture,
 } from "@/lib/billing";
 import {
+  DISPUTE_LOG_ONLY_NOTE,
+  DISPUTE_NO_ACTION_NOTE,
   SUBSCRIPTION_ALREADY_REVOKED_NOTE,
   SUBSCRIPTION_CANCEL_FAILED_FLAG,
   SUBSCRIPTION_PARTIAL_REFUND_NOTE,
   SUBSCRIPTION_REFUND_REVIEW_FLAG,
+  SUBSCRIPTION_REVERSAL_UNRESOLVED_FLAG,
   SUBSCRIPTION_REVOKED_TERMINAL_NOTE,
 } from "@/lib/billing/apply";
 import {
@@ -23,9 +29,12 @@ import {
   resolveEntitlement,
 } from "@/lib/entitlements";
 
-type Payload = ReturnType<typeof billingWebhookFixtures.monthlyActive>;
+const PAYMENT_ID = "pay_dealatlas_fixture";
+const MONTHLY_TOTAL = 3900;
 
-function incoming(payload: Payload, webhookId: string) {
+type Store = ReturnType<typeof createMemoryBillingStore>;
+
+function incoming(payload: Record<string, unknown>, webhookId: string) {
   return extractBillingEvent(
     WebhookPayloadSchema.parse(payload),
     JSON.stringify(payload),
@@ -34,7 +43,20 @@ function incoming(payload: Payload, webhookId: string) {
   );
 }
 
-function incomingAt(payload: Payload, webhookId: string, timestamp: string) {
+function incomingRaw(payload: Record<string, unknown>, webhookId: string) {
+  return extractBillingEvent(
+    payload as unknown as Parameters<typeof extractBillingEvent>[0],
+    JSON.stringify(payload),
+    webhookId,
+    BILLING_FIXTURE_PRODUCTS,
+  );
+}
+
+function incomingAt(
+  payload: Record<string, unknown>,
+  webhookId: string,
+  timestamp: string,
+) {
   return incoming({ ...payload, timestamp }, webhookId);
 }
 
@@ -49,9 +71,7 @@ function fixtureAllowlist(): ReadonlySet<string> {
   ]);
 }
 
-function entitlementFromStore(
-  store: ReturnType<typeof createMemoryBillingStore>,
-) {
+function entitlementFromStore(store: Store) {
   const row = store.subscriptions.find((item) => item.isCurrent) ?? null;
   if (!row) {
     return resolveEntitlement(null, ENTITLEMENT_FIXTURE_NOW, fixtureAllowlist());
@@ -74,7 +94,31 @@ function entitlementFromStore(
   );
 }
 
-async function activeStore() {
+async function seedPayment(
+  store: Store,
+  options: {
+    paymentId?: string;
+    subscriptionId?: string;
+    totalAmount?: number;
+    currency?: string;
+    webhookId?: string;
+  } = {},
+) {
+  const event = incoming(
+    paymentWebhookFixture("payment.succeeded", {
+      payment_id: options.paymentId ?? PAYMENT_ID,
+      subscription_id: options.subscriptionId ?? BILLING_FIXTURE_SUBSCRIPTION_ID,
+      total_amount: options.totalAmount ?? MONTHLY_TOTAL,
+      currency: options.currency ?? "GBP",
+      metadata: {},
+    }),
+    options.webhookId ?? "evt_payment_succeeded",
+  );
+  await applyBillingEvent(event, store);
+  return event;
+}
+
+async function activeStore(options: { seedPayment?: boolean } = {}) {
   const store = createMemoryBillingStore({
     profileIds: [BILLING_FIXTURE_USER_ID],
   });
@@ -89,18 +133,58 @@ async function activeStore() {
     ),
   ).toEqual({ outcome: "applied" });
   expect(entitlementFromStore(store).plan).toBe("PRO");
+  if (options.seedPayment !== false) {
+    await seedPayment(store);
+  }
   return store;
 }
 
 function subscriptionRefund(overrides: Record<string, unknown> = {}) {
-  return billingWebhookFixtures.lifetimeRefund({
-    payment_id: "pay_dealatlas_fixture",
+  return refundWebhookFixture("refund.succeeded", {
+    payment_id: PAYMENT_ID,
+    refund_id: "ref_dealatlas_fixture",
+    amount: MONTHLY_TOTAL,
+    currency: "GBP",
+    is_partial: false,
     metadata: {},
     ...overrides,
+  }) as Record<string, unknown>;
+}
+
+function realDispute(eventType: string, overrides: Record<string, unknown> = {}) {
+  const payload = disputeWebhookFixture(eventType, {
+    amount: String(MONTHLY_TOTAL),
+    currency: "GBP",
+    payment_id: PAYMENT_ID,
+    dispute_id: `dsp_${eventType.replace(/\W/g, "_")}`,
+    ...overrides,
   });
+  const data = { ...payload.data };
+  delete data.customer;
+  delete data.subscription_id;
+  return { ...payload, data } as Record<string, unknown>;
 }
 
 describe("subscription refund and chargeback revocation", () => {
+  it("resolves a refund from the stored payment.succeeded event before provider lookup", async () => {
+    const store = await activeStore();
+    const cancel = vi.fn(async () => {});
+    const retrievePayment = vi.fn(async () => null);
+
+    const event = incoming(subscriptionRefund(), "evt_refund_local_payment");
+    expect(
+      await applyBillingEvent(event, store, {
+        cancelSubscription: cancel,
+        retrievePayment,
+      }),
+    ).toEqual({ outcome: "applied" });
+
+    expect(entitlementFromStore(store).plan).toBe("FREE");
+    expect(retrievePayment).not.toHaveBeenCalled();
+    expect(cancel).toHaveBeenCalledTimes(1);
+    expect(cancel).toHaveBeenCalledWith(BILLING_FIXTURE_SUBSCRIPTION_ID);
+  });
+
   it("revokes Pro and cancels Dodo once for a full refund", async () => {
     const store = await activeStore();
     const cancel = vi.fn(async () => {});
@@ -146,7 +230,7 @@ describe("subscription refund and chargeback revocation", () => {
     expect(cancel).toHaveBeenCalledTimes(1);
   });
 
-  it("revokes an annual subscription using its stored recurring total", async () => {
+  it("revokes an annual subscription when the refund matches the payment total", async () => {
     const store = createMemoryBillingStore({
       profileIds: [BILLING_FIXTURE_USER_ID],
     });
@@ -158,11 +242,14 @@ describe("subscription refund and chargeback revocation", () => {
       ),
       store,
     );
-    expect(store.subscriptions[0]?.recurringAmount).toBe(35000);
+    await seedPayment(store, {
+      totalAmount: 5000,
+      webhookId: "evt_annual_payment",
+    });
 
     const cancel = vi.fn(async () => {});
     await applyBillingEvent(
-      incoming(subscriptionRefund({ amount: 35000 }), "evt_refund_annual"),
+      incoming(subscriptionRefund({ amount: 5000 }), "evt_refund_annual"),
       store,
       { cancelSubscription: cancel },
     );
@@ -171,9 +258,26 @@ describe("subscription refund and chargeback revocation", () => {
     expect(store.subscriptions[0]).toMatchObject({
       status: "EXPIRED",
       revokeReason: "refund",
-      recurringAmount: 35000,
     });
     expect(cancel).toHaveBeenCalledTimes(1);
+  });
+
+  it("classifies against the tax-inclusive payment total, not pre-tax recurring amount", async () => {
+    const store = await activeStore();
+    const cancel = vi.fn(async () => {});
+
+    const event = incoming(
+      subscriptionRefund({ amount: 3300 }),
+      "evt_refund_partial_tax_inclusive",
+    );
+    await applyBillingEvent(event, store, { cancelSubscription: cancel });
+
+    expect(entitlementFromStore(store).plan).toBe("PRO");
+    expect(store.subscriptions[0]?.revokedAt).toBeNull();
+    expect(store.events.get(event.providerEventId)?.processingError).toBe(
+      SUBSCRIPTION_PARTIAL_REFUND_NOTE,
+    );
+    expect(cancel).not.toHaveBeenCalled();
   });
 
   it("keeps Pro for a partial refund without cancelling", async () => {
@@ -199,7 +303,7 @@ describe("subscription refund and chargeback revocation", () => {
     const cancel = vi.fn(async () => {});
 
     const event = incoming(
-      subscriptionRefund({ amount: 3900, currency: "USD" }),
+      subscriptionRefund({ amount: MONTHLY_TOTAL, currency: "USD" }),
       "evt_refund_unknown",
     );
     await applyBillingEvent(event, store, { cancelSubscription: cancel });
@@ -212,6 +316,85 @@ describe("subscription refund and chargeback revocation", () => {
     expect(cancel).not.toHaveBeenCalled();
   });
 
+  it("falls back to a read-only provider payment lookup when no local event exists", async () => {
+    const store = await activeStore({ seedPayment: false });
+    const cancel = vi.fn(async () => {});
+    const retrievePayment = vi.fn(async () => ({
+      subscriptionId: BILLING_FIXTURE_SUBSCRIPTION_ID,
+      totalAmount: MONTHLY_TOTAL,
+      currency: "GBP",
+    }));
+
+    await applyBillingEvent(
+      incoming(subscriptionRefund(), "evt_refund_provider_lookup"),
+      store,
+      { cancelSubscription: cancel, retrievePayment },
+    );
+
+    expect(retrievePayment).toHaveBeenCalledWith(PAYMENT_ID);
+    expect(entitlementFromStore(store).plan).toBe("FREE");
+    expect(cancel).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not revoke, flag and never cancels when the payment cannot be resolved", async () => {
+    const store = await activeStore({ seedPayment: false });
+    const cancel = vi.fn(async () => {});
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const retrievePayment = vi.fn(async () => {
+      throw new Error("provider unavailable");
+    });
+
+    const event = incoming(
+      subscriptionRefund(),
+      "evt_refund_unresolvable_payment",
+    );
+    try {
+      expect(
+        await applyBillingEvent(event, store, {
+          cancelSubscription: cancel,
+          retrievePayment,
+        }),
+      ).toEqual({ outcome: "ignored" });
+    } finally {
+      warn.mockRestore();
+    }
+
+    expect(entitlementFromStore(store).plan).toBe("PRO");
+    expect(store.subscriptions[0]?.revokedAt).toBeNull();
+    expect(store.events.get(event.providerEventId)).toMatchObject({
+      status: "PROCESSED",
+      processingError: SUBSCRIPTION_REVERSAL_UNRESOLVED_FLAG,
+    });
+    expect(cancel).not.toHaveBeenCalled();
+    expect(retrievePayment).toHaveBeenCalledWith(PAYMENT_ID);
+  });
+
+  it("flags review without cancelling when no payment lookup is available", async () => {
+    const store = await activeStore({ seedPayment: false });
+    const cancel = vi.fn(async () => {});
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    const event = incoming(
+      subscriptionRefund({ refund_id: "ref_no_lookup_fixture" }),
+      "evt_refund_no_lookup",
+    );
+    try {
+      expect(
+        await applyBillingEvent(event, store, { cancelSubscription: cancel }),
+      ).toEqual({ outcome: "ignored" });
+    } finally {
+      warn.mockRestore();
+    }
+
+    expect(entitlementFromStore(store).plan).toBe("PRO");
+    expect(store.subscriptions[0]?.revokedAt).toBeNull();
+    expect(store.events.get(event.providerEventId)).toMatchObject({
+      status: "PROCESSED",
+      processingError: SUBSCRIPTION_REVERSAL_UNRESOLVED_FLAG,
+    });
+    expect(cancel).not.toHaveBeenCalled();
+  });
+
   it.each([
     ["dispute.accepted", "evt_dispute_accepted"],
     ["dispute.lost", "evt_dispute_lost"],
@@ -219,17 +402,13 @@ describe("subscription refund and chargeback revocation", () => {
     const store = await activeStore();
     const cancel = vi.fn(async () => {});
 
-    await applyBillingEvent(
-      incoming(
-        billingWebhookFixtures.lifetimeDispute(eventType as string, {
-          amount: "3900",
-          payment_id: "pay_dealatlas_fixture",
-        }) as Payload,
-        webhookId,
-      ),
-      store,
-      { cancelSubscription: cancel },
-    );
+    const event = incomingRaw(realDispute(eventType), webhookId);
+    expect(event.reversal).toEqual({
+      paymentId: PAYMENT_ID,
+      kind: "dispute",
+    });
+
+    await applyBillingEvent(event, store, { cancelSubscription: cancel });
 
     expect(entitlementFromStore(store).plan).toBe("FREE");
     expect(store.subscriptions[0]).toMatchObject({
@@ -239,34 +418,122 @@ describe("subscription refund and chargeback revocation", () => {
     expect(cancel).toHaveBeenCalledTimes(1);
   });
 
-  it("does not re-grant or clear the marker on later events for the same subscription", async () => {
+  it.each([
+    ["dispute.opened", DISPUTE_LOG_ONLY_NOTE],
+    ["dispute.challenged", DISPUTE_LOG_ONLY_NOTE],
+  ])("logs %s without revoking", async (eventType, note) => {
     const store = await activeStore();
     const cancel = vi.fn(async () => {});
-    await applyBillingEvent(
-      incoming(subscriptionRefund(), "evt_refund_terminal"),
-      store,
-      { cancelSubscription: cancel },
-    );
 
-    const lateActive = incomingAt(
-      billingWebhookFixtures.monthlyActive(),
-      "evt_late_active",
-      "2026-06-03T12:00:00.000Z",
-    );
+    const event = incomingRaw(realDispute(eventType), `evt_${eventType}`);
     expect(
-      await applyBillingEvent(lateActive, store, { cancelSubscription: cancel }),
+      await applyBillingEvent(event, store, { cancelSubscription: cancel }),
     ).toEqual({ outcome: "ignored" });
-    expect(store.events.get("evt_late_active")?.processingError).toBe(
-      SUBSCRIPTION_REVOKED_TERMINAL_NOTE,
-    );
-    expect(store.subscriptions[0]).toMatchObject({
-      status: "EXPIRED",
-      revokeReason: "refund",
-    });
-    expect(store.subscriptions[0]?.revokedAt).toBeTruthy();
-    expect(entitlementFromStore(store).plan).toBe("FREE");
-    expect(cancel).toHaveBeenCalledTimes(1);
+
+    expect(entitlementFromStore(store).plan).toBe("PRO");
+    expect(store.events.get(event.providerEventId)?.processingError).toBe(note);
+    expect(cancel).not.toHaveBeenCalled();
   });
+
+  it.each([
+    "dispute.won",
+    "dispute.cancelled",
+    "dispute.expired",
+  ])("keeps Pro for %s", async (eventType) => {
+    const store = await activeStore();
+    const cancel = vi.fn(async () => {});
+
+    const event = incomingRaw(realDispute(eventType), `evt_${eventType}`);
+    expect(
+      await applyBillingEvent(event, store, { cancelSubscription: cancel }),
+    ).toEqual({ outcome: "ignored" });
+
+    expect(entitlementFromStore(store).plan).toBe("PRO");
+    expect(store.subscriptions[0]?.revokedAt).toBeNull();
+    expect(store.events.get(event.providerEventId)?.processingError).toBe(
+      DISPUTE_NO_ACTION_NOTE,
+    );
+    expect(cancel).not.toHaveBeenCalled();
+  });
+
+  it("never revokes another customer's subscription for an unrelated payment", async () => {
+    const store = await activeStore({ seedPayment: false });
+    store.subscriptions.push({
+      userId: "b2000000-0000-4000-8000-000000000099",
+      dodoCustomerId: "cus_dealatlas_fixture",
+      dodoSubscriptionId: "sub_other_customer",
+      dodoProductId: BILLING_FIXTURE_PRODUCTS.PRO_ANNUAL,
+      planKey: "PRO_ANNUAL",
+      status: "ACTIVE",
+      billingInterval: "ANNUAL",
+      currentPeriodStart: "2026-06-01T00:00:00.000Z",
+      currentPeriodEnd: "2027-06-01T00:00:00.000Z",
+      cancelAtPeriodEnd: false,
+      cancelledAt: null,
+      lastProviderEventAt: "2026-06-01T00:00:00.000Z",
+      isCurrent: true,
+    });
+    const cancel = vi.fn(async () => {});
+
+    const event = incoming(
+      subscriptionRefund({ payment_id: "pay_unrelated_fixture" }),
+      "evt_refund_unrelated_customer",
+    );
+    await applyBillingEvent(event, store, { cancelSubscription: cancel });
+
+    expect(store.events.get(event.providerEventId)).toMatchObject({
+      status: "PROCESSED",
+      processingError: SUBSCRIPTION_REVERSAL_UNRESOLVED_FLAG,
+    });
+    expect(store.subscriptions.every((row) => row.revokedAt == null)).toBe(true);
+    expect(cancel).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [
+      "subscription.active",
+      () => billingWebhookFixtures.monthlyActive(),
+      "evt_late_active",
+    ],
+    [
+      "subscription.renewed",
+      () => billingWebhookFixtures.renewed(),
+      "evt_late_renewed",
+    ],
+    [
+      "subscription.updated",
+      () => billingWebhookFixtures.updated(),
+      "evt_late_updated",
+    ],
+  ])(
+    "does not re-grant or clear the marker on later %s for the same subscription",
+    async (_eventType, fixture, webhookId) => {
+      const store = await activeStore();
+      const cancel = vi.fn(async () => {});
+      await applyBillingEvent(
+        incoming(subscriptionRefund(), "evt_refund_terminal"),
+        store,
+        { cancelSubscription: cancel },
+      );
+
+      const event = incoming(fixture(), webhookId);
+      expect(
+        await applyBillingEvent(event, store, {
+          cancelSubscription: cancel,
+        }),
+      ).toEqual({ outcome: "ignored" });
+      expect(store.events.get(webhookId)?.processingError).toBe(
+        SUBSCRIPTION_REVOKED_TERMINAL_NOTE,
+      );
+      expect(store.subscriptions[0]).toMatchObject({
+        status: "EXPIRED",
+        revokeReason: "refund",
+      });
+      expect(store.subscriptions[0]?.revokedAt).toBeTruthy();
+      expect(entitlementFromStore(store).plan).toBe("FREE");
+      expect(cancel).toHaveBeenCalledTimes(1);
+    },
+  );
 
   it("still grants Pro for a new subscription id after a revoke", async () => {
     const store = await activeStore();
@@ -281,7 +548,7 @@ describe("subscription refund and chargeback revocation", () => {
       {
         ...payload,
         data: { ...payload.data, subscription_id: "sub_new_after_revoke" },
-      } as Payload,
+      },
       "evt_new_subscription",
       "2026-06-03T12:00:00.000Z",
     );
@@ -322,7 +589,7 @@ describe("subscription refund and chargeback revocation", () => {
     const logs = warn.mock.calls.map((call) => call.map(String).join(" ")).join("\n");
     expect(logs).toContain(SUBSCRIPTION_CANCEL_FAILED_FLAG);
     expect(logs).not.toContain(BILLING_FIXTURE_SUBSCRIPTION_ID);
-    expect(logs).not.toContain("pay_dealatlas_fixture");
+    expect(logs).not.toContain(PAYMENT_ID);
     expect(logs).not.toContain("pro@example.com");
     warn.mockRestore();
   });
