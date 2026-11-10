@@ -150,7 +150,7 @@ test.describe("Checkout duplicate-subscription guard", () => {
     await loginAs(page, user!);
     const before = await foundingRemaining(env);
     const headers = { Accept: "application/json", "content-type": "application/json" };
-    for (const planKey of ["PRO_MONTHLY", "PRO_ANNUAL", "FOUNDING"]) {
+    for (const planKey of ["PRO_MONTHLY", "PRO_ANNUAL", "founding_lifetime"]) {
       const response = await page.request.post("/api/billing/checkout", {
         headers,
         data: { planKey },
