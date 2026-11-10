@@ -101,15 +101,18 @@ async function main() {
     source !== "find-a-grant" &&
     source !== "innovate-uk" &&
     source !== "gca-agreements" &&
-    source !== "gca-procurement-pipeline"
+    source !== "gca-procurement-pipeline" &&
+    source !== "uk-infrastructure-pipeline"
   ) {
     throw new Error(
-      "OPEN_INGEST_SOURCE must be find-a-tender, contracts-finder, public-contracts-scotland, sell2wales, ted, find-a-grant, innovate-uk, gca-agreements, or gca-procurement-pipeline",
+      "OPEN_INGEST_SOURCE must be find-a-tender, contracts-finder, public-contracts-scotland, sell2wales, ted, find-a-grant, innovate-uk, gca-agreements, gca-procurement-pipeline, or uk-infrastructure-pipeline",
     );
   }
   const dealIds = phase === "previews" ? readChangedDealIds(statePath) : undefined;
   const result =
-    source === "gca-agreements" || source === "gca-procurement-pipeline"
+    source === "gca-agreements" ||
+    source === "gca-procurement-pipeline" ||
+    source === "uk-infrastructure-pipeline"
       ? await runOpenCatalogueIngest({
           store,
           dryRun: phase === "previews" ? false : dryRun,

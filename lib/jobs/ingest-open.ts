@@ -60,6 +60,11 @@ import {
   GCA_PIPELINE_SOURCE_KEY,
 } from "@/ingestion/sources/gca/constants";
 import { createGcaPipelineAdapter } from "@/ingestion/sources/gca/pipeline";
+import { createUkInfrastructurePipelineAdapter } from "@/ingestion/sources/uk-infrastructure-pipeline/adapter";
+import {
+  NISTA_FETCH_POLICY,
+  UK_INFRASTRUCTURE_PIPELINE_SOURCE_KEY,
+} from "@/ingestion/sources/uk-infrastructure-pipeline/constants";
 import type { IngestionStatus, SourceAdapter } from "@/ingestion/core/types";
 import type { IngestionStore } from "@/ingestion/store/types";
 import { rebuildChangedPreviews } from "@/lib/jobs/previews";
@@ -391,6 +396,7 @@ export const OPEN_INGEST_SOURCE_KEYS = [
   PUBLIC_CONTRACTS_SCOTLAND_SOURCE_KEY,
   SELL2WALES_SOURCE_KEY,
   TED_SOURCE_KEY,
+  UK_INFRASTRUCTURE_PIPELINE_SOURCE_KEY,
 ] as const;
 
 export type OpenIngestSourceKey = (typeof OPEN_INGEST_SOURCE_KEYS)[number];
@@ -648,6 +654,8 @@ function fetchPolicyFor(sourceKey: OpenIngestSourceKey): AllowedFetchPolicy {
       return SELL2WALES_FETCH_POLICY;
     case TED_SOURCE_KEY:
       return TED_FETCH_POLICY;
+    case UK_INFRASTRUCTURE_PIPELINE_SOURCE_KEY:
+      return NISTA_FETCH_POLICY;
     default:
       return FIND_A_TENDER_FETCH_POLICY;
   }
@@ -667,6 +675,8 @@ function adapterFor(
       return createSell2WalesAdapter({ http, now });
     case TED_SOURCE_KEY:
       return createTedAdapter({ http, now });
+    case UK_INFRASTRUCTURE_PIPELINE_SOURCE_KEY:
+      return createUkInfrastructurePipelineAdapter({ httpJson: http, now });
     default:
       return createFindATenderAdapter({ http, now });
   }
@@ -733,12 +743,14 @@ export async function runOpenCatalogueIngest(options: {
     | typeof FIND_A_GRANT_SOURCE_KEY
     | typeof INNOVATE_UK_SOURCE_KEY
     | typeof GCA_AGREEMENTS_SOURCE_KEY
-    | typeof GCA_PIPELINE_SOURCE_KEY;
+    | typeof GCA_PIPELINE_SOURCE_KEY
+    | typeof UK_INFRASTRUCTURE_PIPELINE_SOURCE_KEY;
   store: IngestionStore;
   now?: Date;
   dryRun: boolean;
   adapter?: SourceAdapter;
   http?: TextHttpClient;
+  httpJson?: JsonHttpClient;
   sleep?: (ms: number) => Promise<void>;
   limit?: number;
   phase?: "ingest" | "previews" | "all";
@@ -751,9 +763,16 @@ export async function runOpenCatalogueIngest(options: {
   const sourceKey = options.sourceKey;
   const isGca =
     sourceKey === GCA_AGREEMENTS_SOURCE_KEY || sourceKey === GCA_PIPELINE_SOURCE_KEY;
+  const isUkInfrastructurePipeline =
+    sourceKey === UK_INFRASTRUCTURE_PIPELINE_SOURCE_KEY;
   let adapter = options.adapter;
   if (!adapter) {
-    if (isGca) {
+    if (isUkInfrastructurePipeline) {
+      adapter = createUkInfrastructurePipelineAdapter({
+        httpJson: options.httpJson,
+        now: () => now,
+      });
+    } else if (isGca) {
       adapter =
         sourceKey === GCA_PIPELINE_SOURCE_KEY
           ? createGcaPipelineAdapter({ now: () => now, sleep })
@@ -904,4 +923,13 @@ export function runOpenInnovateUkIngest(
   options: Omit<Parameters<typeof runOpenCatalogueIngest>[0], "sourceKey">,
 ): Promise<OpenIngestResult> {
   return runOpenCatalogueIngest({ ...options, sourceKey: INNOVATE_UK_SOURCE_KEY });
+}
+
+export function runOpenUkInfrastructurePipelineIngest(
+  options: Omit<Parameters<typeof runOpenCatalogueIngest>[0], "sourceKey">,
+): Promise<OpenIngestResult> {
+  return runOpenCatalogueIngest({
+    ...options,
+    sourceKey: UK_INFRASTRUCTURE_PIPELINE_SOURCE_KEY,
+  });
 }

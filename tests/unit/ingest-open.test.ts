@@ -4,21 +4,30 @@ import { FIND_A_TENDER_RELEASE_API } from "@/ingestion/sources/find-a-tender/con
 import { createFindATenderAdapter } from "@/ingestion/sources/find-a-tender/adapter";
 import { findATenderSourceRecord } from "@/ingestion/sources/find-a-tender/seed";
 import { contractsFinderSourceRecord } from "@/ingestion/sources/contracts-finder/seed";
+import { UK_INFRASTRUCTURE_PIPELINE_SOURCE_KEY } from "@/ingestion/sources/uk-infrastructure-pipeline/constants";
+import { ukInfrastructurePipelineSourceRecord } from "@/ingestion/sources/uk-infrastructure-pipeline/seed";
 import { createMemoryIngestionStore } from "@/ingestion/store/memory";
 import { asIngestionError } from "@/ingestion/core/errors";
 import { IngestionError } from "@/ingestion/core/errors";
 import { DatabaseQueryError } from "@/lib/db/errors";
 import {
+  OPEN_INGEST_SOURCE_KEYS,
   openIngestLogLine,
   openIngestShouldFail,
   openIngestWindows,
   publicFatalErrorLine,
   publicIngestErrorLine,
+  runOpenCatalogueIngest,
   runOpenContractsFinderIngest,
   runOpenFindATenderIngest,
+  runOpenUkInfrastructurePipelineIngest,
 } from "@/lib/jobs/ingest-open";
 import { isTemplatePreviewSlug } from "@/lib/deals/public-slug";
-import { packageFromFixtures } from "@/tests/helpers/ingestion-fixtures";
+import {
+  createFixtureHttpClient,
+  packageFromFixtures,
+  readUkInfrastructureFixture,
+} from "@/tests/helpers/ingestion-fixtures";
 
 const NOW = new Date("2026-09-10T12:00:00.000Z");
 
@@ -607,5 +616,47 @@ describe("open Find a Tender ingest", () => {
     expect(result.counts.failed).toBeGreaterThan(0);
     expect(result.errors.some((error) => error.stage === "parse")).toBe(true);
     expect(openIngestShouldFail(result)).toBe(false);
+  });
+});
+
+describe("open ingest UK Infrastructure Pipeline", () => {
+  function ukipStore() {
+    return createMemoryIngestionStore({
+      sources: [ukInfrastructurePipelineSourceRecord({ id: "source-ukip" })],
+    });
+  }
+
+  it("lists the source and dispatches it through the catalogue ingest", async () => {
+    expect(OPEN_INGEST_SOURCE_KEYS).toContain(UK_INFRASTRUCTURE_PIPELINE_SOURCE_KEY);
+
+    const result = await runOpenCatalogueIngest({
+      sourceKey: UK_INFRASTRUCTURE_PIPELINE_SOURCE_KEY,
+      store: ukipStore(),
+      now: NOW,
+      dryRun: true,
+      phase: "ingest",
+      httpJson: createFixtureHttpClient(() =>
+        readUkInfrastructureFixture("layout.json"),
+      ),
+    });
+
+    expect(result.counts.fetched).toBe(4);
+    expect(result.counts.new).toBe(3);
+    expect(result.errors.some((error) => error.stage === "parse")).toBe(true);
+  });
+
+  it("routes the dedicated wrapper to the same dispatcher", async () => {
+    const result = await runOpenUkInfrastructurePipelineIngest({
+      store: ukipStore(),
+      now: NOW,
+      dryRun: true,
+      phase: "ingest",
+      httpJson: createFixtureHttpClient(() =>
+        readUkInfrastructureFixture("layout.json"),
+      ),
+    });
+
+    expect(result.counts.fetched).toBe(4);
+    expect(result.counts.new).toBe(3);
   });
 });
