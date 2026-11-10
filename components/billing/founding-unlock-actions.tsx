@@ -30,6 +30,7 @@ export function FoundingUnlockActions({
   returnTo?: string;
 }) {
   const state = founding ? foundingUiState(founding) : (stateProp ?? "hidden");
+  const places = foundingPaywallPlaces();
 
   if (state === "hidden") return null;
 
@@ -85,9 +86,13 @@ export function FoundingUnlockActions({
         </Button>
       )}
       <p className="text-center text-[0.8125rem] leading-5 text-pretty text-muted-foreground">
-        <span>{foundingPaywallPlaces()}</span>
-        {" · "}
-        <span>{FOUNDING_COPY.priceLocked}</span>
+        {places ? (
+          <>
+            <span>{places}</span>
+            {" · "}
+          </>
+        ) : null}
+        <span>{FOUNDING_COPY.planLine}</span>
       </p>
       {mode === "free" ? (
         <CheckoutPlanForm

@@ -286,6 +286,21 @@ describe("guide markdown sanitising", () => {
     }
   });
 
+  it.each(PUBLISHED)("shows the Lifetime plan line and no old Founding pricing for %s", (slug) => {
+    const guide = getPublishedGuide(slug)!;
+    const html = renderToStaticMarkup(
+      <GuideMarkdown blocks={guide.blocks} publishedGuidePaths={publishedGuidePaths()} />,
+    );
+    const jsonLd = JSON.stringify(guideJsonLd(ORIGIN, guide));
+    expect(html).toContain("Lifetime access: £250 one-time (VAT included).");
+    for (const output of [html, jsonLd, guide.title, guide.description]) {
+      expect(output).not.toContain("£290");
+      expect(output).not.toContain("£24.17");
+      expect(output).not.toContain("stay subscribed");
+      expect(output).not.toMatch(/founding/i);
+    }
+  });
+
   it("keeps the thresholds table as an HTML table and body headings below H1", () => {
     const guide = getPublishedGuide(SLUG)!;
     const html = renderToStaticMarkup(
@@ -650,9 +665,9 @@ describe("guide markdown strikethrough", () => {
 
   it("renders ~~text~~ as <del>", () => {
     const html = renderToStaticMarkup(
-      <GuideMarkdown blocks={parseMarkdown("Price: ~~£39/mo~~ **£24.17/mo**")} publishedGuidePaths={new Set()} />,
+      <GuideMarkdown blocks={parseMarkdown("Price: ~~£350/yr~~ **£250 once**")} publishedGuidePaths={new Set()} />,
     );
-    expect(html).toContain("<del>£39/mo</del>");
+    expect(html).toContain("<del>£350/yr</del>");
     expect(html).not.toContain("~~");
   });
 

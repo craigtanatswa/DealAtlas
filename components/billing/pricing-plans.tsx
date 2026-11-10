@@ -101,7 +101,7 @@ function PlanCta({
   analyticsPlan,
 }: {
   signedIn: boolean;
-  planKey: CheckoutPlanKey;
+  planKey: Exclude<CheckoutPlanKey, "FOUNDING">;
   label: ReactNode;
   variant?: "default" | "outline";
   buttonClassName?: string;
@@ -138,7 +138,7 @@ export function PricingPlans({
   state?: Exclude<FoundingUiState, "hidden">;
 }) {
   const state = founding ? foundingUiState(founding) : (stateProp ?? "hidden");
-  // Founding full, hidden or not offered: the card disappears and the grid reflows to three plans.
+  // Lifetime sold out, hidden or not offered: the card disappears and the grid reflows to three plans.
   const showFounding = state === "available";
   const soldOut = state === "sold_out";
   const annualVariant = showFounding ? "outline" : "default";
@@ -193,8 +193,8 @@ export function PricingPlans({
                   <Link href={foundingSignupPath()}><FoundingButtonLabel text={FOUNDING_COPY.cta} /></Link>
                 </Button>
               )}
-              <p className="text-center text-[0.8125rem] leading-5 text-pretty text-muted-foreground">
-                {FOUNDING_COPY.cancelTerms}
+              <p className="text-center text-[0.8125rem] leading-5 text-pretty text-foreground/80">
+                {FOUNDING_COPY.priceLocked}
               </p>
             </div>
           </PlanCard>

@@ -68,7 +68,7 @@ At the time of writing (2 November 2026), of the 23, 17 close in November 2026, 
 
 [Create a free DealAtlas account](/signup) to see every transport and logistics preview in one place, and filter by value band, region and closing date.
 
-**Founding offer for DealAtlas Pro:** ~~£39/mo~~ **£24.17/mo** (£290/yr), for as long as you stay subscribed. Limited places. [See Pro](/pricing)
+{{LIFETIME_PLAN_LINE}} [See Pro](/pricing)
 
 ## Internal transport and handling equipment
 
@@ -105,7 +105,7 @@ For general bid advice, read [how to win council contracts](/guides/how-to-win-c
 
 The free preview shows the category, value band, closing date and region where one is listed. Pro adds the buyer, the source, contacts and documents, plus saved searches and alerts, so you can decide quickly whether to bid.
 
-[Browse live opportunities](/deals) or [start free on DealAtlas](/signup), then [upgrade to Pro](/pricing) when an opportunity is worth pursuing. Founding price: ~~£39/mo~~ **£24.17/mo** (£290/yr), for as long as you stay subscribed. Limited places.
+[Browse live opportunities](/deals) or [start free on DealAtlas](/signup), then [upgrade to Pro](/pricing) when an opportunity is worth pursuing. {{LIFETIME_PLAN_LINE}}
 
 ## FAQ
 
@@ -127,4 +127,4 @@ Usually fast. Of the 23 open opportunities at the time of writing (2 November 20
 
 ### What does DealAtlas Pro add?
 
-The buyer, the source, contacts and documents, plus saved searches and alerts. Founding price: ~~£39/mo~~ £24.17/mo (£290/yr), for as long as you stay subscribed. Limited places. [See Pro](/pricing)
+The buyer, the source, contacts and documents, plus saved searches and alerts. {{LIFETIME_PLAN_LINE}} [See Pro](/pricing)

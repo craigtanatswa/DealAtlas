@@ -7,7 +7,7 @@ import type { CheckoutPlanKey } from "@/lib/billing/types";
 export const PLAN_KEY_LABELS: Record<CheckoutPlanKey, string> = {
   PRO_MONTHLY: "Pro monthly",
   PRO_ANNUAL: "Pro annual",
-  FOUNDING: "Founding Pro",
+  FOUNDING: "Lifetime",
 };
 
 export const STATUS_LABELS: Record<string, string> = {
@@ -24,21 +24,19 @@ export const STATUS_LABELS: Record<string, string> = {
 export function planLabel(
   planKey: string | null,
   billingInterval: string | null,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   foundingMember = false,
 ): string {
   if (planKey === "PRO_MONTHLY" || billingInterval === "MONTHLY") {
     return PLAN_KEY_LABELS.PRO_MONTHLY;
   }
   if (planKey === "PRO_ANNUAL" || billingInterval === "ANNUAL") {
-    return foundingMember ? `Founding Pro — ${DISPLAY_PRICING.foundingAnnual.replace("/year", "/yr")} for as long as you stay subscribed` : PLAN_KEY_LABELS.PRO_ANNUAL;
+    return PLAN_KEY_LABELS.PRO_ANNUAL;
   }
   return "Free";
 }
 
-export function priceLabel(planKey: CheckoutPlanKey): string {
-  if (planKey === "FOUNDING") {
-    return DISPLAY_PRICING.foundingAnnual;
-  }
+export function priceLabel(planKey: Exclude<CheckoutPlanKey, "FOUNDING">): string {
   return planKey === "PRO_ANNUAL"
     ? DISPLAY_PRICING.proAnnual
     : DISPLAY_PRICING.proMonthly;

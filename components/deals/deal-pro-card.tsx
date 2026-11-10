@@ -91,6 +91,7 @@ export function DealProCard({
   const state = foundingUiState(founding);
   const foundingActive = state === "available";
   const monthlyShort = DISPLAY_PRICING.proMonthly.replace("/month", "/mo");
+  const places = foundingPaywallPlaces();
 
   return (
     <aside
@@ -171,11 +172,13 @@ export function DealProCard({
               </Button>
             )}
             <p className="mt-2 text-center text-xs font-medium text-foreground/80">
-              <span className="text-emerald-700">
-                {foundingPaywallPlaces()}
-              </span>
-              {" · "}
-              <span>{FOUNDING_COPY.priceLocked}</span>
+              {places ? (
+                <>
+                  <span className="text-emerald-700">{places}</span>
+                  {" · "}
+                </>
+              ) : null}
+              <span>{FOUNDING_COPY.planLine}</span>
             </p>
             {mode === "free" ? (
               <CheckoutPlanForm

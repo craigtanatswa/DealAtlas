@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/card";
 import { requireUser } from "@/lib/auth/session";
 import { readFoundingMember } from "@/lib/billing/founding-db";
+import { isLifetimeTerm } from "@/lib/billing/lifetime-term";
 import { loadDodoCustomerIdForUser } from "@/lib/billing/store";
 import { getCurrentEntitlement } from "@/lib/entitlements/service";
 import { isProEntitlement } from "@/lib/entitlements/policy";
@@ -37,17 +38,23 @@ export default async function BillingPage({
     readFoundingMember(user.id),
   ]);
   const pro = isProEntitlement(entitlement);
+  const lifetime = pro && isLifetimeTerm(entitlement);
 
   return (
     <Main className="gap-10">
       <PageHeader
         title="Billing"
-        description="Manage DealAtlas Pro. Invoices, payment methods, and cancellation are handled in the Dodo customer portal. Access is not granted from a checkout redirect."
+        description={
+          lifetime
+            ? "Your DealAtlas Lifetime access. Receipts are in the Dodo customer portal. Access is not granted from a checkout redirect."
+            : "Manage DealAtlas Pro. Invoices, payment methods, and cancellation are handled in the Dodo customer portal. Access is not granted from a checkout redirect."
+        }
       />
       {alreadySubscribed ? (
         <p role="status" className="rounded-md border p-4 text-sm">
-          You already have an active DealAtlas Pro subscription. Use the billing
-          portal below to change or cancel it.
+          {lifetime
+            ? "You already have DealAtlas Lifetime access. There is nothing more to buy."
+            : "You already have an active DealAtlas Pro subscription. Use the billing portal below to change or cancel it."}
         </p>
       ) : null}
       <BillingSummary

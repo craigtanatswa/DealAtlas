@@ -23,7 +23,7 @@ DealAtlas is built for that job. It brings UK public and private tenders and opp
 
 Start on [DealAtlas](/deals). Filter by category, value band, closing date and region, browse free previews, and move to [DealAtlas Pro](/pricing) for buyer details, documents, saved searches and alerts. You'll need to register on the government's central digital platform before you bid, so find the right opportunity on DealAtlas first. Keep an eye on pipeline, preliminary market engagement and planned procurement notices, because those signals appear before the tender notice.
 
-**Find your next contract faster.** [Create your free DealAtlas account](/signup) to filter live UK opportunities by category, value band, closing date and region. When a deal is worth pursuing, [DealAtlas Pro](/pricing) unlocks the buyer, documents, saved searches and alerts. Founding offer: ~~£39/mo~~ £24.17/mo (£290/yr), for as long as you stay subscribed. Limited places.
+**Find your next contract faster.** [Create your free DealAtlas account](/signup) to filter live UK opportunities by category, value band, closing date and region. When a deal is worth pursuing, [DealAtlas Pro](/pricing) unlocks the buyer, documents, saved searches and alerts. {{LIFETIME_PLAN_LINE}}
 
 ## Why discovery feels scattered after the Procurement Act 2023
 

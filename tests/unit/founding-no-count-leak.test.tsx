@@ -45,6 +45,17 @@ const openCount = { offered: true, sold_out: false };
 const soldOutCount = { offered: true, sold_out: true };
 const notOfferedCount = { offered: false, sold_out: true };
 
+function visibleText(html: string): string {
+  return html
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&#x27;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&amp;/g, "&")
+    .replace(/\s+/g, " ");
+}
+
 function htmlLeaks(html: string): void {
   expect(html).not.toMatch(/\bremaining\b/i);
   expect(html).not.toMatch(/(?<![-\w])cap(?![-\w])/i);
@@ -86,7 +97,8 @@ describe("founding UI only receives the public count shape", () => {
     for (const surface of surfaces) {
       const html = renderToString(surface);
       htmlLeaks(html);
-      expect(html).toContain("Limited places");
+      expect(html).not.toContain("Limited places");
+      expect(html).not.toMatch(/£290|£24\.17/);
     }
   });
 
@@ -110,6 +122,15 @@ describe("founding UI only receives the public count shape", () => {
           />,
         ),
       ).not.toMatch(/founding member/i);
+      expect(
+        renderToString(
+          <DealProCard
+            mode="free"
+            founding={founding}
+            alertsHref="/app/alerts"
+          />,
+        ),
+      ).not.toMatch(/lifetime/i);
     }
   });
 
@@ -121,13 +142,15 @@ describe("founding UI only receives the public count shape", () => {
 
     const pricing = renderToString(await PricingPage());
     htmlLeaks(pricing);
-    expect(pricing).toMatch(/founding member/i);
-    expect(pricing).toContain("Limited places");
+    expect(visibleText(pricing)).not.toMatch(/founding/i);
+    expect(pricing).toContain("Lifetime access: £250 one-time (VAT included).");
+    expect(pricing).not.toContain("Limited places");
 
     const home = renderToString(await HomePage());
     htmlLeaks(home);
-    expect(home).toMatch(/founding member/i);
-    expect(home).toContain("Limited places");
+    expect(visibleText(home)).not.toMatch(/founding/i);
+    expect(home).toContain("Lifetime access: £250 one-time (VAT included).");
+    expect(home).not.toContain("Limited places");
   });
 });
 

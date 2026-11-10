@@ -45,8 +45,12 @@ export default async function CheckoutPage({
 }) {
   const params = await searchParams;
   const rawPlan = firstParam(params.plan);
+  if (rawPlan === "FOUNDING") {
+    redirect(`/checkout?plan=${FOUNDING_PLAN_KEY}`);
+  }
   const founding = rawPlan === FOUNDING_PLAN_KEY;
-  const plan = founding ? null : parseCheckoutPlan(rawPlan);
+  const parsed = founding ? null : parseCheckoutPlan(rawPlan);
+  const plan = parsed === "FOUNDING" ? null : parsed;
   if (!founding && !plan) {
     redirect("/pricing");
   }

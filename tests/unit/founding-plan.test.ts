@@ -27,11 +27,9 @@ import {
 } from "@/lib/billing/founding";
 import {
   FOUNDING_COPY,
+  FOUNDING_FULL_MESSAGE,
   FOUNDING_LIMITED_PLACES,
-  foundingAnnualShort,
-  foundingBilledLine,
   foundingDueToday,
-  foundingMonthlyEquivalent,
   foundingPaywallPlaces,
   foundingPlacesLabel,
   foundingSoldOutNote,
@@ -165,7 +163,7 @@ describe("founding member checkout", () => {
     });
   });
 
-  it("shows a limited-places label when founding is offered in the UI", () => {
+  it("keeps the Lifetime offer count-free when it is offered in the UI", () => {
     expect(foundingUiState(undefined)).toBe("hidden");
     expect(foundingUiState(null)).toBe("hidden");
     expect(foundingUiState({ offered: false, sold_out: false })).toBe("hidden");
@@ -173,29 +171,26 @@ describe("founding member checkout", () => {
     expect(foundingUiState({ offered: true, sold_out: false })).toBe("available");
     expect(foundingUiState({ offered: true, sold_out: true })).toBe("sold_out");
     expect(FOUNDING_LIMITED_PLACES).toBe("Limited places");
-    expect(foundingPlacesLabel()).toBe(FOUNDING_LIMITED_PLACES);
-    expect(foundingPaywallPlaces()).toBe(FOUNDING_LIMITED_PLACES);
-    for (const label of [foundingPlacesLabel(), foundingPaywallPlaces()]) {
-      expect(label).not.toMatch(/\d+\s+places?\s+left/i);
-      expect(label).not.toContain("Founding places available");
-    }
-    expect(foundingSoldOutNote()).toContain("Founding membership is full.");
+    expect(foundingPlacesLabel()).toBeNull();
+    expect(foundingPaywallPlaces()).toBeNull();
+    expect(foundingSoldOutNote()).toBe(FOUNDING_FULL_MESSAGE);
+    expect(foundingSoldOutNote()).not.toMatch(/founding/i);
     expect(foundingSoldOutNote()).not.toMatch(/\d+\s*(places?|customers?|remaining|cap)/i);
     expect(foundingSoldOutNote()).not.toContain("Founding places available");
-    expect(FOUNDING_COPY.cancelTerms).toBe(
-      "If you cancel, you lose founding status and the £290/yr price.",
+    expect(FOUNDING_COPY.badge).toBe("Lifetime");
+    expect(FOUNDING_COPY.title).toBe("Lifetime access");
+    expect(FOUNDING_COPY.cta).toBe("Get lifetime access");
+    expect(FOUNDING_COPY.priceLocked).toBe(
+      "One payment. No subscription, nothing to renew.",
     );
-    expect(FOUNDING_COPY.paywallCta).toContain("£290/yr");
-    expect(FOUNDING_COPY.lessThanAnnual).toBe("£60 less than standard annual");
-    expect(FOUNDING_COPY.priceLocked).toBe("£290/yr for as long as you stay subscribed");
-    expect(FOUNDING_COPY.firstMembers).toBe("Founding places are limited");
+    expect(FOUNDING_COPY.paywallCta).toBe("Get lifetime access – £250 once");
+    expect(FOUNDING_COPY.planLine).toBe(
+      "Lifetime access: £250 one-time (VAT included).",
+    );
   });
 
-  it("derives the founding price display from the annual amount", () => {
-    expect(foundingMonthlyEquivalent()).toBe("£24.17");
-    expect(foundingAnnualShort()).toBe("£290/yr");
-    expect(foundingBilledLine()).toBe("billed £290/yr, VAT included");
-    expect(foundingDueToday()).toBe("£290.00");
+  it("uses the one-time Lifetime price without old annual-equivalent copy", () => {
+    expect(foundingDueToday()).toBe("£250.00");
     expect(FOUNDING_COPY.annualSaving).toBe("Save 25% vs monthly.");
     expect(proMonthlyWasLabel()).toBe("was £39 a month");
   });

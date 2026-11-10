@@ -10,7 +10,6 @@ import {
   ALREADY_SUBSCRIBED_MESSAGE,
   FOUNDING_UNAVAILABLE_MESSAGE,
 } from "@/lib/billing/founding";
-import { FOUNDING_PLAN_KEY } from "@/lib/billing/founding-ui";
 import type {
   FoundingReservation,
   PlanProductMap,
@@ -389,9 +388,8 @@ describe("checkout error contract for the UI", () => {
     mocks.readFoundingMember.mockResolvedValue(false);
     mocks.reserveFoundingSlot.mockResolvedValue("sold_out");
 
-    const response = await checkout({ planKey: FOUNDING_PLAN_KEY });
+    const response = await checkout({ planKey: "FOUNDING" });
 
-    expect(FOUNDING_PLAN_KEY).toBe("FOUNDING");
     expect(response.status).toBe(409);
     const body = await response.json();
     expect(body.code).toBe("FOUNDING_CAP_FULL");
@@ -404,7 +402,7 @@ describe("checkout error contract for the UI", () => {
   it("returns 409 FOUNDING_NOT_ELIGIBLE for an ex-founder even with places left", async () => {
     mocks.reserveFoundingSlot.mockResolvedValue("ineligible");
 
-    const response = await checkout({ planKey: FOUNDING_PLAN_KEY });
+    const response = await checkout({ planKey: "FOUNDING" });
 
     expect(response.status).toBe(409);
     const body = await response.json();

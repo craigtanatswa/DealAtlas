@@ -135,11 +135,11 @@ CTA:
 Secondary link:
 View pricing
 
-While the founding offer is on sale, the same panel uses the server place count (never a customer list):
+While the one-time Lifetime plan is on sale, the same panel shows it (no place count, cap or "Limited places" line; `SHOW_LIMITED_PLACES` in `lib/billing/lifetime-copy.ts` is false):
 
-- Places left: **Become a founding member – £290/yr**, helper `£290/yr for as long as you stay subscribed · {remaining} places left` (remaining only, never the total), secondary **or standard Pro £39/mo**. One place left uses **Last founding place · 1 place left** and no other urgency line.
-- Sold out: **Start Pro – £39/mo** and **or £350/yr (save 25%)** (percentage derived from `DISPLAY_PRICING`). The founding card is gone; annual is marked Recommended.
-- The last place taken during checkout shows **Founding places just filled up. You haven't been charged.** with standard annual and monthly buttons. The deal return path is kept. A checkout redirect still does not grant Pro.
+- On sale: **Get lifetime access**, helper `Lifetime access: £250 one-time (VAT included).` (the `LIFETIME_PLAN_LINE` constant), secondary **or Pro £39/mo**. The word "Founding" is never shown to users; the plan is only called Lifetime.
+- Sold out: **Start Pro – £39/mo** and **or £350/yr (save 25%)** (percentage derived from `DISPLAY_PRICING`). The Lifetime card is gone; annual is marked Recommended.
+- The last place taken during checkout shows **Lifetime places just filled up. You haven't been charged.** with standard annual and monthly buttons. The deal return path is kept. A checkout redirect still does not grant Pro.
 
 ## 10. Homepage and workspace
 The public homepage is marketing and search. It does not list free deal cards. Visitors search from the hero, which submits to `/deals`, where published previews are browsed. Do not hide product value behind sign-up. The public hero may show decorative, non-interactive category chips around the search column; they use the existing category catalogue only, fetch nothing, and must not cover the headline, copy, or search. A testimonial carousel may sit below the hero; its quotes are development placeholders and must be replaced with verified customer testimonials before production use. Do not invent live counts, ratings, or win figures.

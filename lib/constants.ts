@@ -42,7 +42,7 @@ export const DISPLAY_PRICING = {
   currency: "GBP",
   proMonthly: "£39/month",
   proAnnual: "£350/year",
-  foundingAnnual: "£290/year",
+  foundingLifetime: "£250",
 } as const;
 
 export const PUBLIC_NAV = [
