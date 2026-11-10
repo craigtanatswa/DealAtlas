@@ -37,6 +37,8 @@ const PHASE_B_ADDED_FUNCTIONS = new Set([
   // 0062: lifetime grant/revoke RPCs (service_role execute only).
   "grant_lifetime_access",
   "revoke_lifetime_access",
+  // 0064: subscription refund/chargeback revoke RPC (service_role execute only).
+  "revoke_subscription_access",
 ]);
 
 export type Acl = {

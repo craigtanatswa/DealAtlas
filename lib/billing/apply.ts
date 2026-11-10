@@ -5,10 +5,12 @@ import { structuredLog } from "@/lib/observability/log";
 import type {
   ApplyResult,
   BillingStore,
+  CancelSubscriptionFn,
   GrantLifetimeResult,
   IncomingBillingEvent,
   ReconcileFn,
   RevokeLifetimeResult,
+  RevokeSubscriptionResult,
   StoredSubscription,
   SubscriptionSnapshot,
 } from "@/lib/billing/types";
@@ -34,6 +36,21 @@ export const LIFETIME_PARTIAL_REFUND_NOTE =
 
 export const LIFETIME_REFUND_REVIEW_FLAG =
   "lifetime_refund_amount_unknown: refund amount could not be compared with the payment total; access kept, review.";
+
+export const SUBSCRIPTION_PARTIAL_REFUND_NOTE =
+  "subscription_partial_refund: partial refund; Pro access kept.";
+
+export const SUBSCRIPTION_REFUND_REVIEW_FLAG =
+  "subscription_refund_amount_unknown: refund amount could not be compared with the payment total; access kept, review.";
+
+export const SUBSCRIPTION_CANCEL_FAILED_FLAG =
+  "subscription_cancel_failed: local revocation applied but the provider cancellation failed; review.";
+
+export const SUBSCRIPTION_ALREADY_REVOKED_NOTE =
+  "subscription_already_revoked: subscription is already revoked; no further action.";
+
+export const SUBSCRIPTION_REVOKED_TERMINAL_NOTE =
+  "subscription_revoked_terminal: subscription is revoked; provider event cannot re-grant Pro.";
 
 /** Fixed text. Must not include product ids, customer ids, or user ids. */
 export const UNKNOWN_PRODUCT_ENTITLEMENT_WARNING =
@@ -102,6 +119,12 @@ function toStored(
     cancelledAt: snapshot.cancelledAt,
     lastProviderEventAt: occurredAt,
     isCurrent: true,
+    recurringAmount:
+      snapshot.recurringAmount ?? (sameSubscription ? existing.recurringAmount : null),
+    recurringCurrency:
+      snapshot.recurringCurrency ?? (sameSubscription ? existing.recurringCurrency : null),
+    revokedAt: sameSubscription ? existing.revokedAt ?? null : null,
+    revokeReason: sameSubscription ? existing.revokeReason ?? null : null,
   };
 }
 
@@ -125,6 +148,21 @@ async function applySnapshot(
   const existing =
     (await store.getSubscriptionByDodoId(snapshot.dodoSubscriptionId)) ??
     (await store.getCurrentSubscription(userId));
+
+  // A revoke is terminal for the same provider subscription id. A brand-new
+  // subscription id after re-subscribing is intentionally not matched here.
+  if (
+    existing &&
+    existing.dodoSubscriptionId === snapshot.dodoSubscriptionId &&
+    existing.revokedAt
+  ) {
+    await store.markEvent(
+      event.providerEventId,
+      "IGNORED",
+      SUBSCRIPTION_REVOKED_TERMINAL_NOTE,
+    );
+    return { outcome: "ignored" };
+  }
 
   const incomingTime = event.occurredAt;
   const storedTime = existing?.lastProviderEventAt ?? null;
@@ -262,9 +300,176 @@ async function applyLifetimeGrant(
   };
 }
 
-async function applyLifetimeReversal(
+async function resolveReversalSubscription(
   event: IncomingBillingEvent,
   store: BillingStore,
+): Promise<StoredSubscription | null> {
+  if (event.paymentActionSubscriptionId) {
+    const bySubscription = await store.getSubscriptionByDodoId(
+      event.paymentActionSubscriptionId,
+    );
+    if (bySubscription) {
+      return bySubscription;
+    }
+  }
+  if (event.paymentActionCustomerId) {
+    return store.getSubscriptionByCustomerId(event.paymentActionCustomerId);
+  }
+  return null;
+}
+
+async function cancelRevokedSubscription(
+  event: IncomingBillingEvent,
+  store: BillingStore,
+  subscription: StoredSubscription,
+  cancelSubscription: CancelSubscriptionFn | undefined,
+): Promise<ApplyResult> {
+  if (!cancelSubscription || !subscription.dodoSubscriptionId) {
+    await store.markEvent(event.providerEventId, "PROCESSED");
+    return { outcome: "applied" };
+  }
+
+  try {
+    await cancelSubscription(subscription.dodoSubscriptionId);
+    await store.markEvent(event.providerEventId, "PROCESSED");
+    return { outcome: "applied" };
+  } catch {
+    // Local revocation is already durable. Never throw: a non-2xx would make
+    // the provider redeliver forever, and the subscription row already being
+    // revoked prevents a second cancel attempt.
+    structuredLog({
+      level: "warn",
+      msg: SUBSCRIPTION_CANCEL_FAILED_FLAG,
+      job: "dodo-webhook",
+    });
+    await store.markEvent(
+      event.providerEventId,
+      "PROCESSED",
+      SUBSCRIPTION_CANCEL_FAILED_FLAG,
+    );
+    return { outcome: "applied" };
+  }
+}
+
+async function revokeSubscriptionAccess(
+  event: IncomingBillingEvent,
+  store: BillingStore,
+  subscription: StoredSubscription,
+  reason: string,
+  cancelSubscription: CancelSubscriptionFn | undefined,
+): Promise<ApplyResult> {
+  let result: RevokeSubscriptionResult = "invalid";
+  try {
+    result = await store.revokeSubscription({
+      eventId: event.providerEventId,
+      subscriptionId: subscription.dodoSubscriptionId,
+      customerId: subscription.dodoCustomerId,
+      reason,
+    });
+  } catch (error) {
+    await markFailedAndThrow(event, store, error);
+  }
+
+  if (result === "invalid") {
+    await store.markEvent(
+      event.providerEventId,
+      "FAILED",
+      "Subscription revocation rejected invalid input.",
+    );
+    throw new Error("Subscription revocation rejected invalid input.");
+  }
+  if (result === "not_found") {
+    await store.markEvent(
+      event.providerEventId,
+      "IGNORED",
+      "No subscription found for the reversed payment.",
+    );
+    return { outcome: "ignored" };
+  }
+  if (result === "already_revoked") {
+    await store.markEvent(
+      event.providerEventId,
+      "PROCESSED",
+      SUBSCRIPTION_ALREADY_REVOKED_NOTE,
+    );
+    return { outcome: "ignored" };
+  }
+
+  return cancelRevokedSubscription(
+    event,
+    store,
+    subscription,
+    cancelSubscription,
+  );
+}
+
+async function applySubscriptionReversal(
+  event: IncomingBillingEvent,
+  store: BillingStore,
+  reversal: NonNullable<IncomingBillingEvent["reversal"]>,
+  cancelSubscription: CancelSubscriptionFn | undefined,
+): Promise<ApplyResult> {
+  const subscription = await resolveReversalSubscription(event, store);
+  if (!subscription) {
+    await store.markEvent(
+      event.providerEventId,
+      "IGNORED",
+      "No lifetime grant or subscription found for the reversed payment.",
+    );
+    return { outcome: "ignored" };
+  }
+
+  if (reversal.kind === "refund") {
+    const classification = classifyRefund({
+      refundAmount: reversal.refundAmount,
+      refundCurrency: reversal.refundCurrency,
+      isPartial: reversal.isPartial,
+      paidTotal: subscription.recurringAmount ?? null,
+      paidCurrency: subscription.recurringCurrency ?? null,
+    });
+
+    if (classification === "partial") {
+      structuredLog({
+        level: "info",
+        msg: SUBSCRIPTION_PARTIAL_REFUND_NOTE,
+        job: "dodo-webhook",
+      });
+      await store.markEvent(
+        event.providerEventId,
+        "PROCESSED",
+        SUBSCRIPTION_PARTIAL_REFUND_NOTE,
+      );
+      return { outcome: "ignored" };
+    }
+
+    if (classification === "unknown") {
+      structuredLog({
+        level: "warn",
+        msg: SUBSCRIPTION_REFUND_REVIEW_FLAG,
+        job: "dodo-webhook",
+      });
+      await store.markEvent(
+        event.providerEventId,
+        "PROCESSED",
+        SUBSCRIPTION_REFUND_REVIEW_FLAG,
+      );
+      return { outcome: "ignored" };
+    }
+  }
+
+  return revokeSubscriptionAccess(
+    event,
+    store,
+    subscription,
+    reversal.kind,
+    cancelSubscription,
+  );
+}
+
+async function applyReversal(
+  event: IncomingBillingEvent,
+  store: BillingStore,
+  cancelSubscription: CancelSubscriptionFn | undefined,
 ): Promise<ApplyResult> {
   if (event.disputeNotice) {
     await store.markEvent(
@@ -281,17 +486,17 @@ async function applyLifetimeReversal(
     return { outcome: "ignored" };
   }
 
-  if (reversal.kind === "refund") {
-    const grant = await store.getLifetimeGrantByPayment(reversal.paymentId);
-    if (!grant) {
-      await store.markEvent(
-        event.providerEventId,
-        "IGNORED",
-        "No lifetime grant found for the reversed payment.",
-      );
-      return { outcome: "ignored" };
-    }
+  const grant = await store.getLifetimeGrantByPayment(reversal.paymentId);
+  if (!grant) {
+    return applySubscriptionReversal(
+      event,
+      store,
+      reversal,
+      cancelSubscription,
+    );
+  }
 
+  if (reversal.kind === "refund") {
     const classification = classifyRefund({
       refundAmount: reversal.refundAmount,
       refundCurrency: reversal.refundCurrency,
@@ -408,7 +613,10 @@ async function applyPayment(
 export async function applyBillingEvent(
   event: IncomingBillingEvent,
   store: BillingStore,
-  options: { reconcile?: ReconcileFn } = {},
+  options: {
+    reconcile?: ReconcileFn;
+    cancelSubscription?: CancelSubscriptionFn;
+  } = {},
 ): Promise<ApplyResult> {
   const existingEvent = await store.getEvent(event.providerEventId);
   if (existingEvent && TERMINAL_EVENT_STATUSES.has(existingEvent.status)) {
@@ -426,7 +634,7 @@ export async function applyBillingEvent(
   }
 
   if (event.reversal || event.disputeNotice) {
-    return applyLifetimeReversal(event, store);
+    return applyReversal(event, store, options.cancelSubscription);
   }
 
   if (

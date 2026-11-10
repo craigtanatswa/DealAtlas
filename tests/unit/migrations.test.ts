@@ -48,7 +48,7 @@ describe("supabase migrations", () => {
   const files = listMigrations();
   const sql = files.map(readMigration).join("\n");
 
-  it("are numbered 0001-0026, 0028-0030, 0040-0043, 0045-0047, 0049, 0051-0062, leaving 0027, 0031-0039, 0044, 0048 and 0050 for open pull requests", () => {
+  it("are numbered 0001-0026, 0028-0030, 0040-0043, 0045-0047, 0049, 0051-0062, 0064, leaving 0027, 0031-0039, 0044, 0048, 0050 and 0063 for open pull requests", () => {
     expect(files).toEqual([
       "0001_extensions_and_types.sql",
       "0002_core_schema.sql",
@@ -99,6 +99,7 @@ describe("supabase migrations", () => {
       "0060_buyer_type_private_public.sql",
       "0061_publish_gate_denylist_retired.sql",
       "0062_founding_lifetime.sql",
+      "0064_subscription_refund_revoke.sql",
     ]);
   });
 
@@ -615,6 +616,19 @@ describe("supabase migrations", () => {
     expect(body).toContain("case when o.pro then p_min_score end as min_score");
     expect(body).not.toContain("p_min_score is null or");
     expect(body).not.toMatch(/lower\(coalesce\(p_sort, 'updated'\)\) = 'relevance'/);
+  });
+
+  it("0064 adds a terminal subscription revoke marker and keeps lifetime Pro", () => {
+    const body = readMigration("0064_subscription_refund_revoke.sql");
+    expect(body).toContain("add column if not exists revoked_at timestamptz");
+    expect(body).toContain("add column if not exists revoke_reason text");
+    expect(body).toContain("create trigger protect_revoked_subscription");
+    expect(body).toContain("create or replace function public.revoke_subscription_access(");
+    expect(body).toContain("s.revoked_at is null");
+    expect(body).toContain("from public.lifetime_grants g");
+    expect(body).toContain("grant execute on function public.revoke_subscription_access(text, text, text, text)");
+    expect(body).toContain("to service_role;");
+    expect(body).not.toMatch(/to (anon|authenticated)/);
   });
 
   it("adds a disabled TED Search API source and does not publish it", () => {

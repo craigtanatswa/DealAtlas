@@ -65,6 +65,7 @@ export type {
   ApplyOutcome,
   ApplyResult,
   BillingStore,
+  CancelSubscriptionFn,
   DisputeNotice,
   GrantLifetimeInput,
   GrantLifetimeResult,
@@ -76,6 +77,8 @@ export type {
   PaymentSnapshot,
   RevokeLifetimeInput,
   RevokeLifetimeResult,
+  RevokeSubscriptionInput,
+  RevokeSubscriptionResult,
   StoredSubscription,
   SubscriptionSnapshot,
 } from "@/lib/billing/types";

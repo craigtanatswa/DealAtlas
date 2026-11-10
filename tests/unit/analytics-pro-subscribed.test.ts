@@ -17,7 +17,10 @@ vi.mock("@/lib/billing/config", async () => {
 });
 vi.mock("@/lib/billing/store", () => ({ createBillingStore: () => store.current }));
 vi.mock("@/lib/billing/founding-db", () => ({ syncFoundingSlot: vi.fn() }));
-vi.mock("@/lib/billing/reconcile", () => ({ reconcileDodoSubscription: vi.fn(async () => null) }));
+vi.mock("@/lib/billing/reconcile", () => ({
+  reconcileDodoSubscription: vi.fn(async () => null),
+  cancelDodoSubscription: vi.fn(async () => {}),
+}));
 
 import {
   BILLING_FIXTURE_USER_ID,

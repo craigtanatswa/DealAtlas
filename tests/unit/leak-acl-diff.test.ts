@@ -109,6 +109,25 @@ describe("phase B ACL diff", () => {
     }
   });
 
+  it("treats the 0064 subscription revoke RPC as intended only when closed", () => {
+    const signature = "revoke_subscription_access(text,text,text,text)";
+    const sealed = acl({
+      ...before.functions,
+      [signature]: fn("revoke_subscription_access", false, false),
+    });
+    expect(aclDiff(before, sealed)).toEqual({
+      intended: ["revoke_subscription_access(text,text,text,text): added"],
+      unintended: [],
+    });
+    const open = acl({
+      ...before.functions,
+      [signature]: fn("revoke_subscription_access", true, false),
+    });
+    expect(aclDiff(before, open).unintended).toEqual([
+      "revoke_subscription_access(text,text,text,text): added",
+    ]);
+  });
+
   it("treats a new service-role-only table as intended and rejects client grants", () => {
     const emptyPriv = { select: false, insert: false, update: false, delete: false };
     const closed: Acl = {

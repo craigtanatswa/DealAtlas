@@ -77,8 +77,9 @@ export function createMemoryBillingStore(seed?: {
     },
     async getSubscriptionByCustomerId(dodoCustomerId) {
       return (
-        subscriptions.find((row) => row.dodoCustomerId === dodoCustomerId) ??
-        null
+        subscriptions.find(
+          (row) => row.dodoCustomerId === dodoCustomerId && row.isCurrent,
+        ) ?? null
       );
     },
     async getCurrentSubscription(userId) {
@@ -88,14 +89,18 @@ export function createMemoryBillingStore(seed?: {
       );
     },
     async upsertCurrentSubscription(row) {
+      const index = subscriptions.findIndex(
+        (item) => item.dodoSubscriptionId === row.dodoSubscriptionId,
+      );
+      // Revoked is terminal for the same provider subscription id.
+      if (index >= 0 && subscriptions[index]?.revokedAt) {
+        return;
+      }
       for (const existing of subscriptions) {
         if (existing.userId === row.userId && existing.isCurrent) {
           existing.isCurrent = false;
         }
       }
-      const index = subscriptions.findIndex(
-        (item) => item.dodoSubscriptionId === row.dodoSubscriptionId,
-      );
       if (index >= 0) {
         subscriptions[index] = { ...row, isCurrent: true };
       } else {
@@ -167,6 +172,28 @@ export function createMemoryBillingStore(seed?: {
           slot.status = "ended";
         }
       }
+      return "revoked";
+    },
+    async revokeSubscription(input) {
+      if (!input.eventId || (!input.subscriptionId && !input.customerId)) {
+        return "invalid";
+      }
+      const match = subscriptions.find((row) =>
+        input.subscriptionId
+          ? row.dodoSubscriptionId === input.subscriptionId
+          : row.dodoCustomerId === input.customerId && row.isCurrent,
+      );
+      if (!match) {
+        return "not_found";
+      }
+      if (match.revokedAt) {
+        return "already_revoked";
+      }
+      match.status = "EXPIRED";
+      match.revokedAt = new Date().toISOString();
+      match.revokeReason = input.reason;
+      match.cancelAtPeriodEnd = false;
+      match.isCurrent = true;
       return "revoked";
     },
     async getLifetimeGrantByPayment(paymentId) {

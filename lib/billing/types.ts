@@ -44,6 +44,8 @@ export type SubscriptionSnapshot = {
   currentPeriodEnd: string | null;
   cancelledAt: string | null;
   productKnown: boolean;
+  recurringAmount: number | null;
+  recurringCurrency: string | null;
 };
 
 export type PaymentSnapshot = {
@@ -90,6 +92,10 @@ export type IncomingBillingEvent = {
   payment: PaymentSnapshot | null;
   reversal: LifetimeReversal | null;
   disputeNotice: DisputeNotice | null;
+  refundId: string | null;
+  disputeId: string | null;
+  paymentActionSubscriptionId: string | null;
+  paymentActionCustomerId: string | null;
 };
 
 export type BillingEventRecord = {
@@ -113,6 +119,10 @@ export type StoredSubscription = {
   cancelledAt: string | null;
   lastProviderEventAt: string | null;
   isCurrent: boolean;
+  recurringAmount?: number | null;
+  recurringCurrency?: string | null;
+  revokedAt?: string | null;
+  revokeReason?: string | null;
 };
 
 export type ApplyOutcome =
@@ -178,9 +188,26 @@ export type RevokeLifetimeResult =
   | "not_found"
   | "invalid";
 
+export type RevokeSubscriptionInput = {
+  eventId: string;
+  subscriptionId: string | null;
+  customerId: string | null;
+  reason: string | null;
+};
+
+export type RevokeSubscriptionResult =
+  | "revoked"
+  | "already_revoked"
+  | "not_found"
+  | "invalid";
+
 export type ReconcileFn = (
   dodoSubscriptionId: string,
 ) => Promise<SubscriptionSnapshot | null>;
+
+export type CancelSubscriptionFn = (
+  dodoSubscriptionId: string,
+) => Promise<void>;
 
 export type BillingStore = {
   getEvent(providerEventId: string): Promise<BillingEventRecord | null>;
@@ -205,6 +232,9 @@ export type BillingStore = {
   upsertCurrentSubscription(row: StoredSubscription): Promise<void>;
   grantLifetime(input: GrantLifetimeInput): Promise<GrantLifetimeResult>;
   revokeLifetime(input: RevokeLifetimeInput): Promise<RevokeLifetimeResult>;
+  revokeSubscription(
+    input: RevokeSubscriptionInput,
+  ): Promise<RevokeSubscriptionResult>;
   getLifetimeGrantByPayment(
     paymentId: string,
   ): Promise<LifetimeGrantSnapshot | null>;

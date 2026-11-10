@@ -20,6 +20,7 @@ const SUBSCRIPTION_MIRROR_COLUMNS = [
   "plan_key",
   "billing_interval",
   "dodo_product_id",
+  "revoked_at",
 ] as const;
 
 type SubscriptionMirrorRow = Pick<
@@ -38,6 +39,7 @@ function mapSubscriptionRow(row: SubscriptionMirrorRow): SubscriptionMirror {
     planKey: row.plan_key,
     billingInterval: row.billing_interval,
     dodoProductId: row.dodo_product_id,
+    revokedAt: row.revoked_at,
   };
 }
 
