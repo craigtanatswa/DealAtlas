@@ -69,6 +69,46 @@ describe("phase B ACL diff", () => {
     expect(diff.intended).toContain("hit_alert_signup_rate_limit(text,integer,integer): added");
   });
 
+  it("treats 0062 lifetime RPCs as intended only when anon and authenticated are false", () => {
+    const functions = [
+      {
+        signature: "grant_lifetime_access(text,text,uuid,text,text)",
+        name: "grant_lifetime_access",
+      },
+      {
+        signature: "revoke_lifetime_access(text,text,text)",
+        name: "revoke_lifetime_access",
+      },
+    ];
+
+    const closed = acl({
+      ...before.functions,
+      ...Object.fromEntries(
+        functions.map(({ signature, name }) => [signature, fn(name, false, false)]),
+      ),
+    });
+    const closedDiff = aclDiff(before, closed);
+    expect(closedDiff.unintended).toEqual([]);
+    expect(closedDiff.intended).toEqual([
+      "grant_lifetime_access(text,text,uuid,text,text): added",
+      "revoke_lifetime_access(text,text,text): added",
+    ]);
+
+    for (const { signature, name } of functions) {
+      for (const [anon, authenticated] of [
+        [true, false],
+        [false, true],
+        [true, true],
+      ] as const) {
+        const open = acl({
+          ...before.functions,
+          [signature]: fn(name, anon, authenticated),
+        });
+        expect(aclDiff(before, open).unintended).toEqual([`${signature}: added`]);
+      }
+    }
+  });
+
   it("treats a new service-role-only table as intended and rejects client grants", () => {
     const emptyPriv = { select: false, insert: false, update: false, delete: false };
     const closed: Acl = {

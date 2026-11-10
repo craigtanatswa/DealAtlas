@@ -196,7 +196,8 @@ describe("checkout founding plan keys", () => {
 
     expect(response.status).toBe(303);
     const location = response.headers.get("location") ?? "";
-    expect(location).toContain("/checkout/founding-full");
+    expect(location).toContain("/checkout/lifetime-full");
+    expect(location).not.toContain("founding-full");
     expect(location).toContain("next=%2Fpricing");
     expect(mocks.checkoutHandler).not.toHaveBeenCalled();
     expect(mocks.sessions).toHaveLength(0);
@@ -433,7 +434,8 @@ describe("checkout error contract for the UI", () => {
 
     expect(response.status).toBe(303);
     const location = response.headers.get("location") ?? "";
-    expect(location).toContain("/checkout/founding-full");
+    expect(location).toContain("/checkout/lifetime-full");
+    expect(location).not.toContain("founding-full");
     expect(location).toContain("next=%2Fpricing");
     expect(location).toContain("reason=not_eligible");
     expect(mocks.checkoutHandler).not.toHaveBeenCalled();

@@ -45,7 +45,6 @@ const ALLOWED_LITERAL_PATTERNS = [
   /^FOUNDING_NOT_ELIGIBLE$/,
   /^founding_not_eligible$/,
   /^DODO_FOUNDING_[A-Z_]+$/,
-  /^\/checkout\/founding-full/,
   /^(?:@\/|\.{1,2}\/|node:)/,
 ];
 

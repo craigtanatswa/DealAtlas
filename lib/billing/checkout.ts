@@ -19,6 +19,7 @@ import { hasLiveSubscription } from "@/lib/billing/live-subscription";
 import { reserveFoundingSlot } from "@/lib/billing/founding-db";
 import { requireDodoCheckoutConfig } from "@/lib/billing/config";
 import { BillingConfigError } from "@/lib/billing/errors";
+import { LIFETIME_FULL_PATH } from "@/lib/billing/paths";
 import { checkoutReturnUrl, parseCheckoutReturnTo } from "@/lib/deals/paths";
 import type { AppProfile } from "@/lib/auth/types";
 
@@ -155,8 +156,8 @@ export async function createAuthenticatedCheckoutResponse(input: {
     if (returnTo) query.set("next", returnTo);
     if (notEligible) query.set("reason", "not_eligible");
     const qs = query.toString();
-    const foundingFullPath = qs ? `/checkout/founding-full?${qs}` : "/checkout/founding-full";
-    return NextResponse.redirect(new URL(foundingFullPath, input.request.url), 303);
+    const lifetimeFullPath = qs ? `${LIFETIME_FULL_PATH}?${qs}` : LIFETIME_FULL_PATH;
+    return NextResponse.redirect(new URL(lifetimeFullPath, input.request.url), 303);
   }
 
   const returnUrl = checkoutReturnUrl(config.returnUrl, returnTo);
