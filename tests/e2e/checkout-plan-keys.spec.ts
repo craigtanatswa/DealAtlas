@@ -49,14 +49,14 @@ test.describe("Checkout plan keys", () => {
     }
   });
 
-  test("tampered keys get 400, PRO_ANNUAL takes no founding place, FOUNDING fails closed", async ({
+  test("tampered keys get 400, PRO_ANNUAL takes no founding place, founding_lifetime fails closed and FOUNDING is rejected", async ({
     page,
   }) => {
     await loginAs(page, user!);
     const before = await foundingRemaining(env);
     const headers = { Accept: "application/json", "content-type": "application/json" };
 
-    for (const planKey of ["FOUNDING_ANNUAL", "PRO_ANNUAL_LEGACY", "founding", 123]) {
+    for (const planKey of ["FOUNDING", "FOUNDING_ANNUAL", "PRO_ANNUAL_LEGACY", "founding", 123]) {
       const tampered = await page.request.post("/api/billing/checkout", {
         headers,
         data: { planKey },
@@ -66,7 +66,7 @@ test.describe("Checkout plan keys", () => {
     }
 
     // The e2e server has no founding product configured, so PRO_ANNUAL must stay
-    // a standard checkout and FOUNDING must fail closed with no session.
+    // a standard checkout and founding_lifetime must fail closed with no session.
     const annual = await page.request.post("/api/billing/checkout", {
       headers,
       data: { planKey: "PRO_ANNUAL" },
@@ -80,7 +80,7 @@ test.describe("Checkout plan keys", () => {
 
     const founding = await page.request.post("/api/billing/checkout", {
       headers,
-      data: { planKey: "FOUNDING" },
+      data: { planKey: "founding_lifetime" },
     });
     expect(founding.status()).toBe(409);
     const body = (await founding.json()) as {
@@ -91,11 +91,12 @@ test.describe("Checkout plan keys", () => {
     };
     expect(body.code).toBe("FOUNDING_CAP_FULL");
     expect(body.message).toBe(
-      "Founding places are all taken. You can still subscribe to Pro annual at £350/year.",
+      "The Lifetime deal is no longer available. You can still subscribe to Pro annual at £350/year.",
     );
     expect(body.checkout_url).toBeUndefined();
-    expect(body.error).toContain("Founding places are all taken");
+    expect(body.error).toContain("Lifetime deal");
     expect(body.error).toContain("£350/year");
+    expect(body.error).not.toMatch(/founding/i);
 
     expect(await foundingRemaining(env)).toBe(before);
   });
