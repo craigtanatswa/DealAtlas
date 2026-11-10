@@ -340,13 +340,17 @@ export function mapFindATenderRelease(
     ? tenderValue.currency
     : awardValue.currency;
 
-  // Tender-level deadline first; otherwise the earliest lot deadline.
+  // Tender-level deadline first; otherwise the earliest lot deadline, then the
+  // expression-of-interest deadline used by selective/restricted notices.
   const lotDeadlines = (tender?.lots ?? [])
     .map((lot) => toTimestamptz(lot.tenderPeriod?.endDate))
     .filter((value): value is string => Boolean(value))
     .sort((a, b) => Date.parse(a) - Date.parse(b));
   const submissionDeadline =
-    toTimestamptz(tender?.tenderPeriod?.endDate) ?? lotDeadlines[0] ?? null;
+    toTimestamptz(tender?.tenderPeriod?.endDate) ??
+    lotDeadlines[0] ??
+    toTimestamptz(tender?.expressionOfInterestDeadline) ??
+    null;
   const futureTenderDate = toTimestamptz(tender?.communication?.futureNoticeDate);
   const enquiryDeadline = toTimestamptz(tender?.enquiryPeriod?.endDate);
   const hasFramework = Boolean(tender?.techniques?.hasFrameworkAgreement);
