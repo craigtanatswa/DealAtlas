@@ -45,7 +45,7 @@ Civil engineering and infrastructure tenders usually combine construction work w
 
 Examples from the live list:
 
-- **Construction works with engineering and inspection services for a public body.** Value band: £500k to £1m. Region: West Midlands. Closes in November.
+- **Construction works with engineering and inspection services for a public body.** Value band: £1m to £5m. Region: London. Closes in December.
 - **An engineering, inspection and installation framework for a utility.** Value band: £10m+. Region: North East England. Closes in November.
 
 See the current [civil engineering and infrastructure deals](/deals?category=Construction%20%26%20Infrastructure&status=OPEN&q=engineering).
