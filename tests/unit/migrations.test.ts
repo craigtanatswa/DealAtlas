@@ -48,7 +48,7 @@ describe("supabase migrations", () => {
   const files = listMigrations();
   const sql = files.map(readMigration).join("\n");
 
-  it("are numbered 0001-0026, 0028-0030, 0040-0043, 0045-0047, 0049, 0051-0062, leaving 0027, 0031-0039, 0044, 0048 and 0050 for open pull requests", () => {
+  it("are numbered 0001-0026, 0028-0030, 0040-0043, 0045-0047, 0049, 0051-0063, leaving 0027, 0031-0039, 0044, 0048 and 0050 for open pull requests", () => {
     expect(files).toEqual([
       "0001_extensions_and_types.sql",
       "0002_core_schema.sql",
@@ -99,7 +99,7 @@ describe("supabase migrations", () => {
       "0060_buyer_type_private_public.sql",
       "0061_publish_gate_denylist_retired.sql",
       "0062_founding_lifetime.sql",
-      "0062_preview_slug_aliases.sql",
+      "0063_preview_slug_aliases.sql",
     ]);
   });
 
@@ -584,8 +584,8 @@ describe("supabase migrations", () => {
     expect(body).not.toMatch(/\b(grant|revoke|alter owner)\b/i);
   });
 
-  it("0062 adds hashed slug aliases", () => {
-    const body = readMigration("0062_preview_slug_aliases.sql");
+  it("0063 adds hashed slug aliases", () => {
+    const body = readMigration("0063_preview_slug_aliases.sql");
     expect(body).toContain("private.preview_slug_aliases");
     expect(body).toContain("extensions.digest");
     expect(body).toContain("security definer");

@@ -37,7 +37,7 @@ const PHASE_B_ADDED_FUNCTIONS = new Set([
   // 0062: lifetime grant/revoke RPCs (service_role execute only).
   "grant_lifetime_access",
   "revoke_lifetime_access",
-  // 0062: hashed slug aliases (service_role execute only).
+  // 0063: hashed slug aliases (service_role execute only).
   "record_preview_slug_alias",
   "resolve_preview_slug_alias",
 ]);

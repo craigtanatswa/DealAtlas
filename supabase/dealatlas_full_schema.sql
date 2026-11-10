@@ -13027,7 +13027,7 @@ revoke execute on function private.is_user_pro(uuid) from public, anon, authenti
 -- ============================================================================
 
 -- ============================================================================
--- BEGIN 0062_preview_slug_aliases.sql
+-- BEGIN 0063_preview_slug_aliases.sql
 -- ============================================================================
 
 -- Hashed preview slug aliases map a retired /deals/<slug> to its deal so the
@@ -13087,5 +13087,5 @@ grant execute on function public.record_preview_slug_alias(text, uuid) to servic
 grant execute on function public.resolve_preview_slug_alias(text) to service_role;
 
 -- ============================================================================
--- END 0062_preview_slug_aliases.sql
+-- END 0063_preview_slug_aliases.sql
 -- ============================================================================
