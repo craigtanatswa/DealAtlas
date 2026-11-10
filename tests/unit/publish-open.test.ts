@@ -41,8 +41,12 @@ describe("publish jobs", () => {
     expect(parseJobArgs(["--job", "publish-eligible"]).job).toBe("publish-eligible");
     expect(parseJobArgs(["--job", "unpublish-stale"]).mode).toBe("dry-run");
     expect(parseJobArgs(["--job", "publish-alert", "--mode", "live"]).mode).toBe("live");
+    expect(parseJobArgs(["--job", "refresh-deadline-bands"]).job).toBe(
+      "refresh-deadline-bands",
+    );
     expect(jobProcessShouldFail("publish-eligible", "PARTIAL")).toBe(true);
     expect(jobProcessShouldFail("unpublish-stale", "FAILED")).toBe(true);
+    expect(jobProcessShouldFail("refresh-deadline-bands", "PARTIAL")).toBe(true);
   });
 
   it("does not call the write RPCs in dry-run", async () => {
@@ -150,6 +154,87 @@ describe("publish jobs", () => {
     expect(alert.status).toBe("PARTIAL");
     expect(messages[0]).toContain("published_live=40");
     expect(messages[0]).not.toMatch(/[0-9a-f]{8}-/);
+  });
+
+  it("refreshes deadline bands after a live unpublish and merges the counts", async () => {
+    const events: string[] = [];
+    const clocks: Date[] = [];
+    const stale = await runUnpublishStale({
+      mode: "live",
+      client: client({
+        count: 140,
+        rpc: (fn) => {
+          events.push(fn);
+          return { selected: 2, unpublished: 2 };
+        },
+      }),
+      refreshBands: async (now) => {
+        events.push("refresh");
+        clocks.push(now);
+        return {
+          scanned: 120,
+          stale: 3,
+          updated: 3,
+          unpublishedByGate: 1,
+          byBand: { "Within 14 days": 3 },
+        };
+      },
+      alert: async () => {
+        throw new Error("unpublish should not alert on success");
+      },
+    });
+    expect(events).toEqual(["unpublish_stale_previews", "refresh"]);
+    expect(clocks[0]).toBeInstanceOf(Date);
+    expect(stale.status).toBe("SUCCEEDED");
+    expect(stale.counts).toEqual({
+      selected: 2,
+      unpublished: 2,
+      bands_scanned: 120,
+      bands_stale: 3,
+      bands_updated: 3,
+      bands_unpublished_by_gate: 1,
+    });
+  });
+
+  it("fails the live unpublish run when the deadline band refresh throws", async () => {
+    const messages: string[] = [];
+    const stale = await runUnpublishStale({
+      mode: "live",
+      client: client({
+        count: 140,
+        rpc: () => ({ selected: 0, unpublished: 0 }),
+      }),
+      refreshBands: async () => {
+        throw new Error("refresh exploded");
+      },
+      alert: async (_subject, text) => {
+        messages.push(text);
+      },
+    });
+    expect(stale.status).toBe("FAILED");
+    expect(stale.errorMessage).toBe("deadline band refresh failed");
+    expect(stale.counts).toEqual({});
+    expect(messages[0]).toContain("status=FAILED");
+  });
+
+  it("never refreshes deadline bands in dry-run", async () => {
+    let calls = 0;
+    const stale = await runUnpublishStale({
+      mode: "dry-run",
+      client: client({ count: 140 }),
+      refreshBands: async () => {
+        calls += 1;
+        return {
+          scanned: 0,
+          stale: 0,
+          updated: 0,
+          unpublishedByGate: 0,
+          byBand: {},
+        };
+      },
+    });
+    expect(stale.dryRun).toBe(true);
+    expect(calls).toBe(0);
   });
 
   it("sends the live alert through the real email config", async () => {

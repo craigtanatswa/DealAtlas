@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { PLANS } from "@/lib/constants";
 import {
+  ENTITLEMENT_FIXTURE_ALLOWLIST,
   ENTITLEMENT_FIXTURE_NOW,
   ENTITLEMENT_FIXTURE_USER_ID,
   createFixtureSubscriptionLoader,
@@ -14,11 +15,13 @@ import {
 
 describe("entitlement policy", () => {
   const now = ENTITLEMENT_FIXTURE_NOW;
+  const allowed = ENTITLEMENT_FIXTURE_ALLOWLIST;
 
-  it("grants PRO for an active paid-through subscription fixture", () => {
+  it("grants PRO for an active paid-through subscription on an allowlisted product", () => {
     const entitlement = resolveEntitlement(
       entitlementSubscriptionFixtures.activePro(),
       now,
+      allowed,
     );
     expect(entitlement.plan).toBe(PLANS.PRO);
     expect(entitlement.status).toBe("ACTIVE");
@@ -29,33 +32,68 @@ describe("entitlement policy", () => {
       resolveEntitlement(
         entitlementSubscriptionFixtures.cancelledPaidThrough(),
         now,
+        allowed,
       ).plan,
     ).toBe(PLANS.PRO);
   });
 
   it("rejects expired, on-hold, failed, pending, and immediate-cancel fixtures", () => {
     expect(
-      resolveEntitlement(entitlementSubscriptionFixtures.expired(), now).plan,
+      resolveEntitlement(entitlementSubscriptionFixtures.expired(), now, allowed).plan,
     ).toBe(PLANS.FREE);
     expect(
-      resolveEntitlement(entitlementSubscriptionFixtures.onHold(), now).plan,
+      resolveEntitlement(entitlementSubscriptionFixtures.onHold(), now, allowed).plan,
     ).toBe(PLANS.FREE);
     expect(
-      resolveEntitlement(entitlementSubscriptionFixtures.failed(), now).plan,
+      resolveEntitlement(entitlementSubscriptionFixtures.failed(), now, allowed).plan,
     ).toBe(PLANS.FREE);
     expect(
-      resolveEntitlement(entitlementSubscriptionFixtures.pending(), now).plan,
+      resolveEntitlement(entitlementSubscriptionFixtures.pending(), now, allowed).plan,
     ).toBe(PLANS.FREE);
     expect(
       resolveEntitlement(
         entitlementSubscriptionFixtures.cancelledImmediate(),
         now,
+        allowed,
       ).plan,
     ).toBe(PLANS.FREE);
     expect(
-      resolveEntitlement(entitlementSubscriptionFixtures.notCurrent(), now)
+      resolveEntitlement(entitlementSubscriptionFixtures.notCurrent(), now, allowed)
         .plan,
     ).toBe(PLANS.FREE);
+  });
+
+  it("sets the term only for Pro and derives it from the billing interval", () => {
+    expect(
+      resolveEntitlement(
+        createSubscriptionFixture({ billingInterval: "MONTHLY" }),
+        now,
+        allowed,
+      ).term,
+    ).toBe("monthly");
+    expect(
+      resolveEntitlement(
+        createSubscriptionFixture({ billingInterval: "ANNUAL" }),
+        now,
+        allowed,
+      ).term,
+    ).toBe("annual");
+  });
+
+  it("leaves the term null whenever the plan is FREE", () => {
+    for (const fixture of [
+      entitlementSubscriptionFixtures.expired(),
+      entitlementSubscriptionFixtures.onHold(),
+      entitlementSubscriptionFixtures.failed(),
+      entitlementSubscriptionFixtures.pending(),
+      entitlementSubscriptionFixtures.cancelledImmediate(),
+      entitlementSubscriptionFixtures.notCurrent(),
+    ]) {
+      const entitlement = resolveEntitlement(fixture, now, allowed);
+      expect(entitlement.plan).toBe(PLANS.FREE);
+      expect(entitlement.term).toBeNull();
+    }
+    expect(resolveEntitlement(null, now, allowed).term).toBeNull();
   });
 
   it("fails closed when the paid-through period end is missing or invalid", () => {
@@ -65,12 +103,33 @@ describe("entitlement policy", () => {
       resolveEntitlement(
         createSubscriptionFixture({ status: "ACTIVE", currentPeriodEnd: null }),
         now,
+        allowed,
+      ).plan,
+    ).toBe(PLANS.FREE);
+  });
+
+  it("fails closed when the allowlist is empty or the product is outside it", () => {
+    expect(
+      resolveEntitlement(entitlementSubscriptionFixtures.activePro(), now, new Set()).plan,
+    ).toBe(PLANS.FREE);
+    expect(
+      resolveEntitlement(
+        createSubscriptionFixture({ dodoProductId: "pdt_test_mode_other" }),
+        now,
+        allowed,
+      ).plan,
+    ).toBe(PLANS.FREE);
+    expect(
+      resolveEntitlement(
+        createSubscriptionFixture({ dodoProductId: null }),
+        now,
+        allowed,
       ).plan,
     ).toBe(PLANS.FREE);
   });
 
   it("does not grant Pro from plan_key or missing subscription", () => {
-    expect(resolveEntitlement(null, now)).toMatchObject({
+    expect(resolveEntitlement(null, now, allowed)).toMatchObject({
       plan: PLANS.FREE,
       status: "NONE",
     });
@@ -78,6 +137,7 @@ describe("entitlement policy", () => {
       resolveEntitlement(
         createSubscriptionFixture({ status: "PENDING", planKey: "PRO" }),
         now,
+        allowed,
       ).plan,
     ).toBe(PLANS.FREE);
   });
@@ -90,10 +150,10 @@ describe("entitlement policy", () => {
     });
 
     await expect(
-      resolveUserEntitlement(ENTITLEMENT_FIXTURE_USER_ID, load, now),
+      resolveUserEntitlement(ENTITLEMENT_FIXTURE_USER_ID, load, now, allowed),
     ).resolves.toMatchObject({ plan: PLANS.PRO });
     await expect(
-      resolveUserEntitlement(otherUserId, load, now),
+      resolveUserEntitlement(otherUserId, load, now, allowed),
     ).resolves.toMatchObject({ plan: PLANS.FREE, status: "ON_HOLD" });
   });
 });

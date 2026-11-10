@@ -5,6 +5,21 @@ import { assertPublicEnvHasNoSecrets } from "./lib/env/shared";
 
 assertPublicEnvHasNoSecrets();
 
+export function buildRedirects() {
+  return [
+    ...rawCategoryAliases().map(({ fromSlug, toSlug }) => ({
+      source: `/categories/${fromSlug}`,
+      destination: `/categories/${toSlug}`,
+      permanent: true,
+    })),
+    {
+      source: "/checkout/founding-full",
+      destination: "/checkout/lifetime-full",
+      permanent: true,
+    },
+  ];
+}
+
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
@@ -16,11 +31,7 @@ const nextConfig: NextConfig = {
     authInterrupts: true,
   },
   async redirects() {
-    return rawCategoryAliases().map(({ fromSlug, toSlug }) => ({
-      source: `/categories/${fromSlug}`,
-      destination: `/categories/${toSlug}`,
-      permanent: true,
-    }));
+    return buildRedirects();
   },
 };
 

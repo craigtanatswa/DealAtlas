@@ -70,7 +70,7 @@ export function parseCheckoutRequest(
 export function subscriptionPlanKeyFor(
   planKey: CheckoutPlanKey,
 ): SubscriptionPlanKey {
-  return planKey === "FOUNDING" ? "PRO_ANNUAL" : planKey;
+  return planKey === "PRO_MONTHLY" ? "PRO_MONTHLY" : "PRO_ANNUAL";
 }
 
 export function mapPlanKey(
@@ -115,20 +115,37 @@ export function isFoundingProduct(
   return Boolean(productId && products.FOUNDING_ANNUAL && productId === products.FOUNDING_ANNUAL);
 }
 
+export function isLifetimeProduct(
+  productId: string | null | undefined,
+  products: PlanProductMap,
+): boolean {
+  return Boolean(
+    productId &&
+      products.FOUNDING_LIFETIME &&
+      productId === products.FOUNDING_LIFETIME,
+  );
+}
+
 /** Products a user may start checkout with. Legacy annual is never offered. */
 export function checkoutProductIds(products: PlanProductMap): string[] {
-  return [products.PRO_MONTHLY, products.PRO_ANNUAL, products.FOUNDING_ANNUAL].filter(
-    (id): id is string => Boolean(id),
-  );
+  return [
+    products.PRO_MONTHLY,
+    products.PRO_ANNUAL,
+    products.FOUNDING_LIFETIME,
+  ].filter((id): id is string => Boolean(id));
 }
 
 /** Products accepted from the provider webhook, including legacy annual plans. */
 export function webhookAcceptedProductIds(products: PlanProductMap): string[] {
-  return [...checkoutProductIds(products), ...products.PRO_ANNUAL_LEGACY];
+  return [
+    ...checkoutProductIds(products),
+    ...(products.FOUNDING_ANNUAL ? [products.FOUNDING_ANNUAL] : []),
+    ...products.PRO_ANNUAL_LEGACY,
+  ];
 }
 
 export function allowlistedProductIds(products: PlanProductMap): string[] {
-  return checkoutProductIds(products);
+  return webhookAcceptedProductIds(products);
 }
 
 export type CheckoutSelection =
@@ -152,10 +169,13 @@ export function selectCheckoutProduct(input: {
   if (input.planKey === "PRO_ANNUAL") {
     return { ok: true, productId: input.products.PRO_ANNUAL, founding: false };
   }
-  if (input.products.FOUNDING_ANNUAL && input.reservation === "reserved") {
+  if (
+    input.products.FOUNDING_LIFETIME &&
+    input.reservation === "reserved"
+  ) {
     return {
       ok: true,
-      productId: input.products.FOUNDING_ANNUAL,
+      productId: input.products.FOUNDING_LIFETIME,
       founding: true,
     };
   }
@@ -169,5 +189,5 @@ export function shouldReserveFoundingSlot(
   planKey: CheckoutPlanKey,
   products: PlanProductMap,
 ): boolean {
-  return planKey === "FOUNDING" && Boolean(products.FOUNDING_ANNUAL);
+  return planKey === "founding_lifetime" && Boolean(products.FOUNDING_LIFETIME);
 }

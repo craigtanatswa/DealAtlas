@@ -42,7 +42,9 @@ test.describe("Anonymous journey", () => {
     await expect(proCard.getByText("Buyer", { exact: true })).toBeVisible();
     await expect(proCard.getByText("How to apply", { exact: true })).toBeVisible();
     await expect(
-      proCard.getByRole("link", { name: /Start Pro – £39\/mo|Become a founding member/ }),
+      proCard.getByRole("link", {
+        name: /Start Pro – £39\/mo|Become a founding member|Get the Lifetime deal/,
+      }),
     ).toBeVisible();
     await expectNoProtectedLeaks(page);
 

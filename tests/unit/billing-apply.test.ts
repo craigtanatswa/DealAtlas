@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { WebhookPayloadSchema } from "@dodopayments/core/schemas";
 
@@ -10,7 +10,11 @@ import {
   createMemoryBillingStore,
   extractBillingEvent,
 } from "@/lib/billing";
-import { DUPLICATE_SUBSCRIPTION_FLAG } from "@/lib/billing/apply";
+import {
+  DUPLICATE_SUBSCRIPTION_FLAG,
+  UNKNOWN_PRODUCT_ENTITLEMENT_WARNING,
+} from "@/lib/billing/apply";
+import { foundingSideEffect } from "@/lib/billing/founding";
 import { resolveEntitlement, ENTITLEMENT_FIXTURE_NOW } from "@/lib/entitlements";
 
 function incoming(
@@ -33,26 +37,39 @@ function incomingAt(
   return incoming({ ...payload, timestamp }, webhookId);
 }
 
+function fixtureAllowlist(): ReadonlySet<string> {
+  return new Set([
+    BILLING_FIXTURE_PRODUCTS.PRO_MONTHLY,
+    BILLING_FIXTURE_PRODUCTS.PRO_ANNUAL,
+    ...BILLING_FIXTURE_PRODUCTS.PRO_ANNUAL_LEGACY,
+    ...(BILLING_FIXTURE_PRODUCTS.FOUNDING_ANNUAL
+      ? [BILLING_FIXTURE_PRODUCTS.FOUNDING_ANNUAL]
+      : []),
+  ]);
+}
+
 function entitlementFromStore(
   store: ReturnType<typeof createMemoryBillingStore>,
 ) {
   const row = store.subscriptions.find((item) => item.isCurrent) ?? null;
   if (!row) {
-    return resolveEntitlement(null);
+    return resolveEntitlement(null, ENTITLEMENT_FIXTURE_NOW, fixtureAllowlist());
   }
-    return resolveEntitlement(
-      {
-        userId: row.userId,
-        isCurrent: row.isCurrent,
-        status: row.status,
-        cancelAtPeriodEnd: row.cancelAtPeriodEnd,
-        currentPeriodStart: row.currentPeriodStart,
-        currentPeriodEnd: row.currentPeriodEnd,
-        planKey: row.planKey,
-        billingInterval: row.billingInterval,
-      },
-      ENTITLEMENT_FIXTURE_NOW,
-    );
+  return resolveEntitlement(
+    {
+      userId: row.userId,
+      isCurrent: row.isCurrent,
+      status: row.status,
+      cancelAtPeriodEnd: row.cancelAtPeriodEnd,
+      currentPeriodStart: row.currentPeriodStart,
+      currentPeriodEnd: row.currentPeriodEnd,
+      planKey: row.planKey,
+      billingInterval: row.billingInterval,
+      dodoProductId: row.dodoProductId,
+    },
+    ENTITLEMENT_FIXTURE_NOW,
+    fixtureAllowlist(),
+  );
 }
 
 describe("billing lifecycle apply", () => {
@@ -165,15 +182,32 @@ describe("billing lifecycle apply", () => {
   });
 
   it("does not grant Pro for an unknown product ID", async () => {
-    const store = createMemoryBillingStore({
-      profileIds: [BILLING_FIXTURE_USER_ID],
-    });
-    await applyBillingEvent(
-      incoming(billingWebhookFixtures.unknownProduct(), "evt_unknown"),
-      store,
-    );
-    expect(store.subscriptions[0]?.status).toBe("UNKNOWN");
-    expect(entitlementFromStore(store).plan).toBe("FREE");
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      const store = createMemoryBillingStore({
+        profileIds: [BILLING_FIXTURE_USER_ID],
+      });
+      const event = incoming(billingWebhookFixtures.unknownProduct(), "evt_unknown");
+      await applyBillingEvent(event, store);
+      expect(await applyBillingEvent(event, store)).toEqual({ outcome: "duplicate" });
+      expect(store.subscriptions[0]?.status).toBe("UNKNOWN");
+      expect(entitlementFromStore(store).plan).toBe("FREE");
+      expect(foundingSideEffect(event, BILLING_FIXTURE_PRODUCTS)).toBeNull();
+
+      const warnings = warn.mock.calls
+        .map((call) => call.map(String).join(" "))
+        .filter((line) => line.includes(UNKNOWN_PRODUCT_ENTITLEMENT_WARNING));
+      expect(warnings).toHaveLength(1);
+      const line = warnings[0] ?? "";
+      expect(line).not.toContain("pdt_unknown_other");
+      expect(line).not.toContain("pro@example.com");
+      expect(line).not.toContain(BILLING_FIXTURE_USER_ID);
+      expect(line).not.toContain("cus_dealatlas_fixture");
+      expect(line).not.toContain("sub_dealatlas_fixture");
+      expect(line).not.toMatch(/whsec_|sk_|rk_/);
+    } finally {
+      warn.mockRestore();
+    }
   });
 
   it("reconciles payment.succeeded after on-hold when the provider is active", async () => {

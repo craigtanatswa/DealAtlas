@@ -5,8 +5,10 @@
  */
 export type {
   BillingInterval,
+  BillingTerm,
   Entitlement,
   EntitlementSnapshot,
+  LifetimeAccess,
   ProCanonicalAccess,
   SubscriptionMirror,
   SubscriptionStatus,
@@ -22,7 +24,9 @@ export {
   type SubscriptionLoader,
 } from "@/lib/entitlements/resolve";
 export {
+  ENTITLEMENT_FIXTURE_ALLOWLIST,
   ENTITLEMENT_FIXTURE_NOW,
+  ENTITLEMENT_FIXTURE_PRODUCT_ID,
   ENTITLEMENT_FIXTURE_USER_ID,
   createFixtureSubscriptionLoader,
   createSubscriptionFixture,

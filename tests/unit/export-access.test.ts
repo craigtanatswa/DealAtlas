@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { PLANS } from "@/lib/constants";
 import { toPaidDealDto, type PaidDealDto, type PaidDealMappingInput } from "@/lib/deals/paid-dto";
 import {
+  ENTITLEMENT_FIXTURE_ALLOWLIST,
   ENTITLEMENT_FIXTURE_NOW,
   ENTITLEMENT_FIXTURE_USER_ID,
   entitlementSubscriptionFixtures,
@@ -102,6 +103,7 @@ describe("protected CSV export access", () => {
       entitlement: resolveEntitlement(
         entitlementSubscriptionFixtures.activePro(),
         now,
+        ENTITLEMENT_FIXTURE_ALLOWLIST,
       ),
       remaining: 1000,
       clientClaimedPlan: PLANS.PRO,
@@ -126,7 +128,7 @@ describe("protected CSV export access", () => {
     const recordUsage = vi.fn();
     const result = await fulfillDealExportRequest({
       userId: ENTITLEMENT_FIXTURE_USER_ID,
-      entitlement: resolveEntitlement(null, now),
+      entitlement: resolveEntitlement(null, now, ENTITLEMENT_FIXTURE_ALLOWLIST),
       remaining: 1000,
       clientClaimedPlan: PLANS.PRO,
       body,
@@ -153,6 +155,7 @@ describe("protected CSV export access", () => {
       entitlement: resolveEntitlement(
         entitlementSubscriptionFixtures.activePro(),
         now,
+        ENTITLEMENT_FIXTURE_ALLOWLIST,
       ),
       remaining: 0,
       body,
@@ -180,6 +183,7 @@ describe("protected CSV export access", () => {
       entitlement: resolveEntitlement(
         entitlementSubscriptionFixtures.activePro(),
         now,
+        ENTITLEMENT_FIXTURE_ALLOWLIST,
       ),
       remaining: 1,
       body: { dealIds: [DEAL_ID, extraId] },
@@ -205,6 +209,7 @@ describe("protected CSV export access", () => {
       entitlement: resolveEntitlement(
         entitlementSubscriptionFixtures.activePro(),
         now,
+        ENTITLEMENT_FIXTURE_ALLOWLIST,
       ),
       remaining: 1000,
       clientClaimedPlan: PLANS.FREE,
@@ -259,6 +264,7 @@ describe("protected CSV export access", () => {
       entitlement: resolveEntitlement(
         entitlementSubscriptionFixtures.activePro(),
         now,
+        ENTITLEMENT_FIXTURE_ALLOWLIST,
       ),
       remaining: 1000 - usage.used,
       body: { dealIds: firstIds },
@@ -275,6 +281,7 @@ describe("protected CSV export access", () => {
       entitlement: resolveEntitlement(
         entitlementSubscriptionFixtures.activePro(),
         now,
+        ENTITLEMENT_FIXTURE_ALLOWLIST,
       ),
       remaining: 1000 - usage.used,
       body: { dealIds: secondIds },
@@ -296,6 +303,7 @@ describe("protected CSV export access", () => {
         entitlement: resolveEntitlement(
           entitlementSubscriptionFixtures.activePro(),
           now,
+          ENTITLEMENT_FIXTURE_ALLOWLIST,
         ),
         remaining: 1000,
         body,

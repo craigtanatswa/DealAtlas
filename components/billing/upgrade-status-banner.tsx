@@ -5,14 +5,15 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CheckIcon, Loader2Icon } from "lucide-react";
 
-const POLL_MS = 2000;
-const TIMEOUT_MS = 60_000;
+/** Check the server entitlement every 2s. */
+export const UPGRADE_POLL_MS = 2_000;
+/** Stop checking after 2 minutes without Pro and say what to do next. */
+export const UPGRADE_TIMEOUT_MS = 120_000;
 
 export function UpgradeStatusBanner({ initialPro }: { initialPro: boolean }) {
   const router = useRouter();
   const [pro, setPro] = useState(initialPro);
   const [timedOut, setTimedOut] = useState(false);
-  const [round, setRound] = useState(0);
 
   useEffect(() => {
     if (pro) {
@@ -41,13 +42,13 @@ export function UpgradeStatusBanner({ initialPro }: { initialPro: boolean }) {
     }
 
     const interval = window.setInterval(() => {
-      if (Date.now() - started >= TIMEOUT_MS) {
+      if (Date.now() - started >= UPGRADE_TIMEOUT_MS) {
         setTimedOut(true);
         window.clearInterval(interval);
         return;
       }
       void poll();
-    }, POLL_MS);
+    }, UPGRADE_POLL_MS);
 
     void poll();
 
@@ -55,7 +56,7 @@ export function UpgradeStatusBanner({ initialPro }: { initialPro: boolean }) {
       cancelled = true;
       window.clearInterval(interval);
     };
-  }, [pro, round, router]);
+  }, [pro, router]);
 
   if (pro) {
     return (
@@ -82,20 +83,13 @@ export function UpgradeStatusBanner({ initialPro }: { initialPro: boolean }) {
         className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900"
       >
         <p>
-          <strong className="font-semibold">Still confirming your payment.</strong>{" "}
-          This can take a minute.
+          <strong className="font-semibold">Still confirming?</strong> Refresh the
+          page, or{" "}
+          <Link href="/contact" className="font-medium underline underline-offset-2">
+            contact support
+          </Link>{" "}
+          if it doesn&apos;t update.
         </p>
-        <button
-          type="button"
-          className="font-medium underline underline-offset-2"
-          onClick={() => {
-            setTimedOut(false);
-            setRound((value) => value + 1);
-            router.refresh();
-          }}
-        >
-          Refresh status
-        </button>
         <Link href="/app/billing" className="font-medium underline underline-offset-2">
           Open billing
         </Link>

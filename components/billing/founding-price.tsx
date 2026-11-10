@@ -2,7 +2,6 @@ import {
   FOUNDING_COPY,
   FOUNDING_LIMITED_PLACES,
   foundingAnnualShort,
-  foundingMonthlyEquivalent,
   proAnnualBilledLine,
   proAnnualMonthlyEquivalent,
   proAnnualShort,
@@ -12,13 +11,10 @@ import {
 import { cn } from "@/lib/utils";
 
 /**
- * The one founding price format:
- * struck-through usual monthly price, bold founding monthly price, then the
- * founding annual price in brackets, e.g. "£39/mo £24.17/mo (£290/yr)".
- * Every founding surface renders this component so the numbers cannot drift.
+ * The one lifetime price format: bold one-time price, e.g. "£250 one-time".
+ * Every lifetime surface renders this component so the numbers cannot drift.
  */
 export function FoundingPriceInline({ className }: { className?: string }) {
-  const monthly = foundingMonthlyEquivalent();
   return (
     <span
       className={cn(
@@ -26,11 +22,7 @@ export function FoundingPriceInline({ className }: { className?: string }) {
         className,
       )}
     >
-      <s aria-label={proMonthlyWasLabel()} className="font-normal opacity-75 decoration-1">
-        {proMonthlyShort()}
-      </s>
-      <strong className="font-bold">{monthly ? `${monthly}/mo` : foundingAnnualShort()}</strong>{" "}
-      <span className="font-normal opacity-75">({foundingAnnualShort()})</span>
+      <strong className="font-bold">{foundingAnnualShort()}</strong>
     </span>
   );
 }

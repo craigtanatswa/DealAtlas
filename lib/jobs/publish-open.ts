@@ -1,3 +1,4 @@
+import type { BandRefreshResult } from "@/lib/jobs/refresh-deadline-bands";
 import { alertDepsFromEnv } from "@/lib/leak-scan/alert";
 
 export const LIVE_PUBLISHED_MINIMUM = 100;
@@ -187,6 +188,7 @@ export async function runUnpublishStale(input: {
   env?: Record<string, string | undefined>;
   fetchImpl?: typeof fetch;
   alert?: (subject: string, text: string) => Promise<void>;
+  refreshBands?: (now: Date) => Promise<BandRefreshResult>;
 }): Promise<PublishJobResult> {
   const publishedLive = await countPublished(input.client);
   if (input.mode !== "live") {
@@ -210,6 +212,33 @@ export async function runUnpublishStale(input: {
       alert: input.alert,
     });
     return { status: "FAILED", dryRun: false, publishedLive: after, counts: {}, errorMessage };
+  }
+  if (input.refreshBands) {
+    try {
+      const bands = await input.refreshBands(new Date());
+      counts.bands_scanned = bands.scanned;
+      counts.bands_stale = bands.stale;
+      counts.bands_updated = bands.updated;
+      counts.bands_unpublished_by_gate = bands.unpublishedByGate;
+    } catch {
+      await notify({
+        job: "unpublish-stale",
+        status: "FAILED",
+        publishedLive: after,
+        counts: {},
+        mode: input.mode,
+        env: input.env ?? {},
+        fetchImpl: input.fetchImpl,
+        alert: input.alert,
+      });
+      return {
+        status: "FAILED",
+        dryRun: false,
+        publishedLive: after,
+        counts: {},
+        errorMessage: "deadline band refresh failed",
+      };
+    }
   }
   return { status: "SUCCEEDED", dryRun: false, publishedLive: after, counts };
 }

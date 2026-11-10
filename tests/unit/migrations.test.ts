@@ -98,6 +98,7 @@ describe("supabase migrations", () => {
       "0059_country_regions_in_leak_gate.sql",
       "0060_buyer_type_private_public.sql",
       "0061_publish_gate_denylist_retired.sql",
+      "0062_founding_lifetime.sql",
       "0062_preview_slug_aliases.sql",
     ]);
   });

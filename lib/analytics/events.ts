@@ -32,6 +32,8 @@ export const KNOWN_GUIDE_SLUGS: readonly string[] = [
   "council-tenders-uk",
   "transport-logistics-tenders-uk",
   "financial-services-tenders-uk",
+  "it-tenders-uk",
+  "construction-tenders-uk",
 ];
 
 export function isKnownGuideSlug(value: unknown): value is string {

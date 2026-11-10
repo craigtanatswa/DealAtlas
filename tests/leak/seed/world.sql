@@ -499,15 +499,18 @@ where current_setting('leak.include_residuals') = '1';
 create function pg_temp.user_id(p_role text) returns uuid
 language sql stable as $$ select nullif(current_setting('leak.' || p_role || '_id'), '')::uuid $$;
 
+-- Product id matches DODO_PRO_MONTHLY_PRODUCT_ID in tests/leak/start-app.sh.
+-- Entitlement grants Pro only for that allowlist. Lapsed and expired rows use
+-- the same product and stay off Pro because the period is missing or past.
 insert into public.subscriptions
   (user_id, provider, dodo_customer_id, dodo_subscription_id, dodo_product_id, plan_key, status, billing_interval,
    current_period_start, current_period_end, cancel_at_period_end, is_current, last_provider_event_at)
 values
-  (pg_temp.user_id('free_lapsed'), 'dodo', 'cus_leak_lapsed', 'sub_leak_lapsed', 'prod_leak_monthly', 'PRO_MONTHLY', 'ACTIVE', 'MONTHLY',
+  (pg_temp.user_id('free_lapsed'), 'dodo', 'cus_leak_lapsed', 'sub_leak_lapsed', 'pdt_dealatlas_pro_monthly', 'PRO_MONTHLY', 'ACTIVE', 'MONTHLY',
    now() - interval '40 days', null, false, true, now() - interval '40 days'),
-  (pg_temp.user_id('free_expired'), 'dodo', 'cus_leak_expired', 'sub_leak_expired', 'prod_leak_monthly', 'PRO_MONTHLY', 'ACTIVE', 'MONTHLY',
+  (pg_temp.user_id('free_expired'), 'dodo', 'cus_leak_expired', 'sub_leak_expired', 'pdt_dealatlas_pro_monthly', 'PRO_MONTHLY', 'ACTIVE', 'MONTHLY',
    now() - interval '31 days', now() - interval '1 day', false, true, now() - interval '31 days'),
-  (pg_temp.user_id('pro'), 'dodo', 'cus_leak_pro', 'sub_leak_pro', 'prod_leak_monthly', 'PRO_MONTHLY', 'ACTIVE', 'MONTHLY',
+  (pg_temp.user_id('pro'), 'dodo', 'cus_leak_pro', 'sub_leak_pro', 'pdt_dealatlas_pro_monthly', 'PRO_MONTHLY', 'ACTIVE', 'MONTHLY',
    now() - interval '1 day', now() + interval '30 days', false, true, now() - interval '1 day');
 
 insert into public.company_profiles (id, user_id, company_name, keywords, preferred_buyer_sectors, preferred_regions)

@@ -20,8 +20,9 @@ describe("billing anti-bypass boundary", () => {
     expect(route).not.toMatch(/searchParams\.get\(\s*["']productId["']/);
     expect(checkout).toContain("Checkout");
     expect(checkout).toContain("from \"@dodopayments/nextjs\"");
-    expect(checkout).toContain("checkoutMetadata");
+    expect(checkout).toContain("buildCheckoutSessionBody");
     expect(checkout).toContain("userId: input.user.id");
+    expect(read("lib/billing/checkout-session.ts")).toContain("checkoutMetadata");
     expect(checkout).toContain("email_confirmed_at");
     expect(checkout).toContain("Verify your email before starting checkout.");
     expect(checkout).toContain("parseCheckoutReturnTo");

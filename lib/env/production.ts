@@ -3,6 +3,7 @@ const LOOPBACK_HOST = /localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\]/i;
 export const LIVE_FORBIDDEN_PRODUCT_IDS = new Set([
   "pdt_dealatlas_pro_monthly",
   "pdt_dealatlas_pro_annual",
+  "pdt_dealatlas_founding_lifetime",
 ]);
 
 export const LIVE_FORBIDDEN_WEBHOOK_KEYS = new Set([
@@ -112,6 +113,7 @@ export type LiveDodoEnv = {
   DODO_PRO_ANNUAL_PRODUCT_ID?: string;
   DODO_PRO_ANNUAL_LEGACY_PRODUCT_IDS?: string;
   DODO_FOUNDING_PRODUCT_ID?: string;
+  DODO_FOUNDING_LIFETIME_PRODUCT_ID?: string;
 };
 
 export function parseProductIdList(value: string | undefined | null): string[] {
@@ -185,6 +187,20 @@ export function liveDodoConfigErrors(env: LiveDodoEnv): string[] {
     );
   }
 
+  if (env.DODO_FOUNDING_LIFETIME_PRODUCT_ID) {
+    if (!/^pdt_[A-Za-z0-9]{21}$/.test(env.DODO_FOUNDING_LIFETIME_PRODUCT_ID)) {
+      errors.push(
+        "DODO_FOUNDING_LIFETIME_PRODUCT_ID must be a live product id (pdt_ followed by 21 letters or digits).",
+      );
+    } else if (
+      LIVE_FORBIDDEN_PRODUCT_IDS.has(env.DODO_FOUNDING_LIFETIME_PRODUCT_ID)
+    ) {
+      errors.push(
+        "Live Dodo product IDs must come from the live catalogue, not local billing fixtures.",
+      );
+    }
+  }
+
   const legacyProductIds = parseProductIdList(
     env.DODO_PRO_ANNUAL_LEGACY_PRODUCT_IDS,
   );
@@ -192,6 +208,7 @@ export function liveDodoConfigErrors(env: LiveDodoEnv): string[] {
     env.DODO_PRO_MONTHLY_PRODUCT_ID,
     env.DODO_PRO_ANNUAL_PRODUCT_ID,
     env.DODO_FOUNDING_PRODUCT_ID,
+    env.DODO_FOUNDING_LIFETIME_PRODUCT_ID,
   ].filter((id): id is string => Boolean(id));
 
   for (const legacyId of legacyProductIds) {
@@ -213,6 +230,23 @@ export function liveDodoConfigErrors(env: LiveDodoEnv): string[] {
       );
       break;
     }
+  }
+
+  const lifetimeProductId = env.DODO_FOUNDING_LIFETIME_PRODUCT_ID;
+  if (
+    lifetimeProductId &&
+    /^pdt_[A-Za-z0-9]{21}$/.test(lifetimeProductId) &&
+    !LIVE_FORBIDDEN_PRODUCT_IDS.has(lifetimeProductId) &&
+    [
+      env.DODO_PRO_MONTHLY_PRODUCT_ID,
+      env.DODO_PRO_ANNUAL_PRODUCT_ID,
+      env.DODO_FOUNDING_PRODUCT_ID,
+      ...legacyProductIds,
+    ].filter((id): id is string => Boolean(id)).includes(lifetimeProductId)
+  ) {
+    errors.push(
+      "DODO_FOUNDING_LIFETIME_PRODUCT_ID must not reuse another product id.",
+    );
   }
 
   return errors;

@@ -25,7 +25,10 @@ describe("protected deal boundary", () => {
 
     expect(service).toMatch(/import ["']server-only["']/);
     expect(service).toContain("loadCurrentSubscription");
+    expect(service).toContain("getAllowedProductIds");
     expect(service).not.toContain("searchParams");
+    expect(read("lib/entitlements/store.ts")).toContain("dodo_product_id");
+    expect(read("lib/billing/allowed-products.ts")).toMatch(/import ["']server-only["']/);
 
     expect(access).toContain("void input.clientClaimedPlan");
     expect(access).toContain("isProEntitlement");

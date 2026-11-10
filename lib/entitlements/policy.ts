@@ -2,6 +2,7 @@ import { PLANS } from "@/lib/constants";
 
 import type {
   EntitlementSnapshot,
+  LifetimeAccess,
   SubscriptionMirror,
 } from "@/lib/entitlements/types";
 
@@ -12,6 +13,7 @@ export const FREE_ENTITLEMENT: EntitlementSnapshot = {
   cancelAtPeriodEnd: false,
   billingInterval: null,
   planKey: null,
+  term: null,
 };
 
 /**
@@ -47,8 +49,44 @@ function isCancelledAtPeriodEndPaidThrough(
   );
 }
 
-function grantsPro(subscription: SubscriptionMirror, now: Date): boolean {
+/**
+ * Fail closed. An empty allowlist, a missing product id, or a product id
+ * outside the set never grants Pro. Callers must pass the set.
+ */
+function productGrantsPro(
+  subscription: SubscriptionMirror,
+  allowedProductIds: ReadonlySet<string>,
+): boolean {
+  if (allowedProductIds.size === 0) {
+    return false;
+  }
+  const productId = subscription.dodoProductId?.trim() ?? "";
+  return productId.length > 0 && allowedProductIds.has(productId);
+}
+
+function lifetimeGrantsPro(
+  lifetime: LifetimeAccess | null | undefined,
+  allowedProductIds: ReadonlySet<string>,
+): boolean {
+  if (!lifetime || lifetime.status !== "active") {
+    return false;
+  }
+  if (allowedProductIds.size === 0) {
+    return false;
+  }
+  const productId = lifetime.dodoProductId?.trim() ?? "";
+  return productId.length > 0 && allowedProductIds.has(productId);
+}
+
+function grantsPro(
+  subscription: SubscriptionMirror,
+  now: Date,
+  allowedProductIds: ReadonlySet<string>,
+): boolean {
   if (!subscription.isCurrent) {
+    return false;
+  }
+  if (!productGrantsPro(subscription, allowedProductIds)) {
     return false;
   }
 
@@ -68,23 +106,55 @@ function grantsPro(subscription: SubscriptionMirror, now: Date): boolean {
  * - CANCELLED + cancel_at_period_end + current_period_end > now → PRO until period end
  * - ON_HOLD, FAILED, EXPIRED, PENDING, UNKNOWN, immediate cancel, or lapsed period → FREE
  *
- * `plan_key` is not an entitlement signal.
+ * `plan_key` is not an entitlement signal. `allowedProductIds` is required.
+ * `dodo_product_id` must belong to that set. An empty set grants Pro to
+ * nobody. Production passes the deployment allowlist from the environment.
+ *
+ * `private.is_user_pro` still checks status and paid-through only. Preview
+ * and Production share one database, so that SQL helper cannot see this
+ * deployment's product ids. Source reveal uses this function.
  */
 export function resolveEntitlement(
   subscription: SubscriptionMirror | null,
-  now: Date = new Date(),
+  now: Date,
+  allowedProductIds: ReadonlySet<string>,
+  lifetime?: LifetimeAccess | null,
 ): EntitlementSnapshot {
+  if (lifetimeGrantsPro(lifetime, allowedProductIds)) {
+    return {
+      plan: PLANS.PRO,
+      status: "ACTIVE",
+      currentPeriodEnd: null,
+      cancelAtPeriodEnd: false,
+      billingInterval: null,
+      planKey: "founding_lifetime",
+      term: "lifetime",
+    };
+  }
+
   if (!subscription) {
     return FREE_ENTITLEMENT;
   }
 
+  const plan = grantsPro(subscription, now, allowedProductIds)
+    ? PLANS.PRO
+    : PLANS.FREE;
+
   return {
-    plan: grantsPro(subscription, now) ? PLANS.PRO : PLANS.FREE,
+    plan,
     status: subscription.status,
     currentPeriodEnd: subscription.currentPeriodEnd,
     cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
     billingInterval: subscription.billingInterval,
     planKey: subscription.planKey,
+    term:
+      plan === PLANS.PRO
+        ? subscription.billingInterval === "ANNUAL"
+          ? "annual"
+          : subscription.billingInterval === "MONTHLY"
+            ? "monthly"
+            : null
+        : null,
   };
 }
 

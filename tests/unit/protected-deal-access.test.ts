@@ -7,6 +7,7 @@ import {
 } from "@/lib/deals/protected-access";
 import type { PaidDealDto } from "@/lib/deals/paid-dto";
 import {
+  ENTITLEMENT_FIXTURE_ALLOWLIST,
   ENTITLEMENT_FIXTURE_NOW,
   ENTITLEMENT_FIXTURE_USER_ID,
   entitlementSubscriptionFixtures,
@@ -31,6 +32,7 @@ describe("protected deal access", () => {
       entitlement: resolveEntitlement(
         entitlementSubscriptionFixtures.activePro(),
         now,
+        ENTITLEMENT_FIXTURE_ALLOWLIST,
       ),
       clientClaimedPlan: PLANS.PRO,
       loadPaidDeal,
@@ -51,7 +53,7 @@ describe("protected deal access", () => {
     const result = await fulfillProtectedDealRequest({
       userId: ENTITLEMENT_FIXTURE_USER_ID,
       dealId: DEAL_ID,
-      entitlement: resolveEntitlement(null, now),
+      entitlement: resolveEntitlement(null, now, ENTITLEMENT_FIXTURE_ALLOWLIST),
       loadPaidDeal,
     });
 
@@ -68,6 +70,7 @@ describe("protected deal access", () => {
     const free = resolveEntitlement(
       entitlementSubscriptionFixtures.pending(),
       now,
+      ENTITLEMENT_FIXTURE_ALLOWLIST,
     );
 
     for (const clientClaimedPlan of [
@@ -97,6 +100,7 @@ describe("protected deal access", () => {
       entitlement: resolveEntitlement(
         entitlementSubscriptionFixtures.activePro(),
         now,
+        ENTITLEMENT_FIXTURE_ALLOWLIST,
       ),
       clientClaimedPlan: PLANS.FREE,
       loadPaidDeal,
@@ -119,6 +123,7 @@ describe("protected deal access", () => {
       entitlement: resolveEntitlement(
         entitlementSubscriptionFixtures.expired(),
         now,
+        ENTITLEMENT_FIXTURE_ALLOWLIST,
       ),
       clientClaimedPlan: PLANS.PRO,
       loadPaidDeal,
@@ -129,6 +134,7 @@ describe("protected deal access", () => {
       entitlement: resolveEntitlement(
         entitlementSubscriptionFixtures.onHold(),
         now,
+        ENTITLEMENT_FIXTURE_ALLOWLIST,
       ),
       clientClaimedPlan: PLANS.PRO,
       loadPaidDeal,
@@ -147,6 +153,7 @@ describe("protected deal access", () => {
       entitlement: resolveEntitlement(
         entitlementSubscriptionFixtures.activePro(),
         now,
+        ENTITLEMENT_FIXTURE_ALLOWLIST,
       ),
       loadPaidDeal,
     });
