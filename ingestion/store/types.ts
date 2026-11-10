@@ -344,7 +344,7 @@ export type IngestionStore = {
    * false because the database publish gate enforces retired slugs.
    */
   isDealPreviewSlugRetired(dealId: string): Promise<boolean>;
-  retirePreviewSlug(slug: string): Promise<void>;
+  retirePreviewSlug(slug: string, dealId?: string): Promise<void>;
   maintainDealsLeakIndex(): Promise<void>;
   upsertDealPreview(input: DealPreviewRecord): Promise<DealPreviewRecord>;
   /**
