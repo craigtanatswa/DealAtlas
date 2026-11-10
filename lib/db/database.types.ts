@@ -3285,8 +3285,6 @@ export type Database = {
           last_provider_event_at: string | null
           plan_key: string
           provider: string
-          recurring_amount: number | null
-          recurring_currency: string | null
           revoke_reason: string | null
           revoked_at: string | null
           status: Database["public"]["Enums"]["subscription_status"]
@@ -3310,8 +3308,6 @@ export type Database = {
           last_provider_event_at?: string | null
           plan_key?: string
           provider?: string
-          recurring_amount?: number | null
-          recurring_currency?: string | null
           revoke_reason?: string | null
           revoked_at?: string | null
           status?: Database["public"]["Enums"]["subscription_status"]
@@ -3335,8 +3331,6 @@ export type Database = {
           last_provider_event_at?: string | null
           plan_key?: string
           provider?: string
-          recurring_amount?: number | null
-          recurring_currency?: string | null
           revoke_reason?: string | null
           revoked_at?: string | null
           status?: Database["public"]["Enums"]["subscription_status"]
@@ -3431,10 +3425,9 @@ export type Database = {
       }
       revoke_subscription_access: {
         Args: {
-          p_customer_id: string | null
           p_event_id: string
           p_reason: string | null
-          p_subscription_id: string | null
+          p_subscription_id: string
         }
         Returns: string
       }

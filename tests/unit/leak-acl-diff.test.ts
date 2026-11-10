@@ -110,13 +110,13 @@ describe("phase B ACL diff", () => {
   });
 
   it("treats the 0064 subscription revoke RPC as intended only when closed", () => {
-    const signature = "revoke_subscription_access(text,text,text,text)";
+    const signature = "revoke_subscription_access(text,text,text)";
     const sealed = acl({
       ...before.functions,
       [signature]: fn("revoke_subscription_access", false, false),
     });
     expect(aclDiff(before, sealed)).toEqual({
-      intended: ["revoke_subscription_access(text,text,text,text): added"],
+      intended: ["revoke_subscription_access(text,text,text): added"],
       unintended: [],
     });
     const open = acl({
@@ -124,7 +124,7 @@ describe("phase B ACL diff", () => {
       [signature]: fn("revoke_subscription_access", true, false),
     });
     expect(aclDiff(before, open).unintended).toEqual([
-      "revoke_subscription_access(text,text,text,text): added",
+      "revoke_subscription_access(text,text,text): added",
     ]);
   });
 

@@ -44,8 +44,6 @@ export type SubscriptionSnapshot = {
   currentPeriodEnd: string | null;
   cancelledAt: string | null;
   productKnown: boolean;
-  recurringAmount: number | null;
-  recurringCurrency: string | null;
 };
 
 export type PaymentSnapshot = {
@@ -94,8 +92,6 @@ export type IncomingBillingEvent = {
   disputeNotice: DisputeNotice | null;
   refundId: string | null;
   disputeId: string | null;
-  paymentActionSubscriptionId: string | null;
-  paymentActionCustomerId: string | null;
 };
 
 export type BillingEventRecord = {
@@ -119,8 +115,6 @@ export type StoredSubscription = {
   cancelledAt: string | null;
   lastProviderEventAt: string | null;
   isCurrent: boolean;
-  recurringAmount?: number | null;
-  recurringCurrency?: string | null;
   revokedAt?: string | null;
   revokeReason?: string | null;
 };
@@ -190,8 +184,7 @@ export type RevokeLifetimeResult =
 
 export type RevokeSubscriptionInput = {
   eventId: string;
-  subscriptionId: string | null;
-  customerId: string | null;
+  subscriptionId: string;
   reason: string | null;
 };
 
@@ -208,6 +201,16 @@ export type ReconcileFn = (
 export type CancelSubscriptionFn = (
   dodoSubscriptionId: string,
 ) => Promise<void>;
+
+export type PaymentFacts = {
+  subscriptionId: string | null;
+  totalAmount: number | null;
+  currency: string | null;
+};
+
+export type RetrievePaymentFn = (
+  paymentId: string,
+) => Promise<PaymentFacts | null>;
 
 export type BillingStore = {
   getEvent(providerEventId: string): Promise<BillingEventRecord | null>;
@@ -235,6 +238,7 @@ export type BillingStore = {
   revokeSubscription(
     input: RevokeSubscriptionInput,
   ): Promise<RevokeSubscriptionResult>;
+  getPaymentFacts(paymentId: string): Promise<PaymentFacts | null>;
   getLifetimeGrantByPayment(
     paymentId: string,
   ): Promise<LifetimeGrantSnapshot | null>;

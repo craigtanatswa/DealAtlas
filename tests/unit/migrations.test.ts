@@ -622,11 +622,17 @@ describe("supabase migrations", () => {
     const body = readMigration("0064_subscription_refund_revoke.sql");
     expect(body).toContain("add column if not exists revoked_at timestamptz");
     expect(body).toContain("add column if not exists revoke_reason text");
+    expect(body).not.toContain("recurring_amount");
+    expect(body).not.toContain("recurring_currency");
+    expect(body).toContain("billing_events_payment_succeeded_payment_id_idx");
+    expect(body).toContain("payload->'data'->>'payment_id'");
     expect(body).toContain("create trigger protect_revoked_subscription");
     expect(body).toContain("create or replace function public.revoke_subscription_access(");
     expect(body).toContain("s.revoked_at is null");
+    expect(body).toContain("s.dodo_subscription_id = p_subscription_id");
+    expect(body).not.toContain("dodo_customer_id = p_customer_id");
     expect(body).toContain("from public.lifetime_grants g");
-    expect(body).toContain("grant execute on function public.revoke_subscription_access(text, text, text, text)");
+    expect(body).toContain("grant execute on function public.revoke_subscription_access(text, text, text)");
     expect(body).toContain("to service_role;");
     expect(body).not.toMatch(/to (anon|authenticated)/);
   });

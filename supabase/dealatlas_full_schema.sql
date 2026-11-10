@@ -13037,9 +13037,13 @@ revoke execute on function private.is_user_pro(uuid) from public, anon, authenti
 
 alter table public.subscriptions
   add column if not exists revoked_at timestamptz,
-  add column if not exists revoke_reason text,
-  add column if not exists recurring_amount bigint,
-  add column if not exists recurring_currency text;
+  add column if not exists revoke_reason text;
+
+-- Resolve refund/dispute webhooks (which may not carry a subscription id) back
+-- to the original payment.succeeded event by the provider payment id.
+create index if not exists billing_events_payment_succeeded_payment_id_idx
+  on public.billing_events ((payload->'data'->>'payment_id'))
+  where event_type = 'payment.succeeded';
 
 create or replace function private.protect_revoked_subscription()
 returns trigger
@@ -13070,10 +13074,11 @@ before update
 on public.subscriptions
 for each row execute function private.protect_revoked_subscription();
 
+drop function if exists public.revoke_subscription_access(text, text, text, text);
+
 create or replace function public.revoke_subscription_access(
   p_event_id text,
   p_subscription_id text,
-  p_customer_id text,
   p_reason text
 )
 returns text
@@ -13085,10 +13090,7 @@ declare
   v_user_id uuid;
 begin
   if p_event_id is null or btrim(p_event_id) = ''
-     or (
-       (p_subscription_id is null or btrim(p_subscription_id) = '')
-       and (p_customer_id is null or btrim(p_customer_id) = '')
-     ) then
+     or p_subscription_id is null or btrim(p_subscription_id) = '' then
     return 'invalid';
   end if;
 
@@ -13099,20 +13101,7 @@ begin
       cancel_at_period_end = false,
       updated_at = pg_catalog.now()
   where s.revoked_at is null
-    and (
-      (
-        p_subscription_id is not null
-        and btrim(p_subscription_id) <> ''
-        and s.dodo_subscription_id = p_subscription_id
-      )
-      or (
-        (p_subscription_id is null or btrim(p_subscription_id) = '')
-        and p_customer_id is not null
-        and btrim(p_customer_id) <> ''
-        and s.dodo_customer_id = p_customer_id
-        and s.is_current = true
-      )
-    )
+    and s.dodo_subscription_id = p_subscription_id
   returning s.user_id into v_user_id;
 
   if v_user_id is not null then
@@ -13122,20 +13111,7 @@ begin
   if exists (
     select 1
     from public.subscriptions s
-    where (
-      (
-        p_subscription_id is not null
-        and btrim(p_subscription_id) <> ''
-        and s.dodo_subscription_id = p_subscription_id
-      )
-      or (
-        (p_subscription_id is null or btrim(p_subscription_id) = '')
-        and p_customer_id is not null
-        and btrim(p_customer_id) <> ''
-        and s.dodo_customer_id = p_customer_id
-        and s.is_current = true
-      )
-    )
+    where s.dodo_subscription_id = p_subscription_id
   ) then
     return 'already_revoked';
   end if;
@@ -13144,12 +13120,12 @@ begin
 end;
 $$;
 
-revoke all on function public.revoke_subscription_access(text, text, text, text)
+revoke all on function public.revoke_subscription_access(text, text, text)
   from public, anon, authenticated;
-grant execute on function public.revoke_subscription_access(text, text, text, text)
+grant execute on function public.revoke_subscription_access(text, text, text)
   to service_role;
 
-comment on function public.revoke_subscription_access(text, text, text, text) is
+comment on function public.revoke_subscription_access(text, text, text) is
   'Service-role only. Terminal local revocation after a full refund or lost chargeback.';
 
 -- Pro is either a paid-through non-revoked subscription or an active lifetime
