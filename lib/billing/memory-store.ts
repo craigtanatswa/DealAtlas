@@ -13,6 +13,27 @@ export type MemoryFoundingSlot = {
   status: "active" | "ended" | "released";
 };
 
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+function readString(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function readNumber(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+}
+
 export function createMemoryBillingStore(seed?: {
   profileIds?: string[];
   subscriptions?: StoredSubscription[];
@@ -77,8 +98,9 @@ export function createMemoryBillingStore(seed?: {
     },
     async getSubscriptionByCustomerId(dodoCustomerId) {
       return (
-        subscriptions.find((row) => row.dodoCustomerId === dodoCustomerId) ??
-        null
+        subscriptions.find(
+          (row) => row.dodoCustomerId === dodoCustomerId && row.isCurrent,
+        ) ?? null
       );
     },
     async getCurrentSubscription(userId) {
@@ -88,14 +110,18 @@ export function createMemoryBillingStore(seed?: {
       );
     },
     async upsertCurrentSubscription(row) {
+      const index = subscriptions.findIndex(
+        (item) => item.dodoSubscriptionId === row.dodoSubscriptionId,
+      );
+      // Revoked is terminal for the same provider subscription id.
+      if (index >= 0 && subscriptions[index]?.revokedAt) {
+        return;
+      }
       for (const existing of subscriptions) {
         if (existing.userId === row.userId && existing.isCurrent) {
           existing.isCurrent = false;
         }
       }
-      const index = subscriptions.findIndex(
-        (item) => item.dodoSubscriptionId === row.dodoSubscriptionId,
-      );
       if (index >= 0) {
         subscriptions[index] = { ...row, isCurrent: true };
       } else {
@@ -168,6 +194,42 @@ export function createMemoryBillingStore(seed?: {
         }
       }
       return "revoked";
+    },
+    async revokeSubscription(input) {
+      if (!input.eventId || !input.subscriptionId) {
+        return "invalid";
+      }
+      const match = subscriptions.find(
+        (row) => row.dodoSubscriptionId === input.subscriptionId,
+      );
+      if (!match) {
+        return "not_found";
+      }
+      if (match.revokedAt) {
+        return "already_revoked";
+      }
+      match.status = "EXPIRED";
+      match.revokedAt = new Date().toISOString();
+      match.revokeReason = input.reason;
+      match.cancelAtPeriodEnd = false;
+      return "revoked";
+    },
+    async getPaymentFacts(paymentId) {
+      for (const event of events.values()) {
+        if (event.eventType !== "payment.succeeded") {
+          continue;
+        }
+        const data = asRecord(asRecord(event.payload).data);
+        if (readString(data.payment_id) !== paymentId) {
+          continue;
+        }
+        return {
+          subscriptionId: readString(data.subscription_id),
+          totalAmount: readNumber(data.total_amount),
+          currency: readString(data.currency),
+        };
+      }
+      return null;
     },
     async getLifetimeGrantByPayment(paymentId) {
       const grant = lifetimeGrants.find(

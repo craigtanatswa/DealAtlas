@@ -10,7 +10,11 @@ import { extractBillingEvent } from "@/lib/billing/extract";
 import { foundingSideEffect } from "@/lib/billing/founding";
 import { proSubscribedPlan } from "@/lib/billing/analytics";
 import { syncFoundingSlot } from "@/lib/billing/founding-db";
-import { reconcileDodoSubscription } from "@/lib/billing/reconcile";
+import {
+  cancelDodoSubscription,
+  reconcileDodoSubscription,
+  retrieveDodoPayment,
+} from "@/lib/billing/reconcile";
 import { createBillingStore } from "@/lib/billing/store";
 import type { ApplyResult } from "@/lib/billing/types";
 
@@ -36,6 +40,8 @@ export async function processVerifiedDodoWebhook(input: {
         return null;
       }
     },
+    cancelSubscription: cancelDodoSubscription,
+    retrievePayment: retrieveDodoPayment,
   });
 
   // payment.failed is applied as "ignored" and still releases a reservation.

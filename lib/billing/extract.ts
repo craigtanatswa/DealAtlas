@@ -201,6 +201,8 @@ export function extractBillingEvent(
   const disputeNotice = extractDisputeNotice(payload.type, data);
   const payloadHash = hashWebhookPayload(rawBody);
   const occurredAt = toIsoDate(payload.timestamp);
+  const refundId = readString(data.refund_id);
+  const disputeId = readString(data.dispute_id);
 
   return {
     providerEventId: providerEventId({
@@ -211,6 +213,10 @@ export function extractBillingEvent(
       subscriptionId: subscription?.dodoSubscriptionId ?? payment?.subscriptionId,
       paymentId:
         payment?.paymentId ?? reversal?.paymentId ?? disputeNotice?.paymentId,
+      // Only a successful refund reverses access. A failed refund keeps its
+      // normal header/hash identity so it cannot shadow a later success.
+      refundId: payload.type === "refund.succeeded" ? refundId : null,
+      disputeId,
     }),
     eventType: payload.type,
     payloadHash,
@@ -220,6 +226,8 @@ export function extractBillingEvent(
     payment,
     reversal,
     disputeNotice,
+    refundId,
+    disputeId,
   };
 }
 
