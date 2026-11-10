@@ -66,7 +66,8 @@ const SLUG_4 = "council-tenders-uk";
 const SLUG_5 = "transport-logistics-tenders-uk";
 const SLUG_6 = "financial-services-tenders-uk";
 const SLUG_7 = "it-tenders-uk";
-const PUBLISHED = [SLUG, SLUG_2, SLUG_3, SLUG_4, SLUG_5, SLUG_6, SLUG_7];
+const SLUG_8 = "construction-tenders-uk";
+const PUBLISHED = [SLUG, SLUG_2, SLUG_3, SLUG_4, SLUG_5, SLUG_6, SLUG_7, SLUG_8];
 const UNPUBLISHED_SLUG = "frameworks-and-dynamic-markets";
 
 function frontmatter(slug: string, published: boolean, updated: string) {
@@ -499,7 +500,7 @@ describe("guide CTA analytics", () => {
     };
   }
 
-  it.each(PUBLISHED)("marks %s CTA links to /deals and /pricing as end-position CTAs", (slug) => {
+  it.each(PUBLISHED.filter((slug) => slug !== SLUG_8))("marks %s CTA links to /deals and /pricing as end-position CTAs", (slug) => {
     const guide = getPublishedGuide(slug)!;
     const html = renderToStaticMarkup(
       <GuideMarkdown blocks={guide.blocks} publishedGuidePaths={publishedGuidePaths()} />,
@@ -510,6 +511,17 @@ describe("guide CTA analytics", () => {
     expect(html).toMatch(
       new RegExp(`${GUIDE_CTA_TARGET_ATTR}="pricing" ${GUIDE_CTA_POSITION_ATTR}="end" href="/pricing(?:\\?[^"]*)?"`),
     );
+    expect(html).not.toMatch(new RegExp(`${GUIDE_CTA_TARGET_ATTR}="[^"]*" ${GUIDE_CTA_POSITION_ATTR}="[^"]*" href="/categories`));
+    expect(html).not.toMatch(/data-guide-cta-[a-z]+="[^"]*(\d{4,}|deal-)/);
+  });
+
+  it("keeps the construction guide free of pricing CTAs and category CTA markers", () => {
+    const guide = getPublishedGuide(SLUG_8)!;
+    const html = renderToStaticMarkup(
+      <GuideMarkdown blocks={guide.blocks} publishedGuidePaths={publishedGuidePaths()} />,
+    );
+    expect(html).not.toMatch(/href="\/pricing/);
+    expect(html).not.toMatch(new RegExp(`${GUIDE_CTA_TARGET_ATTR}="pricing"`));
     expect(html).not.toMatch(new RegExp(`${GUIDE_CTA_TARGET_ATTR}="[^"]*" ${GUIDE_CTA_POSITION_ATTR}="[^"]*" href="/categories`));
     expect(html).not.toMatch(/data-guide-cta-[a-z]+="[^"]*(\d{4,}|deal-)/);
   });
@@ -598,7 +610,7 @@ describe("guide sitemap and robots", () => {
     const entries = guideSitemapEntries(ORIGIN, listPublishedGuides());
     expect(entries.map((entry) => [entry.url, entry.lastModified])).toEqual(
       expect.arrayContaining([
-        [`${ORIGIN}/guides`, "2026-11-09"],
+        [`${ORIGIN}/guides`, "2026-11-10"],
         [`${ORIGIN}/guides/${SLUG}`, "2026-11-09"],
         [`${ORIGIN}/guides/${SLUG_2}`, "2026-11-09"],
         [`${ORIGIN}/guides/${SLUG_3}`, "2026-11-02"],
@@ -606,9 +618,10 @@ describe("guide sitemap and robots", () => {
         [`${ORIGIN}/guides/${SLUG_5}`, "2026-11-02"],
         [`${ORIGIN}/guides/${SLUG_6}`, "2026-11-09"],
         [`${ORIGIN}/guides/${SLUG_7}`, "2026-11-09"],
+        [`${ORIGIN}/guides/${SLUG_8}`, "2026-11-10"],
       ]),
     );
-    expect(entries).toHaveLength(8);
+    expect(entries).toHaveLength(9);
   });
 
   it("emits no sitemap entries when nothing is published", () => {
