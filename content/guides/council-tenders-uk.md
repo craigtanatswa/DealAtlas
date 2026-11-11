@@ -6,7 +6,7 @@ description: "Council tenders UK: where to find local government tenders, what c
 h1: "Council tenders in the UK: where to find them and what councils buy"
 breadcrumb: "Council tenders UK"
 datePublished: 2026-10-29
-updated: 2026-11-09
+updated: 2026-11-11
 primaryKeyword: "council tenders UK"
 secondaryKeywords: ["local government tenders", "council procurement"]
 relatedGuides: ["how-to-win-council-contracts", "how-to-find-public-sector-tenders"]
@@ -17,7 +17,7 @@ craigApprovedAt: 2026-10-29
 
 This guide covers where council work appears, what councils buy, and how to filter it. If you already have a tender in front of you, read our guide on [preparing a bid that scores well with a council](/guides/how-to-win-council-contracts).
 
-**Find your next contract faster.** [Create your free DealAtlas account](/signup) to filter live UK opportunities by category, value band, closing date and region. When a deal is worth pursuing, [DealAtlas Pro](/pricing) unlocks the buyer, documents, saved searches and alerts. {{LIFETIME_PLAN_LINE}}
+**Find your next contract faster.** [Create your free DealAtlas account](/signup) to filter live UK opportunities by category, value band, closing date and region. When a deal is worth pursuing, [DealAtlas Pro](/pricing?utm_source=dealatlas&utm_medium=organic&utm_campaign=lifetime&utm_content=council-tenders-uk) unlocks the buyer, documents, saved searches and alerts. {{LIFETIME_PLAN_LINE}}
 
 ## What counts as a council tender?
 
@@ -110,7 +110,7 @@ If you only work in certain areas, filter by region. Some deals have no region l
 
 The free preview shows the category, value band, closing date and region where one is listed. Pro adds the buyer, the source, contacts and documents, so you can decide quickly whether to bid.
 
-Browse council deals free on [live opportunities](/deals), and move to [Pro](/pricing) when one is worth pursuing. See [how DealAtlas works](/how-it-works).
+Browse council deals free on [live opportunities](/deals), and move to [Pro](/pricing?utm_source=dealatlas&utm_medium=organic&utm_campaign=lifetime&utm_content=council-tenders-uk) when one is worth pursuing. See [how DealAtlas works](/how-it-works).
 
 For a wider view beyond councils, read [how to find public sector tenders](/guides/how-to-find-public-sector-tenders).
 

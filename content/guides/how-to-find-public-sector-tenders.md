@@ -6,7 +6,7 @@ description: "How to find public sector and government tenders in the UK: where 
 h1: "How to find public sector and government tenders in the UK"
 breadcrumb: "How to find public sector and government tenders"
 datePublished: 2026-10-19
-updated: 2026-11-09
+updated: 2026-11-11
 primaryKeyword: "how to find public sector tenders"
 secondaryKeywords: ["find tenders UK", "public sector tenders UK", "government tenders UK", "where to find government contracts", "public sector contract opportunities"]
 relatedGuides: ["how-to-win-council-contracts", "council-tenders-uk", "uk-tender-search"]
@@ -20,9 +20,9 @@ UK public buyers publish government tenders and other contract notices under the
 
 ## The short answer
 
-Start on [DealAtlas](/deals). Browse live UK public and private tenders and opportunities for SMEs in one place, filter by category, value band, closing date and region, then open [Pro](/pricing) for buyer details, documents, saved searches and alerts. Since 24 February 2025, buyers in England, Wales and Northern Ireland publish new above-threshold and advertised below-threshold notices on the central digital platform under the Act. Watch pipeline, preliminary market engagement and planned procurement notices to see work early, then follow each opportunity into the buyer's named system for documents and submission.
+Start on [DealAtlas](/deals). Browse live UK public and private tenders and opportunities for SMEs in one place, filter by category, value band, closing date and region, then open [Pro](/pricing?utm_source=dealatlas&utm_medium=organic&utm_campaign=lifetime&utm_content=how-to-find-public-sector-tenders) for buyer details, documents, saved searches and alerts. Since 24 February 2025, buyers in England, Wales and Northern Ireland publish new above-threshold and advertised below-threshold notices on the central digital platform under the Act. Watch pipeline, preliminary market engagement and planned procurement notices to see work early, then follow each opportunity into the buyer's named system for documents and submission.
 
-**Find your next contract faster.** [Create your free DealAtlas account](/signup) to filter live UK opportunities by category, value band, closing date and region. When a deal is worth pursuing, [DealAtlas Pro](/pricing) unlocks the buyer, documents, saved searches and alerts. {{LIFETIME_PLAN_LINE}}
+**Find your next contract faster.** [Create your free DealAtlas account](/signup) to filter live UK opportunities by category, value band, closing date and region. When a deal is worth pursuing, [DealAtlas Pro](/pricing?utm_source=dealatlas&utm_medium=organic&utm_campaign=lifetime&utm_content=how-to-find-public-sector-tenders) unlocks the buyer, documents, saved searches and alerts. {{LIFETIME_PLAN_LINE}}
 
 ## Who buys, and which rules they follow
 
@@ -48,7 +48,7 @@ At or above these values, a competitive tender must start with a tender notice o
 
 ## Where to find government tenders in the UK
 
-Browse [live opportunities on DealAtlas](/deals) first. DealAtlas brings UK public and private tenders and opportunities for SMEs, in one place, so you can scan by category, value band, closing date and region without hopping between national platforms and buyer systems. Free previews show what's live; [DealAtlas Pro](/pricing) unlocks the buyer, source, contacts and documents, plus saved searches and alerts.
+Browse [live opportunities on DealAtlas](/deals) first. DealAtlas brings UK public and private tenders and opportunities for SMEs, in one place, so you can scan by category, value band, closing date and region without hopping between national platforms and buyer systems. Free previews show what's live; [DealAtlas Pro](/pricing?utm_source=dealatlas&utm_medium=organic&utm_campaign=lifetime&utm_content=how-to-find-public-sector-tenders) unlocks the buyer, source, contacts and documents, plus saved searches and alerts.
 
 Under the Act, contracting authorities in England, Wales and Northern Ireland publish required notices on the central digital platform ([Central digital platform factsheet](https://www.gov.uk/government/publications/procurement-act-2023-short-guides/central-digital-platform-factsheet-html)). Older-regime award records still exist for procurements that started under the previous rules. Devolved Scottish buyers follow Scotland's own law for much of their work, and many buyers still run documents and submissions through their own systems once you decide to bid.
 
@@ -68,7 +68,7 @@ Browse opportunities by the sector you serve:
 - [Transport and logistics](/categories/transport-logistics)
 - [Energy and utilities](/categories/energy-utilities)
 
-DealAtlas brings UK public and private tenders and opportunities for SMEs, in one place. Browse free previews on [live opportunities](/deals), and use [Pro alerts](/pricing) when you want new matches in your sector.
+DealAtlas brings UK public and private tenders and opportunities for SMEs, in one place. Browse free previews on [live opportunities](/deals), and use [Pro alerts](/pricing?utm_source=dealatlas&utm_medium=organic&utm_campaign=lifetime&utm_content=how-to-find-public-sector-tenders) when you want new matches in your sector.
 
 ## How to find public sector tenders before they're advertised
 
@@ -88,7 +88,7 @@ You'll need to register on the government's central digital platform before you 
 
 ## Build a search routine
 
-Finding tenders is a weekly job, not a one-off search. Run it on [DealAtlas](/deals), and use [Pro alerts](/pricing) when you want new matches delivered to you.
+Finding tenders is a weekly job, not a one-off search. Run it on [DealAtlas](/deals), and use [Pro alerts](/pricing?utm_source=dealatlas&utm_medium=organic&utm_campaign=lifetime&utm_content=how-to-find-public-sector-tenders) when you want new matches delivered to you.
 
 - Search by the words buyers actually use. A notice for software support may say "managed service" or "application maintenance". Read a few past notices in your sector and copy their terms into your saved searches.
 - Filter by value band, closing date and region where one is listed. Ignore anything you couldn't deliver or staff, and note lots you could deliver within larger contracts.
@@ -100,7 +100,7 @@ Once you've found a tender worth pursuing, the next job is the bid. Our guide on
 
 ## Find tenders UK-wide in one place
 
-DealAtlas brings UK public and private tenders and opportunities for SMEs, in one place, sorted by category, value band, closing date and region. Scan [construction and infrastructure](/categories/construction-infrastructure), [professional services](/categories/professional-services) or [technology](/categories/technology) work in minutes. You can browse previews free on [live opportunities](/deals). When one is worth pursuing, DealAtlas Pro unlocks the buyer, the original source, contacts and documents, plus saved searches and alerts for new matches. See [how it works](/how-it-works) or [compare plans](/pricing).
+DealAtlas brings UK public and private tenders and opportunities for SMEs, in one place, sorted by category, value band, closing date and region. Scan [construction and infrastructure](/categories/construction-infrastructure), [professional services](/categories/professional-services) or [technology](/categories/technology) work in minutes. You can browse previews free on [live opportunities](/deals). When one is worth pursuing, DealAtlas Pro unlocks the buyer, the original source, contacts and documents, plus saved searches and alerts for new matches. See [how it works](/how-it-works) or [compare plans](/pricing?utm_source=dealatlas&utm_medium=organic&utm_campaign=lifetime&utm_content=how-to-find-public-sector-tenders).
 
 ## FAQ
 
