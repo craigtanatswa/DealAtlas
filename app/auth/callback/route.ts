@@ -6,9 +6,14 @@ import {
   RESET_PASSWORD_PATH,
   defaultPathForAuthType,
   resolveNextPath,
+  resolveSignupNext,
 } from "@/lib/auth/redirect";
 import { parseEmailOtpType } from "@/lib/auth/otp";
-import { OAUTH_NEXT_COOKIE, PASSWORD_RESET_COOKIE } from "@/lib/auth/cookies";
+import {
+  OAUTH_NEXT_COOKIE,
+  PASSWORD_RESET_COOKIE,
+  SIGNUP_NEXT_COOKIE,
+} from "@/lib/auth/cookies";
 import { isAnalyticsConsentGranted } from "@/lib/analytics/consent";
 import { captureServerEvent } from "@/lib/analytics/server";
 import { buildUserSignedUpEvent } from "@/lib/analytics/server-events";
@@ -46,6 +51,16 @@ function safeNext(request: NextRequest, fallback: string) {
   return resolveNextPath(request.nextUrl.searchParams.get("next"), fallback);
 }
 
+type UserWithMetadata =
+  | { user_metadata?: Record<string, unknown> | null }
+  | null
+  | undefined;
+
+function signupNextFromMetadata(user: UserWithMetadata): string | null {
+  const value = user?.user_metadata?.next;
+  return typeof value === "string" ? value : null;
+}
+
 export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get("code");
   const tokenHash = request.nextUrl.searchParams.get("token_hash");
@@ -59,6 +74,10 @@ export async function GET(request: NextRequest) {
   if (pendingOAuthNext) {
     cookieStore.delete(OAUTH_NEXT_COOKIE);
   }
+  const pendingSignupNext = cookieStore.get(SIGNUP_NEXT_COOKIE);
+  if (pendingSignupNext) {
+    cookieStore.delete({ name: SIGNUP_NEXT_COOKIE, path: "/auth" });
+  }
 
   const signupFlow =
     type === "signup" ||
@@ -66,6 +85,7 @@ export async function GET(request: NextRequest) {
     type === "email" ||
     type === "email_change" ||
     type === "magiclink";
+  const signupType = type === "signup" || type === "email";
   const requestedNext = request.nextUrl.searchParams.get("next");
   const honorReset =
     type === "recovery" ||
@@ -77,10 +97,6 @@ export async function GET(request: NextRequest) {
     : pendingOAuthNext
       ? resolveNextPath(pendingOAuthNext.value)
       : defaultPathForAuthType(type);
-  const next =
-    requestedNext === RESET_PASSWORD_PATH && honorReset
-      ? RESET_PASSWORD_PATH
-      : safeNext(request, fallback);
 
   if (oauthError) {
     const cancelled = oauthError === "access_denied";
@@ -99,12 +115,14 @@ export async function GET(request: NextRequest) {
   }
 
   const supabase = await createSupabaseServerClient();
+  let verifiedUser: UserWithMetadata = null;
 
   if (code) {
     const { data, error } = await supabase.auth.exchangeCodeForSession(code);
     if (error) {
       return errorRedirect(request, "auth_callback_failed");
     }
+    verifiedUser = data.user;
     if (
       data.user &&
       isNewGoogleAccount(data.user) &&
@@ -113,7 +131,7 @@ export async function GET(request: NextRequest) {
       await captureServerEvent(buildUserSignedUpEvent({ userId: data.user.id }));
     }
   } else if (tokenHash && type) {
-    const { error } = await supabase.auth.verifyOtp({
+    const { data, error } = await supabase.auth.verifyOtp({
       type,
       token_hash: tokenHash,
     });
@@ -121,6 +139,31 @@ export async function GET(request: NextRequest) {
       return errorRedirect(
         request,
         type === "recovery" ? "reset_failed" : "verification_failed",
+      );
+    }
+    verifiedUser = data.user;
+  }
+
+  const metadataNext = signupNextFromMetadata(verifiedUser);
+  const next =
+    signupType && !honorReset
+      ? resolveSignupNext({
+          query: requestedNext,
+          cookie: pendingSignupNext?.value ?? null,
+          metadata: metadataNext,
+          fallback,
+        })
+      : requestedNext === RESET_PASSWORD_PATH && honorReset
+        ? RESET_PASSWORD_PATH
+        : safeNext(request, fallback);
+
+  if (metadataNext !== null) {
+    try {
+      await supabase.auth.updateUser({ data: { next: null } });
+    } catch (cause) {
+      console.error(
+        "DealAtlas signup next cleanup failed",
+        cause instanceof Error ? cause.name : "unknown error",
       );
     }
   }
