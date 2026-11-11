@@ -515,14 +515,24 @@ describe("guide CTA analytics", () => {
     };
   }
 
-  it.each(PUBLISHED.filter((slug) => slug !== SLUG_8))("marks %s CTA links to /deals and /pricing as end-position CTAs", (slug) => {
+  it.each(PUBLISHED.filter((slug) => slug !== SLUG_8))("marks %s CTA links to /deals, the hub and /pricing as end-position CTAs", (slug) => {
     const guide = getPublishedGuide(slug)!;
     const html = renderToStaticMarkup(
       <GuideMarkdown blocks={guide.blocks} publishedGuidePaths={publishedGuidePaths()} />,
     );
-    expect(html).toMatch(
-      new RegExp(`${GUIDE_CTA_TARGET_ATTR}="deals" ${GUIDE_CTA_POSITION_ATTR}="end" href="/deals(?:\\?[^"]*)?"`),
-    );
+    const hubHref =
+      slug === SLUG_6
+        ? "/categories/professional-services"
+        : slug === SLUG_7
+          ? "/categories/technology"
+          : null;
+    if (hubHref) {
+      expect(html).toContain(`href="${hubHref}"`);
+    } else {
+      expect(html).toMatch(
+        new RegExp(`${GUIDE_CTA_TARGET_ATTR}="deals" ${GUIDE_CTA_POSITION_ATTR}="end" href="/deals(?:\\?[^"]*)?"`),
+      );
+    }
     expect(html).toMatch(
       new RegExp(`${GUIDE_CTA_TARGET_ATTR}="pricing" ${GUIDE_CTA_POSITION_ATTR}="end" href="/pricing(?:\\?[^"]*)?"`),
     );

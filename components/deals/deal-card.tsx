@@ -6,6 +6,7 @@ import { OpeningAlertButton } from "@/components/deals/opening-alert";
 import { MatchScore } from "@/components/deals/match-score";
 import {
   buyerSectorLabel,
+  cardDataFromPublicCardPreview,
   levelLabel,
   type DealCardData,
 } from "@/components/deals/types";
@@ -19,20 +20,88 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { DEAL_TYPE_LABELS } from "@/lib/search/filters";
 import { cn } from "@/lib/utils";
 
+export { cardDataFromPublicCardPreview };
+
 export function DealCard({
   deal,
   href,
   signedIn = false,
   proLock = false,
+  compact = false,
 }: {
   deal: DealCardData;
   href?: string;
   signedIn?: boolean;
   /** Static lock line. Never substitutes for hidden buyer or source text. */
   proLock?: boolean;
+  /** Public card fields only: title, category, region, value and closing. */
+  compact?: boolean;
 }) {
   const dealPath = `/deals/${deal.slug}`;
   const destination = href ?? dealPath;
+
+  if (compact) {
+    const compactCategory = categoryLabel(deal.mainCategory);
+    const compactRegion = disclosed(deal.broadRegion);
+    const compactValueBand = disclosed(deal.valueBand);
+
+    return (
+      <article
+        className={cn(
+          "h-full rounded-lg border border-border bg-card p-5 transition-colors",
+          "hover:border-primary/30 hover:bg-muted/20",
+        )}
+      >
+        <div className="flex h-full flex-col gap-4">
+          <h3 className="font-heading text-lg leading-snug font-semibold text-balance">
+            <Link
+              href={dealPath}
+              className="rounded-sm hover:text-primary focus-visible:ring-3 focus-visible:ring-ring focus-visible:outline-none"
+            >
+              {deal.previewTitle}
+            </Link>
+          </h3>
+          <dl className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            {compactCategory ? (
+              <div className="text-[0.8125rem] leading-5 text-foreground">
+                <dt className="sr-only">Category</dt>
+                <dd>{compactCategory}</dd>
+              </div>
+            ) : null}
+            {compactRegion ? (
+              <div className="text-[0.8125rem] leading-5 text-foreground">
+                <dt className="sr-only">Region</dt>
+                <dd>{compactRegion}</dd>
+              </div>
+            ) : null}
+            {compactValueBand ? (
+              <div>
+                <dt className="sr-only">Value</dt>
+                <dd>
+                  <ValueBand value={compactValueBand} />
+                </dd>
+              </div>
+            ) : null}
+            <div>
+              <dt className="sr-only">Closing</dt>
+              <dd>
+                <DeadlineBand value={deal.deadlineBand} />
+              </dd>
+            </div>
+          </dl>
+          <div className="mt-auto">
+            <Link
+              href={dealPath}
+              className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground transition-[color,background-color,transform] duration-150 ease-out hover:bg-primary-hover focus-visible:ring-3 focus-visible:ring-ring focus-visible:outline-none active:scale-[0.96] motion-reduce:active:scale-100"
+            >
+              View opportunity
+            </Link>
+          </div>
+        </div>
+      </article>
+    );
+  }
+
   const tags = (deal.relevanceTags ?? []).slice(0, 4);
   const buyerLabel = buyerSectorLabel(deal.buyerSector, deal.dealType);
   const category = categoryLabel(deal.mainCategory);

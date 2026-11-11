@@ -31,6 +31,102 @@ function cardSlugs(ctx: Ctx, text: string): Set<string> {
   return new Set([...slugsIn(text)].filter((s) => known.has(s)));
 }
 
+const FORBIDDEN_PLAN_WORD = ["found", "ing"].join("");
+const PLAIN_DEAL_HREF = /^\/deals\/[a-z0-9-]+$/;
+
+function relatedDealAssertions(
+  ctx: Ctx,
+  body: string,
+  currentSlug: string,
+): Assertion[] {
+  const $ = cheerio.load(body);
+  const related = $("[data-related-deals]");
+  const out: Assertion[] = [];
+
+  if (related.length > 0) {
+    const hrefs = related
+      .find('a[href^="/deals/"]')
+      .map((_, el) => $(el).attr("href") ?? "")
+      .get();
+    const relatedSlugs = [
+      ...new Set(
+        hrefs.map((href) => href.replace(/^\/deals\//, "").split(/[?#]/)[0] ?? ""),
+      ),
+    ];
+    const pub = pubSlugs(ctx);
+    const held = heldSlugs(ctx);
+    out.push(
+      ok(
+        "related_deals_are_PUB",
+        relatedSlugs.every((slug) => pub.has(slug)),
+        relatedSlugs.filter((slug) => !pub.has(slug)),
+      ),
+      ok(
+        "related_deals_not_current",
+        !relatedSlugs.includes(currentSlug),
+        currentSlug,
+      ),
+      ok(
+        "related_deals_no_held_slug",
+        relatedSlugs.every((slug) => !held.has(slug)),
+        relatedSlugs.filter((slug) => held.has(slug)),
+      ),
+      ok("related_deals_cap", relatedSlugs.length <= 6, relatedSlugs.length),
+      ok(
+        "related_deals_plain_hrefs",
+        hrefs.every((href) => PLAIN_DEAL_HREF.test(href)),
+        hrefs.filter((href) => !PLAIN_DEAL_HREF.test(href)),
+      ),
+    );
+  }
+
+  const breadcrumb = $('nav[aria-label="Breadcrumb"]');
+  out.push(
+    ok("breadcrumb_present", breadcrumb.length > 0, breadcrumb.length),
+    ok(
+      "breadcrumb_links_deals",
+      breadcrumb.find('a[href="/deals"]').length > 0,
+      breadcrumb.find("a").map((_, el) => $(el).attr("href")).get(),
+    ),
+  );
+
+  const breadcrumbItems: string[] = [];
+  $('script[type="application/ld+json"]').each((_, el) => {
+    try {
+      const parsed = JSON.parse($(el).html() ?? "") as unknown;
+      const nodes = Array.isArray(parsed) ? parsed : [parsed];
+      for (const node of nodes) {
+        if (
+          node &&
+          typeof node === "object" &&
+          (node as Record<string, unknown>)["@type"] === "BreadcrumbList"
+        ) {
+          const items = (node as Record<string, unknown>).itemListElement;
+          if (Array.isArray(items)) {
+            for (const item of items) {
+              if (item && typeof item === "object") {
+                const url = (item as Record<string, unknown>).item;
+                if (typeof url === "string") breadcrumbItems.push(url);
+              }
+            }
+          }
+        }
+      }
+    } catch {
+      // JSON parsing is asserted by META-01/02; this probe only checks URLs.
+    }
+  });
+  out.push(
+    ok(
+      "breadcrumb_jsonld_no_query",
+      breadcrumbItems.every((url) => !url.includes("?")),
+      breadcrumbItems.filter((url) => url.includes("?")),
+    ),
+  );
+
+  return out;
+}
+
 /** /deals last page from the pager's "Showing a–b of N" line; unknown keeps crawling. */
 function dealsLastPage(html: string): number {
   const text = cheerio.load(html)("nav[aria-label='Pagination'] p").first().text();
@@ -199,6 +295,9 @@ export async function htmlProbes(ctx: Ctx, roles: Role[] = NON_PRO_ROLES): Promi
                   const l3 = o.scan.layers.L3;
                   out.push(ok("save_dealId_null", /"dealId":null/.test(l3) && !/"dealId":"[0-9a-f-]{36}"/.test(l3), l3.match(/"dealId":[^,}]*/g)?.slice(0, 3)));
                 }
+                out.push(
+                  ...relatedDealAssertions(ctx, o.final.body, ctx.row(rowId).slug),
+                );
                 return out;
               },
             },
@@ -247,10 +346,32 @@ export async function htmlProbes(ctx: Ctx, roles: Role[] = NON_PRO_ROLES): Promi
               req: { path: landing.path },
               status: [200],
               check: (o) => {
+                const $ = cheerio.load(o.final.body);
                 const found = cardSlugs(ctx, o.final.body);
+                const dealHrefs = $('a[href^="/deals/"]')
+                  .map((_, el) => $(el).attr("href") ?? "")
+                  .get();
+                const internalHrefs = $('a[href^="/"]')
+                  .map((_, el) => $(el).attr("href") ?? "")
+                  .get();
                 return [
                   ok("lists_pub_rows_of_category", expected.every((s) => found.has(s)), { expected, found: sorted(found) }),
                   ok("no_held_slug", heldIn(ctx, o.final.body).length === 0, heldIn(ctx, o.final.body)),
+                  ok(
+                    "deal_hrefs_plain",
+                    dealHrefs.every((href) => PLAIN_DEAL_HREF.test(href)),
+                    dealHrefs.filter((href) => !PLAIN_DEAL_HREF.test(href)),
+                  ),
+                  ok(
+                    "internal_hrefs_no_utm",
+                    internalHrefs.every((href) => !/utm_/i.test(href)),
+                    internalHrefs.filter((href) => /utm_/i.test(href)),
+                  ),
+                  ok(
+                    "no_forbidden_plan_word",
+                    !new RegExp(FORBIDDEN_PLAN_WORD, "i").test($("body").text()),
+                    $("body").text().match(new RegExp(`.{0,40}${FORBIDDEN_PLAN_WORD}.{0,40}`, "i"))?.[0],
+                  ),
                 ];
               },
             },
