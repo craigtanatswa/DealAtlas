@@ -130,7 +130,7 @@ Under the [Procurement Act 2023](https://www.legislation.gov.uk/ukpga/2023/54/co
 
 ## How to find IT tenders on DealAtlas
 
-DealAtlas is where you browse and shortlist UK IT contract previews by value, region and closing date in one place. Start with the [Technology](/categories/technology) category or [filter live Technology deals](/deals?category=Technology).
+DealAtlas is where you browse and shortlist UK IT contract previews by value, region and closing date in one place. Start with [live IT tenders UK](/categories/technology) or [filter live Technology deals](/deals?category=Technology).
 
 ### Step 1: start in the right place
 
@@ -154,7 +154,7 @@ For bid advice, read [how to win council contracts](/guides/how-to-win-council-c
 
 The free preview shows the type of work, value band, closing window and region where one is listed. Pro adds the buyer, the source, contacts and documents, plus saved searches and alerts, so you can decide quickly whether to bid.
 
-[Browse live IT opportunities](/deals) or [start free on DealAtlas](/signup), then [upgrade to Pro](/pricing?utm_source=dealatlas&utm_medium=organic&utm_campaign=lifetime&utm_content=it-tenders-uk) when an opportunity is worth pursuing. {{LIFETIME_PLAN_LINE}}
+Browse [live IT tenders UK](/categories/technology) or [start free on DealAtlas](/signup), then [upgrade to Pro](/pricing?utm_source=dealatlas&utm_medium=organic&utm_campaign=lifetime&utm_content=it-tenders-uk) when an opportunity is worth pursuing. {{LIFETIME_PLAN_LINE}}
 
 ## FAQ
 

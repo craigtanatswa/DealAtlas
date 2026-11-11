@@ -14,7 +14,7 @@ craigApprovedAt: 2026-11-10
 recheckBeforePublish: "Example closing months are based on live closing windows on 10 Nov 2026 and must be re-checked just before publishing."
 ---
 
-**Short answer:** construction tenders UK firms can bid for come from councils and other public bodies, utilities and private developers, and each buyer publishes in its own place. The quickest way to see them together is one search. [DealAtlas](/deals) lists {{LIVE_COUNT}} live opportunities, and our [construction and infrastructure hub](/categories/construction-infrastructure) is the starting point for open construction bids. Each preview shows what is being bought, the value band, the region where one is listed and the closing window.
+**Short answer:** construction tenders UK firms can bid for come from councils and other public bodies, utilities and private developers, and each buyer publishes in its own place. The quickest way to see them together is one search. [DealAtlas](/deals) lists {{LIVE_COUNT}} live opportunities, and our [open construction tenders UK](/categories/construction-infrastructure) hub is the starting point for open construction bids. Each preview shows what is being bought, the value band, the region where one is listed and the closing window.
 
 This guide splits construction contracts UK buyers advertise into four types of work and shows a live example of each. If you work mainly for local authorities, read our guide on [where councils publish their tenders](/guides/council-tenders-uk).
 
@@ -123,7 +123,7 @@ You'll need to register on the government's central digital platform before you 
 - [Northern Ireland](/deals?category=Construction%20%26%20Infrastructure&status=OPEN&region=Northern%20Ireland)
 - [Nationwide](/deals?category=Construction%20%26%20Infrastructure&status=OPEN&region=Nationwide)
 
-You can also see [all open construction deals](/deals?category=Construction%20%26%20Infrastructure&status=OPEN).
+You can also browse [open construction tenders UK](/categories/construction-infrastructure) or see [all open construction deals](/deals?category=Construction%20%26%20Infrastructure&status=OPEN).
 
 ## Find your next construction contract
 

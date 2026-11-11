@@ -123,7 +123,7 @@ For general bid advice, read [how to win council contracts](/guides/how-to-win-c
 
 The free preview shows the type of work, value band, closing window and region where one is listed. Pro adds the buyer, the source, contacts and documents, plus saved searches and alerts, so you can decide quickly whether to bid.
 
-[Browse live opportunities](/deals) or [start free on DealAtlas](/signup), then [upgrade to Pro](/pricing) when an opportunity is worth pursuing. {{LIFETIME_PLAN_LINE}}
+Browse [professional services tenders UK](/categories/professional-services) or [start free on DealAtlas](/signup), then [upgrade to Pro](/pricing) when an opportunity is worth pursuing. {{LIFETIME_PLAN_LINE}}
 
 ## FAQ
 

@@ -2,14 +2,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { DealCard } from "@/components/deals/deal-card";
+import { DealCard, cardDataFromPublicCardPreview } from "@/components/deals/deal-card";
 import { Heading, Text } from "@/components/layout/heading";
 import { Main } from "@/components/layout/container";
 import { JsonLd } from "@/components/seo/json-ld";
 import { Button } from "@/components/ui/button";
 import { getAppOrigin } from "@/lib/auth/urls";
-import { listPublishedDealPreviews } from "@/lib/db/previews";
-import { toDealCardData, toPublicDealPreview } from "@/lib/search/dto";
+import { listPublicCardPreviews } from "@/lib/deals/public-card-previews";
 import {
   getCategoryLanding,
   indexableCategoryLandings,
@@ -54,11 +53,25 @@ export default async function CategoryLandingPage({ params }: PageProps) {
 
   const origin = getAppOrigin();
   const client = createSupabaseAnonymousClient();
-  const rows = await listPublishedDealPreviews(client, {
-    category: landing.name,
-    limit: 6,
-  });
-  const cards = rows.map((row) => toDealCardData(toPublicDealPreview(row)));
+  const [previews, subsectionPreviews] = await Promise.all([
+    listPublicCardPreviews(client, {
+      category: landing.name,
+      limit: 24,
+    }),
+    landing.subsection
+      ? listPublicCardPreviews(client, {
+          category: landing.name,
+          query: landing.subsection.query,
+          statuses: ["OPEN", "CLOSING_SOON"],
+          limit: 24,
+        })
+      : Promise.resolve([]),
+  ]);
+  const cards = previews.map(cardDataFromPublicCardPreview);
+  const subsectionCards = subsectionPreviews.map(cardDataFromPublicCardPreview);
+  const showSubsection = Boolean(
+    landing.subsection && subsectionCards.length >= landing.subsection.minCards,
+  );
 
   return (
     <Main back className="gap-10">
@@ -78,7 +91,7 @@ export default async function CategoryLandingPage({ params }: PageProps) {
         ]}
       />
       <div className="flex max-w-3xl flex-col gap-3">
-        <Heading>{landing.title}</Heading>
+        <Heading>{landing.h1 ?? landing.title}</Heading>
         <p className="text-sm font-medium text-muted-foreground">
           <Link
             href="/categories"
@@ -117,7 +130,7 @@ export default async function CategoryLandingPage({ params }: PageProps) {
       </section>
       <section className="flex flex-col gap-4" aria-labelledby="samples-heading">
         <Heading id="samples-heading" level={2}>
-          Recent opportunities
+          Open {landing.name} tenders
         </Heading>
         {cards.length === 0 ? (
           <Text variant="muted">
@@ -129,11 +142,23 @@ export default async function CategoryLandingPage({ params }: PageProps) {
           <ul className="grid gap-4">
             {cards.map((deal) => (
               <li key={deal.slug}>
-                <DealCard deal={deal} />
+                <DealCard compact deal={deal} />
               </li>
             ))}
           </ul>
         )}
+        {landing.guide ? (
+          <Text variant="muted">
+            Read the{" "}
+            <Link
+              href={landing.guide.href}
+              className="font-medium text-foreground hover:underline focus-visible:ring-3 focus-visible:ring-ring focus-visible:rounded-sm focus-visible:outline-none"
+            >
+              {landing.guide.anchor}
+            </Link>
+            .
+          </Text>
+        ) : null}
         <p>
           <Button asChild variant="outline">
             <Link href={`/deals?category=${encodeURIComponent(landing.name)}`}>
@@ -146,6 +171,24 @@ export default async function CategoryLandingPage({ params }: PageProps) {
           indexed.
         </Text>
       </section>
+      {showSubsection && landing.subsection ? (
+        <section
+          className="flex flex-col gap-4"
+          aria-labelledby={landing.subsection.id}
+        >
+          <Heading id={landing.subsection.id} level={2}>
+            {landing.subsection.heading}
+          </Heading>
+          <Text variant="muted">{landing.subsection.intro}</Text>
+          <ul className="grid gap-4">
+            {subsectionCards.map((deal) => (
+              <li key={deal.slug}>
+                <DealCard compact deal={deal} />
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
     </Main>
   );
 }
