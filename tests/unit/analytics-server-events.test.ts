@@ -272,7 +272,7 @@ describe("server analytics events", () => {
     });
     expect(event!.properties).toEqual({ plan: "monthly", amount_gbp: 39 });
     expect(JSON.stringify(event)).not.toContain("evt_123");
-    expect(planAmountGbp("founding")).toBe(290);
+    expect(planAmountGbp("founding")).toBe(250);
     expect(planAmountGbp("annual")).toBeGreaterThan(planAmountGbp("founding"));
   });
 

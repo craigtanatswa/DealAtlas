@@ -24,7 +24,7 @@ export const FOUNDING_CAP_FULL_CODE = "FOUNDING_CAP_FULL";
 const GENERIC_ERROR = "Checkout could not be started. Try again.";
 
 /**
- * Founding checkout (planKey FOUNDING). Posts like CheckoutPlanForm, but reads the
+ * Founding checkout (planKey founding_lifetime). Posts like CheckoutPlanForm, but reads the
  * JSON response so a full-founding error is shown inline with a Pro annual fallback.
  * Without JavaScript the plain form post still works.
  */
@@ -60,11 +60,8 @@ export function FoundingCheckoutButton({
       }
       // Match on the error code, never the text. INVALID_PLAN and anything else is generic.
       if (response.status === 409 && body?.code === FOUNDING_CAP_FULL_CODE) {
-        const message =
-          typeof body.message === "string" && body.message.trim()
-            ? body.message
-            : FOUNDING_FULL_MESSAGE;
-        setStatus({ kind: "full", message });
+        // Always use our own copy: the server message may still say "Founding".
+        setStatus({ kind: "full", message: FOUNDING_FULL_MESSAGE });
         return;
       }
       setStatus({ kind: "error" });

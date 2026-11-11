@@ -1,7 +1,10 @@
 import "server-only";
 
 import { getAllowedProductIds } from "@/lib/billing/allowed-products";
-import { loadCurrentSubscription } from "@/lib/entitlements/store";
+import {
+  loadCurrentLifetimeGrant,
+  loadCurrentSubscription,
+} from "@/lib/entitlements/store";
 import { resolveUserEntitlement } from "@/lib/entitlements/resolve";
 import type { EntitlementSnapshot } from "@/lib/entitlements/types";
 
@@ -25,5 +28,6 @@ export async function getCurrentEntitlement(
     loadCurrentSubscription,
     now,
     getAllowedProductIds(),
+    loadCurrentLifetimeGrant,
   );
 }

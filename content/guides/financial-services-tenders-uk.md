@@ -79,7 +79,7 @@ There was 1 open banking and payment services opportunity at the time of writing
 
 There were 3 open financial advisory opportunities at the time of writing, covering lead financial advice, specialist valuation work and pensions advice. None were purely actuarial, but actuarial and pensions skills are often part of this kind of advisory work.
 
-[Start free on DealAtlas](/signup) to see every financial services preview as it's published. Founding offer for DealAtlas Pro: ~~£39/mo~~ **£24.17/mo** (£290/yr), for as long as you stay subscribed. Limited places. [See Pro](/pricing)
+[Start free on DealAtlas](/signup) to see every financial services preview as it's published. {{LIFETIME_PLAN_LINE}} [See Pro](/pricing)
 
 ## Who this is for
 
@@ -123,7 +123,7 @@ For general bid advice, read [how to win council contracts](/guides/how-to-win-c
 
 The free preview shows the type of work, value band, closing window and region where one is listed. Pro adds the buyer, the source, contacts and documents, plus saved searches and alerts, so you can decide quickly whether to bid.
 
-[Browse live opportunities](/deals) or [start free on DealAtlas](/signup), then [upgrade to Pro](/pricing) when an opportunity is worth pursuing. Founding price: ~~£39/mo~~ **£24.17/mo** (£290/yr), for as long as you stay subscribed. Limited places.
+[Browse live opportunities](/deals) or [start free on DealAtlas](/signup), then [upgrade to Pro](/pricing) when an opportunity is worth pursuing. {{LIFETIME_PLAN_LINE}}
 
 ## FAQ
 
@@ -149,4 +149,4 @@ Often, yes. At the time of writing, 5 of the 21 open opportunities sat in the £
 
 ### What does DealAtlas Pro add?
 
-The buyer, the source, contacts and documents, plus saved searches and alerts. Founding price: ~~£39/mo~~ £24.17/mo (£290/yr), for as long as you stay subscribed. Limited places. [See Pro](/pricing)
+The buyer, the source, contacts and documents, plus saved searches and alerts. {{LIFETIME_PLAN_LINE}} [See Pro](/pricing)

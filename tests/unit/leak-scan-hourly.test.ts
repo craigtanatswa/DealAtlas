@@ -1,6 +1,5 @@
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 
 import { describe, expect, it } from "vitest";
@@ -36,6 +35,35 @@ function listTs(dir: string): string[] {
     else if (entry.name.endsWith(".ts")) out.push(full);
   }
   return out;
+}
+
+function withStateFile<T>(state: ReturnType<typeof emptyState>, run: (file: string) => T): T {
+  const base = path.join(ROOT, ".scratch");
+  fs.mkdirSync(base, { recursive: true });
+  const dir = fs.mkdtempSync(path.join(base, "leak-scan-"));
+  try {
+    const file = path.join(dir, "state.json");
+    writeState(state, file);
+    return run(file);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+function runScanPass(pass: string, env: Record<string, string>) {
+  return spawnSync(
+    "npx",
+    ["tsx", "--import", "./scripts/allow-server-only.mjs", "scripts/leak-scan.ts", "--pass", pass],
+    {
+      cwd: ROOT,
+      encoding: "utf8",
+      env: { ...process.env, ...env },
+    },
+  );
+}
+
+function scanOutput(result: ReturnType<typeof runScanPass>): string {
+  return `${result.stdout ?? ""}\n${result.stderr ?? ""}`;
 }
 
 function dealRow(id: string, title: string) {
@@ -734,28 +762,23 @@ describe("hourly leak scan", () => {
   });
 
   it("skips the crash email after the incomplete alert was sent", () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "leak-scan-"));
-    const file = path.join(dir, "state.json");
-    const run = (alerted: boolean) => {
-      writeState({ ...emptyState(), incompleteAlerted: alerted }, file);
-      return spawnSync(
-        "npx",
-        ["tsx", "--import", "./scripts/allow-server-only.mjs", "scripts/leak-scan.ts", "--pass", "crash"],
-        {
-          cwd: ROOT,
-          encoding: "utf8",
-          env: {
-            ...process.env,
-            LEAK_SCAN_STATE: file,
-            RESEND_API_KEY: "",
-            DEALATLAS_EMAIL_FROM: "",
-            LEAK_ALERT_EMAIL_TO: "",
-          },
-        },
+    const run = (alerted: boolean) =>
+      withStateFile({ ...emptyState(), incompleteAlerted: alerted }, (file) =>
+        runScanPass("crash", {
+          LEAK_SCAN_STATE: file,
+          SENTRY_DSN: "",
+          RESEND_API_KEY: "",
+          DEALATLAS_EMAIL_FROM: "",
+          LEAK_ALERT_EMAIL_TO: "",
+        }),
       );
-    };
-    expect(run(true).status).toBe(0);
-    expect(run(false).status).not.toBe(0);
+    const skipped = run(true);
+    const crashed = run(false);
+    expect(skipped.status).toBe(0);
+    expect(scanOutput(skipped)).not.toContain("::error::");
+    expect(crashed.status).not.toBe(0);
+    expect(scanOutput(crashed)).toContain("::error::");
+    expect(scanOutput(crashed)).toContain("LEAK_ALERT_EMAIL_TO");
   });
 
   it("stops the database pass at the time budget and emails counts only", async () => {
@@ -894,20 +917,64 @@ describe("hourly leak scan", () => {
     expect(permanent).toBe(1);
   });
 
-  it("fails before scanning when the alert recipient is missing", () => {
-    const result = spawnSync(
-      "npx",
-      ["tsx", "--import", "./scripts/allow-server-only.mjs", "scripts/leak-scan.ts", "--pass", "db"],
-      {
-        cwd: ROOT,
-        encoding: "utf8",
-        env: { ...process.env, LEAK_ALERT_EMAIL_TO: "  " },
-      },
-    );
-    const output = `${result.stdout}\n${result.stderr}`;
+  it("continues the database pass when the alert recipient is missing", () => {
+    const result = runScanPass("db", {
+      LEAK_ALERT_EMAIL_TO: "  ",
+      NEXT_PUBLIC_SUPABASE_URL: "",
+      SUPABASE_SECRET_KEY: "",
+    });
+    const output = scanOutput(result);
     expect(result.status).not.toBe(0);
-    expect(output).toContain("LEAK_ALERT_EMAIL_TO");
+    expect(output).toContain("leak_scan_failed");
+    expect(output).toContain("SCAN_FAILED");
+    expect(output).not.toContain("leak_scan_config");
     expect(output).not.toContain("leak_scan_db");
+  });
+
+  it("reports findings before failing notify when the alert recipient is missing", () => {
+    const finding = {
+      dealId: DEAL_ID,
+      code: "TITLE_SIMILARITY",
+      path: `/deals/${PUBLISHED_SLUG}`,
+      held: false,
+      pass: "db" as const,
+    };
+    const result = withStateFile({ ...emptyState(), scanned: 3, failed: 1, findings: [finding] }, (file) =>
+      runScanPass("notify", {
+        LEAK_SCAN_STATE: file,
+        SENTRY_DSN: "",
+        RESEND_API_KEY: "",
+        DEALATLAS_EMAIL_FROM: "",
+        LEAK_ALERT_EMAIL_TO: "",
+      }),
+    );
+    const output = scanOutput(result);
+    expect(result.status).not.toBe(0);
+    expect(output).toContain("leak_scan_findings");
+    expect(output).toContain("TITLE_SIMILARITY=1");
+    expect(output).toContain("::error::");
+    expect(output).toContain("LEAK_ALERT_EMAIL_TO");
+    expect(output).toContain("leak_scan_config");
+    expect(output).not.toContain("SCAN_FAILED");
+  });
+
+  it("reports a quiet scan before failing notify when the alert recipient is missing", () => {
+    const result = withStateFile({ ...emptyState(), scanned: 4, failed: 0 }, (file) =>
+      runScanPass("notify", {
+        LEAK_SCAN_STATE: file,
+        SENTRY_DSN: "",
+        RESEND_API_KEY: "",
+        DEALATLAS_EMAIL_FROM: "",
+        LEAK_ALERT_EMAIL_TO: "  ",
+      }),
+    );
+    const output = scanOutput(result);
+    expect(result.status).not.toBe(0);
+    expect(output).toContain("leak_scan_quiet");
+    expect(output).toContain('"scanned":4');
+    expect(output).toContain("::error::");
+    expect(output).toContain("LEAK_ALERT_EMAIL_TO");
+    expect(output).not.toContain("SCAN_FAILED");
   });
 
   it("flags an old slug that is still served", async () => {

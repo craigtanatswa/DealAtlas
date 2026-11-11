@@ -35,6 +35,7 @@ export DB_URL="$DEALATLAS_DB_TEST_DB_URL"
 # these; without them a seeded Pro user fails closed and the Pro email probes fail.
 export DODO_PRO_MONTHLY_PRODUCT_ID="${DODO_PRO_MONTHLY_PRODUCT_ID:-pdt_dealatlas_pro_monthly}"
 export DODO_PRO_ANNUAL_PRODUCT_ID="${DODO_PRO_ANNUAL_PRODUCT_ID:-pdt_dealatlas_pro_annual}"
+export DODO_FOUNDING_LIFETIME_PRODUCT_ID="${DODO_FOUNDING_LIFETIME_PRODUCT_ID:-pdt_dealatlas_founding_lifetime}"
 export DODO_PAYMENTS_ENVIRONMENT="${DODO_PAYMENTS_ENVIRONMENT:-test_mode}"
 node scripts/ci-guard-env.mjs
 

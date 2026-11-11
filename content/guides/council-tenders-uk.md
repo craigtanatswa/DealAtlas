@@ -17,7 +17,7 @@ craigApprovedAt: 2026-10-29
 
 This guide covers where council work appears, what councils buy, and how to filter it. If you already have a tender in front of you, read our guide on [preparing a bid that scores well with a council](/guides/how-to-win-council-contracts).
 
-**Find your next contract faster.** [Create your free DealAtlas account](/signup) to filter live UK opportunities by category, value band, closing date and region. When a deal is worth pursuing, [DealAtlas Pro](/pricing) unlocks the buyer, documents, saved searches and alerts. Founding offer: ~~£39/mo~~ £24.17/mo (£290/yr), for as long as you stay subscribed. Limited places.
+**Find your next contract faster.** [Create your free DealAtlas account](/signup) to filter live UK opportunities by category, value band, closing date and region. When a deal is worth pursuing, [DealAtlas Pro](/pricing) unlocks the buyer, documents, saved searches and alerts. {{LIFETIME_PLAN_LINE}}
 
 ## What counts as a council tender?
 

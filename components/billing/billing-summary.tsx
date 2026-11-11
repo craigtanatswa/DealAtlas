@@ -1,4 +1,3 @@
-import { FoundingPriceInline } from "@/components/billing/founding-price";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -9,7 +8,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { FOUNDING_COPY } from "@/lib/billing/founding-ui";
+import { PLAN_PUBLIC_NAME } from "@/lib/billing/lifetime-copy";
+import { isLifetimeTerm } from "@/lib/billing/lifetime-term";
 import { accessUntilCopy, formatBillingDate, planLabel, STATUS_LABELS } from "@/lib/billing/display";
 import { isProEntitlement } from "@/lib/entitlements/policy";
 import type { EntitlementSnapshot } from "@/lib/entitlements/types";
@@ -36,51 +36,54 @@ export function BillingSummary({
   const periodEnd = formatBillingDate(entitlement.currentPeriodEnd);
   const accessUntil = accessUntilCopy(entitlement);
   const pro = isProEntitlement(entitlement);
+  const lifetime = isLifetimeTerm(entitlement);
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>Current plan</CardTitle>
         <CardDescription>
-          Pro is granted only after Dodo confirms the subscription. Checkout
-          redirects and query flags are ignored.
+          {lifetime
+            ? "The Lifetime deal is a one-time payment. There is nothing to renew or cancel."
+            : "Pro is granted only after Dodo confirms the subscription. Checkout redirects and query flags are ignored."}
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4">
         <div className="flex flex-wrap items-center gap-2">
           <p className="font-heading text-xl font-semibold tracking-tight">
-            {pro ? planLabel(entitlement.planKey, entitlement.billingInterval, foundingMember) : "Free"}
+            {pro ? (lifetime ? PLAN_PUBLIC_NAME : planLabel(entitlement.planKey, entitlement.billingInterval, foundingMember)) : "Free"}
           </p>
-          <Badge variant={statusVariant(entitlement.status)}>
-            {STATUS_LABELS[entitlement.status] ?? entitlement.status}
+          <Badge variant={lifetime ? "success" : statusVariant(entitlement.status)}>
+            {lifetime ? PLAN_PUBLIC_NAME : (STATUS_LABELS[entitlement.status] ?? entitlement.status)}
           </Badge>
         </div>
-        {pro && foundingMember ? (
-          <div className="space-y-1">
-            <FoundingPriceInline className="text-lg" />
-            <p className="text-[0.9375rem] leading-6 text-muted-foreground">
-              {FOUNDING_COPY.priceLocked}
-            </p>
-          </div>
-        ) : null}
-        <dl className="grid gap-3 text-[0.9375rem] leading-6">
-          <div>
-            <dt className="text-muted-foreground">Billing interval</dt>
-            <dd>{entitlement.billingInterval === "ANNUAL" ? "Annual" : entitlement.billingInterval === "MONTHLY" ? "Monthly" : "Not billed"}</dd>
-          </div>
-          <div>
-            <dt className="text-muted-foreground">Renewal / period end</dt>
-            <dd>{periodEnd ?? "Not scheduled"}</dd>
-          </div>
-        </dl>
-        {accessUntil ? (
+        {lifetime ? (
+          <dl className="grid gap-3 text-[0.9375rem] leading-6">
+            <div>
+              <dt className="text-muted-foreground">Billing</dt>
+              <dd>One-time payment</dd>
+            </div>
+          </dl>
+        ) : (
+          <dl className="grid gap-3 text-[0.9375rem] leading-6">
+            <div>
+              <dt className="text-muted-foreground">Billing interval</dt>
+              <dd>{entitlement.billingInterval === "ANNUAL" ? "Annual" : entitlement.billingInterval === "MONTHLY" ? "Monthly" : "Not billed"}</dd>
+            </div>
+            <div>
+              <dt className="text-muted-foreground">Renewal / period end</dt>
+              <dd>{periodEnd ?? "Not scheduled"}</dd>
+            </div>
+          </dl>
+        )}
+        {!lifetime && accessUntil ? (
           <p className="text-[0.9375rem] leading-6 text-muted-foreground">{accessUntil}</p>
         ) : null}
       </CardContent>
       <CardFooter className="flex flex-wrap gap-3">
         {hasCustomerPortal ? (
           <form action="/api/billing/portal" method="post">
-            <Button type="submit">Manage billing</Button>
+            <Button type="submit">{lifetime ? "View receipts" : "Manage billing"}</Button>
           </form>
         ) : (
           <p className="text-sm text-muted-foreground">

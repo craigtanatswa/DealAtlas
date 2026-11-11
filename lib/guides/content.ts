@@ -3,6 +3,7 @@ import path from "node:path";
 
 import { z } from "zod";
 
+import { LIFETIME_PLAN_LINE, LIFETIME_PLAN_LINE_TOKEN } from "@/lib/billing/lifetime-copy";
 import {
   extractFaq,
   parseMarkdown,
@@ -69,7 +70,8 @@ export function parseGuide(source: string, fileName: string): Guide {
   if (`${frontmatter.slug}.md` !== fileName) {
     throw new Error(`Guide ${fileName} slug does not match its file name`);
   }
-  const blocks = parseMarkdown(body);
+  const resolvedBody = body.split(LIFETIME_PLAN_LINE_TOKEN).join(LIFETIME_PLAN_LINE);
+  const blocks = parseMarkdown(resolvedBody);
   return {
     ...frontmatter,
     path: `${GUIDES_PATH}/${frontmatter.slug}`,

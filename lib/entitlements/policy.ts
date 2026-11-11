@@ -2,6 +2,7 @@ import { PLANS } from "@/lib/constants";
 
 import type {
   EntitlementSnapshot,
+  LifetimeAccess,
   SubscriptionMirror,
 } from "@/lib/entitlements/types";
 
@@ -12,6 +13,7 @@ export const FREE_ENTITLEMENT: EntitlementSnapshot = {
   cancelAtPeriodEnd: false,
   billingInterval: null,
   planKey: null,
+  term: null,
 };
 
 /**
@@ -62,6 +64,20 @@ function productGrantsPro(
   return productId.length > 0 && allowedProductIds.has(productId);
 }
 
+function lifetimeGrantsPro(
+  lifetime: LifetimeAccess | null | undefined,
+  allowedProductIds: ReadonlySet<string>,
+): boolean {
+  if (!lifetime || lifetime.status !== "active") {
+    return false;
+  }
+  if (allowedProductIds.size === 0) {
+    return false;
+  }
+  const productId = lifetime.dodoProductId?.trim() ?? "";
+  return productId.length > 0 && allowedProductIds.has(productId);
+}
+
 function grantsPro(
   subscription: SubscriptionMirror,
   now: Date,
@@ -102,18 +118,43 @@ export function resolveEntitlement(
   subscription: SubscriptionMirror | null,
   now: Date,
   allowedProductIds: ReadonlySet<string>,
+  lifetime?: LifetimeAccess | null,
 ): EntitlementSnapshot {
+  if (lifetimeGrantsPro(lifetime, allowedProductIds)) {
+    return {
+      plan: PLANS.PRO,
+      status: "ACTIVE",
+      currentPeriodEnd: null,
+      cancelAtPeriodEnd: false,
+      billingInterval: null,
+      planKey: "founding_lifetime",
+      term: "lifetime",
+    };
+  }
+
   if (!subscription) {
     return FREE_ENTITLEMENT;
   }
 
+  const plan = grantsPro(subscription, now, allowedProductIds)
+    ? PLANS.PRO
+    : PLANS.FREE;
+
   return {
-    plan: grantsPro(subscription, now, allowedProductIds) ? PLANS.PRO : PLANS.FREE,
+    plan,
     status: subscription.status,
     currentPeriodEnd: subscription.currentPeriodEnd,
     cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
     billingInterval: subscription.billingInterval,
     planKey: subscription.planKey,
+    term:
+      plan === PLANS.PRO
+        ? subscription.billingInterval === "ANNUAL"
+          ? "annual"
+          : subscription.billingInterval === "MONTHLY"
+            ? "monthly"
+            : null
+        : null,
   };
 }
 

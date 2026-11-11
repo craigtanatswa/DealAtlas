@@ -6,7 +6,9 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import type {
   BillingEventRecord,
   BillingStore,
+  GrantLifetimeResult,
   IncomingBillingEvent,
+  RevokeLifetimeResult,
   StoredSubscription,
 } from "@/lib/billing/types";
 
@@ -202,6 +204,56 @@ export function createBillingStore(): BillingStore {
         .from("subscriptions")
         .upsert(payload, { onConflict: "dodo_subscription_id" });
       throwIfQueryError("Failed to upsert subscription", { data: null, error });
+    },
+
+    async grantLifetime(input) {
+      const { data, error } = await admin.rpc("grant_lifetime_access", {
+        p_event_id: input.eventId,
+        p_payment_id: input.paymentId,
+        p_user_id: input.userId,
+        p_customer_id: input.customerId,
+        p_product_id: input.productId,
+        p_total_amount: input.totalAmount ?? null,
+        p_currency: input.currency ?? null,
+      });
+      const result = throwIfQueryError("Failed to grant lifetime access", {
+        data,
+        error,
+      });
+      return result as GrantLifetimeResult;
+    },
+
+    async getLifetimeGrantByPayment(paymentId) {
+      const { data, error } = await admin
+        .from("lifetime_grants")
+        .select("status, total_amount, currency")
+        .eq("dodo_payment_id", paymentId)
+        .maybeSingle();
+      const row = throwIfQueryError("Failed to load lifetime grant", {
+        data,
+        error,
+      });
+      if (!row) {
+        return null;
+      }
+      return {
+        status: row.status as "active" | "revoked",
+        totalAmount: row.total_amount,
+        currency: row.currency,
+      };
+    },
+
+    async revokeLifetime(input) {
+      const { data, error } = await admin.rpc("revoke_lifetime_access", {
+        p_event_id: input.eventId,
+        p_payment_id: input.paymentId,
+        p_reason: input.reason,
+      });
+      const result = throwIfQueryError("Failed to revoke lifetime access", {
+        data,
+        error,
+      });
+      return result as RevokeLifetimeResult;
     },
   };
 }

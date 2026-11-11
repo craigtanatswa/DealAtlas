@@ -1,24 +1,24 @@
 import {
-  FOUNDING_COPY,
-  FOUNDING_LIMITED_PLACES,
-  foundingAnnualShort,
-  foundingMonthlyEquivalent,
   proAnnualBilledLine,
   proAnnualMonthlyEquivalent,
   proAnnualShort,
   proMonthlyShort,
   proMonthlyWasLabel,
 } from "@/lib/billing/founding-ui";
+import {
+  LIFETIME_ANCHOR,
+  LIFETIME_PLAN_LINE,
+  LIFETIME_PRICE_SHORT,
+} from "@/lib/billing/lifetime-copy";
 import { cn } from "@/lib/utils";
 
 /**
- * The one founding price format:
- * struck-through usual monthly price, bold founding monthly price, then the
- * founding annual price in brackets, e.g. "£39/mo £24.17/mo (£290/yr)".
- * Every founding surface renders this component so the numbers cannot drift.
+ * The one Lifetime price format:
+ * struck-through Pro annual price, then the bold one-time Lifetime price,
+ * e.g. "£350/yr £250 once". Every Lifetime surface renders this component so
+ * the numbers cannot drift.
  */
 export function FoundingPriceInline({ className }: { className?: string }) {
-  const monthly = foundingMonthlyEquivalent();
   return (
     <span
       className={cn(
@@ -26,11 +26,10 @@ export function FoundingPriceInline({ className }: { className?: string }) {
         className,
       )}
     >
-      <s aria-label={proMonthlyWasLabel()} className="font-normal opacity-75 decoration-1">
-        {proMonthlyShort()}
+      <s aria-label={`was ${LIFETIME_ANCHOR}`} className="font-normal opacity-75 decoration-1">
+        {LIFETIME_ANCHOR}
       </s>
-      <strong className="font-bold">{monthly ? `${monthly}/mo` : foundingAnnualShort()}</strong>{" "}
-      <span className="font-normal opacity-75">({foundingAnnualShort()})</span>
+      <strong className="font-bold">{LIFETIME_PRICE_SHORT}</strong>
     </span>
   );
 }
@@ -50,24 +49,18 @@ export function FoundingPriceLead({
           size === "lg" ? "[&>s]:text-lg [&>span]:text-base" : "[&>s]:text-base [&>span]:text-sm",
         )}
       />
-      <p className="mt-1 text-sm text-muted-foreground">
-        <span>{FOUNDING_LIMITED_PLACES}</span>
-        {" · "}
-        <span>{FOUNDING_COPY.priceLocked}</span>
-      </p>
+      <p className="mt-1 text-sm text-foreground/80">{LIFETIME_PLAN_LINE}</p>
     </div>
   );
 }
 
 /**
- * Founding button text: the action, then the shared founding price format.
- * Prices come from DISPLAY_PRICING helpers via FoundingPriceInline.
+ * Lifetime button text: the action only. The price line sits next to the button.
  */
 export function FoundingButtonLabel({ text }: { text: string }) {
   return (
     <span className="flex flex-wrap items-baseline justify-center gap-x-2 gap-y-0.5 text-center">
       <span>{text}</span>
-      <FoundingPriceInline />
     </span>
   );
 }

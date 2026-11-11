@@ -5,6 +5,7 @@ import { Heading } from "@/components/layout/heading";
 import { Main } from "@/components/layout/container";
 import { loginPathWithNext } from "@/lib/auth/redirect";
 import { getAuthUser } from "@/lib/auth/session";
+import { LIFETIME_FULL_PATH } from "@/lib/billing/paths";
 import { parseCheckoutReturnTo } from "@/lib/deals/paths";
 import {
   getPublicDealPreviewPageByDealId,
@@ -71,7 +72,7 @@ export default async function FoundingFullPage({
       <Heading>Checkout</Heading>
       <FoundingFullNotice
         signedIn={Boolean(user)}
-        loginHref={loginPathWithNext(returnTo ?? "/checkout/founding-full")}
+        loginHref={loginPathWithNext(returnTo ?? LIFETIME_FULL_PATH)}
         returnTo={returnTo ?? undefined}
         returnTitle={returnTitle}
         notEligible={firstParam(params.reason) === "not_eligible"}
