@@ -96,7 +96,7 @@ function PlanCta({
   signedIn,
   planKey,
   label,
-  variant = "outline",
+  variant = "default",
   buttonClassName,
   analyticsPlan,
 }: {
@@ -141,7 +141,7 @@ export function PricingPlans({
   // Lifetime sold out, hidden or not offered: the card disappears and the grid reflows to three plans.
   const showFounding = state === "available";
   const soldOut = state === "sold_out";
-  const annualVariant = showFounding ? "outline" : "default";
+  const annualVariant = "default";
 
   return (
     <>
@@ -164,7 +164,7 @@ export function PricingPlans({
           <p className="mt-1 text-sm text-muted-foreground">{FOUNDING_COPY.freeNote}</p>
           <FeatureList items={FREE_FEATURES} />
           <div className="mt-auto pt-6">
-            <Button asChild variant="outline" className="h-11 w-full">
+            <Button asChild variant="default" className="h-11 w-full">
               <Link href={signedIn ? "/deals" : signupPathWithNext("/pricing")}>
                 {signedIn ? FOUNDING_COPY.browse : FOUNDING_COPY.createAccount}
               </Link>
