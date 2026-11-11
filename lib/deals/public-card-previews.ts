@@ -1,7 +1,11 @@
 import "server-only";
 
 import { expandFilterToRawCategories } from "@/lib/categories/filter-map";
-import { throwIfQueryError } from "@/lib/db/errors";
+import {
+  CATEGORY_FILTER_FANOUT_FALLBACK_WARN,
+  isMissingCategoriesParamError,
+  throwIfQueryError,
+} from "@/lib/db/errors";
 import type { PublicSupabaseClient } from "@/lib/db/previews";
 import {
   PUBLIC_CARD_PREVIEW_COLUMNS,
@@ -15,10 +19,37 @@ export type { PublicCardPreview };
 
 type CardStatus = "OPEN" | "CLOSING_SOON" | "UPCOMING";
 
+type CardRpcArgs = {
+  p_category?: string;
+  p_categories?: string[];
+  p_region?: string;
+  p_statuses?: CardStatus[];
+  p_query?: string;
+  p_limit: number;
+};
+
 const RELATED_STATUSES: Array<"OPEN" | "CLOSING_SOON"> = ["OPEN", "CLOSING_SOON"];
 
 function stringOrNull(value: unknown): string | null {
   return typeof value === "string" ? value : null;
+}
+
+async function callCardRpc(
+  client: PublicSupabaseClient,
+  args: CardRpcArgs,
+): Promise<Array<Record<string, unknown>>> {
+  const { data, error } = await client
+    .rpc("search_preview_dtos", {
+      ...args,
+      p_sort: "biddable",
+      p_offset: 0,
+    })
+    .select(PUBLIC_CARD_PREVIEW_COLUMNS.join(","));
+
+  return throwIfQueryError("Failed to list public card previews", {
+    data: (data ?? []) as unknown as Array<Record<string, unknown>>,
+    error,
+  });
 }
 
 /** Explicitly pick the six public card fields; never spread the source row. */
@@ -62,24 +93,48 @@ export async function listPublicCardPreviews(
     ? expandFilterToRawCategories(input.category)
     : [];
   const requestLimit = limit + (input.excludeSlug ? 1 : 0);
+  const baseArgs = {
+    p_region: input.region,
+    p_statuses: input.statuses,
+    p_query: input.query || undefined,
+    p_limit: requestLimit,
+  };
 
-  const { data, error } = await client
-    .rpc("search_preview_dtos", {
+  let rows: Array<Record<string, unknown>>;
+  if (rawCategories.length > 1) {
+    try {
+      rows = await callCardRpc(client, {
+        ...baseArgs,
+        p_categories: rawCategories,
+      });
+    } catch (error) {
+      if (!isMissingCategoriesParamError(error)) {
+        throw error;
+      }
+      console.warn(CATEGORY_FILTER_FANOUT_FALLBACK_WARN);
+      const collected: Array<Record<string, unknown>> = [];
+      for (const rawCategory of rawCategories) {
+        collected.push(
+          ...(await callCardRpc(client, {
+            ...baseArgs,
+            p_category: rawCategory,
+          })),
+        );
+      }
+      const bySlug = new Map<string, Record<string, unknown>>();
+      for (const row of collected) {
+        if (typeof row.slug === "string" && !bySlug.has(row.slug)) {
+          bySlug.set(row.slug, row);
+        }
+      }
+      rows = [...bySlug.values()];
+    }
+  } else {
+    rows = await callCardRpc(client, {
+      ...baseArgs,
       p_category: rawCategories.length === 1 ? rawCategories[0] : undefined,
-      p_categories: rawCategories.length > 1 ? rawCategories : undefined,
-      p_region: input.region,
-      p_statuses: input.statuses,
-      p_query: input.query || undefined,
-      p_sort: "biddable",
-      p_limit: requestLimit,
-      p_offset: 0,
-    })
-    .select(PUBLIC_CARD_PREVIEW_COLUMNS.join(","));
-
-  const rows = throwIfQueryError("Failed to list public card previews", {
-    data: (data ?? []) as unknown as Array<Record<string, unknown>>,
-    error,
-  });
+    });
+  }
 
   return rows
     .map(toPublicCardPreview)

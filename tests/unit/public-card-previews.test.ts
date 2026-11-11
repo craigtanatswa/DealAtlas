@@ -1,8 +1,9 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
 import { expandFilterToRawCategories } from "@/lib/categories/filter-map";
+import { CATEGORY_FILTER_FANOUT_FALLBACK_WARN } from "@/lib/db/errors";
 import type { PublicSupabaseClient } from "@/lib/db/previews";
 import {
   listPublicCardPreviews,
@@ -59,6 +60,10 @@ function createClient(
 }
 
 describe("public card previews", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it("selects only the six public columns and never spreads forbidden fields", async () => {
     const { client, calls } = createClient(() => [
       cardRow("open-construction-deal"),
@@ -103,6 +108,117 @@ describe("public card previews", () => {
     expect(previews[0]).not.toHaveProperty("reference");
     expect(previews[0]).not.toHaveProperty("total_count");
     expect(previews[0]).not.toHaveProperty("deal_id");
+  });
+
+  it("falls back to per-raw p_category calls when p_categories is missing", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const rawCategories = expandFilterToRawCategories("Technology");
+    expect(rawCategories.length).toBeGreaterThan(1);
+
+    const calls: RpcCall[] = [];
+    const rpc = vi.fn((name: string, args: Record<string, unknown>) => ({
+      select: vi.fn((columns: string) => {
+        calls.push({ name, args, columns });
+        if (calls.length === 1) {
+          return Promise.resolve({
+            data: null,
+            error: {
+              code: "PGRST202",
+              message:
+                "Could not find the function public.search_preview_dtos(p_categories, ...) in the schema cache",
+            },
+          });
+        }
+
+        const rawCategory = args.p_category as string;
+        return Promise.resolve({
+          data: [
+            cardRow("shared-deal"),
+            cardRow(
+              `deal-${rawCategory.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+            ),
+          ],
+          error: null,
+        });
+      }),
+    }));
+    const client = { rpc } as unknown as PublicSupabaseClient;
+
+    const previews = await listPublicCardPreviews(client, {
+      category: "Technology",
+      limit: 24,
+    });
+
+    expect(calls).toHaveLength(1 + rawCategories.length);
+    expect(calls[0]?.args.p_categories).toEqual(rawCategories);
+    expect(calls[0]?.args.p_category ?? null).toBeNull();
+
+    const fallbackCalls = calls.slice(1);
+    expect(fallbackCalls.map((call) => call.args.p_category)).toEqual(
+      rawCategories,
+    );
+    for (const call of fallbackCalls) {
+      expect(call.args.p_categories ?? null).toBeNull();
+    }
+    for (const call of calls) {
+      expect(call.name).toBe("search_preview_dtos");
+      expect(call.columns).toBe(
+        "slug,preview_title,main_category,broad_region,value_band,deadline_band",
+      );
+      expect(call.args.p_sort).toBe("biddable");
+      expect(call.args.p_offset).toBe(0);
+      expect(call.args.p_limit).toBe(24);
+    }
+
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn).toHaveBeenCalledWith(CATEGORY_FILTER_FANOUT_FALLBACK_WARN);
+
+    const expectedSlugs = [
+      "shared-deal",
+      ...rawCategories.map(
+        (rawCategory) =>
+          `deal-${rawCategory.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+      ),
+    ];
+    expect(previews.map((preview) => preview.slug)).toEqual(expectedSlugs);
+    expect(new Set(previews.map((preview) => preview.slug)).size).toBe(
+      previews.length,
+    );
+    for (const preview of previews) {
+      expect(Object.keys(preview).sort()).toEqual(
+        [...PUBLIC_CARD_PREVIEW_KEYS].sort(),
+      );
+    }
+  });
+
+  it("rethrows non-PGRST202 RPC errors without fanning out", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    let callCount = 0;
+    const rpc = vi.fn(() => ({
+      select: vi.fn(() => {
+        callCount += 1;
+        return Promise.resolve({
+          data: null,
+          error: {
+            code: "57014",
+            message: "canceling statement due to statement timeout",
+          },
+        });
+      }),
+    }));
+    const client = { rpc } as unknown as PublicSupabaseClient;
+
+    await expect(
+      listPublicCardPreviews(client, {
+        category: "Technology",
+        limit: 10,
+      }),
+    ).rejects.toThrow(
+      "Failed to list public card previews: canceling statement due to statement timeout",
+    );
+
+    expect(callCount).toBe(1);
+    expect(warn).not.toHaveBeenCalled();
   });
 
   it("drops the excluded slug and clamps the limit", async () => {
