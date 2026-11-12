@@ -87,6 +87,32 @@ describe("Find a Tender OCDS parse", () => {
     expect(candidate.status).toBe("OPEN");
   });
 
+  it("uses expressionOfInterestDeadline when the tender has no tenderPeriod", () => {
+    const payload = readFindATenderFixture("normal.json") as {
+      releases: Array<{
+        tender: {
+          procurementMethod?: string;
+          expressionOfInterestDeadline?: string;
+          tenderPeriod?: { endDate?: string };
+        };
+      }>;
+    };
+    const release = structuredClone(payload.releases[0]!);
+    delete release.tender.tenderPeriod;
+    release.tender.procurementMethod = "selective";
+
+    release.tender.expressionOfInterestDeadline = "2026-10-20T12:00:00Z";
+    const [future] = parseFindATenderRaw({ releases: [release] }, NOW);
+    expect(future?.submissionDeadline).toBe("2026-10-20T12:00:00.000Z");
+    expect(future?.lots[0]?.submissionDeadline).toBe("2026-10-20T12:00:00.000Z");
+    expect(future?.status).toBe("OPEN");
+
+    release.tender.expressionOfInterestDeadline = "2026-09-01T12:00:00Z";
+    const [past] = parseFindATenderRaw({ releases: [release] }, NOW);
+    expect(past?.submissionDeadline).toBe("2026-09-01T12:00:00.000Z");
+    expect(past?.status).toBe("CLOSED");
+  });
+
   it("maps withdrawn notices and awards/contracts when present", () => {
     const [withdrawn] = parseFindATenderRaw(
       readFindATenderFixture("withdrawn.json"),

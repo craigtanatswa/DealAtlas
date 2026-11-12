@@ -31,6 +31,67 @@ function ingest(fixtureNames: string[], store = createMemoryIngestionStore({
   };
 }
 
+function ingestPackage(body: unknown, store = createMemoryIngestionStore({
+  sources: [findATenderSourceRecord({ id: "source-fat" })],
+})) {
+  const adapter = createFindATenderAdapter({
+    http: createFixtureHttpClient(() => body),
+    now: () => NOW,
+  });
+  return {
+    store,
+    result: runIngestion({
+      sourceKey: "find-a-tender",
+      store,
+      adapter,
+      now: NOW,
+      limit: 100,
+      triggerType: "TEST",
+    }),
+  };
+}
+
+type NormalRelease = {
+  ocid: string;
+  id: string;
+  date?: string;
+  tender: {
+    id?: string;
+    title?: string;
+    mainProcurementCategory?: string;
+    classification?: unknown;
+    [key: string]: unknown;
+  };
+};
+
+function partialUpdatePackage(
+  noticeId: string,
+  ocid = "ocds-h6vhtk-fixture1",
+) {
+  const payload = packageFromFixtures(["normal.json"]) as {
+    releases: NormalRelease[];
+  };
+  const source = payload.releases[0]!;
+  return {
+    releases: [
+      {
+        ocid,
+        id: noticeId,
+        date: source.date,
+        tag: ["tenderUpdate"],
+        tender: {
+          id: source.tender.id,
+          title: `${source.tender.title ?? ""} (update)`,
+          mainProcurementCategory: source.tender.mainProcurementCategory,
+          classification: source.tender.classification,
+          legalBasis: "regulations 2015",
+          amendments: [],
+        },
+      },
+    ],
+  };
+}
+
 describe("Find a Tender fixture ingestion pipeline", () => {
   it("creates canonical deals, notices and lots from a normal fixture", async () => {
     const { store, result } = ingest(["normal.json"]);
@@ -82,6 +143,48 @@ describe("Find a Tender fixture ingestion pipeline", () => {
           change.changeType === "deadline_change",
       ),
     ).toBe(true);
+  });
+
+  it("keeps known deal fields when a partial tenderUpdate has no status or periods", async () => {
+    const first = ingest(["normal.json"]);
+    await first.result;
+    const before = { ...first.store.deals[0]! };
+    expect(before.status).toBe("OPEN");
+
+    const second = ingestPackage(
+      partialUpdatePackage("000012-2026"),
+      first.store,
+    );
+    const outcome = await second.result;
+
+    expect(outcome.counters.errorCount).toBe(0);
+    expect(first.store.deals).toHaveLength(1);
+    const deal = first.store.deals[0]!;
+    expect(deal.id).toBe(before.id);
+    expect(deal.sourceTitle).toContain("(update)");
+    expect(deal.status).toBe(before.status);
+    expect(deal.submissionDeadline).toBe(before.submissionDeadline);
+    expect(deal.enquiryDeadline).toBe(before.enquiryDeadline);
+    expect(deal.sourceDescription).toBe(before.sourceDescription);
+    expect(deal.procurementMethod).toBe(before.procurementMethod);
+    expect(deal.exactLocationText).toBe(before.exactLocationText);
+    expect(deal.valueMaxExVat).toBe(before.valueMaxExVat);
+    expect(deal.buyerOrganizationId).toBe(before.buyerOrganizationId);
+    expect(deal.smeSuitable).toBe(before.smeSuitable);
+    expect(deal.vcseSuitable).toBe(before.vcseSuitable);
+  });
+
+  it("leaves a brand-new partial tenderUpdate deal UNCLASSIFIED", async () => {
+    const { store, result } = ingestPackage(
+      partialUpdatePackage("000013-2026", "ocds-h6vhtk-partial-only"),
+    );
+    const outcome = await result;
+
+    expect(outcome.status).toBe("SUCCEEDED");
+    expect(store.deals).toHaveLength(1);
+    expect(store.deals[0]?.status).toBe("UNCLASSIFIED");
+    expect(store.deals[0]?.submissionDeadline).toBeNull();
+    expect(store.deals[0]?.valueMaxExVat).toBeNull();
   });
 
   it("logs malformed records without stopping the rest of the batch", async () => {
