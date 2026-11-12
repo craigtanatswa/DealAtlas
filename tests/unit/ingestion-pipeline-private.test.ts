@@ -54,9 +54,11 @@ describe("UK Infrastructure Pipeline fixture ingestion", () => {
       deal.sourceTitle.includes("North Suffolk Reservoir"),
     );
     expect(reservoir?.dealType).toBe("PRIVATE_TENDER");
-    expect(reservoir?.stage).toBe("LIVE");
-    expect(reservoir?.status).toBe("OPEN");
+    expect(reservoir?.stage).toBe("PLANNING");
+    expect(reservoir?.status).toBe("UPCOMING");
     expect(reservoir?.buyerSector).toBe("UTILITY");
+    expect(reservoir?.submissionDeadline).toBeNull();
+    expect(reservoir?.nextProcurementDate).toBe("2031-12-31");
     expect(reservoir?.sourceUrl).toContain(NISTA_LAYOUT_API.split("/_dash-layout")[0]);
     expect(reservoir?.ocid).toMatch(/^da-uk-infrastructure-pipeline-/);
     expect(reservoir?.sourceTitle).toBe("North Suffolk Reservoir");

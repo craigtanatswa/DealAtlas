@@ -72,6 +72,7 @@ export function ingestAlertBody(input: {
   innovateUkOk?: string;
   gcaAgreementsOk?: string;
   gcaPipelineOk?: string;
+  ukInfrastructurePipelineOk?: string;
   buildOk?: string;
   unpublishOk?: string;
   publishOk?: string;
@@ -88,6 +89,7 @@ export function ingestAlertBody(input: {
     innovate_uk_ok: numericFlag(input.innovateUkOk),
     gca_agreements_ok: numericFlag(input.gcaAgreementsOk),
     gca_pipeline_ok: numericFlag(input.gcaPipelineOk),
+    uk_infrastructure_pipeline_ok: numericFlag(input.ukInfrastructurePipelineOk),
     build_ok: numericFlag(input.buildOk),
     unpublish_ok: numericFlag(input.unpublishOk),
     publish_ok: numericFlag(input.publishOk),
@@ -120,6 +122,7 @@ export async function sendIngestAlert(options: {
   innovateUkOk?: string;
   gcaAgreementsOk?: string;
   gcaPipelineOk?: string;
+  ukInfrastructurePipelineOk?: string;
   buildOk?: string;
   unpublishOk?: string;
   publishOk?: string;

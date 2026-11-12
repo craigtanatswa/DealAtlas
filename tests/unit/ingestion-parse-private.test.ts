@@ -10,7 +10,9 @@ import {
 } from "@/ingestion/sources/private/mapping";
 import {
   extractNistaProjects,
+  mapNistaProjectState,
   mapNistaRecord,
+  normaliseNistaRegion,
 } from "@/ingestion/sources/uk-infrastructure-pipeline/parse";
 import {
   readPrivateFrameworkFixture,
@@ -77,22 +79,28 @@ describe("UK Infrastructure Pipeline extraction", () => {
   it("maps a normal private infrastructure programme", () => {
     const candidate = mapNistaRecord(readUkInfrastructureFixture("normal.json"), CONTEXT);
     expect(candidate.dealType).toBe("PRIVATE_TENDER");
-    expect(candidate.stage).toBe("LIVE");
-    expect(candidate.status).toBe("OPEN");
+    expect(candidate.stage).toBe("PLANNING");
+    expect(candidate.status).toBe("UPCOMING");
     expect(candidate.buyerSector).toBe("UTILITY");
     expect(candidate.sourceTitle).toBe("North Suffolk Reservoir");
     expect(candidate.organizations[0]?.name).toBe("Northumbrian Water");
     expect(candidate.valueMaxExVat).toBeCloseTo(727528491.2);
     expect(candidate.ocid).toContain("uk-infrastructure-pipeline");
     expect(candidate.sourceUrl).toContain("project_id");
+    expect(candidate.exactLocationText).toBe("East of England");
+    expect(candidate.submissionDeadline).toBeNull();
+    expect(candidate.nextProcurementDate).toBe("2031-12-31");
   });
 
-  it("keeps partial records without inventing a value", () => {
+  it("keeps partial records without inventing a value or deadline", () => {
     const candidate = mapNistaRecord(readUkInfrastructureFixture("partial.json"), CONTEXT);
     expect(candidate.dealType).toBe("PROCUREMENT_PIPELINE");
-    expect(candidate.stage).toBe("EARLY");
+    expect(candidate.stage).toBe("PLANNING");
     expect(candidate.status).toBe("UPCOMING");
     expect(candidate.valueMaxExVat).toBeNull();
+    expect(candidate.exactLocationText).toBe("Nationwide");
+    expect(candidate.submissionDeadline).toBeNull();
+    expect(candidate.nextProcurementDate).toBeNull();
   });
 
   it("maps cancelled and completed records", () => {
@@ -121,6 +129,98 @@ describe("UK Infrastructure Pipeline extraction", () => {
     expect(() =>
       mapNistaRecord(readUkInfrastructureFixture("malformed.json"), CONTEXT),
     ).toThrow(IngestionError);
+  });
+});
+
+describe("UK Infrastructure Pipeline regions", () => {
+  it.each([
+    ["South East", "South East England"],
+    ["South West", "South West England"],
+    ["North West", "North West England"],
+    ["North East", "North East England"],
+    ["East", "East of England"],
+    ["East of England", "East of England"],
+    ["West Midlands", "West Midlands"],
+    ["East Midlands", "East Midlands"],
+    ["London", "London"],
+    ["Yorkshire and the Humber", "Yorkshire and the Humber"],
+    ["Wales", "Wales"],
+    ["Scotland", "Scotland"],
+    ["Northern Ireland", "Northern Ireland"],
+    ["England", "Nationwide"],
+    ["UK", "Nationwide"],
+    ["GB", "Nationwide"],
+    ["England and Wales", "Nationwide"],
+    ["Offshore", "Nationwide"],
+    ["North West, England", "North West England"],
+    ["North East, Yorkshire and the Humber, England", "Nationwide"],
+    ["South East, East of England", "Nationwide"],
+    ["England, UK", "Nationwide"],
+    ["-", null],
+    ["", null],
+    [null, null],
+  ])("normalises %j to %j", (value, expected) => {
+    expect(normaliseNistaRegion(value)).toBe(expected);
+  });
+});
+
+describe("UK Infrastructure Pipeline statuses", () => {
+  it.each([
+    ["Not procured", "-"],
+    ["Partially procured", "-"],
+    ["-", "Scoping"],
+    ["-", "Design and Planning"],
+    ["-", "In procurement"],
+  ])("keeps %s / %s upcoming without a deadline", (procurementStage, schemeStatus) => {
+    expect(
+      mapNistaProjectState({
+        procurementStage,
+        schemeStatus,
+      }),
+    ).toEqual({ stage: "PLANNING", status: "UPCOMING" });
+  });
+
+  it.each([
+    ["Procured", "-"],
+    ["-", "In Construction"],
+    ["-", "In Operation"],
+  ])("maps %s / %s to an active contract", (procurementStage, schemeStatus) => {
+    expect(
+      mapNistaProjectState({
+        procurementStage,
+        schemeStatus,
+      }),
+    ).toEqual({ stage: "CONTRACT", status: "ACTIVE" });
+  });
+
+  it("keeps terminal statuses terminal", () => {
+    expect(
+      mapNistaProjectState({ procurementStage: "Not procured", schemeStatus: "Cancelled" }),
+    ).toEqual({ stage: "ENDED", status: "CANCELLED" });
+    expect(
+      mapNistaProjectState({ procurementStage: "Not procured", schemeStatus: "Withdrawn" }),
+    ).toEqual({ stage: "ENDED", status: "WITHDRAWN" });
+    expect(
+      mapNistaProjectState({ procurementStage: "Partially procured", schemeStatus: "Complete" }),
+    ).toEqual({ stage: "PLANNING", status: "CLOSED" });
+  });
+
+  it("leaves the generic private source status mapping unchanged", () => {
+    const candidate = buildPrivateCandidate(
+      {
+        id: "private-1",
+        title: "Example private pipeline",
+        procurement_stage: "Not procured",
+        scheme_status: "In procurement",
+      },
+      {
+        ...CONTEXT,
+        sourceKey: "example-private",
+        sourceUrl: "https://example.test/private-1",
+      },
+    );
+    expect(candidate.stage).toBe("LIVE");
+    expect(candidate.status).toBe("OPEN");
   });
 });
 
