@@ -46,10 +46,7 @@ function lifetimeButtonScope(button: HTMLElement, buttonText: string): HTMLEleme
 
 function expectFoundingPriceInside(button: HTMLElement, buttonText = "Get the Lifetime deal") {
   const scope = lifetimeButtonScope(button, buttonText);
-  const was = scope.querySelector("s");
-  expect(was?.textContent).toBe("£180/yr");
-  expect(was?.getAttribute("aria-label")).toBe("was £180/yr");
-  expect(was?.nextElementSibling?.tagName).toBe("STRONG");
+  expect(scope.querySelector("s")).toBeNull();
   expect(scope.querySelector("strong")?.textContent).toBe("£250 once");
   expect(scope.textContent).toContain(PLAN_LINE);
 }
@@ -65,12 +62,11 @@ function planForms(container: HTMLElement): HTMLFormElement[] {
 }
 
 describe("lifetime price lead", () => {
-  it("puts the struck-through annual price first, then the bold one-time price and plan line", () => {
+  it("shows only the bold one-time price and plan line, with nothing struck through", () => {
     const { container } = render(<FoundingPriceLead />);
-    const struck = container.querySelector('s[aria-label="was £180/yr"]');
-    expect(struck?.textContent).toBe("£180/yr");
-    expect(struck?.nextElementSibling?.textContent).toBe("£250 once");
-    expect(container.textContent).toContain("£180/yr£250 once");
+    expect(container.querySelector("s")).toBeNull();
+    expect(container.querySelector("strong")?.textContent).toBe("£250 once");
+    expect(container.textContent).not.toContain("£180/yr");
     expect(screen.getByText(PLAN_LINE)).toBeTruthy();
     expect((container.textContent?.match(/Limited places/g) ?? []).length).toBe(1);
     expect(container.textContent).not.toMatch(/\d+\s*places?/i);
@@ -103,8 +99,10 @@ describe("lifetime pricing cards", () => {
     expect(container.textContent).toContain("£250 once");
     expect(container.textContent).not.toMatch(/founding|£290|£24\.17|stay subscribed/i);
     expect(screen.getByText("billed £180/yr, VAT included")).toBeTruthy();
-    expect(container.querySelector('s[aria-label="was £180/yr"]')).toBeTruthy();
+    expect(container.querySelector('s[aria-label="was £180/yr"]')).toBeNull();
     expect(container.querySelector('s[aria-label="was £19 a month"]')).toBeTruthy();
+    const lifetimeCard = screen.getByRole("button", { name: /Get the Lifetime deal/ }).closest("section, article, div[class*='rounded']");
+    expect(lifetimeCard?.querySelector("s")).toBeNull();
     expect(container.textContent).not.toContain("£24.17/mo");
     expect(container.textContent).not.toMatch(/of 25/);
     expect(container.querySelector('[role="progressbar"]')).toBeNull();
@@ -287,7 +285,7 @@ describe("Lifetime checkout summary", () => {
     expect(screen.getByText("Due today")).toBeTruthy();
     expect(screen.getByText("£250.00")).toBeTruthy();
     expect(screen.getByText("One-time payment · no renewal")).toBeTruthy();
-    expect(container.querySelector('s[aria-label="was £180/yr"]')?.textContent).toBe("£180/yr");
+    expect(container.querySelector("s")).toBeNull();
     const pay = screen.getByRole("button", { name: /^Continue to payment/ });
     expectFoundingPriceInside(pay, "Continue to payment");
     expect(planKeyOf(pay.closest("form")!)).toBe(FOUNDING_PLAN_KEY);

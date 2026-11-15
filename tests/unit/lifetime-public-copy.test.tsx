@@ -149,7 +149,7 @@ describe("Lifetime marketing pages", () => {
   it("renders available Lifetime copy on pricing and home without old founding pricing", async () => {
     for (const html of [await renderPricing(available, true), await renderHome(available, true)]) {
       expect(html).toContain(LIFETIME_PLAN_LINE);
-      expect(html).toMatch(/<s[^>]*>£180\/yr<\/s>/);
+      expect(html).not.toMatch(/<s[^>]*>£180\/yr<\/s>/);
       expect(html).toContain("£250 once");
       expect(visibleText(html)).not.toMatch(/founding/i);
       expect((html.match(/Limited places/g) ?? []).length).toBe(1);

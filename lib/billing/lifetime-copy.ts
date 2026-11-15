@@ -14,9 +14,6 @@ export const LIFETIME_PRICE = DISPLAY_PRICING.proLifetime.replace(/\s*one-time$/
 /** The exact plan line used on cards, guides and FAQ JSON-LD. */
 export const LIFETIME_PLAN_LINE = `${PLAN_PUBLIC_NAME}: ${LIFETIME_PRICE} one-time (VAT included).${SHOW_LIMITED_PLACES ? ` ${LIMITED_PLACES_TEXT}.` : ""}`;
 
-/** Struck-through comparison anchor: the Pro annual price, e.g. "£180/yr". */
-export const LIFETIME_ANCHOR = DISPLAY_PRICING.proAnnual.replace("/year", "/yr");
-
 /** Short price, e.g. "£250 once". */
 export const LIFETIME_PRICE_SHORT = `${LIFETIME_PRICE} once`;
 
