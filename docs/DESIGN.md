@@ -137,8 +137,8 @@ View pricing
 
 While the one-time Lifetime plan is on sale, the same panel shows it (no place count or cap; `SHOW_LIMITED_PLACES` in `lib/billing/lifetime-copy.ts` appends "Limited places." to the plan line):
 
-- On sale: **Get the Lifetime deal**, helper `Lifetime deal: £250 one-time (VAT included). Limited places.` (the `LIFETIME_PLAN_LINE` constant), secondary **or Pro £39/mo**. The word "Founding" is never shown to users; the plan is only called the Lifetime deal.
-- Sold out: **Start Pro – £39/mo** and **or £350/yr (save 25%)** (percentage derived from `DISPLAY_PRICING`). The Lifetime card is gone; annual is marked Recommended.
+- On sale: **Get the Lifetime deal**, helper `Lifetime deal: £250 one-time (VAT included). Limited places.` (the `LIFETIME_PLAN_LINE` constant), secondary **or Pro £19/mo**. The word "Founding" is never shown to users; the plan is only called the Lifetime deal.
+- Sold out: **Start Pro – £19/mo** and **or £180/yr (save 21%)** (percentage derived from `DISPLAY_PRICING`). The Lifetime card is gone; annual is marked Recommended.
 - The last place taken during checkout shows **The Lifetime deal just sold out. You haven't been charged.** with standard annual and monthly buttons. The deal return path is kept. A checkout redirect still does not grant Pro.
 
 ## 10. Homepage and workspace

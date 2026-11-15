@@ -152,7 +152,7 @@ describe("founding member checkout", () => {
     ).toBe(false);
     expect(subscriptionPlanKeyFor("founding_lifetime")).toBe("PRO_ANNUAL");
     expect(subscriptionPlanKeyFor("PRO_ANNUAL")).toBe("PRO_ANNUAL");
-    expect(FOUNDING_UNAVAILABLE_MESSAGE).toContain("Pro annual at £350/year");
+    expect(FOUNDING_UNAVAILABLE_MESSAGE).toContain("Pro annual at £180/year");
   });
 
   it("ignores a client product id and rejects unknown plan keys", () => {
@@ -203,14 +203,14 @@ describe("founding member checkout", () => {
 
   it("uses the one-time Lifetime price without old annual-equivalent copy", () => {
     expect(foundingDueToday()).toBe("£250.00");
-    expect(FOUNDING_COPY.annualSaving).toBe("Save 25% vs monthly.");
-    expect(proMonthlyWasLabel()).toBe("was £39 a month");
+    expect(FOUNDING_COPY.annualSaving).toBe("Save 21% vs monthly.");
+    expect(proMonthlyWasLabel()).toBe("was £19 a month");
   });
 
   it("derives the lifetime price display from the one-time amount", () => {
-    expect(proAnnualShort()).toBe("£350/yr");
-    expect(proAnnualMonthlyEquivalent()).toBe("£29.17");
-    expect(proAnnualBilledLine()).toBe("billed £350/yr, VAT included");
+    expect(proAnnualShort()).toBe("£180/yr");
+    expect(proAnnualMonthlyEquivalent()).toBe("£15");
+    expect(proAnnualBilledLine()).toBe("billed £180/yr, VAT included");
     expect(foundingDueToday()).toBe("£250.00");
   });
 

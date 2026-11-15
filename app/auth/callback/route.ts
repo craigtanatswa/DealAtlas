@@ -11,9 +11,11 @@ import {
 import { parseEmailOtpType } from "@/lib/auth/otp";
 import {
   OAUTH_NEXT_COOKIE,
+  OAUTH_UTM_COOKIE,
   PASSWORD_RESET_COOKIE,
   SIGNUP_NEXT_COOKIE,
 } from "@/lib/auth/cookies";
+import { decodeOAuthUtm } from "@/lib/auth/oauth-utm";
 import { isAnalyticsConsentGranted } from "@/lib/analytics/consent";
 import { captureServerEvent } from "@/lib/analytics/server";
 import { buildUserSignedUpEvent } from "@/lib/analytics/server-events";
@@ -78,6 +80,10 @@ export async function GET(request: NextRequest) {
   if (pendingSignupNext) {
     cookieStore.delete({ name: SIGNUP_NEXT_COOKIE, path: "/auth" });
   }
+  const pendingOAuthUtm = cookieStore.get(OAUTH_UTM_COOKIE);
+  if (pendingOAuthUtm) {
+    cookieStore.delete(OAUTH_UTM_COOKIE);
+  }
 
   const signupFlow =
     type === "signup" ||
@@ -128,7 +134,12 @@ export async function GET(request: NextRequest) {
       isNewGoogleAccount(data.user) &&
       isAnalyticsConsentGranted(cookieStore.get(ANALYTICS_CONSENT_COOKIE)?.value)
     ) {
-      await captureServerEvent(buildUserSignedUpEvent({ userId: data.user.id }));
+      await captureServerEvent(
+        buildUserSignedUpEvent({
+          userId: data.user.id,
+          read: decodeOAuthUtm(pendingOAuthUtm?.value),
+        }),
+      );
     }
   } else if (tokenHash && type) {
     const { data, error } = await supabase.auth.verifyOtp({

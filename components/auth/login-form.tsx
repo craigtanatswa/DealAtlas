@@ -17,10 +17,12 @@ export function LoginForm({
   nextPath,
   plan,
   initialError,
+  analyticsEnabled = false,
 }: {
   nextPath: string;
   plan: CheckoutPlanKey | null;
   initialError?: string | null;
+  analyticsEnabled?: boolean;
 }) {
   const [state, action, pending] = useActionState(
     signInAction,
@@ -30,7 +32,7 @@ export function LoginForm({
   return (
     <div className="flex flex-col gap-4">
       <FormStatus error={initialError ?? null} />
-      <GoogleSignInButton nextPath={nextPath} />
+      <GoogleSignInButton nextPath={nextPath} analyticsEnabled={analyticsEnabled} />
       <form action={action} className="flex flex-col gap-4">
         <input type="hidden" name="next" value={nextPath} />
         <Field id="email" label="Email">
