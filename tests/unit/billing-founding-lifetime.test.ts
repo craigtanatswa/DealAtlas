@@ -156,7 +156,7 @@ describe("lifetime checkout", () => {
     expect(FOUNDING_UNAVAILABLE_MESSAGE).not.toMatch(/founding/i);
     expect(FOUNDING_NOT_ELIGIBLE_MESSAGE).not.toMatch(/founding/i);
     expect(FOUNDING_FULL_MESSAGE).toBe(
-      "The Lifetime deal is sold out. You can still subscribe to Pro annual at £350/year.",
+      "The Lifetime deal is sold out. You can still subscribe to Pro annual at £180/year.",
     );
     expect(priceLabel("founding_lifetime")).toBe("£250 one-time");
     expect(planLabel("founding_lifetime", null, true, "lifetime")).toBe(

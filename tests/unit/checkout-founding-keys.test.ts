@@ -401,7 +401,7 @@ describe("checkout error contract for the UI", () => {
     const body = await response.json();
     expect(body.code).toBe("FOUNDING_CAP_FULL");
     expect(body.message).toBe(
-      "The Lifetime deal is no longer available. You can still subscribe to Pro annual at £350/year.",
+      "The Lifetime deal is no longer available. You can still subscribe to Pro annual at £180/year.",
     );
     expect(body.checkout_url).toBeUndefined();
   });
@@ -415,7 +415,7 @@ describe("checkout error contract for the UI", () => {
     const body = await response.json();
     expect(body.code).toBe("FOUNDING_NOT_ELIGIBLE");
     expect(body.message).toBe(
-      "The Lifetime deal can't be bought again on this account. You can still subscribe to Pro annual at £350/year.",
+      "The Lifetime deal can't be bought again on this account. You can still subscribe to Pro annual at £180/year.",
     );
     expect(body.error).toBe(body.message);
     expect(body.checkout_url).toBeUndefined();

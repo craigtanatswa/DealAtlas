@@ -669,18 +669,18 @@ describe("guide analytics", () => {
 
 describe("guide markdown strikethrough", () => {
   it("parses ~~text~~ as a del node", () => {
-    expect(parseInline("was ~~£39/mo~~ now")).toEqual([
+    expect(parseInline("was ~~£19/mo~~ now")).toEqual([
       { type: "text", value: "was " },
-      { type: "del", children: [{ type: "text", value: "£39/mo" }] },
+      { type: "del", children: [{ type: "text", value: "£19/mo" }] },
       { type: "text", value: " now" },
     ]);
   });
 
   it("renders ~~text~~ as <del>", () => {
     const html = renderToStaticMarkup(
-      <GuideMarkdown blocks={parseMarkdown("Price: ~~£350/yr~~ **£250 once**")} publishedGuidePaths={new Set()} />,
+      <GuideMarkdown blocks={parseMarkdown("Price: ~~£180/yr~~ **£250 once**")} publishedGuidePaths={new Set()} />,
     );
-    expect(html).toContain("<del>£350/yr</del>");
+    expect(html).toContain("<del>£180/yr</del>");
     expect(html).not.toContain("~~");
   });
 

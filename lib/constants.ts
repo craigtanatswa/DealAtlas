@@ -40,8 +40,8 @@ export type FeatureLimits = (typeof FEATURE_LIMITS)[Plan];
 
 export const DISPLAY_PRICING = {
   currency: "GBP",
-  proMonthly: "£39/month",
-  proAnnual: "£350/year",
+  proMonthly: "£19/month",
+  proAnnual: "£180/year",
   proLifetime: "£250 one-time",
 } as const;
 
