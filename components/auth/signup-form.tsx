@@ -34,15 +34,6 @@ export function SignupForm({
       <form action={action} className="flex flex-col gap-4">
         <input type="hidden" name="next" value={nextPath} />
         <AnalyticsAttributionFields enabled={analyticsEnabled} />
-        <Field id="displayName" label="Display name">
-          <Input
-            id="displayName"
-            name="displayName"
-            type="text"
-            autoComplete="name"
-            maxLength={80}
-          />
-        </Field>
         <Field id="email" label="Email">
           <Input
             id="email"
