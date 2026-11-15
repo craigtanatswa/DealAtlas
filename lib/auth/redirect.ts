@@ -142,6 +142,43 @@ export function resolveNextPath(
   return sanitizeRedirectPath(value, NEXT_INVALID_FALLBACK_PATH);
 }
 
+export type SignupNextSources = {
+  query?: string | null;
+  cookie?: string | null;
+  metadata?: string | null;
+  fallback?: string;
+};
+
+/**
+ * Pick the post-confirmation destination for a signup flow.
+ *
+ * A supplied query value keeps `resolveNextPath` semantics (unsafe values land
+ * on NEXT_INVALID_FALLBACK_PATH). Cookie and metadata values must be valid;
+ * invalid values are treated as absent so the normal fallback still wins.
+ */
+export function resolveSignupNext({
+  query,
+  cookie,
+  metadata,
+  fallback = AUTH_HOME_PATH,
+}: SignupNextSources): string {
+  if (query != null && query.trim() !== "") {
+    return resolveNextPath(query, fallback);
+  }
+
+  const fromCookie = sanitizeRedirectPath(cookie, "");
+  if (fromCookie) {
+    return fromCookie;
+  }
+
+  const fromMetadata = sanitizeRedirectPath(metadata, "");
+  if (fromMetadata) {
+    return fromMetadata;
+  }
+
+  return fallback;
+}
+
 export function loginPathWithNext(nextPath: string): string {
   const next = sanitizeRedirectPath(nextPath);
   return `${LOGIN_PATH}?next=${encodeURIComponent(next)}`;

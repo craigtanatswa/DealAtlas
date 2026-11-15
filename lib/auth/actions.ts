@@ -8,6 +8,7 @@ import {
   AUTH_HOME_PATH,
   VERIFY_EMAIL_PATH,
   resolveNextPath,
+  sanitizeRedirectPath,
 } from "@/lib/auth/redirect";
 import {
   companyProfileSchema,
@@ -34,6 +35,8 @@ import {
   OAUTH_NEXT_COOKIE_MAX_AGE_SECONDS,
   OAUTH_UTM_COOKIE,
   PASSWORD_RESET_COOKIE,
+  SIGNUP_NEXT_COOKIE,
+  SIGNUP_NEXT_COOKIE_MAX_AGE_SECONDS,
 } from "@/lib/auth/cookies";
 import { encodeOAuthUtm } from "@/lib/auth/oauth-utm";
 import { authCallbackUrl, authCallbackUrlForRequest, authResetCallbackUrl } from "@/lib/auth/urls";
@@ -138,16 +141,23 @@ export async function signUpAction(
     };
   }
 
-  const next = resolveNextPath(formString(formData, "next"));
+  const rawNext = formString(formData, "next");
+  const next = resolveNextPath(rawNext);
+  const validatedNext = sanitizeRedirectPath(rawNext, "");
   const supabase = await createSupabaseServerClient();
+  const metadata: Record<string, string> = {};
+  if (parsed.data.displayName) {
+    metadata.name = parsed.data.displayName;
+  }
+  if (validatedNext) {
+    metadata.next = validatedNext;
+  }
   const { data, error } = await supabase.auth.signUp({
     email: parsed.data.email,
     password: parsed.data.password,
     options: {
       emailRedirectTo: authCallbackUrl(),
-      data: parsed.data.displayName
-        ? { name: parsed.data.displayName }
-        : {},
+      data: metadata,
     },
   });
 
@@ -156,9 +166,20 @@ export async function signUpAction(
     return { error: mapAuthError(error), success: null };
   }
 
+  const cookieStore = await cookies();
+  if (validatedNext && !(data.user && data.session)) {
+    cookieStore.set(SIGNUP_NEXT_COOKIE, validatedNext, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "lax",
+      path: "/auth",
+      maxAge: SIGNUP_NEXT_COOKIE_MAX_AGE_SECONDS,
+    });
+  }
+
   // A repeat sign-up for an existing email returns a user with no identities;
   // only a newly created account is counted, and only with analytics consent.
-  const analyticsConsent = (await cookies()).get(ANALYTICS_CONSENT_COOKIE)?.value;
+  const analyticsConsent = cookieStore.get(ANALYTICS_CONSENT_COOKIE)?.value;
   const formConsent = formData.get(ANALYTICS_CONSENT_FIELD);
   if (
     data.user &&
