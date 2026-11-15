@@ -84,6 +84,12 @@ describe("lifetime pricing cards", () => {
     );
 
     expect(screen.getByRole("heading", { name: "Pricing" })).toBeTruthy();
+    expect(screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent)).toEqual([
+      "Free",
+      "Pro monthly",
+      "Pro annual",
+      "Lifetime deal",
+    ]);
     expect((container.textContent?.match(/Limited places/g) ?? []).length).toBe(1);
     expect(container.textContent).not.toMatch(/\d+\s*places?/i);
     expect(container.textContent).not.toMatch(/\d+\s*places?\s*(left|remaining)|of\s*\d+/i);
