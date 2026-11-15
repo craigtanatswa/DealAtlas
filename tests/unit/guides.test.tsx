@@ -135,13 +135,13 @@ describe("guide content", () => {
       "How to find public sector and government tenders in the UK: where notices are published, 2026 thresholds, early pipeline signals, and search them on DealAtlas.",
     );
     expect(second.h1).toBe("How to find public sector and government tenders in the UK");
-    expect(second.updated).toBe("2026-11-09");
+    expect(second.updated).toBe("2026-11-11");
     const third = getPublishedGuide(SLUG_3)!;
     expect(third.published).toBe(true);
     expect(third.path).toBe(`/guides/${SLUG_3}`);
     expect(third.title).toBe("UK tender search: find UK tenders in one place");
     expect(third.h1).toBe("UK tender search: find UK tenders in one place");
-    expect(third.updated).toBe("2026-11-02");
+    expect(third.updated).toBe("2026-11-11");
   });
 
   it("drops unpublished guides from lists and lookups (404)", () => {
@@ -468,7 +468,7 @@ describe("guide #2 JSON-LD", () => {
       "@id": `${url}#article`,
       headline: "How to find public sector and government tenders in the UK",
       mainEntityOfPage: url,
-      dateModified: "2026-11-09",
+      dateModified: "2026-11-11",
       image: `${ORIGIN}/brand/dealatlas-logo.png`,
     });
     expect(byType("BreadcrumbList").itemListElement).toEqual([
@@ -625,13 +625,13 @@ describe("guide sitemap and robots", () => {
     const entries = guideSitemapEntries(ORIGIN, listPublishedGuides());
     expect(entries.map((entry) => [entry.url, entry.lastModified])).toEqual(
       expect.arrayContaining([
-        [`${ORIGIN}/guides`, "2026-11-10"],
-        [`${ORIGIN}/guides/${SLUG}`, "2026-11-09"],
-        [`${ORIGIN}/guides/${SLUG_2}`, "2026-11-09"],
-        [`${ORIGIN}/guides/${SLUG_3}`, "2026-11-02"],
-        [`${ORIGIN}/guides/${SLUG_4}`, "2026-11-09"],
-        [`${ORIGIN}/guides/${SLUG_5}`, "2026-11-02"],
-        [`${ORIGIN}/guides/${SLUG_6}`, "2026-11-09"],
+        [`${ORIGIN}/guides`, "2026-11-11"],
+        [`${ORIGIN}/guides/${SLUG}`, "2026-11-11"],
+        [`${ORIGIN}/guides/${SLUG_2}`, "2026-11-11"],
+        [`${ORIGIN}/guides/${SLUG_3}`, "2026-11-11"],
+        [`${ORIGIN}/guides/${SLUG_4}`, "2026-11-11"],
+        [`${ORIGIN}/guides/${SLUG_5}`, "2026-11-11"],
+        [`${ORIGIN}/guides/${SLUG_6}`, "2026-11-11"],
         [`${ORIGIN}/guides/${SLUG_7}`, "2026-11-09"],
         [`${ORIGIN}/guides/${SLUG_8}`, "2026-11-10"],
       ]),

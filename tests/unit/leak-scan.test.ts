@@ -14,7 +14,7 @@ import {
 } from "../leak/lib/scan";
 import { plant, type PlantSite } from "../leak/lib/plant";
 
-const manifest = loadManifest();
+const manifest = loadManifest(undefined, "primary");
 const compiled = compileTokens(manifest);
 const tokenMap = new Map<string, ManifestToken>(manifest.tokens.map((t) => [t.id, t]));
 const forbiddenAnon = (id: string) => forbiddenFor(tokenMap.get(id)!, "anon");

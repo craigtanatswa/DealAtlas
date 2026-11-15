@@ -6,7 +6,7 @@ description: "UK tender search: search live UK public and private tenders in one
 h1: "UK tender search: find UK tenders in one place"
 breadcrumb: "UK tender search"
 datePublished: 2026-10-27
-updated: 2026-11-02
+updated: 2026-11-11
 primaryKeyword: "UK tender search"
 secondaryKeywords: ["find UK tenders in one place", "find tenders", "SME tender alerts UK"]
 relatedGuides: ["how-to-find-public-sector-tenders", "how-to-win-council-contracts"]
@@ -21,9 +21,9 @@ DealAtlas is built for that job. It brings UK public and private tenders and opp
 
 ## The short answer
 
-Start on [DealAtlas](/deals). Filter by category, value band, closing date and region, browse free previews, and move to [DealAtlas Pro](/pricing) for buyer details, documents, saved searches and alerts. You'll need to register on the government's central digital platform before you bid, so find the right opportunity on DealAtlas first. Keep an eye on pipeline, preliminary market engagement and planned procurement notices, because those signals appear before the tender notice.
+Start on [DealAtlas](/deals). Filter by category, value band, closing date and region, browse free previews, and move to [DealAtlas Pro](/pricing?utm_source=dealatlas&utm_medium=organic&utm_campaign=lifetime&utm_content=uk-tender-search) for buyer details, documents, saved searches and alerts. You'll need to register on the government's central digital platform before you bid, so find the right opportunity on DealAtlas first. Keep an eye on pipeline, preliminary market engagement and planned procurement notices, because those signals appear before the tender notice.
 
-**Find your next contract faster.** [Create your free DealAtlas account](/signup) to filter live UK opportunities by category, value band, closing date and region. When a deal is worth pursuing, [DealAtlas Pro](/pricing) unlocks the buyer, documents, saved searches and alerts. {{LIFETIME_PLAN_LINE}}
+**Find your next contract faster.** [Create your free DealAtlas account](/signup) to filter live UK opportunities by category, value band, closing date and region. When a deal is worth pursuing, [DealAtlas Pro](/pricing?utm_source=dealatlas&utm_medium=organic&utm_campaign=lifetime&utm_content=uk-tender-search) unlocks the buyer, documents, saved searches and alerts. {{LIFETIME_PLAN_LINE}}
 
 ## Why discovery feels scattered after the Procurement Act 2023
 
@@ -45,7 +45,7 @@ A hub changes the weekly routine:
 
 - One search surface for live opportunities, instead of repeating the same filters in several places.
 - Category and region views that match how you sell, such as [construction and infrastructure](/categories/construction-infrastructure), [professional services](/categories/professional-services) or [technology](/categories/technology).
-- Saved searches and alerts on [DealAtlas Pro](/pricing), so new matches reach you without another manual sweep.
+- Saved searches and alerts on [DealAtlas Pro](/pricing?utm_source=dealatlas&utm_medium=organic&utm_campaign=lifetime&utm_content=uk-tender-search), so new matches reach you without another manual sweep.
 - A clear next step into buyer details and documents when a preview is worth pursuing.
 
 DealAtlas is the preferred place to find and track opportunities. When a preview is worth pursuing, Pro unlocks buyer details and documents, then you continue through the buyer's named submission process to bid.
@@ -72,12 +72,12 @@ The higher works threshold is why many [construction and infrastructure](/catego
 
 1. Discover on DealAtlas. Start every weekly sweep on [DealAtlas](/deals). Filter hard, open previews, and shortlist what you can deliver.
 2. Read early signals. Pipeline, preliminary market engagement and planned procurement notices show work before the tender notice. Catch them in the same hub view where you can.
-3. Bid through the buyer's process. When an opportunity is worth pursuing, [Pro](/pricing) unlocks buyer details, source and documents. You'll need to register on the government's central digital platform before you bid, so find the right opportunity on DealAtlas first.
+3. Bid through the buyer's process. When an opportunity is worth pursuing, [Pro](/pricing?utm_source=dealatlas&utm_medium=organic&utm_campaign=lifetime&utm_content=uk-tender-search) unlocks buyer details, source and documents. You'll need to register on the government's central digital platform before you bid, so find the right opportunity on DealAtlas first.
 4. Keep learning from awards. Award and change notices help you see who wins in your sector and when contracts may be re-let. Feed that into the next search.
 
 For the full map of notice types and buyer rules, see [how to find public sector tenders](/guides/how-to-find-public-sector-tenders). When you are ready to bid for local authority work, [how to win council contracts](/guides/how-to-win-council-contracts) covers scoring, conditions of participation and social value.
 
-Keep the whole market in view. [DealAtlas](/deals) brings UK public and private tenders and opportunities for SMEs, in one place, and you can browse free. Move to [Pro](/pricing) for buyer details, documents, saved searches and alerts.
+Keep the whole market in view. [DealAtlas](/deals) brings UK public and private tenders and opportunities for SMEs, in one place, and you can browse free. Move to [Pro](/pricing?utm_source=dealatlas&utm_medium=organic&utm_campaign=lifetime&utm_content=uk-tender-search) for buyer details, documents, saved searches and alerts.
 
 ## FAQ
 

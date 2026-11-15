@@ -6,7 +6,7 @@ description: "Transport and logistics tenders UK: contracts for fleet, courier, 
 h1: "Transport and logistics tenders in the UK: what's being bought right now"
 breadcrumb: "Transport and logistics tenders UK"
 datePublished: 2026-11-02
-updated: 2026-11-02
+updated: 2026-11-11
 primaryKeyword: "transport and logistics tenders UK"
 secondaryKeywords: ["logistics tenders", "transport contracts UK", "buyer internal transport equipment", "fleet tenders"]
 relatedGuides: ["how-to-find-public-sector-tenders", "council-tenders-uk", "how-to-win-council-contracts", "uk-tender-search"]
@@ -68,7 +68,7 @@ At the time of writing (2 November 2026), of the 23, 17 close in November 2026, 
 
 [Create a free DealAtlas account](/signup) to see every transport and logistics preview in one place, and filter by value band, region and closing date.
 
-{{LIFETIME_PLAN_LINE}} [See Pro](/pricing)
+{{LIFETIME_PLAN_LINE}} [See Pro](/pricing?utm_source=dealatlas&utm_medium=organic&utm_campaign=lifetime&utm_content=transport-logistics-tenders-uk)
 
 ## Internal transport and handling equipment
 
@@ -79,7 +79,7 @@ If you supply, lease or maintain this kind of kit:
 1. Open the [transport and logistics category](/categories/transport-logistics) and look for transport equipment.
 2. Check the value band against what you can deliver and service.
 3. Treat nationwide opportunities as reachable even if you're regional, because delivery locations are often spread out.
-4. Save the search on [DealAtlas Pro](/pricing) so new equipment opportunities come to you.
+4. Save the search on [DealAtlas Pro](/pricing?utm_source=dealatlas&utm_medium=organic&utm_campaign=lifetime&utm_content=transport-logistics-tenders-uk) so new equipment opportunities come to you.
 
 ## How to find transport and logistics tenders on DealAtlas
 
@@ -105,7 +105,7 @@ For general bid advice, read [how to win council contracts](/guides/how-to-win-c
 
 The free preview shows the category, value band, closing date and region where one is listed. Pro adds the buyer, the source, contacts and documents, plus saved searches and alerts, so you can decide quickly whether to bid.
 
-[Browse live opportunities](/deals) or [start free on DealAtlas](/signup), then [upgrade to Pro](/pricing) when an opportunity is worth pursuing. {{LIFETIME_PLAN_LINE}}
+[Browse live opportunities](/deals) or [start free on DealAtlas](/signup), then [upgrade to Pro](/pricing?utm_source=dealatlas&utm_medium=organic&utm_campaign=lifetime&utm_content=transport-logistics-tenders-uk) when an opportunity is worth pursuing. {{LIFETIME_PLAN_LINE}}
 
 ## FAQ
 
@@ -127,4 +127,4 @@ Usually fast. Of the 23 open opportunities at the time of writing (2 November 20
 
 ### What does DealAtlas Pro add?
 
-The buyer, the source, contacts and documents, plus saved searches and alerts. {{LIFETIME_PLAN_LINE}} [See Pro](/pricing)
+The buyer, the source, contacts and documents, plus saved searches and alerts. {{LIFETIME_PLAN_LINE}} [See Pro](/pricing?utm_source=dealatlas&utm_medium=organic&utm_campaign=lifetime&utm_content=transport-logistics-tenders-uk)
