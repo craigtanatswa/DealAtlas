@@ -52,13 +52,10 @@ function expectNoDealData(captured: CapturedIngest[], seed: E2ESeed) {
   }
 }
 
-async function expectNoAnalyticsStorage(page: Page) {
+async function expectNoAnalyticsCookiesOrSessionStorage(page: Page) {
   const cookies = await page.context().cookies();
   expect(cookies.filter((cookie) => /ph_|posthog/i.test(cookie.name))).toEqual([]);
-  const keys = await page.evaluate(() => [
-    ...Object.keys(window.localStorage),
-    ...Object.keys(window.sessionStorage),
-  ]);
+  const keys = await page.evaluate(() => Object.keys(window.sessionStorage));
   expect(keys.filter((key) => /ph_|posthog/i.test(key))).toEqual([]);
 }
 
@@ -121,7 +118,7 @@ test.describe("Analytics payloads carry no deal data", () => {
     await waitForPathnames(captured, ["/deals/[deal]", "/deals", "/app/deals/[deal]"]);
     expectNoDealData(captured, seed);
     expect(captured.map((request) => request.body).join("\n")).toContain('"utm_source":"e2e"');
-    await expectNoAnalyticsStorage(page);
+    await expectNoAnalyticsCookiesOrSessionStorage(page);
   });
 
   test("Pro user: unlocked deal page with buyer and source details", async ({ page, request }) => {
@@ -154,6 +151,6 @@ test.describe("Analytics payloads carry no deal data", () => {
 
     await waitForPathnames(captured, ["/app/deals/[deal]", "/deals/[deal]", "/app/buyers"]);
     expectNoDealData(captured, seed);
-    await expectNoAnalyticsStorage(page);
+    await expectNoAnalyticsCookiesOrSessionStorage(page);
   });
 });

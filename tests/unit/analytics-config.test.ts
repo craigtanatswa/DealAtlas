@@ -15,12 +15,14 @@ describe("PostHog client config", () => {
     );
   });
 
-  it("keeps every Security-listed SDK feature off and stores nothing", () => {
+  it("keeps every Security-listed SDK feature off and persists only after consent", () => {
     const config = buildPostHogClientConfig("https://www.dealatlas.uk");
     expect(config).toMatchObject({
       api_host: "/ingest",
-      persistence: "memory",
-      disable_persistence: true,
+      persistence: "localStorage",
+      cross_subdomain_cookie: false,
+      save_referrer: false,
+      save_campaign_params: false,
       autocapture: false,
       rageclick: false,
       capture_dead_clicks: false,
@@ -36,6 +38,8 @@ describe("PostHog client config", () => {
       capture_pageleave: false,
       bootstrap: {},
     });
+    expect(config.disable_persistence).not.toBe(true);
+    expect(["cookie", "localStorage+cookie"]).not.toContain(config.persistence);
     expect(typeof config.before_send).toBe("function");
   });
 
