@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 import { IngestionError } from "@/ingestion/core/errors";
 import { runIngestion } from "@/ingestion/core/pipeline";
 import { openIngestShouldFail, runOpenCatalogueIngest } from "@/lib/jobs/ingest-open";
+import { previewRegion } from "@/lib/preview/region";
 import { toPublicDealPreview } from "@/lib/search/dto";
 import {
   GCA_AGREEMENTS_API,
@@ -194,6 +195,143 @@ describe("Government Commercial Agency adapters", () => {
     );
   });
 
+  it("maps both GCA sources to the United Kingdom and Nationwide", () => {
+    const agreement = mapGcaAgreement(
+      {
+        rm_number: "RM7350",
+        title: "Nationwide agreement",
+        status: "Live",
+        terms: "Framework",
+        end_date: "2028-01-01",
+      },
+      NOW,
+    );
+    expect(agreement.exactLocationText).toBe("United Kingdom");
+    expect(
+      previewRegion({
+        sourceKey: GCA_AGREEMENTS_SOURCE_KEY,
+        locationParts: [agreement.exactLocationText],
+      }),
+    ).toBe("Nationwide");
+
+    const pipeline = mapPipelineRow(
+      [
+        "RM7351",
+        "Nationwide pipeline",
+        "Description",
+        "Workforce",
+        "Framework",
+        "",
+        "Dec-26",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+      ],
+      NOW,
+    );
+    expect(pipeline.exactLocationText).toBe("United Kingdom");
+    expect(
+      previewRegion({
+        sourceKey: GCA_PIPELINE_SOURCE_KEY,
+        locationParts: [pipeline.exactLocationText],
+      }),
+    ).toBe("Nationwide");
+  });
+
+  it("maps agreement tender dates to deadlines and lifecycle statuses", () => {
+    const base = {
+      title: "Tender-dated agreement",
+      status: "Live",
+      terms: "Framework",
+      end_date: "2029-01-01",
+    };
+    const closed = mapGcaAgreement(
+      {
+        ...base,
+        rm_number: "RM7360",
+        tenders_open_date: "2026-09-01",
+        tenders_close_date: "2026-10-01",
+      },
+      NOW,
+    );
+    expect(closed.submissionDeadline).toBe("2026-10-01T22:59:59.999Z");
+    expect(closed.nextProcurementDate).toBe("2026-09-01");
+    expect(closed.status).toBe("ACTIVE");
+    expect(closed.stage).toBe("CONTRACT");
+    expect(closed.dealType).toBe("FRAMEWORK");
+
+    const open = mapGcaAgreement(
+      {
+        ...base,
+        rm_number: "RM7361",
+        tenders_open_date: "2026-10-01",
+        tenders_close_date: "2026-11-01",
+      },
+      NOW,
+    );
+    expect(open.submissionDeadline).toBe("2026-11-01T23:59:59.999Z");
+    expect(open.status).toBe("OPEN");
+    expect(open.stage).toBe("LIVE");
+
+    const upcoming = mapGcaAgreement(
+      {
+        ...base,
+        rm_number: "RM7362",
+        tenders_open_date: "2026-11-01",
+        tenders_close_date: "2027-01-01",
+      },
+      NOW,
+    );
+    expect(upcoming.submissionDeadline).toBe("2027-01-01T23:59:59.999Z");
+    expect(upcoming.status).toBe("UPCOMING");
+    expect(upcoming.stage).toBe("PLANNING");
+
+    const undated = mapGcaAgreement({ ...base, rm_number: "RM7363" }, NOW);
+    expect(undated.submissionDeadline).toBeNull();
+    expect(undated.status).toBe("ACTIVE");
+    expect(undated.stage).toBe("CONTRACT");
+
+    const future = mapGcaAgreement(
+      {
+        rm_number: "RM7364",
+        title: "Future agreement",
+        status: "Future (Pipeline)",
+        terms: "Framework",
+      },
+      NOW,
+    );
+    expect(future.status).toBe("UPCOMING");
+    expect(future.stage).toBe("PLANNING");
+
+    const awarded = mapGcaAgreement(
+      {
+        rm_number: "RM7365",
+        title: "Awarded agreement",
+        status: "Awarded",
+        terms: "Framework",
+      },
+      NOW,
+    );
+    expect(awarded.status).toBe("AWARDED");
+    expect(awarded.stage).toBe("AWARD");
+
+    const expired = mapGcaAgreement(
+      {
+        ...base,
+        rm_number: "RM7366",
+        end_date: "2020-01-01",
+        tenders_open_date: "2026-10-01",
+        tenders_close_date: "2026-11-01",
+      },
+      NOW,
+    );
+    expect(expired.status).toBe("EXPIRED");
+    expect(expired.stage).toBe("ENDED");
+  });
+
   it("paces the agreements feed at 6 requests a minute", async () => {
     let clock = 1_700_000_000_000;
     const sleeps: number[] = [];
@@ -284,7 +422,9 @@ describe("Government Commercial Agency adapters", () => {
     expect(outcome.counters.new).toBe(2);
     expect(outcome.counters.errorCount).toBe(1);
     const live = store.deals.find((deal) => deal.reference === "RM6348");
-    expect(live?.status).toBe("OPEN");
+    expect(live?.status).toBe("ACTIVE");
+    expect(live?.stage).toBe("CONTRACT");
+    expect(live?.submissionDeadline).toBeNull();
     expect(live?.dealType).toBe("DYNAMIC_MARKET");
     expect(live?.valueMinExVat).toBeNull();
     expect(live?.sourceDescription).toBe("Adult skills places");
@@ -371,9 +511,11 @@ describe("Government Commercial Agency adapters", () => {
     expect(upcoming?.valueMinExVat).toBeNull();
     expect(upcoming?.valueMaxExVat).toBeNull();
     expect(upcoming?.exactValueText).toBe("£12,500,000.00 including VAT");
-    const open = store.deals.find((deal) => deal.reference === "RM7102");
-    expect(open?.status).toBe("OPEN");
-    expect(open?.dealType).toBe("DYNAMIC_MARKET");
+    const pastStart = store.deals.find((deal) => deal.reference === "RM7102");
+    expect(pastStart?.status).toBe("UPCOMING");
+    expect(pastStart?.stage).toBe("PLANNING");
+    expect(pastStart?.submissionDeadline).toBeNull();
+    expect(pastStart?.dealType).toBe("DYNAMIC_MARKET");
     const preview = store.previews.find((item) => item.dealId === upcoming?.id);
     expect(preview?.isPublished).toBe(false);
     expect(preview?.leakageRisk).toBe("LOW");
@@ -554,11 +696,15 @@ describe("Government Commercial Agency adapters", () => {
         title: "Live framework",
         status: "Live",
         terms: "Framework",
+        tenders_open_date: "2026-10-01",
+        tenders_close_date: "2027-01-01",
         end_date: "2027-01-01",
       },
       NOW,
     );
     expect(live.status).toBe("OPEN");
+    expect(live.stage).toBe("LIVE");
+    expect(live.submissionDeadline).toBe("2027-01-01T23:59:59.999Z");
     expect(live.reference).toBe("RM7301");
   });
 });

@@ -1,3 +1,5 @@
+import { toTimestamptz } from "@/ingestion/normalizers/text";
+
 export function stripHtml(value: string): string {
   return value
     .replace(/<script[\s\S]*?<\/script>/gi, " ")
@@ -63,6 +65,50 @@ export function parseUkDate(value: unknown): string | null {
     return `${year}-${String(month).padStart(2, "0")}-01`;
   }
   return null;
+}
+
+const LONDON_TIME = new Intl.DateTimeFormat("en-GB", {
+  timeZone: "Europe/London",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+  hourCycle: "h23",
+});
+
+function londonOffsetMinutes(date: Date): number {
+  const parts = LONDON_TIME.formatToParts(date);
+  const value = (type: Intl.DateTimeFormatPartTypes) =>
+    Number(parts.find((part) => part.type === type)?.value);
+  const asUtc = Date.UTC(
+    value("year"),
+    value("month") - 1,
+    value("day"),
+    value("hour"),
+    value("minute"),
+    value("second"),
+  );
+  return Math.round((asUtc - date.getTime()) / 60_000);
+}
+
+/** End of the UK calendar day as a UTC ISO timestamp. */
+export function toUkEndOfDayTimestamptz(value: string | null): string | null {
+  if (!value) {
+    return null;
+  }
+  const noon = new Date(`${value}T12:00:00.000Z`);
+  if (Number.isNaN(noon.getTime())) {
+    return null;
+  }
+  const offsetMinutes = londonOffsetMinutes(noon);
+  const sign = offsetMinutes >= 0 ? "+" : "-";
+  const absolute = Math.abs(offsetMinutes);
+  const offset = `${sign}${String(Math.floor(absolute / 60)).padStart(2, "0")}:${String(
+    absolute % 60,
+  ).padStart(2, "0")}`;
+  return toTimestamptz(`${value}T23:59:59.999${offset}`);
 }
 
 export function isRmNumber(value: string): boolean {
