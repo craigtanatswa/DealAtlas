@@ -23,6 +23,7 @@ import {
   signupFormSchema,
 } from "@/lib/auth/schemas";
 import { getProfileForUser } from "@/lib/auth/profile";
+import { displayNameFromEmail } from "@/lib/auth/profile-insert";
 import { ANALYTICS_CONSENT_FIELD } from "@/lib/analytics/attribution";
 import { isAnalyticsConsentGranted } from "@/lib/analytics/consent";
 import { captureServerEvent } from "@/lib/analytics/server";
@@ -146,8 +147,12 @@ export async function signUpAction(
   const validatedNext = sanitizeRedirectPath(rawNext, "");
   const supabase = await createSupabaseServerClient();
   const metadata: Record<string, string> = {};
-  if (parsed.data.displayName) {
-    metadata.name = parsed.data.displayName;
+  // The signup form no longer asks for a display name; default it from the
+  // email local part. Still editable in settings.
+  const displayName =
+    parsed.data.displayName || displayNameFromEmail(parsed.data.email);
+  if (displayName) {
+    metadata.name = displayName;
   }
   if (validatedNext) {
     metadata.next = validatedNext;

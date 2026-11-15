@@ -34,9 +34,13 @@ export function foundingCheckoutPath(): string {
   return `/checkout?plan=${LIFETIME_PLAN_QUERY}`;
 }
 
-/** Signed-out founding CTA: create an account, then return to the founding checkout. */
+/**
+ * Signed-out Lifetime CTA, same shape as Pro:
+ * /signup?plan=lifetime&next=/checkout?plan=lifetime. "lifetime" is the one
+ * canonical value checkout accepts. The signup page shows nothing about the plan.
+ */
 export function foundingSignupPath(): string {
-  return `${SIGNUP_PATH}?next=${encodeURIComponent(foundingCheckoutPath())}`;
+  return `${SIGNUP_PATH}?plan=${LIFETIME_PLAN_QUERY}&next=${encodeURIComponent(foundingCheckoutPath())}`;
 }
 
 /** Public founding state. No remaining, used or cap numbers. */

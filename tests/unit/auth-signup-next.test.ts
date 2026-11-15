@@ -316,7 +316,7 @@ describe("signUpAction signup next persistence", () => {
       `/verify-email?email=${encodeURIComponent("user@example.com")}`,
     );
     expect(signupCookieSet()?.value).toBe(next);
-    expect(signUpOptions().options?.data).toEqual({ next });
+    expect(signUpOptions().options?.data).toEqual({ name: "user", next });
   });
 
   it("keeps name metadata when no next was supplied", async () => {
@@ -347,7 +347,7 @@ describe("signUpAction signup next persistence", () => {
     await callSignUp(signupForm("https://evil.com"));
 
     expect(signupCookieSet()).toBeUndefined();
-    expect(signUpOptions().options?.data).toEqual({});
+    expect(signUpOptions().options?.data).toEqual({ name: "user" });
   });
 
   it("redirects straight to next without setting the cookie when a session is returned", async () => {
@@ -368,7 +368,7 @@ describe("signUpAction signup next persistence", () => {
 
     expect(redirectTo).toBe(next);
     expect(signupCookieSet()).toBeUndefined();
-    expect(signUpOptions().options?.data).toEqual({ next });
+    expect(signUpOptions().options?.data).toEqual({ name: "user", next });
   });
 
   it("does not set the cookie when signUp errors", async () => {
@@ -383,5 +383,53 @@ describe("signUpAction signup next persistence", () => {
     expect(redirectTo).toBeUndefined();
     expect(signupCookieSet()).toBeUndefined();
     errorSpy.mockRestore();
+  });
+});
+
+describe("signUpAction without a display name field", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    cookiesMock.reset();
+    redirectMock.paths.length = 0;
+    authMock.signUp.mockResolvedValue({
+      data: {
+        user: { id: "user-1", identities: [{ id: "identity-1" }], user_metadata: {} },
+        session: null,
+      },
+      error: null,
+    });
+  });
+
+  function formFor(email: string, next?: string) {
+    const form = new FormData();
+    form.set("email", email);
+    form.set("password", "supersecret1");
+    form.set("confirmPassword", "supersecret1");
+    if (next !== undefined) form.set("next", next);
+    return form;
+  }
+
+  it("defaults the display name to the email local part", async () => {
+    await callSignUp(formFor("jane.smith@example.co.uk"));
+    expect(signUpOptions().options?.data).toEqual({ name: "jane.smith" });
+  });
+
+  it("still rejects mismatched passwords (confirm password is kept)", async () => {
+    const form = formFor("jane@example.com");
+    form.set("confirmPassword", "different99");
+    const result = await signUpAction({ error: null, success: null }, form);
+    expect(result.error).toBe("Passwords do not match");
+    expect(authMock.signUp).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["Pro monthly", checkoutPathForPlan("PRO_MONTHLY")],
+    ["Pro annual", checkoutPathForPlan("PRO_ANNUAL")],
+    ["Lifetime", "/checkout?plan=lifetime"],
+  ])("keeps the %s checkout next through signup (cookie and metadata)", async (_label, next) => {
+    const redirectTo = await callSignUp(formFor("jane@example.com", next));
+    expect(redirectTo).toBe(`/verify-email?email=${encodeURIComponent("jane@example.com")}`);
+    expect(signupCookieSet()?.value).toBe(next);
+    expect(signUpOptions().options?.data).toEqual({ name: "jane", next });
   });
 });

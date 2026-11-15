@@ -2,6 +2,12 @@ import { ROLES } from "@/lib/constants";
 
 type AuthMetadata = Record<string, unknown> | undefined;
 
+/** Default display name from an email's local part, e.g. "jane.smith" from jane.smith@example.com. */
+export function displayNameFromEmail(email: string): string | null {
+  const local = email.split("@")[0]?.trim() ?? "";
+  return local.length > 0 ? local.slice(0, 80) : null;
+}
+
 export function displayNameFromAuthUser(user: {
   user_metadata?: AuthMetadata;
 }): string | null {
