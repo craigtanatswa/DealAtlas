@@ -5,10 +5,12 @@ import { CheckoutPlanForm } from "@/components/billing/checkout-plan-form";
 import { FoundingButtonLabel, ProAnnualButtonLabel } from "@/components/billing/founding-price";
 import { FoundingCheckoutButton } from "@/components/billing/founding-checkout-button";
 import { Button } from "@/components/ui/button";
-import { signupPathForPlan } from "@/lib/auth/redirect";
+import {
+  DEAL_PAGE_LIFETIME_SIGNUP_HREF,
+  dealPagePlanSignupHref,
+} from "@/lib/deals/deal-cta";
 import {
   FOUNDING_COPY,
-  foundingSignupPath,
   foundingUiState,
   type FoundingPublicCount,
 } from "@/lib/billing/founding-ui";
@@ -164,7 +166,7 @@ export function DealProCard({
               />
             ) : (
               <Button asChild className="h-auto min-h-11 w-full whitespace-normal py-2">
-                <Link href={foundingSignupPath()}>
+                <Link href={DEAL_PAGE_LIFETIME_SIGNUP_HREF}>
                   <FoundingButtonLabel text={FOUNDING_COPY.cta} />
                 </Link>
               </Button>
@@ -183,7 +185,7 @@ export function DealProCard({
               />
             ) : (
               <Button asChild variant="link" className="mt-1 w-full">
-                <Link href={signupPathForPlan("PRO_MONTHLY")}>
+                <Link href={dealPagePlanSignupHref("PRO_MONTHLY")}>
                   {`or Pro ${monthlyShort}`}
                 </Link>
               </Button>
@@ -202,7 +204,7 @@ export function DealProCard({
               />
             ) : (
               <Button asChild className="h-11 w-full">
-                <Link href={signupPathForPlan("PRO_MONTHLY")}>
+                <Link href={dealPagePlanSignupHref("PRO_MONTHLY")}>
                   {`Start Pro – ${monthlyShort}`}
                 </Link>
               </Button>
@@ -221,7 +223,7 @@ export function DealProCard({
               />
             ) : (
               <Button asChild variant="link" className="mt-1 w-full">
-                <Link href={signupPathForPlan("PRO_ANNUAL")}>
+                <Link href={dealPagePlanSignupHref("PRO_ANNUAL")}>
                   <ProAnnualButtonLabel text={FOUNDING_COPY.soldOutAnnual} />
                 </Link>
               </Button>

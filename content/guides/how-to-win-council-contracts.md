@@ -6,7 +6,7 @@ description: "How to win council contracts under the Procurement Act 2023: the 2
 h1: "How to win council contracts: a practical guide for SMEs"
 breadcrumb: "How to win council contracts"
 datePublished: 2026-10-19
-updated: 2026-11-09
+updated: 2026-11-11
 primaryKeyword: "how to win council contracts"
 secondaryKeywords: ["council tenders for small businesses", "how to bid for council contracts", "local authority tenders UK", "selling to local government UK", "council procurement"]
 relatedGuides: ["how-to-find-public-sector-tenders", "council-tenders-uk", "uk-tender-search"]
@@ -20,7 +20,7 @@ Councils buy works, services and goods all year, often in contract sizes a small
 
 To win a council contract, find the right opportunity early on [DealAtlas](/deals), bid only where you meet the conditions of participation, and answer every question against the published award criteria and weightings, with evidence, a realistic price and specific social value commitments. You'll need to register on the government's central digital platform before you bid, so find the right opportunity on [DealAtlas](/deals) first.
 
-**Find your next contract faster.** [Create your free DealAtlas account](/signup) to filter live UK opportunities by category, value band, closing date and region. When a deal is worth pursuing, [DealAtlas Pro](/pricing) unlocks the buyer, documents, saved searches and alerts. {{LIFETIME_PLAN_LINE}}
+**Find your next contract faster.** [Create your free DealAtlas account](/signup) to filter live UK opportunities by category, value band, closing date and region. When a deal is worth pursuing, [DealAtlas Pro](/pricing?utm_source=dealatlas&utm_medium=organic&utm_campaign=lifetime&utm_content=how-to-win-council-contracts) unlocks the buyer, documents, saved searches and alerts. {{LIFETIME_PLAN_LINE}}
 
 ## How councils buy under the Procurement Act 2023
 
@@ -151,7 +151,7 @@ Once you're delivering, the council must pay a valid, undisputed invoice within 
 
 ## How to track council opportunities
 
-Seeing the right opportunity early is often the hardest part. Start on [DealAtlas](/deals). DealAtlas brings UK public and private tenders and opportunities for SMEs, in one place, sorted by category, value band, closing date and region. Browse free previews, for example in [construction and infrastructure](/categories/construction-infrastructure), [professional services](/categories/professional-services) or [education](/categories/education). When one is worth pursuing, [DealAtlas Pro](/pricing) unlocks the buyer, the original source, contacts and documents, plus saved searches and alerts for new matches. See [how it works](/how-it-works).
+Seeing the right opportunity early is often the hardest part. Start on [DealAtlas](/deals). DealAtlas brings UK public and private tenders and opportunities for SMEs, in one place, sorted by category, value band, closing date and region. Browse free previews, for example in [construction and infrastructure](/categories/construction-infrastructure), [professional services](/categories/professional-services) or [education](/categories/education). When one is worth pursuing, [DealAtlas Pro](/pricing?utm_source=dealatlas&utm_medium=organic&utm_campaign=lifetime&utm_content=how-to-win-council-contracts) unlocks the buyer, the original source, contacts and documents, plus saved searches and alerts for new matches. See [how it works](/how-it-works).
 
 ## FAQ
 
