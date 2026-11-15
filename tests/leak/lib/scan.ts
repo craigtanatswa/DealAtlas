@@ -8,6 +8,8 @@
 import fs from "node:fs";
 import path from "node:path";
 
+import { activeDateSet, transformManifest, type DateSetId } from "./date-set";
+
 export const LAYERS = ["L0", "L1", "L2", "L3", "L4", "L5", "L6", "L7"] as const;
 export type Layer = (typeof LAYERS)[number];
 
@@ -40,8 +42,9 @@ export type Manifest = {
 
 export const MANIFEST_PATH = path.join(__dirname, "..", "tokens.json");
 
-export function loadManifest(file = MANIFEST_PATH): Manifest {
-  return JSON.parse(fs.readFileSync(file, "utf8")) as Manifest;
+export function loadManifest(file = MANIFEST_PATH, set: DateSetId = activeDateSet()): Manifest {
+  const raw = JSON.parse(fs.readFileSync(file, "utf8")) as Manifest;
+  return transformManifest(raw, set);
 }
 
 export function forbiddenFor(token: ManifestToken, role: Role): boolean {
