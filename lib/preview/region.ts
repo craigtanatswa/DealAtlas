@@ -136,6 +136,9 @@ export const BROAD_REGIONS = [
 export type BroadRegion = (typeof BROAD_REGIONS)[number];
 
 function nutsRegion(value: string): BroadRegion | null {
+  if (value !== value.toUpperCase()) {
+    return null;
+  }
   const code = value.toUpperCase().replace(/[^A-Z]/g, "");
   if (code.length < 3) {
     return null;
@@ -165,7 +168,7 @@ export function broadRegionFromLocation(
   }
 
   for (const [code, region] of Object.entries(NUTS1_REGIONS)) {
-    if (new RegExp(`\\b${code}\\d*\\b`, "i").test(blob)) {
+    if (new RegExp(`\\b${code}[0-9A-Z]{0,2}\\b`).test(blob)) {
       return region as BroadRegion;
     }
   }
@@ -249,6 +252,48 @@ export const COUNTRY_REGIONS: Record<string, string> = {
   CH: "Switzerland",
 };
 
+const ISO3_TO_ISO2: Record<string, string> = {
+  AUT: "AT",
+  BEL: "BE",
+  BGR: "BG",
+  HRV: "HR",
+  CYP: "CY",
+  CZE: "CZ",
+  DNK: "DK",
+  EST: "EE",
+  FIN: "FI",
+  FRA: "FR",
+  DEU: "DE",
+  GRC: "GR",
+  HUN: "HU",
+  IRL: "IE",
+  ITA: "IT",
+  LVA: "LV",
+  LTU: "LT",
+  LUX: "LU",
+  MLT: "MT",
+  NLD: "NL",
+  POL: "PL",
+  PRT: "PT",
+  ROU: "RO",
+  SVK: "SK",
+  SVN: "SI",
+  ESP: "ES",
+  SWE: "SE",
+  NOR: "NO",
+  ISL: "IS",
+  LIE: "LI",
+  CHE: "CH",
+};
+
+const COUNTRY_CODE_BY_NAME: Record<string, string> = {};
+for (const [code, name] of Object.entries(COUNTRY_REGIONS)) {
+  const key = name.toUpperCase();
+  if (!COUNTRY_CODE_BY_NAME[key]) {
+    COUNTRY_CODE_BY_NAME[key] = code;
+  }
+}
+
 export const EUROPE_OTHER = "Europe (other)";
 
 // Anti-bypass: a country with few open notices would let a free user narrow a search to
@@ -282,6 +327,47 @@ export function countryRegion(code: string | null | undefined): string | null {
 
 const NUTS1_NAMES = new Set(Object.values(NUTS1_REGIONS));
 
+const NUTS_CODE_PATTERN = /^[A-Z]{2}[0-9A-Z]{0,3}$/;
+
+/** A NUTS0-NUTS3 code reduced to its country, or its UK NUTS1 region. */
+export function regionFromNutsCode(
+  code: string | null | undefined,
+): string | null {
+  const key = (code ?? "").trim().toUpperCase();
+  if (!NUTS_CODE_PATTERN.test(key)) return null;
+  if (key.startsWith("UK")) {
+    return NUTS1_REGIONS[key.slice(0, 3)] ?? null;
+  }
+  return countryRegion(key.slice(0, 2));
+}
+
+const IGNORED_TED_PLACES = new Set(["EEA", "ANYW-EEA"]);
+
+/**
+ * A country-level region from TED place-of-performance values. NUTS detail is
+ * reduced to the country before it can reach a preview; mixed countries are
+ * bucketed into Europe (other).
+ */
+export function regionFromTedPlaces(
+  places: Array<string | null | undefined>,
+): string | null {
+  const regions = new Set<string>();
+  for (const place of places) {
+    const key = (place ?? "").trim().toUpperCase();
+    if (!key || IGNORED_TED_PLACES.has(key)) continue;
+    const iso2 = ISO3_TO_ISO2[key] ?? COUNTRY_CODE_BY_NAME[key] ?? null;
+    const region = iso2
+      ? countryRegion(iso2)
+      : regionFromNutsCode(key);
+    if (region) regions.add(region);
+  }
+  if (regions.size === 0) return null;
+  if (regions.size === 1) return [...regions][0] ?? null;
+  return [...regions].every((region) => !NUTS1_NAMES.has(region))
+    ? EUROPE_OTHER
+    : null;
+}
+
 /**
  * NUTS1/ITL1 region derived from a UK buyer address. The address fields are
  * read here and only the derived region name is returned; the postcode, town
@@ -309,7 +395,10 @@ export function previewRegion(input: {
   buyer?: { region?: string | null; postcode?: string | null; countryCode?: string | null } | null;
 }): string | null {
   if (input.sourceKey === TED_SOURCE_KEY) {
-    return countryRegion(input.buyer?.countryCode);
+    return (
+      countryRegion(input.buyer?.countryCode) ??
+      regionFromTedPlaces(input.locationParts)
+    );
   }
   const fromLocation = broadRegionFromLocation(input.locationParts);
   if (fromLocation) return fromLocation;
