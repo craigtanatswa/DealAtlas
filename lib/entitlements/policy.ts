@@ -83,7 +83,7 @@ function grantsPro(
   now: Date,
   allowedProductIds: ReadonlySet<string>,
 ): boolean {
-  if (!subscription.isCurrent) {
+  if (!subscription.isCurrent || subscription.revokedAt != null) {
     return false;
   }
   if (!productGrantsPro(subscription, allowedProductIds)) {
@@ -105,6 +105,7 @@ function grantsPro(
  * - ACTIVE (including renewed, stored as ACTIVE) with an open paid-through period → PRO
  * - CANCELLED + cancel_at_period_end + current_period_end > now → PRO until period end
  * - ON_HOLD, FAILED, EXPIRED, PENDING, UNKNOWN, immediate cancel, or lapsed period → FREE
+ * - A revoked subscription stays FREE even if current_period_end is future
  *
  * `plan_key` is not an entitlement signal. `allowedProductIds` is required.
  * `dodo_product_id` must belong to that set. An empty set grants Pro to

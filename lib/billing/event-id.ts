@@ -11,7 +11,20 @@ export function providerEventId(input: {
   occurredAt: string | null;
   subscriptionId?: string | null;
   paymentId?: string | null;
+  refundId?: string | null;
+  disputeId?: string | null;
 }): string {
+  // Refund and dispute ids are the durable provider identity. Using them ahead
+  // of the webhook header keeps redeliveries with a new header id idempotent.
+  const refundId = input.refundId?.trim();
+  if (refundId) {
+    return `dodo:refund:${refundId}`;
+  }
+  const disputeId = input.disputeId?.trim();
+  if (disputeId) {
+    return `dodo:dispute:${input.eventType}:${disputeId}`;
+  }
+
   const headerId = input.webhookId?.trim();
   if (headerId) {
     return headerId;
