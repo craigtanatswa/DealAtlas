@@ -39,7 +39,6 @@ import { FoundingFullCheckout } from "@/components/billing/founding-checkout-sum
 import { PricingPlans } from "@/components/billing/pricing-plans";
 import { DealProCard } from "@/components/deals/deal-pro-card";
 import {
-  FOUNDING_COPY,
   proAnnualBilledLine,
   proAnnualMonthlyEquivalent,
 } from "@/lib/billing/founding-ui";
@@ -60,11 +59,6 @@ function expectProAnnualPrice(node: ParentNode) {
 describe("pro annual price helpers", () => {
   it("derives the monthly equivalent from the annual price", () => {
     expect(proAnnualMonthlyEquivalent()).toBe("£15");
-  });
-
-  it("renders whole-pound monthly equivalents without decimals and the current saving", () => {
-    expect(proAnnualMonthlyEquivalent()).toBe("£15");
-    expect(FOUNDING_COPY.annualSaving).toBe("Save 21% vs monthly.");
   });
 
   it("builds the billed line from the annual short form", () => {

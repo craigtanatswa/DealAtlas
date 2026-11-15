@@ -86,8 +86,8 @@ export function proAnnualShort(): string {
 export function proAnnualMonthlyEquivalent(): string | null {
   const annual = parseGbpYear(DISPLAY_PRICING.proAnnual);
   if (!annual) return null;
-  const monthly = annual / 12;
-  return `£${Number.isInteger(monthly) ? monthly : monthly.toFixed(2)}`;
+  const perMonth = annual / 12;
+  return Number.isInteger(perMonth) ? `£${perMonth}` : `£${perMonth.toFixed(2)}`;
 }
 
 /** "billed £180/yr, VAT included" */

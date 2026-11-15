@@ -441,7 +441,7 @@ describe("checkout error contract for the UI", () => {
     expect(mocks.checkoutHandler).not.toHaveBeenCalled();
   });
 
-  it("gives an ex-founder choosing PRO_ANNUAL the standard £350 product, never founding", async () => {
+  it("gives an ex-founder choosing PRO_ANNUAL the standard £180 product, never founding", async () => {
     mocks.readFoundingMember.mockResolvedValue(true);
     mocks.reserveFoundingSlot.mockResolvedValue("ineligible");
 
