@@ -128,6 +128,25 @@ describe("phase B ACL diff", () => {
     ]);
   });
 
+  it("treats the 0065 UTM landing count RPC as intended only when closed", () => {
+    const signature = "record_utm_landing(text,text,text,text)";
+    const sealed = acl({
+      ...before.functions,
+      [signature]: fn("record_utm_landing", false, false),
+    });
+    expect(aclDiff(before, sealed)).toEqual({
+      intended: ["record_utm_landing(text,text,text,text): added"],
+      unintended: [],
+    });
+    const open = acl({
+      ...before.functions,
+      [signature]: fn("record_utm_landing", true, false),
+    });
+    expect(aclDiff(before, open).unintended).toEqual([
+      "record_utm_landing(text,text,text,text): added",
+    ]);
+  });
+
   it("treats a new service-role-only table as intended and rejects client grants", () => {
     const emptyPriv = { select: false, insert: false, update: false, delete: false };
     const closed: Acl = {
