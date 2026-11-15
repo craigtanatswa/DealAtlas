@@ -9,6 +9,7 @@ import path from "node:path";
 
 import { writeJson } from "./lib/artifacts";
 import { loadContext } from "./lib/context";
+import { activeDateSet, runDates, type DateSetId } from "./lib/date-set";
 import { LEAK_DIR, readLeakEnv } from "./lib/env";
 import { responseText, send, setAppOrigin } from "./lib/http";
 import { plant, type PlantSite } from "./lib/plant";
@@ -128,26 +129,13 @@ function manifestLint(manifest: Manifest): Result {
 // PF-03: run-date guard (OQ-14)
 // ---------------------------------------------------------------------------
 
-function isoDay(d: Date, timeZone: string): string {
-  return new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(d);
-}
+export { isoDay, runDates } from "./lib/date-set";
 
-export function runDates(now = new Date()): string[] {
-  const out = new Set<string>();
-  for (const tz of ["UTC", "Europe/London"]) {
-    for (let delta = -2; delta <= 2; delta += 1) out.add(isoDay(new Date(now.getTime() + delta * 86_400_000), tz));
-  }
-  const monday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-  monday.setUTCDate(monday.getUTCDate() - ((monday.getUTCDay() + 6) % 7));
-  out.add(monday.toISOString().slice(0, 10));
-  return [...out].sort();
-}
-
-function dateGuard(manifest: Manifest): Result {
+function dateGuard(manifest: Manifest, set: DateSetId): Result {
   const dates = runDates();
   const overlap = dates.filter((d) => manifest.date_tokens_iso.includes(d));
   const yearless = dates.filter((d) => manifest.yearless_date_tokens.includes(d.slice(5)));
-  return report({ id: "PF-03", pass: overlap.length === 0 && yearless.length === 0, run_dates: dates, overlap, yearless_overlap: yearless });
+  return report({ id: "PF-03", pass: overlap.length === 0 && yearless.length === 0, date_set: set, run_dates: dates, overlap, yearless_overlap: yearless });
 }
 
 // ---------------------------------------------------------------------------
@@ -198,8 +186,9 @@ async function main(): Promise<void> {
     const result = await baseline();
     process.exit(result.pass ? 0 : 1);
   }
-  const manifest = loadManifest();
-  const results: Result[] = [manifestLint(manifest), dateGuard(manifest)];
+  const dateSet = activeDateSet();
+  const manifest = loadManifest(undefined, dateSet);
+  const results: Result[] = [manifestLint(manifest), dateGuard(manifest, dateSet)];
   const corpus = baselineCorpus();
   const pf04 = encodingSelfTest(manifest, corpus);
   writeJson("selftest/PF-04.json", pf04);

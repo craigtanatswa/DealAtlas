@@ -12,6 +12,17 @@ log="${2:?log file}"
 port=3100
 app_url="http://127.0.0.1:${port}"
 
+# Never probe a stale server: if something already answers on the port (an
+# app left over from an earlier phase), stop it first and refuse to continue
+# if the port stays busy.
+if curl -fsS -o /dev/null "${app_url}/api/health" 2>/dev/null; then
+  echo "an app is already serving ${app_url}; stopping it before phase ${phase}" >&2
+  if ! bash "$(dirname "$0")/stop-app.sh"; then
+    echo "port ${port} is still in use; refusing to start phase ${phase}" >&2
+    exit 1
+  fi
+fi
+
 mkdir -p .leak
 cp .next/BUILD_ID ".leak/build-id-${phase}"
 
