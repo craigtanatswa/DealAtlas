@@ -27,6 +27,23 @@ describe("entitlement policy", () => {
     expect(entitlement.status).toBe("ACTIVE");
   });
 
+  it("keeps a revoked subscription FREE even when the paid-through period is future", () => {
+    const revoked = resolveEntitlement(
+      createSubscriptionFixture({
+        status: "ACTIVE",
+        revokedAt: "2026-06-10T00:00:00.000Z",
+      }),
+      now,
+      allowed,
+    );
+    expect(revoked.plan).toBe(PLANS.FREE);
+    expect(revoked.term).toBeNull();
+    expect(
+      resolveEntitlement(entitlementSubscriptionFixtures.revoked(), now, allowed)
+        .plan,
+    ).toBe(PLANS.FREE);
+  });
+
   it("keeps PRO for cancellation at period end while paid-through", () => {
     expect(
       resolveEntitlement(
@@ -88,6 +105,7 @@ describe("entitlement policy", () => {
       entitlementSubscriptionFixtures.pending(),
       entitlementSubscriptionFixtures.cancelledImmediate(),
       entitlementSubscriptionFixtures.notCurrent(),
+      entitlementSubscriptionFixtures.revoked(),
     ]) {
       const entitlement = resolveEntitlement(fixture, now, allowed);
       expect(entitlement.plan).toBe(PLANS.FREE);

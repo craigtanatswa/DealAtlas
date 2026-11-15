@@ -24,6 +24,8 @@ export type SubscriptionMirror = {
    * caller's allowlist does not grant Pro.
    */
   dodoProductId?: string | null;
+  /** Set when a refund or lost chargeback terminal-revoked the subscription. */
+  revokedAt?: string | null;
 };
 
 export type BillingTerm = "monthly" | "annual" | "lifetime";

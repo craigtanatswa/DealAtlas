@@ -40,6 +40,8 @@ const PHASE_B_ADDED_FUNCTIONS = new Set([
   // 0063: hashed slug aliases (service_role execute only).
   "record_preview_slug_alias",
   "resolve_preview_slug_alias",
+  // 0064: subscription refund/chargeback revoke RPC (service_role execute only).
+  "revoke_subscription_access",
 ]);
 
 export type Acl = {

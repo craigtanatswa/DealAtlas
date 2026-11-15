@@ -3,10 +3,8 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { DealProCard } from "@/components/deals/deal-pro-card";
-import {
-  FOUNDING_PLAN_KEY,
-  foundingSignupPath,
-} from "@/lib/billing/founding-ui";
+import { FOUNDING_PLAN_KEY } from "@/lib/billing/founding-ui";
+import { DEAL_PAGE_LIFETIME_SIGNUP_HREF } from "@/lib/deals/deal-cta";
 
 afterEach(cleanup);
 
@@ -47,7 +45,7 @@ describe("deal page founding button", () => {
     render(<DealProCard mode="anonymous" founding={open} alertsHref="/signup" />);
     expect(
       screen.getByRole("link", { name: /Get the Lifetime deal/ }).getAttribute("href"),
-    ).toBe(foundingSignupPath());
+    ).toBe(DEAL_PAGE_LIFETIME_SIGNUP_HREF);
   });
 
   it.each([
