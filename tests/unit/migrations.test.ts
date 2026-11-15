@@ -48,7 +48,7 @@ describe("supabase migrations", () => {
   const files = listMigrations();
   const sql = files.map(readMigration).join("\n");
 
-  it("are numbered 0001-0026, 0028-0030, 0040-0043, 0045-0047, 0049, 0051-0066, leaving 0027, 0031-0039, 0044, 0048 and 0050 for open pull requests", () => {
+  it("are numbered 0001-0026, 0028-0030, 0040-0043, 0045-0047, 0049, 0051-0067, leaving 0027, 0031-0039, 0044, 0048 and 0050 for open pull requests", () => {
     expect(files).toEqual([
       "0001_extensions_and_types.sql",
       "0002_core_schema.sql",
@@ -103,6 +103,7 @@ describe("supabase migrations", () => {
       "0064_subscription_refund_revoke.sql",
       "0065_utm_landing_counts.sql",
       "0066_reclassify_private_buyers.sql",
+      "0067_buyer_filter_uses_buyer_type.sql",
     ]);
   });
 
@@ -720,6 +721,40 @@ describe("supabase migrations", () => {
     expect(body).toContain("jsonb_array_elements");
     expect(body).toContain("order by item.ordinality");
     expect(body).not.toMatch(/\b(create|drop|alter|grant)\b/i);
+  });
+
+  it("0067 filters buyer sector on buyer_type for PUBLIC and PRIVATE in all search RPCs", () => {
+    const body = readMigration("0067_buyer_filter_uses_buyer_type.sql");
+    for (const fn of [
+      "search_preview_dtos",
+      "search_deal_previews",
+      "search_deal_previews_for_profile",
+    ]) {
+      expect(body).toContain(`create or replace function public.${fn}(`);
+    }
+    expect(
+      body.match(
+        /when p_buyer_sector in \('PUBLIC'::public\.buyer_sector, 'PRIVATE'::public\.buyer_sector\)/g,
+      ),
+    ).toHaveLength(3);
+    expect(
+      body.match(/then dp\.buyer_type::text = p_buyer_sector::text/g),
+    ).toHaveLength(3);
+    expect(
+      body.match(/else dp\.buyer_sector = p_buyer_sector/g),
+    ).toHaveLength(3);
+    expect(body.match(/p_buyer_sector public\.buyer_sector default null/g)).toHaveLength(3);
+    expect(body).not.toMatch(/drop function/i);
+    expect(body).toContain(
+      "grant execute on function public.search_preview_dtos(",
+    );
+    expect(body).toContain("to anon, authenticated, service_role;");
+    expect(body).toContain(
+      "grant execute on function public.search_deal_previews(",
+    );
+    expect(body).toContain(
+      "grant execute on function public.search_deal_previews_for_profile(",
+    );
   });
 
   it("adds a disabled TED Search API source and does not publish it", () => {

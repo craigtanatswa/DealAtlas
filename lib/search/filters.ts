@@ -1,4 +1,4 @@
-import { BUYER_SECTOR_LABELS, BUYER_SECTORS } from "@/lib/constants";
+import { BUYER_SECTOR_LABELS } from "@/lib/constants";
 import type { Database } from "@/lib/db/database.types";
 
 export const DEAL_TYPES = [
@@ -155,10 +155,12 @@ export const DEADLINE_BAND_OPTIONS = [
   "Closed",
 ] as const;
 
-export const BUYER_SECTOR_OPTIONS = BUYER_SECTORS.map((value) => ({
-  value,
-  label: BUYER_SECTOR_LABELS[value],
-}));
+export const BUYER_SECTOR_OPTIONS = (["PUBLIC", "PRIVATE"] as const).map(
+  (value) => ({
+    value,
+    label: BUYER_SECTOR_LABELS[value],
+  }),
+);
 
 export const DEAL_TYPE_OPTIONS = DEAL_TYPES.map((value) => ({
   value,
