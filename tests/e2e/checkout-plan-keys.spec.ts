@@ -91,11 +91,11 @@ test.describe("Checkout plan keys", () => {
     };
     expect(body.code).toBe("FOUNDING_CAP_FULL");
     expect(body.message).toBe(
-      "The Lifetime deal is no longer available. You can still subscribe to Pro annual at £350/year.",
+      "The Lifetime deal is no longer available. You can still subscribe to Pro annual at £180/year.",
     );
     expect(body.checkout_url).toBeUndefined();
     expect(body.error).toContain("Lifetime deal");
-    expect(body.error).toContain("£350/year");
+    expect(body.error).toContain("£180/year");
     expect(body.error).not.toMatch(/founding/i);
 
     expect(await foundingRemaining(env)).toBe(before);

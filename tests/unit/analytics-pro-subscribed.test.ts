@@ -48,7 +48,7 @@ describe("pro_subscribed from the Dodo webhook", () => {
     expect(captured).toHaveLength(1);
     const event = captured[0] as { distinctId: string; properties: Record<string, unknown> };
     expect(event.distinctId).toBe(BILLING_FIXTURE_USER_ID);
-    expect(event.properties).toEqual({ plan: "monthly", amount_gbp: 39 });
+    expect(event.properties).toEqual({ plan: "monthly", amount_gbp: 19 });
     const serialised = JSON.stringify(event);
     for (const forbidden of ["evt_once", "sub_", "cus_", "pay_", "@", "Example Street", "SW1A"]) {
       expect(serialised).not.toContain(forbidden);

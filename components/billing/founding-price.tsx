@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 /**
  * The one Lifetime price format:
  * struck-through Pro annual price, then the bold one-time Lifetime price,
- * e.g. "£350/yr £250 once". Every Lifetime surface renders this component so
+ * e.g. "£180/yr £250 once". Every Lifetime surface renders this component so
  * the numbers cannot drift.
  */
 export function FoundingPriceInline({ className }: { className?: string }) {
@@ -67,7 +67,7 @@ export function FoundingButtonLabel({ text }: { text: string }) {
 
 /**
  * Standard Pro annual price format: struck-through monthly price, then the
- * annual price shown per month, e.g. "£39/mo £29.17/mo".
+ * annual price shown per month, e.g. "£19/mo £15/mo".
  */
 export function ProAnnualPriceInline({ className }: { className?: string }) {
   const monthly = proAnnualMonthlyEquivalent();
