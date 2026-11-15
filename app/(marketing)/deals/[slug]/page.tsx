@@ -4,23 +4,31 @@ import { cache } from "react";
 
 import { SaveDealButton } from "@/components/saves/save-deal-button";
 import { UpgradeStatusBanner } from "@/components/billing/upgrade-status-banner";
+import { DealBreadcrumbs } from "@/components/deals/deal-breadcrumbs";
 import { DealPreviewDetail } from "@/components/deals/deal-preview-detail";
+import { RelatedDeals } from "@/components/deals/related-deals";
 import { Main } from "@/components/layout/container";
 import { JsonLd } from "@/components/seo/json-ld";
 import { getAuthUser } from "@/lib/auth/session";
 import { loginPathWithNext } from "@/lib/auth/redirect";
 import { getAppOrigin } from "@/lib/auth/urls";
 import { appDealPath } from "@/lib/deals/paths";
+import { listRelatedDealPreviews } from "@/lib/deals/public-card-previews";
+import type { PublicCardPreview } from "@/lib/deals/public-card-types";
 import { readFoundingPublicCount } from "@/lib/billing/founding-public";
 import { paymentPendingFor } from "@/lib/billing/payment-pending";
 import { isProEntitlement } from "@/lib/entitlements/policy";
 import { getCurrentEntitlement } from "@/lib/entitlements/service";
 import { featureLimit } from "@/lib/quotas";
 import { loadDealSaveState } from "@/lib/saves/queries";
+import { categoryLabel } from "@/lib/preview/display";
+import { PUBLISHABLE_REGIONS } from "@/lib/preview/region";
 import { publicDealPreviewMetadata, missingPublicDealPreviewMetadata } from "@/lib/search/metadata";
 import { getPublicDealPreviewPageBySlug } from "@/lib/search/public";
+import { categoryLandingForRawCategory } from "@/lib/seo/category-landings";
 import { isIndexablePublicPreview } from "@/lib/seo/indexability";
-import { webPageJsonLd } from "@/lib/seo/json-ld";
+import { breadcrumbJsonLd, webPageJsonLd } from "@/lib/seo/json-ld";
+import { createSupabaseAnonymousClient } from "@/lib/supabase/anonymous";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { parseInputSafe, slugSchema } from "@/lib/validation";
 
@@ -89,19 +97,62 @@ export default async function DealPreviewPage({ params, searchParams }: PageProp
   const origin = getAppOrigin();
   const indexable = isIndexablePublicPreview(page.preview);
 
+  let relatedDeals: PublicCardPreview[] = [];
+  try {
+    relatedDeals = await listRelatedDealPreviews(
+      createSupabaseAnonymousClient(),
+      {
+        slug: page.preview.slug,
+        mainCategory: page.preview.mainCategory,
+        broadRegion: page.preview.broadRegion,
+      },
+    );
+  } catch {
+    relatedDeals = [];
+  }
+
+  const relatedHub = categoryLandingForRawCategory(page.preview.mainCategory);
+  const relatedCategory =
+    relatedHub?.name ?? categoryLabel(page.preview.mainCategory) ?? "similar";
+  const sharedRegion =
+    relatedDeals.length >= 3 &&
+    page.preview.broadRegion !== null &&
+    PUBLISHABLE_REGIONS.includes(page.preview.broadRegion) &&
+    relatedDeals.every(
+      (deal) => deal.broadRegion === page.preview.broadRegion,
+    );
+  const relatedHeading = `More ${relatedCategory} opportunities${
+    sharedRegion ? ` in ${page.preview.broadRegion}` : ""
+  }`;
+  const crumbs = [
+    { name: "Home", path: "/" },
+    { name: "Deals", path: "/deals" },
+    ...(relatedHub
+      ? [{ name: relatedHub.name, path: relatedHub.path }]
+      : []),
+    {
+      name: page.preview.previewTitle,
+      path: `/deals/${page.preview.slug}`,
+    },
+  ];
+
   return (
     <Main back>
       {user && upgraded ? <UpgradeStatusBanner initialPro={mode === "pro"} /> : null}
       {indexable ? (
         <JsonLd
-          data={webPageJsonLd({
-            origin,
-            path: `/deals/${page.preview.slug}`,
-            name: page.preview.previewTitle,
-            description: page.preview.previewSummary,
-          })}
+          data={[
+            webPageJsonLd({
+              origin,
+              path: `/deals/${page.preview.slug}`,
+              name: page.preview.previewTitle,
+              description: page.preview.previewSummary,
+            }),
+            breadcrumbJsonLd(origin, crumbs),
+          ]}
         />
       ) : null}
+      <DealBreadcrumbs preview={page.preview} />
       <DealPreviewDetail
         deal={page.preview}
         match={page.match}
@@ -128,6 +179,11 @@ export default async function DealPreviewPage({ params, searchParams }: PageProp
             isPro: mode === "pro",
           }),
         }}
+      />
+      <RelatedDeals
+        deals={relatedDeals}
+        heading={relatedHeading}
+        hub={relatedHub ? { name: relatedHub.name, path: relatedHub.path } : null}
       />
     </Main>
   );

@@ -1,5 +1,6 @@
 import { BUYER_SECTOR_LABELS, type BuyerSector } from "@/lib/constants";
 import type { Database } from "@/lib/db/database.types";
+import type { PublicCardPreview } from "@/lib/deals/public-card-types";
 import type { DealType } from "@/lib/search/filters";
 
 export type DealStatus = Database["public"]["Enums"]["deal_status"];
@@ -30,6 +31,24 @@ export type DealCardData = {
   matchScore?: number | null;
   matchReasons?: string[];
 };
+
+export function cardDataFromPublicCardPreview(
+  preview: PublicCardPreview,
+): DealCardData {
+  return {
+    slug: preview.slug,
+    previewTitle: preview.previewTitle,
+    previewSummary: "",
+    buyerSector: "OTHER",
+    mainCategory: preview.mainCategory,
+    broadRegion: preview.broadRegion,
+    valueBand: preview.valueBand,
+    deadlineBand: preview.deadlineBand,
+    smeSuitability: null,
+    bidComplexity: null,
+    status: "OPEN",
+  };
+}
 
 export function buyerSectorLabel(
   sector: BuyerSector,

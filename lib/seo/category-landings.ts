@@ -1,3 +1,4 @@
+import { mapRawCategoryToFilter } from "@/lib/categories/filter-map";
 import { DEAL_CATEGORY_CATALOG } from "@/lib/matching/categories";
 
 export type CategoryLanding = {
@@ -6,57 +7,89 @@ export type CategoryLanding = {
   path: string;
   title: string;
   description: string;
+  h1?: string;
   summary: string;
   body: string[];
   typicalBuyers: string;
   whatYouSeeFree: string;
+  guide?: { href: string; anchor: string };
+  subsection?: {
+    id: string;
+    heading: string;
+    intro: string;
+    query: string;
+    minCards: number;
+  };
 };
 
 const LANDINGS: Record<string, Omit<CategoryLanding, "slug" | "name" | "path">> = {
   technology: {
-    title: "Technology opportunities",
+    title: "IT tenders UK: software, cyber and digital contracts",
     description:
-      "DealAtlas opportunities for software, cloud, cyber, and digital delivery opportunities across UK public and private buyers.",
+      "Live IT tenders UK: software, cyber security, managed IT and digital contracts, listed by region and value band on DealAtlas.",
+    h1: "IT tenders in the UK",
     summary:
-      "Technology opportunities on DealAtlas cover systems, software, data, and digital services. Browse the commercial context first, then join Pro to unlock the buyer and original notice.",
+      "IT tenders UK for software, cyber security, managed IT, data platforms and digital services are grouped on this page. Browse value band, region and closing window first, then open a preview when it looks like a fit.",
     body: [
-      "Suppliers often need to tell a software licence, a managed service, and a transformation programme apart before they spend time on a bid. DealAtlas groups those opportunities here so you can scan fit by value band, closing window, and SME suitability.",
-      "The landing is curated. It is not a generated page for every keyword or filter combination. Filtered search URLs stay noindex so crawlers are not invited into infinite query combinations.",
+      "UK public buyers tender for software, websites, managed IT, data platforms and cyber security all year round. This page is the DealAtlas list of live Technology opportunities. Each preview is sanitised: you see the type of work, region, value band and closing window, not the buyer.",
+      "Use the cards below to browse live IT tenders, or read the IT tenders UK guide for how this work is bought. This is the indexable Technology landing. Filtered search URLs are not indexed, and we do not publish a page per product, programme or keyword combination.",
     ],
     typicalBuyers:
       "Public bodies, utilities, healthcare, education, and private organisations buying digital capability.",
     whatYouSeeFree:
       "Category, broad region, value band, deadline band, and a summary of the work. Join DealAtlas Pro to unlock the buyer, original title, and source URL.",
+    guide: {
+      href: "/guides/it-tenders-uk",
+      anchor: "IT tenders UK guide",
+    },
   },
   "professional-services": {
-    title: "Professional services opportunities",
+    title: "Architecture, engineering and professional services tenders UK",
     description:
-      "DealAtlas opportunities for consultancy, advisory, audit, legal, and specialist professional services.",
+      "Architecture, engineering and professional services tenders UK: design, inspection, consultancy, audit and legal contracts, by region and value band on DealAtlas.",
+    h1: "Architecture, engineering and professional services tenders in the UK",
     summary:
-      "Professional services listings help firms see whether an engagement looks like retained advice, a discrete project, or a framework call-off. Join Pro to unlock who is buying.",
+      "Architecture, engineering and professional services tenders UK are listed here, covering design and inspection work as well as consultancy, audit, legal and other specialist advice. Scan the type of engagement, region and value band first, then open a preview when it looks like a fit.",
     body: [
-      "Scan commercial bands and the type of engagement first, then open an opportunity when it looks like a fit.",
-      "Use this page to understand the category, then join DealAtlas Pro when an opportunity is worth unlocking.",
+      "A large share of the live previews in this category are architectural, engineering and inspection services, alongside retained advice, discrete projects and framework call-offs. This page is the DealAtlas list for that mix. Each preview shows a sanitised title, region, value band and closing window.",
+      "Architecture and engineering tenders are grouped in the section below when enough live previews exist. For audit, insurance and financial advice, see the financial services tenders UK guide. This is the indexable professional-services landing; filtered search URLs are not indexed.",
     ],
     typicalBuyers:
       "Central and local public organisations, regulated industries, and private firms commissioning specialist advice.",
     whatYouSeeFree:
       "Scope, complexity, and closing window. Join DealAtlas Pro to unlock contacts, documents, and the original brief.",
+    guide: {
+      href: "/guides/financial-services-tenders-uk",
+      anchor: "financial services tenders UK guide",
+    },
+    subsection: {
+      id: "architecture-engineering",
+      heading: "Architecture and engineering tenders",
+      intro:
+        "These are open architecture and engineering tenders on DealAtlas, listed with a sanitised title, region, value band and closing window.",
+      query: "architectural or engineering",
+      minCards: 5,
+    },
   },
   "construction-infrastructure": {
-    title: "Construction and infrastructure opportunities",
+    title: "Construction tenders UK: open public construction bids",
     description:
-      "DealAtlas opportunities for construction, civils, and infrastructure delivery and maintenance.",
+      "Open construction tenders UK and public construction bids for building, civils, repair and infrastructure, by region and value band on DealAtlas.",
+    h1: "Construction tenders in the UK",
     summary:
-      "Construction and infrastructure listings emphasise region, value band, and duration so you can judge fit before unlocking the source.",
+      "Construction tenders UK are listed here as open public construction bids for building, civil engineering, repair, installation and infrastructure work. Scan region, value band and closing window first, then open a preview when it looks like a fit.",
     body: [
-      "Use region, value, and duration to decide whether a construction or infrastructure opportunity is worth pursuing.",
-      "This category landing is the curated entry point. It does not mass-publish a page per town, contractor, or scheme name.",
+      "UK public buyers put construction work out to tender every week, from small repair packages to multi-year infrastructure programmes. This page is the DealAtlas list of live construction and infrastructure opportunities. Each preview shows a sanitised title, region, value band and closing window, so you can judge fit before unlocking the buyer and documents.",
+      "Use the cards below to browse open construction bids, or read the construction tenders UK guide for how this work is bought and how to filter it by type of work and region. This is the indexable construction landing. Filtered search URLs are not indexed, and we do not publish a page per town, contractor or scheme.",
     ],
     typicalBuyers:
       "Public estates, infrastructure operators, utilities, and private developers procuring delivery partners.",
     whatYouSeeFree:
-      "Broad region, value and duration bands, and high-level capability requirements. Join DealAtlas Pro to unlock the exact site, employer, and portal links.",
+      "Broad region, value and duration bands, and high-level capability requirements. Join DealAtlas Pro to unlock the buyer, the specification and how to apply.",
+    guide: {
+      href: "/guides/construction-tenders-uk",
+      anchor: "construction tenders UK guide",
+    },
   },
   "facilities-property": {
     title: "Facilities and property opportunities",
@@ -117,6 +150,10 @@ const LANDINGS: Record<string, Omit<CategoryLanding, "slug" | "name" | "path">> 
       "Public transport authorities, infrastructure operators, and private logistics buyers.",
     whatYouSeeFree:
       "Broad geography, value band, and a summary of the service. Join DealAtlas Pro to unlock operator identity.",
+    guide: {
+      href: "/guides/transport-logistics-tenders-uk",
+      anchor: "transport and logistics tenders UK guide",
+    },
   },
   "manufacturing-industrial": {
     title: "Manufacturing and industrial opportunities",
@@ -218,4 +255,30 @@ export function getCategoryLanding(slug: string): CategoryLanding | null {
 
 export function isIndexableCategorySlug(slug: string): boolean {
   return getCategoryLanding(slug) !== null;
+}
+
+export function categoryLandingForRawCategory(
+  raw: string | null | undefined,
+): CategoryLanding | null {
+  const trimmed = raw?.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  const landings = indexableCategoryLandings();
+  const exact = landings.find(
+    (landing) =>
+      landing.name.toLowerCase() === trimmed.toLowerCase() ||
+      landing.slug.toLowerCase() === trimmed.toLowerCase(),
+  );
+  if (exact) {
+    return exact;
+  }
+
+  const filterName = mapRawCategoryToFilter(trimmed);
+  if (!filterName) {
+    return null;
+  }
+
+  return landings.find((landing) => landing.name === filterName) ?? null;
 }

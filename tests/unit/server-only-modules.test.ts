@@ -15,6 +15,7 @@ const SERVER_ONLY_MODULES = [
   "lib/entitlements/service.ts",
   "lib/entitlements/store.ts",
   "lib/deals/protected.ts",
+  "lib/deals/public-card-previews.ts",
   "lib/intelligence/load.ts",
   "lib/intelligence/protected.ts",
   "lib/intelligence/page.ts",
