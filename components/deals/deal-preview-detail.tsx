@@ -1,16 +1,14 @@
 import type { ReactNode } from "react";
 import { LockIcon } from "lucide-react";
 
-import { FoundingPriceInline } from "@/components/billing/founding-price";
 import { DealProCard } from "@/components/deals/deal-pro-card";
 import { MatchReasons } from "@/components/deals/match-reasons";
 import { deadlineKeyFact, DealStatusBadge } from "@/components/deals/deal-status";
 import { OpeningAlertButton } from "@/components/deals/opening-alert";
 import { buyerSectorLabel } from "@/components/deals/types";
 import { Button } from "@/components/ui/button";
-import { foundingUiState, type FoundingPublicCount } from "@/lib/billing/founding-ui";
+import { proMonthlyShort, type FoundingPublicCount } from "@/lib/billing/founding-ui";
 import { signupPathWithAlert } from "@/lib/auth/redirect";
-import { DISPLAY_PRICING } from "@/lib/constants";
 import {
   categoryLabel,
   disclosed,
@@ -154,14 +152,8 @@ export function DealPreviewDetail({
       ? "/app/alerts"
       : signupPathWithAlert(`/deals/${deal.slug}`),
   };
-  const barLabel =
-    foundingUiState(founding) === "available" ? (
-      <>
-        Unlock with Pro · <FoundingPriceInline />
-      </>
-    ) : (
-      `Unlock with Pro · from ${DISPLAY_PRICING.proMonthly.replace("/month", "/mo")}`
-    );
+  // Sticky bar leads with the entry price, from DISPLAY_PRICING via proMonthlyShort() (Craig, 15 Nov 2026).
+  const barLabel = `Unlock with Pro · from ${proMonthlyShort()}`;
   const specs = [
     ...deal.quantities,
     ...deal.technicalSpecs,
