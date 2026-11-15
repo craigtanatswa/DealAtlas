@@ -65,6 +65,7 @@ describe("open ingest alerts", () => {
       innovate_uk_ok: 0,
       gca_agreements_ok: 0,
       gca_pipeline_ok: 0,
+      uk_infrastructure_pipeline_ok: 0,
       build_ok: 0,
       unpublish_ok: 1,
       publish_ok: 0,
@@ -98,6 +99,13 @@ describe("open ingest alerts", () => {
     expect(body.sell2wales_status).toBe("warning");
     expect(body.ingest_ok).toBe(1);
     expect(JSON.stringify(body)).not.toMatch(/publiccontractsscotland|api\.sell2wales|certificate/i);
+  });
+
+  it("reports the UK Infrastructure Pipeline status", () => {
+    const body = JSON.parse(
+      ingestAlertBody({ ukInfrastructurePipelineOk: "1" }),
+    ) as Record<string, unknown>;
+    expect(body.uk_infrastructure_pipeline_ok).toBe(1);
   });
 
   it("keeps the plain alert body when there are no warnings", () => {

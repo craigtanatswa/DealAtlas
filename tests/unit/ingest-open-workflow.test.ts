@@ -66,15 +66,17 @@ describe("ingest-open workflow", () => {
     expect(publishStep).not.toContain("sell2wales");
     expect(publishStep).not.toContain("gca_agreements");
     expect(publishStep).not.toContain("gca_pipeline");
+    expect(publishStep).not.toContain("uk_infrastructure_pipeline");
     const buildStep = ingestJob.slice(ingestJob.indexOf("id: build"), ingestJob.indexOf("id: unpublish"));
     expect(buildStep).not.toContain("steps.contracts_finder.outcome");
     expect(buildStep).not.toContain("steps.gca_agreements.outcome");
     expect(buildStep).not.toContain("steps.gca_pipeline.outcome");
+    expect(buildStep).not.toContain("steps.uk_infrastructure_pipeline.outcome");
     const contractsFinderStep = ingestJob.slice(ingestJob.indexOf("id: contracts_finder"), ingestJob.indexOf("id: sell2wales"));
     expect(contractsFinderStep).not.toContain("continue-on-error");
     const sell2WalesStep = ingestJob.slice(ingestJob.indexOf("id: sell2wales"), ingestJob.indexOf("id: gca_agreements"));
     expect(sell2WalesStep).toContain("continue-on-error: true");
-    expect(ingestJob.match(/continue-on-error: true/g)).toHaveLength(4);
+    expect(ingestJob.match(/continue-on-error: true/g)).toHaveLength(5);
     expect(ingestJob.indexOf("id: ingest")).toBeLessThan(ingestJob.indexOf("id: contracts_finder"));
     expect(ingestJob.indexOf("id: contracts_finder")).toBeLessThan(
       ingestJob.indexOf("id: public_contracts_scotland"),
@@ -86,7 +88,12 @@ describe("ingest-open workflow", () => {
       ingestJob.indexOf("id: gca_agreements"),
     );
     expect(ingestJob.indexOf("id: gca_agreements")).toBeLessThan(ingestJob.indexOf("id: gca_pipeline"));
-    expect(ingestJob.indexOf("id: gca_pipeline")).toBeLessThan(ingestJob.indexOf("id: build"));
+    expect(ingestJob.indexOf("id: gca_pipeline")).toBeLessThan(
+      ingestJob.indexOf("id: uk_infrastructure_pipeline"),
+    );
+    expect(ingestJob.indexOf("id: uk_infrastructure_pipeline")).toBeLessThan(
+      ingestJob.indexOf("id: build"),
+    );
     expect(ingestJob.indexOf("id: contracts_finder")).toBeLessThan(ingestJob.indexOf("id: find_a_grant"));
     expect(ingestJob.indexOf("id: find_a_grant")).toBeLessThan(ingestJob.indexOf("id: innovate_uk"));
     expect(ingestJob.indexOf("id: innovate_uk")).toBeLessThan(ingestJob.indexOf("id: ted"));
@@ -96,6 +103,7 @@ describe("ingest-open workflow", () => {
     expect(ingestJob).toContain("OPEN_INGEST_SOURCE: sell2wales");
     expect(ingestJob).toContain("OPEN_INGEST_SOURCE: gca-agreements");
     expect(ingestJob).toContain("OPEN_INGEST_SOURCE: gca-procurement-pipeline");
+    expect(ingestJob).toContain("OPEN_INGEST_SOURCE: uk-infrastructure-pipeline");
     expect(ingestJob).toContain("OPEN_INGEST_SOURCE: find-a-grant");
     expect(ingestJob).toContain("OPEN_INGEST_SOURCE: innovate-uk");
     expect(ingestJob).toContain("OPEN_INGEST_SOURCE: ted");
@@ -106,8 +114,17 @@ describe("ingest-open workflow", () => {
     expect(ingestJob).toContain("CONTRACTS_FINDER_OK: ${{ steps.contracts_finder.outcome == 'success' && '1' || '0' }}");
     expect(ingestJob).toContain("GCA_AGREEMENTS_OK: ${{ steps.gca_agreements.outcome == 'success' && '1' || '0' }}");
     expect(ingestJob).toContain("GCA_PIPELINE_OK: ${{ steps.gca_pipeline.outcome == 'success' && '1' || '0' }}");
+    expect(ingestJob).toContain("UK_INFRASTRUCTURE_PIPELINE_OK: ${{ steps.uk_infrastructure_pipeline.outcome == 'success' && '1' || '0' }}");
     expect(ingestJob).toContain("TED_OK: ${{ steps.ted.outcome == 'success' && '1' || '0' }}");
     expect(publishStep).not.toContain("steps.ted");
+    const ukInfrastructurePipelineStep = ingestJob.slice(
+      ingestJob.indexOf("id: uk_infrastructure_pipeline"),
+      ingestJob.indexOf("id: find_a_grant"),
+    );
+    expect(ukInfrastructurePipelineStep).toContain("continue-on-error: true");
+    expect(ukInfrastructurePipelineStep).toContain("timeout-minutes: 20");
+    expect(ukInfrastructurePipelineStep).toContain("OPEN_INGEST_PHASE: ingest");
+    expect(ukInfrastructurePipelineStep).toContain("OPEN_INGEST_SOURCE: uk-infrastructure-pipeline");
     const tedStep = ingestJob.slice(ingestJob.indexOf("id: ted"), ingestJob.indexOf("id: build"));
     expect(tedStep).toContain("continue-on-error: true");
     expect(unpublishJob).not.toContain("ingest-open");

@@ -27,6 +27,7 @@ async function main() {
     innovateUkOk: process.env.INNOVATE_UK_OK,
     gcaAgreementsOk: process.env.GCA_AGREEMENTS_OK,
     gcaPipelineOk: process.env.GCA_PIPELINE_OK,
+    ukInfrastructurePipelineOk: process.env.UK_INFRASTRUCTURE_PIPELINE_OK,
     buildOk: process.env.BUILD_OK,
     unpublishOk: process.env.UNPUBLISH_OK,
     publishOk: process.env.PUBLISH_OK,
