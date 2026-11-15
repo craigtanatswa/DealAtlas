@@ -6,16 +6,14 @@ import {
   proMonthlyWasLabel,
 } from "@/lib/billing/founding-ui";
 import {
-  LIFETIME_ANCHOR,
   LIFETIME_PLAN_LINE,
   LIFETIME_PRICE_SHORT,
 } from "@/lib/billing/lifetime-copy";
 import { cn } from "@/lib/utils";
 
 /**
- * The one Lifetime price format:
- * struck-through Pro annual price, then the bold one-time Lifetime price,
- * e.g. "£350/yr £250 once". Every Lifetime surface renders this component so
+ * The one Lifetime price format: the bold one-time Lifetime price only,
+ * e.g. "£250 once", with no struck-through comparison (Craig, 15 Nov 2026). Every Lifetime surface renders this component so
  * the numbers cannot drift.
  */
 export function FoundingPriceInline({ className }: { className?: string }) {
@@ -26,9 +24,6 @@ export function FoundingPriceInline({ className }: { className?: string }) {
         className,
       )}
     >
-      <s aria-label={`was ${LIFETIME_ANCHOR}`} className="font-normal opacity-75 decoration-1">
-        {LIFETIME_ANCHOR}
-      </s>
       <strong className="font-bold">{LIFETIME_PRICE_SHORT}</strong>
     </span>
   );
@@ -46,7 +41,7 @@ export function FoundingPriceLead({
       <FoundingPriceInline
         className={cn(
           size === "lg" ? "text-3xl" : "text-2xl",
-          size === "lg" ? "[&>s]:text-lg [&>span]:text-base" : "[&>s]:text-base [&>span]:text-sm",
+          size === "lg" ? "[&>span]:text-base" : "[&>span]:text-sm",
         )}
       />
       <p className="mt-1 text-sm text-foreground/80">{LIFETIME_PLAN_LINE}</p>
@@ -67,7 +62,7 @@ export function FoundingButtonLabel({ text }: { text: string }) {
 
 /**
  * Standard Pro annual price format: struck-through monthly price, then the
- * annual price shown per month, e.g. "£39/mo £29.17/mo".
+ * annual price shown per month, e.g. "£19/mo £15/mo".
  */
 export function ProAnnualPriceInline({ className }: { className?: string }) {
   const monthly = proAnnualMonthlyEquivalent();

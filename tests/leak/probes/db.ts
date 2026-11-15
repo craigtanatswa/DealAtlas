@@ -42,6 +42,8 @@ const PHASE_B_ADDED_FUNCTIONS = new Set([
   "resolve_preview_slug_alias",
   // 0064: subscription refund/chargeback revoke RPC (service_role execute only).
   "revoke_subscription_access",
+  // 0065: cookieless UTM landing count RPC (service_role execute only).
+  "record_utm_landing",
 ]);
 
 export type Acl = {

@@ -96,7 +96,7 @@ function PlanCta({
   signedIn,
   planKey,
   label,
-  variant = "outline",
+  variant = "default",
   buttonClassName,
   analyticsPlan,
 }: {
@@ -141,7 +141,7 @@ export function PricingPlans({
   // Lifetime sold out, hidden or not offered: the card disappears and the grid reflows to three plans.
   const showFounding = state === "available";
   const soldOut = state === "sold_out";
-  const annualVariant = showFounding ? "outline" : "default";
+  const annualVariant = "default";
 
   return (
     <>
@@ -158,13 +158,13 @@ export function PricingPlans({
           showFounding ? "lg:grid-cols-4" : "lg:grid-cols-3",
         )}
       >
-        <PlanCard className={cn(showFounding ? "order-2 lg:order-1" : "order-1")}>
+        <PlanCard>
           <h2 className="font-heading text-xl font-semibold text-balance">Free</h2>
           <p className="mt-4 text-4xl font-semibold tracking-tight tabular-nums">£0</p>
           <p className="mt-1 text-sm text-muted-foreground">{FOUNDING_COPY.freeNote}</p>
           <FeatureList items={FREE_FEATURES} />
           <div className="mt-auto pt-6">
-            <Button asChild variant="outline" className="h-11 w-full">
+            <Button asChild variant="default" className="h-11 w-full">
               <Link href={signedIn ? "/deals" : signupPathWithNext("/pricing")}>
                 {signedIn ? FOUNDING_COPY.browse : FOUNDING_COPY.createAccount}
               </Link>
@@ -172,8 +172,44 @@ export function PricingPlans({
           </div>
         </PlanCard>
 
+        <PlanCard>
+          <h2 className="font-heading text-xl font-semibold text-balance">Pro monthly</h2>
+          <Price label={DISPLAY_PRICING.proMonthly} />
+          <p className="mt-1 text-sm text-muted-foreground">{FOUNDING_COPY.monthlyNote}</p>
+          <FeatureList items={PRO_FEATURES} />
+          <div className="mt-auto pt-6">
+            <PlanCta
+              signedIn={signedIn}
+              planKey="PRO_MONTHLY"
+              label={FOUNDING_COPY.startMonthly}
+            />
+          </div>
+        </PlanCard>
+
+        <PlanCard
+          className={cn(!showFounding && "border-2 border-primary")}
+        >
+          {!showFounding ? (
+            <p className="absolute -top-3 left-6 rounded-full bg-primary px-2.5 py-0.5 text-xs font-medium text-primary-foreground">
+              {FOUNDING_COPY.recommended}
+            </p>
+          ) : null}
+          <h2 className="font-heading text-xl font-semibold text-balance">Pro annual</h2>
+          <ProAnnualPriceLead className="mt-4" />
+          <p className="mt-1 text-sm text-muted-foreground">{FOUNDING_COPY.annualSaving}</p>
+          <FeatureList items={PRO_FEATURES} />
+          <div className="mt-auto pt-6">
+            <PlanCta
+              signedIn={signedIn}
+              planKey="PRO_ANNUAL"
+              label={<ProAnnualButtonLabel text={FOUNDING_COPY.startAnnual} />}
+              variant={annualVariant}
+            />
+          </div>
+        </PlanCard>
+
         {showFounding ? (
-          <PlanCard className="order-1 border-2 border-dealatlas-teal bg-[color-mix(in_srgb,var(--teal)_8%,var(--background))] lg:order-2">
+          <PlanCard className="border-2 border-dealatlas-teal bg-[color-mix(in_srgb,var(--teal)_8%,var(--background))]">
             <p className="absolute -top-3 left-6 rounded-full bg-[#00806A] px-2.5 py-0.5 text-xs font-medium text-white">
               {FOUNDING_COPY.badge}
             </p>
@@ -200,41 +236,6 @@ export function PricingPlans({
           </PlanCard>
         ) : null}
 
-        <PlanCard className="order-3">
-          <h2 className="font-heading text-xl font-semibold text-balance">Pro monthly</h2>
-          <Price label={DISPLAY_PRICING.proMonthly} />
-          <p className="mt-1 text-sm text-muted-foreground">{FOUNDING_COPY.monthlyNote}</p>
-          <FeatureList items={PRO_FEATURES} />
-          <div className="mt-auto pt-6">
-            <PlanCta
-              signedIn={signedIn}
-              planKey="PRO_MONTHLY"
-              label={FOUNDING_COPY.startMonthly}
-            />
-          </div>
-        </PlanCard>
-
-        <PlanCard
-          className={cn("order-4", !showFounding && "border-2 border-primary")}
-        >
-          {!showFounding ? (
-            <p className="absolute -top-3 left-6 rounded-full bg-primary px-2.5 py-0.5 text-xs font-medium text-primary-foreground">
-              {FOUNDING_COPY.recommended}
-            </p>
-          ) : null}
-          <h2 className="font-heading text-xl font-semibold text-balance">Pro annual</h2>
-          <ProAnnualPriceLead className="mt-4" />
-          <p className="mt-1 text-sm text-muted-foreground">{FOUNDING_COPY.annualSaving}</p>
-          <FeatureList items={PRO_FEATURES} />
-          <div className="mt-auto pt-6">
-            <PlanCta
-              signedIn={signedIn}
-              planKey="PRO_ANNUAL"
-              label={<ProAnnualButtonLabel text={FOUNDING_COPY.startAnnual} />}
-              variant={annualVariant}
-            />
-          </div>
-        </PlanCard>
       </div>
       {soldOut ? (
         <p className="mx-auto max-w-xl rounded-lg bg-muted px-4 py-3 text-center text-sm text-pretty text-muted-foreground">

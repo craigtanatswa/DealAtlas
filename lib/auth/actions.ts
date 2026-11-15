@@ -8,6 +8,7 @@ import {
   AUTH_HOME_PATH,
   VERIFY_EMAIL_PATH,
   resolveNextPath,
+  sanitizeRedirectPath,
 } from "@/lib/auth/redirect";
 import {
   companyProfileSchema,
@@ -32,8 +33,12 @@ import { mapAuthError, type ActionState } from "@/lib/auth/messages";
 import {
   OAUTH_NEXT_COOKIE,
   OAUTH_NEXT_COOKIE_MAX_AGE_SECONDS,
+  OAUTH_UTM_COOKIE,
   PASSWORD_RESET_COOKIE,
+  SIGNUP_NEXT_COOKIE,
+  SIGNUP_NEXT_COOKIE_MAX_AGE_SECONDS,
 } from "@/lib/auth/cookies";
+import { encodeOAuthUtm } from "@/lib/auth/oauth-utm";
 import { authCallbackUrl, authCallbackUrlForRequest, authResetCallbackUrl } from "@/lib/auth/urls";
 import { queueCompanyProfileMatches } from "@/lib/matching/recalculate";
 import { parseInputSafe } from "@/lib/validation";
@@ -79,12 +84,26 @@ export async function signInWithGoogleAction(
 ): Promise<ActionState> {
   const next = resolveNextPath(formString(formData, "next"));
   const cookieStore = await cookies();
-  cookieStore.set(OAUTH_NEXT_COOKIE, next, {
+  const oauthCookieOptions = {
     httpOnly: true,
-    sameSite: "lax",
+    sameSite: "lax" as const,
     path: "/",
     maxAge: OAUTH_NEXT_COOKIE_MAX_AGE_SECONDS,
-  });
+    secure: process.env.NODE_ENV === "production",
+  };
+  cookieStore.set(OAUTH_NEXT_COOKIE, next, oauthCookieOptions);
+
+  const analyticsConsent = cookieStore.get(ANALYTICS_CONSENT_COOKIE)?.value;
+  const formConsent = formData.get(ANALYTICS_CONSENT_FIELD);
+  const oauthUtm =
+    isAnalyticsConsentGranted(analyticsConsent) || isAnalyticsConsentGranted(formConsent)
+      ? encodeOAuthUtm((name) => formData.get(name))
+      : null;
+  if (oauthUtm) {
+    cookieStore.set(OAUTH_UTM_COOKIE, oauthUtm, oauthCookieOptions);
+  } else {
+    cookieStore.delete(OAUTH_UTM_COOKIE);
+  }
 
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase.auth.signInWithOAuth({
@@ -122,16 +141,23 @@ export async function signUpAction(
     };
   }
 
-  const next = resolveNextPath(formString(formData, "next"));
+  const rawNext = formString(formData, "next");
+  const next = resolveNextPath(rawNext);
+  const validatedNext = sanitizeRedirectPath(rawNext, "");
   const supabase = await createSupabaseServerClient();
+  const metadata: Record<string, string> = {};
+  if (parsed.data.displayName) {
+    metadata.name = parsed.data.displayName;
+  }
+  if (validatedNext) {
+    metadata.next = validatedNext;
+  }
   const { data, error } = await supabase.auth.signUp({
     email: parsed.data.email,
     password: parsed.data.password,
     options: {
       emailRedirectTo: authCallbackUrl(),
-      data: parsed.data.displayName
-        ? { name: parsed.data.displayName }
-        : {},
+      data: metadata,
     },
   });
 
@@ -140,9 +166,20 @@ export async function signUpAction(
     return { error: mapAuthError(error), success: null };
   }
 
+  const cookieStore = await cookies();
+  if (validatedNext && !(data.user && data.session)) {
+    cookieStore.set(SIGNUP_NEXT_COOKIE, validatedNext, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "lax",
+      path: "/auth",
+      maxAge: SIGNUP_NEXT_COOKIE_MAX_AGE_SECONDS,
+    });
+  }
+
   // A repeat sign-up for an existing email returns a user with no identities;
   // only a newly created account is counted, and only with analytics consent.
-  const analyticsConsent = (await cookies()).get(ANALYTICS_CONSENT_COOKIE)?.value;
+  const analyticsConsent = cookieStore.get(ANALYTICS_CONSENT_COOKIE)?.value;
   const formConsent = formData.get(ANALYTICS_CONSENT_FIELD);
   if (
     data.user &&

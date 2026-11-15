@@ -27,7 +27,7 @@ describe("plan labels", () => {
 
   it("uses the one-time lifetime price", () => {
     expect(priceLabel("founding_lifetime")).toBe("£250 one-time");
-    expect(priceLabel("PRO_ANNUAL")).toBe("£350/year");
-    expect(priceLabel("PRO_MONTHLY")).toBe("£39/month");
+    expect(priceLabel("PRO_ANNUAL")).toBe("£180/year");
+    expect(priceLabel("PRO_MONTHLY")).toBe("£19/month");
   });
 });

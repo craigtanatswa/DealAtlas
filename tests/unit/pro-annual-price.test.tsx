@@ -47,18 +47,18 @@ afterEach(cleanup);
 
 const openCount = { offered: true, sold_out: false };
 const soldOutCount = { offered: true, sold_out: true };
-const billedLine = "billed £350/yr, VAT included";
+const billedLine = "billed £180/yr, VAT included";
 
 function expectProAnnualPrice(node: ParentNode) {
-  const struck = node.querySelector('s[aria-label="was £39 a month"]');
-  expect(struck?.textContent).toBe("£39/mo");
+  const struck = node.querySelector('s[aria-label="was £19 a month"]');
+  expect(struck?.textContent).toBe("£19/mo");
   expect(struck?.nextElementSibling?.tagName).toBe("STRONG");
-  expect(node.textContent).toContain("£29.17/mo");
+  expect(node.textContent).toContain("£15/mo");
 }
 
 describe("pro annual price helpers", () => {
   it("derives the monthly equivalent from the annual price", () => {
-    expect(proAnnualMonthlyEquivalent()).toBe("£29.17");
+    expect(proAnnualMonthlyEquivalent()).toBe("£15");
   });
 
   it("builds the billed line from the annual short form", () => {
@@ -70,7 +70,7 @@ describe("pro annual price components", () => {
   it("renders the struck monthly price then the annual monthly equivalent", () => {
     const { container } = render(<ProAnnualPriceInline />);
     expectProAnnualPrice(container);
-    expect(container.textContent).not.toContain("£350");
+    expect(container.textContent).not.toContain("£180");
   });
 
   it("renders the billed line under the price lead", () => {
@@ -137,7 +137,7 @@ describe("pro annual surfaces", () => {
       await BillingPage({ searchParams: Promise.resolve({}) }),
     );
     expect(
-      screen.getByText("£39/month or £350/year. Product IDs stay on the server."),
+      screen.getByText("£19/month or £180/year. Product IDs stay on the server."),
     ).toBeTruthy();
     expectProAnnualPrice(screen.getByRole("button", { name: /Subscribe annually/ }));
     expect(container.querySelector("input[name='planKey'][value='PRO_ANNUAL']")).toBeTruthy();

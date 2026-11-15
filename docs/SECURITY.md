@@ -190,8 +190,8 @@ Commit `.env.example`, never `.env.local` or production values.
 - preview leak scanner catches buyer/source strings
 - CSV formula injection test passes
 
-## 22. Hourly read-only leak scan
-`.github/workflows/leak-scan.yml` runs on an hourly cron and on `workflow_dispatch`. It never starts ingestion, preview rebuild, user notification or renewal jobs, and it does not edit `scheduled-jobs.yml`.
+## 22. Weekly read-only leak scan
+`.github/workflows/leak-scan.yml` runs on a weekly cron (Mondays 06:00 UTC) and on `workflow_dispatch`. It never starts ingestion, preview rebuild, user notification or renewal jobs, and it does not edit `scheduled-jobs.yml`.
 
 The public pass fetches `https://www.dealatlas.uk` with no secrets. A deal page is grepped with that deal's source tokens, the strong-token union from the published rows scanned in that run, and the harness identifier heuristics. Listing and search pages are checked against that union. Admin-held rows are included in that union when the dispatch input `include_held` is set. The database pass re-runs the preview gate on every published row, in keyset batches, through a select-only client, and stops at about 15 minutes. If it stops early it emails counts only and exits non-zero. Neither pass writes. A failure rate above 5% of scanned published rows raises alert severity only.
 

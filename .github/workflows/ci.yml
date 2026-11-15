@@ -259,9 +259,11 @@ jobs:
       - run: npm run build
       - name: Baseline crawl on the unseeded app
         run: |
+          # Stop the app even when the crawl fails, so a later phase never
+          # finds a stale server already bound to :3100.
+          trap 'bash tests/leak/stop-app.sh' EXIT
           bash tests/leak/start-app.sh baseline "$RUNNER_TEMP/next-start.log"
           npx tsx tests/leak/preflight.ts --baseline
-          bash tests/leak/stop-app.sh
       - name: Seed the synthetic protected-token world
         run: |
           npx tsx tests/leak/seed/users.ts
@@ -269,10 +271,13 @@ jobs:
       - name: Preflight and phase A
         run: |
           date -u +%Y-%m-%dT%H:%M:%SZ > .leak/started-at
+          # Stop the phase-A app even when preflight fails. Without this a
+          # failed preflight left it on :3100, phase B probed the stale server
+          # and the Report step failed with "app on :3100 did not stop".
+          trap 'bash tests/leak/stop-app.sh' EXIT
           bash tests/leak/start-app.sh A "$RUNNER_TEMP/next-start.log"
           npx tsx --import ./scripts/allow-server-only.mjs tests/leak/preflight.ts
           npx tsx --import ./scripts/allow-server-only.mjs tests/leak/run.ts --phase A
-          bash tests/leak/stop-app.sh
       - name: Apply 0019, 0020 and 0021+
         if: ${{ !cancelled() }}
         run: |

@@ -1,9 +1,9 @@
 name: Leak scan
 
-# Hourly read-only check. Dispatch once before relying on the cron.
+# Weekly read-only check (Mondays 06:00 UTC). Dispatch once before relying on the cron.
 on:
   schedule:
-    - cron: "23 * * * *"
+    - cron: "0 6 * * 1"
   workflow_dispatch:
     inputs:
       include_held:
