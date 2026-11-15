@@ -307,6 +307,18 @@ describe("signUpAction signup next persistence", () => {
     });
   });
 
+  it("stores a full UTM checkout next intact in the cookie and signUp metadata", async () => {
+    const next = "/checkout?plan=lifetime&utm_source=dealatlas&utm_medium=organic&utm_campaign=lifetime&utm_content=deal-page";
+
+    const redirectTo = await callSignUp(signupForm(next));
+
+    expect(redirectTo).toBe(
+      `/verify-email?email=${encodeURIComponent("user@example.com")}`,
+    );
+    expect(signupCookieSet()?.value).toBe(next);
+    expect(signUpOptions().options?.data).toEqual({ next });
+  });
+
   it("keeps name metadata when no next was supplied", async () => {
     await callSignUp(signupForm(undefined, "Ada Lovelace"));
 

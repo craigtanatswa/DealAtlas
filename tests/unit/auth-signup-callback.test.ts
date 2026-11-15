@@ -203,6 +203,20 @@ describe("auth callback signup next", () => {
     }
   });
 
+  it("cross-device: preserves a full UTM checkout next from metadata alone and clears it", async () => {
+    const next = "/checkout?plan=lifetime&utm_source=dealatlas&utm_medium=organic&utm_campaign=lifetime&utm_content=deal-page";
+    verifySuccess({ next });
+    const request = confirmRequest({
+      token_hash: "token-hash",
+      type: "email",
+    });
+
+    const response = await GET(request);
+
+    expectRedirect(response, request, next);
+    expect(authMock.updateUser).toHaveBeenCalledWith({ data: { next: null } });
+  });
+
   it("preserves valid UTM query params", async () => {
     const next =
       "/checkout?plan=lifetime&utm_source=newsletter&utm_medium=email";

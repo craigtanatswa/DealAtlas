@@ -78,24 +78,6 @@ describe("auth email templates", () => {
     }
   });
 
-  it("keeps the signup next in the confirmation link only", () => {
-    const conditionalNext =
-      "{{ if .Data.next }}&amp;next={{ .Data.next }}{{ end }}";
-    expect(read("confirmation.html")).toContain(
-      `&amp;type=email${conditionalNext}`,
-    );
-    for (const name of [
-      "invite.html",
-      "magic_link.html",
-      "email_change.html",
-      "recovery.html",
-      "reauthentication.html",
-    ]) {
-      expect(read(name), name).not.toContain(conditionalNext);
-      expect(read(name), name).not.toContain(".Data.next");
-    }
-  });
-
   it("keeps reauthentication code-only so there is no prefetchable link", () => {
     const html = read("reauthentication.html");
     expect(html).not.toContain("token_hash");

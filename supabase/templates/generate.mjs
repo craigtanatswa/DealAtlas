@@ -23,11 +23,8 @@ const SLATE_700 = "#334155";
 const WHITE = "#FFFFFF";
 const FONT = "Inter,'Segoe UI',Helvetica,Arial,sans-serif";
 
-function confirmHref(type, includeNext = false) {
-  const next = includeNext
-    ? "{{ if .Data.next }}&amp;next={{ .Data.next }}{{ end }}"
-    : "";
-  return `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&amp;type=${type}${next}`;
+function confirmHref(type) {
+  return `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&amp;type=${type}`;
 }
 
 function button(href, label) {
@@ -113,7 +110,7 @@ const templates = {
     paragraphs: [
       "Use the button below to confirm this email address for your DealAtlas account. The link expires shortly and can only be used once.",
     ],
-    cta: { href: confirmHref("email", true), label: "Confirm email" },
+    cta: { href: confirmHref("email"), label: "Confirm email" },
     otpLabel: "Or enter this code in DealAtlas",
   }),
   "invite.html": layout({
