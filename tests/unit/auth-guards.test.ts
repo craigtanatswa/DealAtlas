@@ -68,6 +68,7 @@ describe("auth source guards", () => {
     expect(callback).toContain("exchangeCodeForSession");
     expect(callback).toContain("verifyOtp");
     expect(callback).toContain("OAUTH_NEXT_COOKIE");
+    expect(callback).toContain("OAUTH_UTM_COOKIE");
   });
 
   it("starts Google OAuth on the server and keeps the client secret out of Next.js", () => {
@@ -77,6 +78,11 @@ describe("auth source guards", () => {
     expect(actions).toContain("signInWithOAuth");
     expect(actions).toContain("authCallbackUrlForRequest");
     expect(actions).toContain('sameSite: "lax"');
+    const googleAction = actions.slice(
+      actions.indexOf("export async function signInWithGoogleAction"),
+      actions.indexOf("export async function signUpAction"),
+    );
+    expect(googleAction).toContain("resolveNextPath");
     expect(read("components/auth/login-form.tsx")).toContain("GoogleSignInButton");
     expect(read("components/auth/signup-form.tsx")).toContain("GoogleSignInButton");
     expect(read("supabase/config.toml")).toContain("[auth.external.google]");

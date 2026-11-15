@@ -30,7 +30,7 @@ export function SignupForm({
 
   return (
     <div className="flex flex-col gap-4">
-      <GoogleSignInButton nextPath={nextPath} />
+      <GoogleSignInButton nextPath={nextPath} analyticsEnabled={analyticsEnabled} />
       <form action={action} className="flex flex-col gap-4">
         <input type="hidden" name="next" value={nextPath} />
         <AnalyticsAttributionFields enabled={analyticsEnabled} />

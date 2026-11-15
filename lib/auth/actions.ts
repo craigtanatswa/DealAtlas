@@ -32,8 +32,10 @@ import { mapAuthError, type ActionState } from "@/lib/auth/messages";
 import {
   OAUTH_NEXT_COOKIE,
   OAUTH_NEXT_COOKIE_MAX_AGE_SECONDS,
+  OAUTH_UTM_COOKIE,
   PASSWORD_RESET_COOKIE,
 } from "@/lib/auth/cookies";
+import { encodeOAuthUtm } from "@/lib/auth/oauth-utm";
 import { authCallbackUrl, authCallbackUrlForRequest, authResetCallbackUrl } from "@/lib/auth/urls";
 import { queueCompanyProfileMatches } from "@/lib/matching/recalculate";
 import { parseInputSafe } from "@/lib/validation";
@@ -79,12 +81,26 @@ export async function signInWithGoogleAction(
 ): Promise<ActionState> {
   const next = resolveNextPath(formString(formData, "next"));
   const cookieStore = await cookies();
-  cookieStore.set(OAUTH_NEXT_COOKIE, next, {
+  const oauthCookieOptions = {
     httpOnly: true,
-    sameSite: "lax",
+    sameSite: "lax" as const,
     path: "/",
     maxAge: OAUTH_NEXT_COOKIE_MAX_AGE_SECONDS,
-  });
+    secure: process.env.NODE_ENV === "production",
+  };
+  cookieStore.set(OAUTH_NEXT_COOKIE, next, oauthCookieOptions);
+
+  const analyticsConsent = cookieStore.get(ANALYTICS_CONSENT_COOKIE)?.value;
+  const formConsent = formData.get(ANALYTICS_CONSENT_FIELD);
+  const oauthUtm =
+    isAnalyticsConsentGranted(analyticsConsent) || isAnalyticsConsentGranted(formConsent)
+      ? encodeOAuthUtm((name) => formData.get(name))
+      : null;
+  if (oauthUtm) {
+    cookieStore.set(OAUTH_UTM_COOKIE, oauthUtm, oauthCookieOptions);
+  } else {
+    cookieStore.delete(OAUTH_UTM_COOKIE);
+  }
 
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase.auth.signInWithOAuth({
