@@ -266,6 +266,7 @@ export const ocdsTenderSchema = z
     value: ocdsValueSchema.optional(),
     minValue: ocdsValueSchema.optional(),
     tenderPeriod: ocdsPeriodSchema.optional(),
+    expressionOfInterestDeadline: nullableString,
     enquiryPeriod: ocdsPeriodSchema.optional(),
     awardPeriod: ocdsPeriodSchema.optional(),
     contractPeriod: ocdsPeriodSchema.optional(),

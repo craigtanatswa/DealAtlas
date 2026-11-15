@@ -9,6 +9,7 @@ import {
   sectorFromLegacySector,
 } from "@/lib/deals/buyer-taxonomy";
 import type {
+  CreateDealInput,
   DataChangeRecord,
   DataSourceRecord,
   DealRecord,
@@ -292,8 +293,7 @@ export async function persistCandidate(options: {
   let deal: DealRecord;
   if (linked.deal) {
     deal = await store.updateDeal(linked.deal.id, {
-      ...dealFields,
-      ...keepKnownStatusAndDeadline(linked.deal, dealFields),
+      ...keepKnownDealFields(linked.deal, dealFields),
       firstPublishedAt: linked.deal.firstPublishedAt ?? dealFields.firstPublishedAt,
       sourceCount: Math.max(linked.deal.sourceCount, 1),
     });
@@ -692,6 +692,31 @@ export async function persistCandidate(options: {
   }
 
   return { outcome, deal, noticeId: notice.id, lotIds };
+}
+
+/**
+ * A partial update release never replaces a known value with null, and never
+ * drops a classified status back to UNCLASSIFIED.
+ */
+export function keepKnownDealFields(
+  existing: DealRecord,
+  incoming: CreateDealInput,
+): CreateDealInput {
+  const merged = { ...incoming } as Record<keyof CreateDealInput, unknown>;
+  for (const key of Object.keys(incoming) as Array<keyof CreateDealInput>) {
+    const next = incoming[key];
+    const previous = existing[key as keyof DealRecord];
+    if (next == null && previous != null) {
+      merged[key] = previous;
+    }
+  }
+  if (
+    merged.status === "UNCLASSIFIED" &&
+    existing.status !== "UNCLASSIFIED"
+  ) {
+    merged.status = existing.status;
+  }
+  return merged as CreateDealInput;
 }
 
 /**
