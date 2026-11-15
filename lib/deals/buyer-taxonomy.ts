@@ -200,20 +200,25 @@ export function buyerTypeFromUkCaType(
 }
 
 /**
- * TED notices are EU public procurement notices, so the buyer is PUBLIC.
- * eForms legal types `spec-rights-entity` (special or exclusive rights,
- * mostly state-owned utilities) and `org-sub*` (contracts subsidised by a
- * contracting authority) are not clearly private, so they stay PUBLIC too.
- * Only an explicit private marker flips the result.
+ * TED eForms buyer-legal-type rule (owner decision in PR #78; PR #83 reversed
+ * it by mistake): `spec-rights-entity`, `org-sub` and every `org-sub-*`
+ * variant (for example `org-sub-cga`, `org-sub-la`, `org-sub-ra`) are
+ * PRIVATE. Explicit private markers (`private`, `private-body`) are PRIVATE.
+ * Every other legal type (cga, la, ra, body-pl*, pub-undert*, int-org,
+ * eu-ins-bod-ag, def-cont, ...) is PUBLIC. A notice that lists several legal
+ * types is PRIVATE when any one of them is private.
  */
-export const TED_CLEARLY_PRIVATE_LEGAL_TYPES: readonly string[] = ["private", "private-body"];
+export const TED_PRIVATE_LEGAL_TYPE_PATTERN =
+  /^(spec-rights-entity|org-sub(-[a-z]+)?|private|private-body)$/;
+
+export function isTedPrivateLegalType(value: string): boolean {
+  return TED_PRIVATE_LEGAL_TYPE_PATTERN.test(value.trim().toLowerCase());
+}
 
 export function buyerTypeFromTedLegalType(value: unknown): BuyerType {
   const legalTypes: string[] = [];
   collectStrings(value, legalTypes);
-  return legalTypes.some((item) => TED_CLEARLY_PRIVATE_LEGAL_TYPES.includes(item))
-    ? "PRIVATE"
-    : "PUBLIC";
+  return legalTypes.some(isTedPrivateLegalType) ? "PRIVATE" : "PUBLIC";
 }
 
 function collectStrings(value: unknown, out: string[]): void {

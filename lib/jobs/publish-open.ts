@@ -219,6 +219,7 @@ export async function runUnpublishStale(input: {
       counts.bands_scanned = bands.scanned;
       counts.bands_stale = bands.stale;
       counts.bands_updated = bands.updated;
+      counts.bands_text_rewritten = bands.textRewritten;
       counts.bands_unpublished_by_gate = bands.unpublishedByGate;
     } catch {
       await notify({

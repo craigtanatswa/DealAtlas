@@ -175,6 +175,7 @@ describe("publish jobs", () => {
           scanned: 120,
           stale: 3,
           updated: 3,
+          textRewritten: 2,
           unpublishedByGate: 1,
           byBand: { "Within 14 days": 3 },
         };
@@ -192,6 +193,7 @@ describe("publish jobs", () => {
       bands_scanned: 120,
       bands_stale: 3,
       bands_updated: 3,
+      bands_text_rewritten: 2,
       bands_unpublished_by_gate: 1,
     });
   });
@@ -228,6 +230,7 @@ describe("publish jobs", () => {
           scanned: 0,
           stale: 0,
           updated: 0,
+          textRewritten: 0,
           unpublishedByGate: 0,
           byBand: {},
         };

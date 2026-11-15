@@ -3,6 +3,20 @@
  * relabel values that are already public. Nothing here adds information.
  */
 
+import { DEADLINE_BANDS } from "@/lib/preview/bands";
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+const CLOSING_WINDOW_PART = new RegExp(
+  `^Closing window (${[...DEADLINE_BANDS]
+    .sort((a, b) => b.length - a.length)
+    .map(escapeRegExp)
+    .join("|")})$`,
+  "i",
+);
+
 /** Raw ingest categories that are procurement classes, not sectors. */
 const RAW_CATEGORY_LABELS: Record<string, string> = {
   goods: "Goods and supplies",
@@ -74,7 +88,7 @@ export function keyDatesRemainder(
     .map((part) => part.replace(/\.$/, "").trim())
     .filter(Boolean)
     .filter((part) => {
-      if (shown.deadlineBand && same(part, `Closing window ${shown.deadlineBand}`)) return false;
+      if (shown.deadlineBand && CLOSING_WINDOW_PART.test(part)) return false;
       if (shown.durationBand && same(part, `Contract term ${shown.durationBand}`)) return false;
       if (/^(closing window|contract term)\s+(not disclosed|undisclosed|unknown)$/i.test(part)) return false;
       return true;

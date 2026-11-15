@@ -51,6 +51,23 @@ describe("display helpers", () => {
       keyDatesRemainder("Closing window Within 7 days. Contract term Not disclosed", {}),
     ).toBe("Closing window Within 7 days");
   });
+
+  it("drops any allowlisted closing-window band when a deadline badge is shown", () => {
+    expect(
+      keyDatesRemainder("Closing window Within 14 days. Contract term 1–2 years", {
+        deadlineBand: "Within 3 days",
+        durationBand: "1–2 years",
+      }),
+    ).toBeNull();
+    expect(
+      keyDatesRemainder("Closing window Within 14 days. Contract term 1–2 years", {
+        deadlineBand: "Within 3 days",
+      }),
+    ).toBe("Contract term 1–2 years");
+    expect(keyDatesRemainder("Closing window Within 14 days", {})).toBe(
+      "Closing window Within 14 days",
+    );
+  });
 });
 
 const ROW: PreviewDtoFields = {

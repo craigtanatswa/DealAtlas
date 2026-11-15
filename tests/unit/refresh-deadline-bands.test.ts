@@ -11,6 +11,8 @@ type FakePreview = {
   deal_id: string;
   deadline_band: string | null;
   is_published: boolean;
+  preview_summary?: string | null;
+  requirements_preview?: unknown;
 };
 
 type FakeDeal = {
@@ -25,7 +27,12 @@ function fakeClient(input: {
   gate?: (dealId: string) => boolean;
   errorOn?: "previews" | "deals" | "update";
 }) {
-  const updates: Array<{ band: string; ids: string[] }> = [];
+  const updates: Array<{
+    band: string;
+    ids: string[];
+    summary?: string;
+    requirements?: unknown[];
+  }> = [];
   const selects: Array<{ table: string; columns: string }> = [];
   const pages: Array<{ after: string | null; count: number }> = [];
 
@@ -71,6 +78,8 @@ function fakeClient(input: {
                           .map((preview) => ({
                             deal_id: preview.deal_id,
                             deadline_band: preview.deadline_band,
+                            preview_summary: preview.preview_summary ?? null,
+                            requirements_preview: preview.requirements_preview ?? [],
                           })),
                         error: null,
                       };
@@ -87,7 +96,36 @@ function fakeClient(input: {
             },
           };
         },
-        update(values: { deadline_band: string }) {
+        update(values: {
+          deadline_band: string;
+          preview_summary?: string;
+          requirements_preview?: unknown[];
+        }) {
+          const apply = (
+            id: string,
+            value: boolean,
+          ): { deal_id: string; is_published: boolean } | null => {
+            const preview = input.previews.find(
+              (row) => row.deal_id === id && row.is_published === value,
+            );
+            if (!preview) {
+              return null;
+            }
+            preview.deadline_band = values.deadline_band;
+            if (values.preview_summary !== undefined) {
+              preview.preview_summary = values.preview_summary;
+            }
+            if (values.requirements_preview !== undefined) {
+              preview.requirements_preview = values.requirements_preview;
+            }
+            if (input.gate?.(id)) {
+              preview.is_published = false;
+            }
+            return {
+              deal_id: id,
+              is_published: preview.is_published,
+            };
+          };
           return {
             in(_column: string, ids: readonly string[]) {
               return {
@@ -97,29 +135,47 @@ function fakeClient(input: {
                       if (input.errorOn === "update") {
                         return { data: null, error: { message: "update failed" } };
                       }
-                      updates.push({ band: values.deadline_band, ids: [...ids] });
+                      updates.push({
+                        band: values.deadline_band,
+                        ids: [...ids],
+                        summary: values.preview_summary,
+                        requirements: values.requirements_preview,
+                      });
                       const data: Array<{
                         deal_id: string;
                         is_published: boolean;
                       }> = [];
                       for (const id of ids) {
-                        const preview = input.previews.find(
-                          (row) =>
-                            row.deal_id === id && row.is_published === value,
-                        );
-                        if (!preview) {
-                          continue;
+                        const row = apply(id, value);
+                        if (row) {
+                          data.push(row);
                         }
-                        preview.deadline_band = values.deadline_band;
-                        if (input.gate?.(id)) {
-                          preview.is_published = false;
-                        }
-                        data.push({
-                          deal_id: id,
-                          is_published: preview.is_published,
-                        });
                       }
                       return { data, error: null };
+                    },
+                  };
+                },
+              };
+            },
+            eq(_column: string, id: string) {
+              return {
+                eq(_column2: string, value: boolean) {
+                  return {
+                    async select() {
+                      if (input.errorOn === "update") {
+                        return { data: null, error: { message: "update failed" } };
+                      }
+                      updates.push({
+                        band: values.deadline_band,
+                        ids: [id],
+                        summary: values.preview_summary,
+                        requirements: values.requirements_preview,
+                      });
+                      const row = apply(id, value);
+                      return {
+                        data: row ? [row] : [],
+                        error: null,
+                      };
                     },
                   };
                 },
@@ -214,6 +270,234 @@ describe("refreshDeadlineBands", () => {
     expect(repeat.updates).toEqual([]);
   });
 
+  it("rewrites stale closing-window text even when the band is current", async () => {
+    const previews: FakePreview[] = [
+      {
+        deal_id: "deal-text",
+        deadline_band: "Within 3 days",
+        is_published: true,
+        preview_summary:
+          "A public organisation is procuring IT. Closing window Within 14 days.",
+        requirements_preview: [
+          "scope: Work for a public organisation.",
+          "keyDates: Closing window Within 14 days. Contract term 1–2 years",
+        ],
+      },
+    ];
+    const deals: FakeDeal[] = [
+      {
+        id: "deal-text",
+        submission_deadline: "2026-11-11T12:00:00.000Z",
+        status: "OPEN",
+      },
+    ];
+    const fake = fakeClient({ previews, deals });
+    const result = await refreshDeadlineBands({
+      client: fake.client,
+      now: new Date("2026-11-09T12:00:00.000Z"),
+      apply: true,
+    });
+
+    expect(result).toMatchObject({
+      scanned: 1,
+      stale: 1,
+      updated: 1,
+      textRewritten: 1,
+    });
+    expect(result.byBand).toEqual({ "Within 3 days": 1 });
+    expect(previews[0]?.deadline_band).toBe("Within 3 days");
+    expect(previews[0]?.preview_summary).toContain(
+      "Closing window Within 3 days",
+    );
+    expect(previews[0]?.preview_summary).not.toContain("Within 14 days");
+    expect(previews[0]?.requirements_preview).toEqual([
+      "scope: Work for a public organisation.",
+      "keyDates: Closing window Within 3 days. Contract term 1–2 years",
+    ]);
+    expect(fake.updates).toHaveLength(1);
+    expect(fake.updates[0]?.ids).toEqual(["deal-text"]);
+  });
+
+  it("updates both the band and stale text when they differ", async () => {
+    const previews: FakePreview[] = [
+      {
+        deal_id: "deal-both",
+        deadline_band: "Within 30 days",
+        is_published: true,
+        preview_summary: "Closing window Within 30 days.",
+        requirements_preview: ["keyDates: Closing window Within 30 days"],
+      },
+    ];
+    const deals: FakeDeal[] = [
+      {
+        id: "deal-both",
+        submission_deadline: "2026-11-11T12:00:00.000Z",
+        status: "OPEN",
+      },
+    ];
+    const fake = fakeClient({ previews, deals });
+    const result = await refreshDeadlineBands({
+      client: fake.client,
+      now: new Date("2026-11-09T12:00:00.000Z"),
+      apply: true,
+    });
+
+    expect(result).toMatchObject({
+      scanned: 1,
+      stale: 1,
+      updated: 1,
+      textRewritten: 1,
+    });
+    expect(previews[0]?.deadline_band).toBe("Within 3 days");
+    expect(previews[0]?.preview_summary).toBe(
+      "Closing window Within 3 days.",
+    );
+    expect(previews[0]?.requirements_preview).toEqual([
+      "keyDates: Closing window Within 3 days",
+    ]);
+  });
+
+  it("treats non-array requirements as unchanged", async () => {
+    const previews: FakePreview[] = [
+      {
+        deal_id: "deal-non-array",
+        deadline_band: "Within 3 days",
+        is_published: true,
+        preview_summary: "Closing window Within 14 days.",
+        requirements_preview: "not-an-array",
+      },
+    ];
+    const deals: FakeDeal[] = [
+      {
+        id: "deal-non-array",
+        submission_deadline: "2026-11-11T12:00:00.000Z",
+        status: "OPEN",
+      },
+    ];
+    const fake = fakeClient({ previews, deals });
+    const result = await refreshDeadlineBands({
+      client: fake.client,
+      now: new Date("2026-11-09T12:00:00.000Z"),
+      apply: true,
+    });
+
+    expect(result).toMatchObject({ stale: 1, updated: 1, textRewritten: 1 });
+    expect(previews[0]?.requirements_preview).toBe("not-an-array");
+    expect(fake.updates[0]?.requirements).toBeUndefined();
+  });
+
+  it("keeps non-string requirements preview elements in place", async () => {
+    const previews: FakePreview[] = [
+      {
+        deal_id: "deal-mixed",
+        deadline_band: "Within 3 days",
+        is_published: true,
+        preview_summary: "A public organisation is procuring IT.",
+        requirements_preview: [
+          { note: "keep me" },
+          42,
+          "keyDates: Closing window Within 14 days",
+          "scope: Work for a public organisation.",
+        ],
+      },
+    ];
+    const deals: FakeDeal[] = [
+      {
+        id: "deal-mixed",
+        submission_deadline: "2026-11-11T12:00:00.000Z",
+        status: "OPEN",
+      },
+    ];
+    const fake = fakeClient({ previews, deals });
+    const result = await refreshDeadlineBands({
+      client: fake.client,
+      now: new Date("2026-11-09T12:00:00.000Z"),
+      apply: true,
+    });
+
+    expect(result).toMatchObject({ stale: 1, updated: 1, textRewritten: 1 });
+    expect(previews[0]?.requirements_preview).toEqual([
+      { note: "keep me" },
+      42,
+      "keyDates: Closing window Within 3 days",
+      "scope: Work for a public organisation.",
+    ]);
+    expect(fake.updates[0]?.requirements).toEqual([
+      { note: "keep me" },
+      42,
+      "keyDates: Closing window Within 3 days",
+      "scope: Work for a public organisation.",
+    ]);
+    expect(fake.updates[0]?.summary).toBeUndefined();
+  });
+
+  it("updates only stale keyDates requirements without writing a summary", async () => {
+    const summary = "A public organisation is procuring IT.";
+    const previews: FakePreview[] = [
+      {
+        deal_id: "deal-requirements",
+        deadline_band: "Within 3 days",
+        is_published: true,
+        preview_summary: summary,
+        requirements_preview: [
+          "scope: Work for a public organisation.",
+          "keyDates: Closing window Within 14 days",
+        ],
+      },
+    ];
+    const deals: FakeDeal[] = [
+      {
+        id: "deal-requirements",
+        submission_deadline: "2026-11-11T12:00:00.000Z",
+        status: "OPEN",
+      },
+    ];
+    const fake = fakeClient({ previews, deals });
+    const result = await refreshDeadlineBands({
+      client: fake.client,
+      now: new Date("2026-11-09T12:00:00.000Z"),
+      apply: true,
+    });
+
+    expect(result).toMatchObject({ stale: 1, updated: 1, textRewritten: 1 });
+    expect(fake.updates[0]?.requirements).toEqual([
+      "scope: Work for a public organisation.",
+      "keyDates: Closing window Within 3 days",
+    ]);
+    expect(fake.updates[0]?.summary).toBeUndefined();
+    expect(previews[0]?.preview_summary).toBe(summary);
+  });
+
+  it("never writes a preview summary when the stored one is null", async () => {
+    const previews: FakePreview[] = [
+      {
+        deal_id: "deal-null-summary",
+        deadline_band: "Within 3 days",
+        is_published: true,
+        preview_summary: null,
+        requirements_preview: ["keyDates: Closing window Within 14 days"],
+      },
+    ];
+    const deals: FakeDeal[] = [
+      {
+        id: "deal-null-summary",
+        submission_deadline: "2026-11-11T12:00:00.000Z",
+        status: "OPEN",
+      },
+    ];
+    const fake = fakeClient({ previews, deals });
+    const result = await refreshDeadlineBands({
+      client: fake.client,
+      now: new Date("2026-11-09T12:00:00.000Z"),
+      apply: true,
+    });
+
+    expect(result).toMatchObject({ stale: 1, updated: 1, textRewritten: 1 });
+    expect(fake.updates).toHaveLength(1);
+    expect(fake.updates[0]?.summary).toBeUndefined();
+    expect(previews[0]?.preview_summary).toBeNull();
+  });
+
   it("leaves null and past deadlines untouched", async () => {
     const previews: FakePreview[] = [
       {
@@ -273,6 +557,45 @@ describe("refreshDeadlineBands", () => {
     expect(result).toMatchObject({ scanned: 1, stale: 1, updated: 0 });
     expect(fake.updates).toEqual([]);
     expect(previews[0]?.deadline_band).toBe("Within 30 days");
+  });
+
+  it("plans stale text but writes nothing when apply is false", async () => {
+    const previews: FakePreview[] = [
+      {
+        deal_id: "deal-text",
+        deadline_band: "Within 3 days",
+        is_published: true,
+        preview_summary: "Closing window Within 14 days.",
+        requirements_preview: ["keyDates: Closing window Within 14 days"],
+      },
+    ];
+    const deals: FakeDeal[] = [
+      {
+        id: "deal-text",
+        submission_deadline: "2026-11-11T12:00:00.000Z",
+        status: "OPEN",
+      },
+    ];
+    const fake = fakeClient({ previews, deals });
+    const result = await refreshDeadlineBands({
+      client: fake.client,
+      now: new Date("2026-11-09T12:00:00.000Z"),
+      apply: false,
+    });
+
+    expect(result).toMatchObject({
+      scanned: 1,
+      stale: 1,
+      updated: 0,
+      textRewritten: 0,
+    });
+    expect(fake.updates).toEqual([]);
+    expect(previews[0]?.preview_summary).toBe(
+      "Closing window Within 14 days.",
+    );
+    expect(previews[0]?.requirements_preview).toEqual([
+      "keyDates: Closing window Within 14 days",
+    ]);
   });
 
   it("only writes members of DEADLINE_BANDS and never a date", async () => {

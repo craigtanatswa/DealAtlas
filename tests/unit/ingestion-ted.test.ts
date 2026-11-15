@@ -86,7 +86,7 @@ describe("TED expert query", () => {
     expect(TED_REQUEST_WINDOW_MS).toBeGreaterThanOrEqual(60_000);
   });
 
-  it("uses the private buyer legal types from the shared constant", () => {
+  it("uses exactly the private buyer legal types from the shared constant", () => {
     const query = buildTedExpertQuery({ deadlineOn: "20261014" });
     expect(TED_PRIVATE_BUYER_LEGAL_TYPES).toEqual([
       "spec-rights-entity",
@@ -94,17 +94,20 @@ describe("TED expert query", () => {
     ]);
     expect(TED_SEARCH_FIELDS).toContain("buyer-legal-type");
     expect(query).toContain(
-      `(submission-language = ENG OR buyer-legal-type IN (${TED_PRIVATE_BUYER_LEGAL_TYPES.join(" ")}))`,
+      "(submission-language = ENG OR buyer-legal-type IN (spec-rights-entity org-sub))",
     );
   });
 });
 
 describe("TED buyer sector", () => {
-  it("marks private legal types as PRIVATE", () => {
-    expect(tedBuyerSector("spec-rights-entity")).toBe("PUBLIC");
-    expect(tedBuyerSector(" ORG-SUB ")).toBe("PUBLIC");
-    expect(tedBuyerSector(["pub-undert", "org-sub"])).toBe("PUBLIC");
-    expect(tedBuyerSector([["spec-rights-entity"]])).toBe("PUBLIC");
+  it("marks private legal types and org-sub variants as PRIVATE", () => {
+    expect(tedBuyerSector("spec-rights-entity")).toBe("PRIVATE");
+    expect(tedBuyerSector(" ORG-SUB ")).toBe("PRIVATE");
+    expect(tedBuyerSector("org-sub-cga")).toBe("PRIVATE");
+    expect(tedBuyerSector("org-sub-la")).toBe("PRIVATE");
+    expect(tedBuyerSector("org-sub-ra")).toBe("PRIVATE");
+    expect(tedBuyerSector(["pub-undert", "org-sub"])).toBe("PRIVATE");
+    expect(tedBuyerSector([["spec-rights-entity"]])).toBe("PRIVATE");
   });
 
   it("leaves public and missing legal types as PUBLIC", () => {
@@ -133,7 +136,8 @@ describe("TED notice parse", () => {
       { notice: { ...readOpenNotice(), "buyer-legal-type": ["org-sub"] } },
       NOW,
     );
-    expect(privateCandidate?.buyerSector).toBe("PUBLIC");
+    expect(privateCandidate?.buyerSector).toBe("PRIVATE");
+    expect(privateCandidate?.buyerType).toBe("PRIVATE");
 
     const closed = {
       ...readOpenNotice(),

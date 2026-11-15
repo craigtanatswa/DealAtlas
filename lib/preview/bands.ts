@@ -47,6 +47,51 @@ const CLOSED_STATUSES = new Set([
   "WITHDRAWN",
 ]);
 
+const LONDON_CALENDAR_DATE = new Intl.DateTimeFormat("en-GB", {
+  timeZone: "Europe/London",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
+function londonCalendarDay(value: Date): number {
+  const parts = LONDON_CALENDAR_DATE.formatToParts(value);
+  const year = Number(parts.find((part) => part.type === "year")?.value);
+  const month = Number(parts.find((part) => part.type === "month")?.value);
+  const day = Number(parts.find((part) => part.type === "day")?.value);
+  return Date.UTC(year, month - 1, day);
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+const CLOSING_WINDOW_PATTERN = new RegExp(
+  `Closing window (${[...DEADLINE_BANDS]
+    .sort((a, b) => b.length - a.length)
+    .map(escapeRegExp)
+    .join("|")})(?![A-Za-z0-9])`,
+  "g",
+);
+
+/** Rewrite every known `Closing window <band>` phrase to the live band. */
+export function rewriteClosingWindow(text: string, band: DeadlineBand): string {
+  return text.replace(CLOSING_WINDOW_PATTERN, `Closing window ${band}`);
+}
+
+/**
+ * Rewrite only the keyDates requirement elements, preserving every other
+ * element and the array order.
+ */
+export function rewriteClosingWindowInRequirements(
+  items: string[],
+  band: DeadlineBand,
+): string[] {
+  return items.map((item) =>
+    item.startsWith("keyDates:") ? rewriteClosingWindow(item, band) : item,
+  );
+}
+
 export function valueBandFromAmounts(
   min: number | null | undefined,
   max: number | null | undefined,
@@ -85,8 +130,8 @@ export function deadlineBandFromDeadline(
     return "Closed";
   }
 
-  const startOfToday = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
-  const startOfDue = Date.UTC(due.getUTCFullYear(), due.getUTCMonth(), due.getUTCDate());
+  const startOfToday = londonCalendarDay(now);
+  const startOfDue = londonCalendarDay(due);
   const days = Math.round((startOfDue - startOfToday) / 86_400_000);
 
   if (days <= 0) return "Closing today";

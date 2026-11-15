@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   buyerSectorFromClassifications,
+  buyerTypeFromClassifications,
   mapDealStatus,
 } from "@/ingestion/normalizers/taxonomy";
 
@@ -89,6 +90,46 @@ describe("mapDealStatus", () => {
         hasAwards: false,
       }),
     ).toBe("UNCLASSIFIED");
+  });
+});
+
+describe("buyerTypeFromClassifications", () => {
+  it("makes charity and voluntary descriptions PRIVATE", () => {
+    expect(
+      buyerTypeFromClassifications([
+        {
+          scheme: "UK_CA_TYPE",
+          id: "charity",
+          description: "Registered charity and voluntary sector organisation",
+        },
+      ]),
+    ).toBe("PRIVATE");
+    expect(
+      buyerTypeFromClassifications([
+        {
+          scheme: "UK_CA_TYPE",
+          id: "voluntary",
+          description: "Voluntary organisation",
+        },
+      ]),
+    ).toBe("PRIVATE");
+  });
+
+  it("makes private utilities PRIVATE and public authorities PUBLIC", () => {
+    expect(
+      buyerTypeFromClassifications([
+        { scheme: "UK_CA_TYPE", id: "privateUtility", description: "Private utility" },
+      ]),
+    ).toBe("PRIVATE");
+    expect(
+      buyerTypeFromClassifications([
+        {
+          scheme: "UK_CA_TYPE",
+          id: "publicAuthority",
+          description: "Public authority",
+        },
+      ]),
+    ).toBe("PUBLIC");
   });
 });
 
