@@ -13,10 +13,12 @@ node -e '
   }'
 
 id() { jq -r ".${1}.id" .leak/users.json; }
+mkdir -p .leak
+npx tsx tests/leak/seed/render-world.ts > .leak/world.sql
 psql "${DB_URL:?DB_URL}" -q -v ON_ERROR_STOP=1 \
   -v free_id="$(id free)" -v free_lapsed_id="$(id free_lapsed)" \
   -v free_expired_id="$(id free_expired)" -v pro_id="$(id pro)" \
   -v include_residuals="${LEAK_INCLUDE_RESIDUALS:-0}" \
-  -f tests/leak/seed/world.sql
+  -f .leak/world.sql
 psql "$DB_URL" -q -v ON_ERROR_STOP=1 -v outcome_path=.leak/seed-outcome.json -f tests/leak/seed/post-seed.sql
 echo "seeded; outcome in .leak/seed-outcome.json"

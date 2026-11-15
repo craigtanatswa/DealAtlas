@@ -47,6 +47,7 @@ const OPERATOR_TOKENS = ["Zarqwell", "Quellmoor", "Vantrexo", "Delta eSourcing",
 export async function apiProbes(ctx: Ctx, roles: Role[] = NON_PRO_ROLES): Promise<void> {
   const pub = pubSlugs(ctx);
   const queries = searchQueries(ctx);
+  const deadlineBand = ctx.manifest.tokens.find((token) => token.id === "T14")!.canonical;
   await Promise.all(
     roles.map(async (role) => {
       const jobs: Array<Promise<unknown>> = [];
@@ -115,7 +116,7 @@ export async function apiProbes(ctx: Ctx, roles: Role[] = NON_PRO_ROLES): Promis
         ["category", "Zarqwell"],
         ["region", "Quellmoor"],
         ["valueBand", "£1,234,567"],
-        ["deadlineBand", "17 November 2031"],
+        ["deadlineBand", deadlineBand],
       ]) {
         jobs.push(
           ctx.run({
