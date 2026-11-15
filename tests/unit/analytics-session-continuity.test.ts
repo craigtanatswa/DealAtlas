@@ -18,7 +18,7 @@ const KEY = "phc_sessioncontinuitytest1234567890";
 const ORIGIN = "https://www.dealatlas.uk";
 
 function postHogKeys(): string[] {
-  return Object.keys(window.localStorage).filter(
+  return [...Object.keys(window.localStorage), ...Object.keys(window.sessionStorage)].filter(
     (key) => key.startsWith("ph_") || key.startsWith("__ph_opt_in_out_"),
   );
 }
@@ -33,6 +33,7 @@ async function initFreshPostHog() {
 afterEach(() => {
   cleanup();
   window.localStorage.clear();
+  window.sessionStorage.clear();
   resetAnalyticsConsentForTests();
   vi.restoreAllMocks();
 });
@@ -57,8 +58,15 @@ describe("PostHog session continuity", () => {
     window.localStorage.setItem("__ph_opt_in_out_x", "1");
     window.localStorage.setItem("theme", "dark");
     window.localStorage.setItem("unrelated", "kept");
+    window.sessionStorage.setItem("ph_x_window_id", "w");
+    window.sessionStorage.setItem("ph_x_primary_window_exists", "true");
+    window.sessionStorage.setItem("tab_state", "kept");
 
     setAnalyticsConsent(false);
+
+    expect(window.sessionStorage.getItem("ph_x_window_id")).toBeNull();
+    expect(window.sessionStorage.getItem("ph_x_primary_window_exists")).toBeNull();
+    expect(window.sessionStorage.getItem("tab_state")).toBe("kept");
 
     expect(window.localStorage.getItem("ph_x_posthog")).toBeNull();
     expect(window.localStorage.getItem("__ph_opt_in_out_x")).toBeNull();

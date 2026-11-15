@@ -59,26 +59,34 @@ export function clearGoogleAnalyticsCookies(): void {
 }
 
 /**
- * Removes PostHog's first-party local storage: the anonymous distinct id and
- * session (`ph_*`) and its opt-in/out flag (`__ph_opt_in_out_*`). Never throws.
+ * Removes PostHog's first-party web storage: the anonymous distinct id and
+ * session (`ph_*`, localStorage), its per-tab window id and session props
+ * (`ph_*`, sessionStorage) and its opt-in/out flag (`__ph_opt_in_out_*`).
+ * Never throws.
  */
 export function clearPostHogStorage(): void {
-  try {
-    if (typeof window === "undefined" || !window.localStorage) {
-      return;
-    }
-    const keys: string[] = [];
-    for (let index = 0; index < window.localStorage.length; index += 1) {
-      const key = window.localStorage.key(index);
-      if (key && (key.startsWith("ph_") || key.startsWith("__ph_opt_in_out_"))) {
-        keys.push(key);
+  if (typeof window === "undefined") {
+    return;
+  }
+  for (const area of ["localStorage", "sessionStorage"] as const) {
+    try {
+      const storage = window[area];
+      if (!storage) {
+        continue;
       }
+      const keys: string[] = [];
+      for (let index = 0; index < storage.length; index += 1) {
+        const key = storage.key(index);
+        if (key && (key.startsWith("ph_") || key.startsWith("__ph_opt_in_out_"))) {
+          keys.push(key);
+        }
+      }
+      for (const key of keys) {
+        storage.removeItem(key);
+      }
+    } catch {
+      // Blocked storage APIs keep nothing to clear.
     }
-    for (const key of keys) {
-      window.localStorage.removeItem(key);
-    }
-  } catch {
-    // Blocked storage APIs keep nothing to clear.
   }
 }
 
