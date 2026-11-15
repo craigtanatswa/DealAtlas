@@ -81,12 +81,14 @@ export async function signInWithGoogleAction(
 ): Promise<ActionState> {
   const next = resolveNextPath(formString(formData, "next"));
   const cookieStore = await cookies();
-  cookieStore.set(OAUTH_NEXT_COOKIE, next, {
+  const oauthCookieOptions = {
     httpOnly: true,
-    sameSite: "lax",
+    sameSite: "lax" as const,
     path: "/",
     maxAge: OAUTH_NEXT_COOKIE_MAX_AGE_SECONDS,
-  });
+    secure: process.env.NODE_ENV === "production",
+  };
+  cookieStore.set(OAUTH_NEXT_COOKIE, next, oauthCookieOptions);
 
   const analyticsConsent = cookieStore.get(ANALYTICS_CONSENT_COOKIE)?.value;
   const formConsent = formData.get(ANALYTICS_CONSENT_FIELD);
@@ -95,12 +97,7 @@ export async function signInWithGoogleAction(
       ? encodeOAuthUtm((name) => formData.get(name))
       : null;
   if (oauthUtm) {
-    cookieStore.set(OAUTH_UTM_COOKIE, oauthUtm, {
-      httpOnly: true,
-      sameSite: "lax",
-      path: "/",
-      maxAge: OAUTH_NEXT_COOKIE_MAX_AGE_SECONDS,
-    });
+    cookieStore.set(OAUTH_UTM_COOKIE, oauthUtm, oauthCookieOptions);
   } else {
     cookieStore.delete(OAUTH_UTM_COOKIE);
   }

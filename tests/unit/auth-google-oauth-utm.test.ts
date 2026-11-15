@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
@@ -111,6 +111,7 @@ describe("signInWithGoogleAction UTM cookie", () => {
       sameSite: "lax",
       path: "/",
       maxAge: OAUTH_NEXT_COOKIE_MAX_AGE_SECONDS,
+      secure: false,
     });
     expect(mocks.sets.find((entry) => entry.name === OAUTH_NEXT_COOKIE)?.value).toBe("/app");
     expect(mocks.redirect).toHaveBeenCalledWith("https://accounts.google.com/o/oauth2/auth");
@@ -147,5 +148,55 @@ describe("signInWithGoogleAction UTM cookie", () => {
     expect(utmSetCall()).toBeUndefined();
     expect(mocks.deletes).toContain(OAUTH_UTM_COOKIE);
     expect(mocks.values.has(OAUTH_UTM_COOKIE)).toBe(false);
+  });
+});
+
+describe("signInWithGoogleAction cookie security", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.cookieStore.reset();
+    mocks.values.set(ANALYTICS_CONSENT_COOKIE, "granted");
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  function oauthSetCalls() {
+    return [
+      mocks.sets.find((call) => call.name === OAUTH_NEXT_COOKIE),
+      mocks.sets.find((call) => call.name === OAUTH_UTM_COOKIE),
+    ];
+  }
+
+  it("sets both cookies with secure: true in production", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+
+    await startGoogleSignIn({ [ATTRIBUTION_FIELDS.utm_source]: "newsletter" });
+
+    const calls = oauthSetCalls();
+    expect(calls[0]?.options).toMatchObject({ secure: true });
+    expect(calls[1]?.options).toMatchObject({ secure: true });
+  });
+
+  it.each(["test", "development"])(
+    "sets both cookies with secure: false in %s",
+    async (nodeEnv) => {
+      vi.stubEnv("NODE_ENV", nodeEnv);
+
+      await startGoogleSignIn({ [ATTRIBUTION_FIELDS.utm_source]: "newsletter" });
+
+      const calls = oauthSetCalls();
+      expect(calls[0]?.options).toMatchObject({ secure: false });
+      expect(calls[1]?.options).toMatchObject({ secure: false });
+    },
+  );
+
+  it("sets httpOnly and sameSite lax on both cookies", async () => {
+    await startGoogleSignIn({ [ATTRIBUTION_FIELDS.utm_source]: "newsletter" });
+
+    for (const call of oauthSetCalls()) {
+      expect(call?.options).toMatchObject({ httpOnly: true, sameSite: "lax" });
+    }
   });
 });
