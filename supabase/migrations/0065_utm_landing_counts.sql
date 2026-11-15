@@ -83,6 +83,9 @@ begin
   -- The caller cannot choose the day.
   v_day := (pg_catalog.now() at time zone 'utc')::date;
 
+  -- Serialise the cap check per UTC day so concurrent writers cannot exceed it.
+  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtext('utm_landing_counts:' || v_day::text));
+
   -- Bound cardinality: after 2000 rows for a day, new keys collapse into the
   -- "other" bucket instead of growing the day's distinct combinations.
   if not exists (

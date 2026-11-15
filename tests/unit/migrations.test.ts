@@ -683,6 +683,7 @@ describe("supabase migrations", () => {
       expect(body, pattern).toContain(`'${pattern}'`);
     }
     expect(body).toContain("create or replace function public.record_utm_landing(");
+    expect(body).toContain("pg_advisory_xact_lock");
     expect(body).toContain("security definer");
     expect(body).toContain("set search_path = ''");
     expect(body).toContain(
