@@ -16,6 +16,12 @@ import {
   type PreviewDetails,
 } from "@/lib/preview/compose";
 import {
+  DEADLINE_BANDS,
+  rewriteClosingWindow,
+  rewriteClosingWindowInRequirements,
+  type DeadlineBand,
+} from "@/lib/preview/bands";
+import {
   DEAL_STAGES,
   DEAL_STATUSES,
   DEAL_TYPES,
@@ -195,11 +201,33 @@ export type PreviewDtoFields = Pick<
 > &
   Partial<Pick<DealPreviewSearchRow, "buyer_type" | "sector">>;
 
+function liveDeadlineBand(value: unknown): DeadlineBand | null {
+  return typeof value === "string" &&
+    (DEADLINE_BANDS as readonly string[]).includes(value)
+    ? (value as DeadlineBand)
+    : null;
+}
+
 export function toPublicDealPreview(row: PreviewDtoFields): PublicDealPreview {
+  const deadlineBand = liveDeadlineBand(row.deadline_band);
+  const decoded = decodePreviewDetails(row.requirements_preview);
+  const requirementsPreview = deadlineBand
+    ? rewriteClosingWindowInRequirements(decoded.requirements, deadlineBand)
+    : decoded.requirements;
+  const details = deadlineBand
+    ? {
+        ...decoded.details,
+        keyDates: decoded.details.keyDates
+          ? rewriteClosingWindow(decoded.details.keyDates, deadlineBand)
+          : null,
+      }
+    : decoded.details;
   return {
     slug: row.slug,
     previewTitle: row.preview_title,
-    previewSummary: row.preview_summary,
+    previewSummary: deadlineBand
+      ? rewriteClosingWindow(row.preview_summary, deadlineBand)
+      : row.preview_summary,
     dealType: parseEnum(row.deal_type, DEAL_TYPES, "PUBLIC_TENDER"),
     buyerSector: parseBuyerSector(row.buyer_sector),
     buyerType: parseBuyerType(
@@ -221,12 +249,12 @@ export function toPublicDealPreview(row: PreviewDtoFields): PublicDealPreview {
     smeSuitability: parseLevel(row.sme_suitability),
     bidComplexity: parseLevel(row.bid_complexity),
     competitionLevel: parseLevel(row.competition_level),
-    requirementsPreview: parseRequirementsPreview(row.requirements_preview),
+    requirementsPreview,
     relevanceTags: Array.isArray(row.relevance_tags)
       ? row.relevance_tags.filter((tag): tag is string => typeof tag === "string").slice(0, 12)
       : [],
     freshnessLabel: row.freshness_label?.trim() || null,
-    ...decodePreviewDetails(row.requirements_preview).details,
+    ...details,
   };
 }
 

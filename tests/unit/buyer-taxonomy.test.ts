@@ -78,23 +78,40 @@ describe("buyer taxonomy", () => {
     expect(buyerTypeFromFunding("")).toBeNull();
   });
 
-  it("defaults TED legal types to PUBLIC unless clearly private", () => {
+  it("marks TED private legal types and org-sub variants as PRIVATE", () => {
     for (const value of [
       "spec-rights-entity",
       "org-sub",
       "org-sub-cga",
-      "org-sub-ra",
       "org-sub-la",
-      ["pub-undert", "ORG-SUB"],
-      "pub-undert",
+      "org-sub-ra",
+      ["body-pl", "org-sub"],
+      "private",
+      "private-body",
+      " PRIVATE ",
+    ]) {
+      expect(buyerTypeFromTedLegalType(value)).toBe("PRIVATE");
+    }
+  });
+
+  it("keeps every other TED legal type PUBLIC", () => {
+    for (const value of [
       "cga",
+      "la",
+      "ra",
       "body-pl",
-      "grp-p-aut",
+      "body-pl-la",
+      "pub-undert",
+      "pub-undert-cga",
+      "int-org",
       "eu-ins-bod-ag",
+      "def-cont",
+      "",
       null,
+      undefined,
+      [],
     ]) {
       expect(buyerTypeFromTedLegalType(value)).toBe("PUBLIC");
     }
-    expect(buyerTypeFromTedLegalType("private")).toBe("PRIVATE");
   });
 });

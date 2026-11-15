@@ -1,5 +1,7 @@
 import {
   deadlineBandFromDeadline,
+  rewriteClosingWindow,
+  rewriteClosingWindowInRequirements,
   type DeadlineBand,
 } from "@/lib/preview/bands";
 
@@ -15,6 +17,8 @@ type QueryResult<T> = PromiseLike<{
 type PreviewRow = {
   deal_id: string;
   deadline_band: string | null;
+  preview_summary: string | null;
+  requirements_preview: unknown;
 };
 
 type DealRow = {
@@ -46,18 +50,27 @@ type DealListQuery = {
   in: (column: string, values: readonly string[]) => QueryResult<DealRow>;
 };
 
-type PreviewUpdateQuery = {
-  in: (column: string, values: readonly string[]) => {
-    eq: (column: string, value: boolean) => {
-      select: (columns: string) => QueryResult<UpdatedPreviewRow>;
-    };
+type PreviewUpdateByDealQuery = {
+  eq: (column: string, value: boolean) => {
+    select: (columns: string) => QueryResult<UpdatedPreviewRow>;
   };
+};
+
+type PreviewUpdateQuery = {
+  in: (column: string, values: readonly string[]) => PreviewUpdateByDealQuery;
+  eq: (column: string, value: string) => PreviewUpdateByDealQuery;
+};
+
+type PreviewUpdateValues = {
+  deadline_band: DeadlineBand;
+  preview_summary?: string;
+  requirements_preview?: unknown[];
 };
 
 export type BandRefreshClient = {
   from(table: "deal_previews"): {
     select: (columns: string) => PreviewListQuery;
-    update: (values: { deadline_band: DeadlineBand }) => PreviewUpdateQuery;
+    update: (values: PreviewUpdateValues) => PreviewUpdateQuery;
   };
   from(table: "deals"): {
     select: (columns: string) => DealListQuery;
@@ -68,6 +81,7 @@ export type BandRefreshResult = {
   scanned: number;
   stale: number;
   updated: number;
+  textRewritten: number;
   unpublishedByGate: number;
   byBand: Record<string, number>;
 };
@@ -117,6 +131,101 @@ export function planBandUpdates(
   return updates;
 }
 
+type PreviewRefreshInput = {
+  dealId: string;
+  stored: string | null;
+  previewSummary: string | null;
+  requirementsPreview: unknown;
+  deadline: string | null;
+  status: string | null;
+};
+
+type TextUpdate = {
+  dealId: string;
+  band: DeadlineBand;
+  previewSummary?: string;
+  requirementsPreview?: unknown[];
+};
+
+type PreviewRefreshPlan = {
+  bandOnly: Map<DeadlineBand, string[]>;
+  textUpdates: TextUpdate[];
+  stale: number;
+  byBand: Record<string, number>;
+};
+
+function planPreviewRefresh(
+  rows: PreviewRefreshInput[],
+  now: Date,
+): PreviewRefreshPlan {
+  const plan: PreviewRefreshPlan = {
+    bandOnly: new Map<DeadlineBand, string[]>(),
+    textUpdates: [],
+    stale: 0,
+    byBand: {},
+  };
+  for (const row of rows) {
+    const band = liveDeadlineBand({
+      deadline: row.deadline,
+      status: row.status,
+      now,
+    });
+    if (!band) {
+      continue;
+    }
+
+    const summary =
+      typeof row.previewSummary === "string" ? row.previewSummary : null;
+    const requirements = Array.isArray(row.requirementsPreview)
+      ? row.requirementsPreview
+      : null;
+    const nextSummary =
+      summary === null ? null : rewriteClosingWindow(summary, band);
+    const nextRequirements =
+      requirements === null
+        ? null
+        : requirements.map((item) =>
+            typeof item === "string"
+              ? rewriteClosingWindowInRequirements([item], band)[0]
+              : item,
+          );
+    const summaryChanged =
+      summary !== null && nextSummary !== null && nextSummary !== summary;
+    const requirementsChanged =
+      requirements !== null &&
+      nextRequirements !== null &&
+      nextRequirements.some((item, index) => item !== requirements[index]);
+    const textChanged = summaryChanged || requirementsChanged;
+    const bandChanged = band !== row.stored;
+    if (!bandChanged && !textChanged) {
+      continue;
+    }
+
+    plan.stale += 1;
+    plan.byBand[band] = (plan.byBand[band] ?? 0) + 1;
+    if (textChanged) {
+      plan.textUpdates.push({
+        dealId: row.dealId,
+        band,
+        ...(summaryChanged && nextSummary !== null
+          ? { previewSummary: nextSummary }
+          : {}),
+        ...(requirementsChanged && nextRequirements !== null
+          ? { requirementsPreview: nextRequirements }
+          : {}),
+      });
+      continue;
+    }
+    const ids = plan.bandOnly.get(band);
+    if (ids) {
+      ids.push(row.dealId);
+    } else {
+      plan.bandOnly.set(band, [row.dealId]);
+    }
+  }
+  return plan;
+}
+
 export async function refreshDeadlineBands(input: {
   client: BandRefreshClient;
   now?: Date;
@@ -127,6 +236,7 @@ export async function refreshDeadlineBands(input: {
     scanned: 0,
     stale: 0,
     updated: 0,
+    textRewritten: 0,
     unpublishedByGate: 0,
     byBand: {},
   };
@@ -138,7 +248,7 @@ export async function refreshDeadlineBands(input: {
     while (true) {
       const ordered = input.client
         .from("deal_previews")
-        .select("deal_id, deadline_band")
+        .select("deal_id, deadline_band, preview_summary, requirements_preview")
         .eq("is_published", true)
         .order("deal_id");
       const pageQuery: PreviewPageQuery =
@@ -165,12 +275,14 @@ export async function refreshDeadlineBands(input: {
       const dealsById = new Map(
         (dealsResult.data ?? []).map((deal) => [deal.id, deal]),
       );
-      const plan = planBandUpdates(
+      const plan = planPreviewRefresh(
         previews.map((preview) => {
           const deal = dealsById.get(preview.deal_id);
           return {
             dealId: preview.deal_id,
             stored: preview.deadline_band,
+            previewSummary: preview.preview_summary,
+            requirementsPreview: preview.requirements_preview,
             deadline: deal?.submission_deadline ?? null,
             status: deal?.status ?? null,
           };
@@ -178,22 +290,50 @@ export async function refreshDeadlineBands(input: {
         now,
       );
 
-      for (const [band, dealIds] of plan) {
-        result.stale += dealIds.length;
-        result.byBand[band] = (result.byBand[band] ?? 0) + dealIds.length;
-        if (!input.apply) {
-          continue;
+      result.stale += plan.stale;
+      for (const [band, count] of Object.entries(plan.byBand)) {
+        result.byBand[band] = (result.byBand[band] ?? 0) + count;
+      }
+      if (input.apply) {
+        for (const [band, dealIds] of plan.bandOnly) {
+          for (
+            let start = 0;
+            start < dealIds.length;
+            start += BAND_REFRESH_UPDATE_CHUNK
+          ) {
+            const chunk = dealIds.slice(start, start + BAND_REFRESH_UPDATE_CHUNK);
+            const updateResult = await input.client
+              .from("deal_previews")
+              .update({ deadline_band: band })
+              .in("deal_id", chunk)
+              .eq("is_published", true)
+              .select("deal_id, is_published");
+            if (updateResult.error) {
+              throw new Error("deadline band refresh failed");
+            }
+            const updatedRows = updateResult.data ?? [];
+            result.updated += updatedRows.length;
+            for (const row of updatedRows) {
+              if (!row.is_published) {
+                result.unpublishedByGate += 1;
+              }
+            }
+          }
         }
-        for (
-          let start = 0;
-          start < dealIds.length;
-          start += BAND_REFRESH_UPDATE_CHUNK
-        ) {
-          const chunk = dealIds.slice(start, start + BAND_REFRESH_UPDATE_CHUNK);
+
+        for (const update of plan.textUpdates) {
           const updateResult = await input.client
             .from("deal_previews")
-            .update({ deadline_band: band })
-            .in("deal_id", chunk)
+            .update({
+              deadline_band: update.band,
+              ...(update.previewSummary !== undefined
+                ? { preview_summary: update.previewSummary }
+                : {}),
+              ...(update.requirementsPreview !== undefined
+                ? { requirements_preview: update.requirementsPreview }
+                : {}),
+            })
+            .eq("deal_id", update.dealId)
             .eq("is_published", true)
             .select("deal_id, is_published");
           if (updateResult.error) {
@@ -201,6 +341,7 @@ export async function refreshDeadlineBands(input: {
           }
           const updatedRows = updateResult.data ?? [];
           result.updated += updatedRows.length;
+          result.textRewritten += updatedRows.length;
           for (const row of updatedRows) {
             if (!row.is_published) {
               result.unpublishedByGate += 1;

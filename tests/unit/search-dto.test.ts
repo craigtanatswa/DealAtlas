@@ -52,6 +52,28 @@ describe("public preview DTO", () => {
     expect(json).not.toContain("updated_at");
   });
 
+  it("rewrites a stale closing-window phrase to the stored band", () => {
+    const dto = toPublicDealPreview({
+      ...sanitisedRow,
+      deadline_band: "Within 3 days",
+      preview_summary:
+        "A public organisation needs support. Closing window Within 14 days.",
+      requirements_preview: [
+        "keyDates: Closing window Within 14 days. Contract term 1–2 years",
+        "scope: Work for a public organisation.",
+      ],
+    });
+
+    expect(dto.previewSummary).toContain("Closing window Within 3 days");
+    expect(dto.previewSummary).not.toContain("Within 14 days");
+    expect(dto.keyDates).toBe(
+      "Closing window Within 3 days. Contract term 1–2 years",
+    );
+    expect(JSON.stringify(dto.requirementsPreview)).not.toContain(
+      "Within 14 days",
+    );
+  });
+
   it("does not copy extra protected properties from a poisoned row", () => {
     const poisoned = {
       ...sanitisedRow,
@@ -67,6 +89,65 @@ describe("public preview DTO", () => {
     expect(findProtectedMarkerLeaks(json)).toEqual([]);
     for (const key of FORBIDDEN_PUBLIC_KEYS) {
       expect(key in dto).toBe(false);
+    }
+  });
+
+  it("ships only allow-listed free keys even when the row carries canaries", () => {
+    const canary = {
+      ...sanitisedRow,
+      buyer_name: "CANARY BUYER NEVER FREE",
+      buyerName: "CANARY BUYER NEVER FREE",
+      buyer_organization_id: "canary-organisation-id",
+      source_key: "canary-source-key",
+      sourceKey: "canary-source-key",
+      source_url: "https://canary-source.example/notice",
+      reference: "CANARY-REF-987654",
+      ocid: "ocds-canary-123456",
+      notice_identifier: "CANARY-NOTICE-987654",
+      noticeIdentifier: "CANARY-NOTICE-987654",
+      submission_deadline: "2026-12-24T12:00:00.000Z",
+    };
+    const dto = toPublicDealPreview(canary);
+    const card = toDealCardData(dto);
+
+    expect(Object.keys(dto).sort()).toEqual([...PUBLIC_PREVIEW_DTO_KEYS].sort());
+    expect(Object.keys(card).sort()).toEqual(
+      [
+        "slug",
+        "previewTitle",
+        "previewSummary",
+        "buyerSector",
+        "mainCategory",
+        "broadRegion",
+        "valueBand",
+        "deadlineBand",
+        "smeSuitability",
+        "bidComplexity",
+        "status",
+        "dealType",
+        "relevanceTags",
+        "freshnessLabel",
+        "goodsServices",
+        "quantities",
+        "standards",
+        "keyDates",
+        "specificSector",
+        "currency",
+      ].sort(),
+    );
+
+    const blob = JSON.stringify({ dto, card });
+    for (const marker of [
+      "CANARY BUYER NEVER FREE",
+      "canary-organisation-id",
+      "canary-source-key",
+      "https://canary-source.example/notice",
+      "CANARY-REF-987654",
+      "ocds-canary-123456",
+      "CANARY-NOTICE-987654",
+      "2026-12-24T12:00:00.000Z",
+    ]) {
+      expect(blob).not.toContain(marker);
     }
   });
 

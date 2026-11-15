@@ -106,7 +106,7 @@ function chunk<T>(items: T[], size: number): T[][] {
   return batches;
 }
 
-function previewMatchesFilters(
+export function previewMatchesFilters(
   preview: PreviewRow,
   filters: SavedSearchFilters,
 ): boolean {

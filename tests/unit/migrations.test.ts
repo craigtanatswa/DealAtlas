@@ -48,7 +48,7 @@ describe("supabase migrations", () => {
   const files = listMigrations();
   const sql = files.map(readMigration).join("\n");
 
-  it("are numbered 0001-0026, 0028-0030, 0040-0043, 0045-0047, 0049, 0051-0065, leaving 0027, 0031-0039, 0044, 0048 and 0050 for open pull requests", () => {
+  it("are numbered 0001-0026, 0028-0030, 0040-0043, 0045-0047, 0049, 0051-0066, leaving 0027, 0031-0039, 0044, 0048 and 0050 for open pull requests", () => {
     expect(files).toEqual([
       "0001_extensions_and_types.sql",
       "0002_core_schema.sql",
@@ -102,6 +102,7 @@ describe("supabase migrations", () => {
       "0063_preview_slug_aliases.sql",
       "0064_subscription_refund_revoke.sql",
       "0065_utm_landing_counts.sql",
+      "0066_reclassify_private_buyers.sql",
     ]);
   });
 
@@ -702,6 +703,23 @@ describe("supabase migrations", () => {
     expect(table).not.toMatch(
       /\b(ip|user_agent|user_id|slug|deal|referrer|url|fingerprint|cookie)\b/i,
     );
+  });
+
+  it("0066 reclassifies TED private and NONPROFIT buyers and keeps previews in sync", () => {
+    const body = readMigration("0066_reclassify_private_buyers.sql");
+    expect(body).toContain("buyer-legal-type");
+    expect(body).toContain("'^(spec-rights-entity|org-sub(-[a-z]+)?)$'");
+    expect(body).toContain("where buyer_sector = 'NONPROFIT'::public.buyer_sector");
+    expect(body).toMatch(
+      /set buyer_type = 'PRIVATE'::public\.buyer_type\s+where buyer_sector = 'NONPROFIT'::public\.buyer_sector/,
+    );
+    expect(body).toContain("update public.deal_previews dp");
+    expect(body).toContain("set buyer_type = d.buyer_type");
+    expect(body).toContain("a private organisation");
+    expect(body).toContain("A public organisation");
+    expect(body).toContain("jsonb_array_elements");
+    expect(body).toContain("order by item.ordinality");
+    expect(body).not.toMatch(/\b(create|drop|alter|grant)\b/i);
   });
 
   it("adds a disabled TED Search API source and does not publish it", () => {

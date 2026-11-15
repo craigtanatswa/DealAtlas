@@ -74,9 +74,13 @@ export function buyerSectorFromClassifications(
 }
 
 export function buyerTypeFromClassifications(
-  schemes: Array<{ scheme?: string | null; id?: string | null }>,
+  schemes: Array<{ scheme?: string | null; id?: string | null; description?: string | null }>,
 ): BuyerType {
-  return buyerTypeFromUkCaType(schemes);
+  if (buyerTypeFromUkCaType(schemes) === "PRIVATE") {
+    return "PRIVATE";
+  }
+  const sector = buyerSectorFromClassifications(schemes);
+  return sector === "PRIVATE" || sector === "NONPROFIT" ? "PRIVATE" : "PUBLIC";
 }
 
 export function dealSectorFromClassifications(
