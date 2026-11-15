@@ -270,10 +270,10 @@ describe("server analytics events", () => {
       providerEventId: "evt_123",
       plan: "monthly",
     });
-    expect(event!.properties).toEqual({ plan: "monthly", amount_gbp: 39 });
+    expect(event!.properties).toEqual({ plan: "monthly", amount_gbp: 19 });
     expect(JSON.stringify(event)).not.toContain("evt_123");
     expect(planAmountGbp("founding")).toBe(250);
-    expect(planAmountGbp("annual")).toBeGreaterThan(planAmountGbp("founding"));
+    expect(planAmountGbp("annual")).toBe(180);
   });
 
   it("uses a deterministic UUID per webhook event", () => {

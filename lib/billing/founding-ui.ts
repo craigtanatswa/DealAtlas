@@ -77,29 +77,30 @@ function annualSaveVsMonthly(): string {
   return pct ? `Save ${pct}% vs monthly.` : "Save vs monthly.";
 }
 
-/** Pro annual price in short form, e.g. "£350/yr". */
+/** Pro annual price in short form, e.g. "£180/yr". */
 export function proAnnualShort(): string {
   return DISPLAY_PRICING.proAnnual.replace("/year", "/yr");
 }
 
-/** Pro annual price shown per month, e.g. "£29.17". Derived, never hardcoded. */
+/** Pro annual price shown per month, e.g. "£15". Derived, never hardcoded. */
 export function proAnnualMonthlyEquivalent(): string | null {
   const annual = parseGbpYear(DISPLAY_PRICING.proAnnual);
   if (!annual) return null;
-  return `£${(annual / 12).toFixed(2)}`;
+  const perMonth = annual / 12;
+  return Number.isInteger(perMonth) ? `£${perMonth}` : `£${perMonth.toFixed(2)}`;
 }
 
-/** "billed £350/yr, VAT included" */
+/** "billed £180/yr, VAT included" */
 export function proAnnualBilledLine(): string {
   return `billed ${proAnnualShort()}, VAT included`;
 }
 
-/** "£39/mo" */
+/** "£19/mo" */
 export function proMonthlyShort(): string {
   return DISPLAY_PRICING.proMonthly.replace("/month", "/mo");
 }
 
-/** "was £39 a month" */
+/** "was £19 a month" */
 export function proMonthlyWasLabel(): string {
   const monthly = parseGbpMonth(DISPLAY_PRICING.proMonthly);
   return monthly ? `was £${monthly} a month` : "was the standard monthly price";
