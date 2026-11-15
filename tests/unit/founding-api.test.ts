@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
+vi.mock("next/cache", () => ({ unstable_cache: <T extends (...args: never[]) => unknown>(fn: T) => fn }));
 
 const state = vi.hoisted(() => ({
   env: { DODO_FOUNDING_LIFETIME_PRODUCT_ID: "pdt_test_lifetime" } as Record<string, string | undefined>,

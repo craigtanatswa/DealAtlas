@@ -33,13 +33,13 @@ export const metadata: Metadata = marketingPageMetadata({
 });
 
 export default async function HomePage() {
-  const [user, founding, searchChips] = await Promise.all([
+  const [user, founding, searchChips, live] = await Promise.all([
     getAuthUser(),
     readFoundingPublicCount(),
     // Cached ~1h; on failure show no "Try" chips rather than possibly empty ones.
     getHomeSearchChips().catch(() => []),
+    createSupabaseServerClient().then((client) => searchLiveHomePreviews(client)),
   ]);
-  const live = await searchLiveHomePreviews(await createSupabaseServerClient());
   const foundingState = foundingUiState(founding);
 
   return (
