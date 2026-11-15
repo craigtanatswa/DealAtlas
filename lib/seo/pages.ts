@@ -1,4 +1,7 @@
-import { APP_DESCRIPTION, APP_NAME } from "@/lib/constants";
+import { APP_DESCRIPTION, APP_NAME, DISPLAY_PRICING } from "@/lib/constants";
+
+/** Buyer-facing /pricing meta copy, built from DISPLAY_PRICING so it never drifts from the cards. */
+export const PRICING_META_DESCRIPTION = `${APP_NAME} pricing: Free, Pro ${DISPLAY_PRICING.proMonthly} or ${DISPLAY_PRICING.proAnnual}, Lifetime ${DISPLAY_PRICING.proLifetime}. All prices include VAT.`;
 
 export const PUBLIC_INDEXABLE_PATHS = [
   "/",
@@ -45,8 +48,7 @@ export const PUBLIC_PAGE_COPY = {
   },
   pricing: {
     title: "Pricing",
-    description:
-      "Unlock buyer identity, source links, and documents after a verified DealAtlas Pro subscription. Display prices are commercial copy; checkout uses server-configured products.",
+    description: PRICING_META_DESCRIPTION,
     path: "/pricing",
   },
   howItWorks: {
