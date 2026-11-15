@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 
+import { AnalyticsAttributionFields } from "@/components/analytics/attribution-fields";
 import { signInWithGoogleAction } from "@/lib/auth/actions";
 import {
   GOOGLE_OAUTH_STORAGE_KEY,
@@ -52,7 +53,13 @@ function GoogleDivider() {
   );
 }
 
-export function GoogleSignInButton({ nextPath }: { nextPath: string }) {
+export function GoogleSignInButton({
+  nextPath,
+  analyticsEnabled = false,
+}: {
+  nextPath: string;
+  analyticsEnabled?: boolean;
+}) {
   const clientId = getPublicEnv().NEXT_PUBLIC_GOOGLE_CLIENT_ID;
   const [state, action, pending] = useActionState(
     signInWithGoogleAction,
@@ -112,6 +119,7 @@ export function GoogleSignInButton({ nextPath }: { nextPath: string }) {
   return (
     <form action={action} className="flex flex-col gap-3">
       <input type="hidden" name="next" value={nextPath} />
+      <AnalyticsAttributionFields enabled={analyticsEnabled} />
       <Button type="submit" variant="outline" className="w-full" disabled={pending}>
         <GoogleMark />
         {pending ? "Redirecting to Google…" : "Sign up / Sign in with Google"}

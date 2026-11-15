@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { AuthCard } from "@/components/auth/auth-card";
 import { LoginForm } from "@/components/auth/login-form";
+import { configuredPostHogKey } from "@/lib/analytics/config";
 import { messageFromAuthQueryError } from "@/lib/auth/messages";
 import { parseCheckoutPlan, resolveNextPath } from "@/lib/auth/redirect";
 
@@ -24,7 +25,12 @@ export default async function LoginPage({
       title="Sign in"
       description="Sign in with Google, or use the email and password for your DealAtlas workspace."
     >
-      <LoginForm nextPath={nextPath} plan={plan} initialError={initialError} />
+      <LoginForm
+        nextPath={nextPath}
+        plan={plan}
+        initialError={initialError}
+        analyticsEnabled={Boolean(configuredPostHogKey())}
+      />
     </AuthCard>
   );
 }

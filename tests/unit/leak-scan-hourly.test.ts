@@ -1011,7 +1011,8 @@ describe("hourly leak scan", () => {
   it("describes a read-only workflow that leaves the scheduled workflow alone", () => {
     const workflow = read(".github/workflows/leak-scan.yml");
     const scheduled = read(".github/workflows/scheduled-jobs.yml");
-    expect(workflow).toContain('cron: "23 * * * *"');
+    expect(workflow).toContain('cron: "0 6 * * 1"');
+    expect(workflow).not.toContain('cron: "23 * * * *"');
     expect(workflow).toContain("workflow_dispatch");
     expect(workflow).toContain("dealatlas-leak-scan");
     expect(workflow).toContain("cancel-in-progress: false");

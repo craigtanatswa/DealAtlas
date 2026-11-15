@@ -48,7 +48,7 @@ describe("supabase migrations", () => {
   const files = listMigrations();
   const sql = files.map(readMigration).join("\n");
 
-  it("are numbered 0001-0026, 0028-0030, 0040-0043, 0045-0047, 0049, 0051-0064, leaving 0027, 0031-0039, 0044, 0048 and 0050 for open pull requests", () => {
+  it("are numbered 0001-0026, 0028-0030, 0040-0043, 0045-0047, 0049, 0051-0065, leaving 0027, 0031-0039, 0044, 0048 and 0050 for open pull requests", () => {
     expect(files).toEqual([
       "0001_extensions_and_types.sql",
       "0002_core_schema.sql",
@@ -101,6 +101,7 @@ describe("supabase migrations", () => {
       "0062_founding_lifetime.sql",
       "0063_preview_slug_aliases.sql",
       "0064_subscription_refund_revoke.sql",
+      "0065_utm_landing_counts.sql",
     ]);
   });
 
@@ -649,6 +650,58 @@ describe("supabase migrations", () => {
     expect(body).toContain("grant execute on function public.revoke_subscription_access(text, text, text)");
     expect(body).toContain("to service_role;");
     expect(body).not.toMatch(/to (anon|authenticated)/);
+  });
+
+  it("0065 records cookieless aggregate UTM landings without identifiers", () => {
+    const body = readMigration("0065_utm_landing_counts.sql");
+    expect(body).toContain("create table if not exists private.utm_landing_counts");
+    expect(body).toContain("alter table private.utm_landing_counts enable row level security");
+    expect(body).toContain("alter table private.utm_landing_counts force row level security");
+    expect(body).toContain(
+      "revoke all on table private.utm_landing_counts from public, anon, authenticated",
+    );
+    expect(body).toContain("primary key (day, utm_source, utm_medium, utm_campaign, path)");
+    expect(body).toContain("count bigint not null default 0");
+    for (const pattern of [
+      "/",
+      "/deals",
+      "/pricing",
+      "/how-it-works",
+      "/categories",
+      "/guides",
+      "/contact",
+      "/cookies",
+      "/privacy",
+      "/terms",
+      "/checkout",
+      "/login",
+      "/signup",
+      "/alerts/confirmed",
+      "/alerts/unsubscribed",
+      "/app",
+    ]) {
+      expect(body, pattern).toContain(`'${pattern}'`);
+    }
+    expect(body).toContain("create or replace function public.record_utm_landing(");
+    expect(body).toContain("pg_advisory_xact_lock");
+    expect(body).toContain("security definer");
+    expect(body).toContain("set search_path = ''");
+    expect(body).toContain(
+      "revoke all on function public.record_utm_landing(text, text, text, text)\n  from public, anon, authenticated;",
+    );
+    expect(body).toContain(
+      "grant execute on function public.record_utm_landing(text, text, text, text)\n  to service_role;",
+    );
+    expect(body).not.toMatch(
+      /grant execute on function public\.record_utm_landing\([^)]*\)[\s\S]{0,40}to [^;]*\b(anon|authenticated)\b/,
+    );
+
+    const tableStart = body.indexOf("create table");
+    const tableEnd = body.indexOf(");", tableStart) + 2;
+    const table = body.slice(tableStart, tableEnd);
+    expect(table).not.toMatch(
+      /\b(ip|user_agent|user_id|slug|deal|referrer|url|fingerprint|cookie)\b/i,
+    );
   });
 
   it("adds a disabled TED Search API source and does not publish it", () => {
