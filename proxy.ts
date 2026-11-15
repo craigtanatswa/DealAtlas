@@ -1,6 +1,10 @@
-import type { NextRequest } from "next/server";
+import type { NextFetchEvent, NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
+import {
+  landingCountFromRequest,
+  recordLandingCount,
+} from "@/lib/analytics/landing-count";
 import { shouldHideDesignSystem } from "@/lib/env/production";
 import {
   clientKeyFromRequest,
@@ -10,7 +14,7 @@ import {
 } from "@/lib/security/rate-limit";
 import { updateSession } from "@/lib/supabase/update-session";
 
-export async function proxy(request: NextRequest) {
+export async function proxy(request: NextRequest, event: NextFetchEvent) {
   const pathname = request.nextUrl.pathname;
   if (
     (pathname === "/design-system" || pathname.startsWith("/design-system/")) &&
@@ -43,6 +47,11 @@ export async function proxy(request: NextRequest) {
         },
       });
     }
+  }
+
+  const landingCount = landingCountFromRequest(request);
+  if (landingCount) {
+    event.waitUntil(recordLandingCount(landingCount));
   }
 
   return updateSession(request);
