@@ -64,16 +64,16 @@ export async function generateMetadata({
 export default async function DealPreviewPage({ params, searchParams }: PageProps) {
   const { slug } = await params;
   const upgraded = (await searchParams).upgraded === "1";
-  const page = await loadPreviewPage(slug);
+  const [page, foundingCount] = await Promise.all([
+    loadPreviewPage(slug),
+    readFoundingPublicCount(),
+  ]);
 
   if (!page) {
     notFound();
   }
 
-  const [user, foundingCount] = await Promise.all([
-    getAuthUser(),
-    readFoundingPublicCount(),
-  ]);
+  const user = await getAuthUser();
   const entitlement = user ? await getCurrentEntitlement(user.id) : null;
   const mode = !user
     ? "anonymous"

@@ -79,6 +79,7 @@ type PreviewRow = {
   deadline_band: string | null;
   deal_type: string | null;
   buyer_sector: string | null;
+  buyer_type: string | null;
   status: string | null;
   updated_at: string;
 };
@@ -110,8 +111,17 @@ export function previewMatchesFilters(
   preview: PreviewRow,
   filters: SavedSearchFilters,
 ): boolean {
-  if (filters.buyerSector && preview.buyer_sector !== filters.buyerSector) {
-    return false;
+  if (filters.buyerSector) {
+    if (
+      filters.buyerSector === "PUBLIC" ||
+      filters.buyerSector === "PRIVATE"
+    ) {
+      if (preview.buyer_type !== filters.buyerSector) {
+        return false;
+      }
+    } else if (preview.buyer_sector !== filters.buyerSector) {
+      return false;
+    }
   }
   if (filters.category && preview.main_category !== filters.category) {
     return false;
@@ -385,7 +395,7 @@ export async function evaluateAlerts(options?: {
   const { data: recentPreviews, error: recentError } = await admin
     .from("deal_previews")
     .select(
-      "deal_id, slug, preview_title, preview_summary, main_category, broad_region, value_band, deadline_band, deal_type, buyer_sector, status, updated_at",
+      "deal_id, slug, preview_title, preview_summary, main_category, broad_region, value_band, deadline_band, deal_type, buyer_sector, buyer_type, status, updated_at",
     )
     .eq("is_published", true)
     .eq("leakage_risk", "LOW")
