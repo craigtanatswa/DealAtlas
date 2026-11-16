@@ -87,7 +87,10 @@ describe("guide CTA viewed analytics", () => {
   });
 
   it("wires the click and view listeners in the PostHog client", () => {
-    const source = fs.readFileSync(path.join(ROOT, "components/analytics/posthog-analytics.tsx"), "utf8");
+    const source = [
+      fs.readFileSync(path.join(ROOT, "components/analytics/posthog-analytics.tsx"), "utf8"),
+      fs.readFileSync(path.join(ROOT, "lib/analytics/guide-cta-views.ts"), "utf8"),
+    ].join("\n");
     expect(source).toContain('"guide_cta_clicked"');
     expect(source).toContain("guideCtaClickProperties");
     expect(source).toContain('"guide_cta_viewed"');

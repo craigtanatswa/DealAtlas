@@ -14,10 +14,10 @@ import { buildPostHogClientConfig } from "@/lib/analytics/config";
 import { registerAnalyticsOptOutHandler } from "@/lib/analytics/consent";
 import { isCheckoutAnalyticsPlan } from "@/lib/analytics/events";
 import {
-  GUIDE_CTA_LINK_SELECTOR,
   guideCtaClickProperties,
   guideCtaViewProperties,
 } from "@/lib/analytics/guide-cta";
+import { startGuideCtaViewTracking } from "@/lib/analytics/guide-cta-views";
 import { isAnalyticsUuid } from "@/lib/analytics/sanitize";
 
 type PostHogClient = (typeof import("posthog-js/dist/module.slim.no-external"))["default"];
@@ -171,32 +171,15 @@ export function PostHogAnalytics({ apiKey }: { apiKey: string }) {
     if (!consented || typeof IntersectionObserver === "undefined") {
       return;
     }
-    const seen = new WeakSet<Element>();
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (!entry.isIntersecting || entry.intersectionRatio < 0.5 || seen.has(entry.target)) {
-            continue;
-          }
-          seen.add(entry.target);
-          const properties = guideCtaViewProperties(
-            entry.target as Element,
-            window.location.pathname,
-          );
-          if (!properties) {
-            continue;
-          }
-          void loadClient(apiKey).then((posthog) => {
-            posthog?.capture("guide_cta_viewed", properties, { send_instantly: true });
-          });
-        }
-      },
-      { threshold: 0.5 },
-    );
-    for (const element of document.querySelectorAll(GUIDE_CTA_LINK_SELECTOR)) {
-      observer.observe(element);
-    }
-    return () => observer.disconnect();
+    return startGuideCtaViewTracking(pathname, (element) => {
+      const properties = guideCtaViewProperties(element, pathname);
+      if (!properties) {
+        return;
+      }
+      void loadClient(apiKey).then((posthog) => {
+        posthog?.capture("guide_cta_viewed", properties, { send_instantly: true });
+      });
+    });
   }, [apiKey, consented, pathname]);
 
   return null;
