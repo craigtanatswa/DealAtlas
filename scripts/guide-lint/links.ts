@@ -11,6 +11,9 @@ export const ALLOWED_HOSTS = new Set([
   "www.finance-ni.gov.uk",
   "www.gov.scot",
   "www.gov.wales",
+  "www.gca.gov.uk",
+  "www.pinsentmasons.com",
+  "www.muckle-llp.com",
 ]);
 
 /** Source platforms: allowed unless the path points at a notice or procurement. */
