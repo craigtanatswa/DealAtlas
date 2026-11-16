@@ -14,9 +14,9 @@ craigApprovedAt: 2026-11-10
 recheckBeforePublish: "Example closing months are based on live closing windows on 10 Nov 2026 and must be re-checked just before publishing."
 ---
 
-**Short answer:** construction tenders UK firms can bid for come from councils and other public bodies, utilities and private developers, and each buyer publishes in its own place. The quickest way to see them together is one search. [DealAtlas](/deals) lists {{LIVE_COUNT}} live opportunities, and our [open construction tenders UK](/categories/construction-infrastructure) hub is the starting point for open construction bids. Each preview shows what is being bought, the value band, the region where one is listed and the closing window.
+**Short answer:** construction tenders UK firms can bid for come from councils and other public bodies, utilities and private developers, and each buyer publishes in its own place, as with other [government tenders in the UK](/guides/how-to-find-public-sector-tenders). The quickest way to see them together is one search. [DealAtlas](/deals) lists {{LIVE_COUNT}} live opportunities, and our [open construction tenders UK](/categories/construction-infrastructure) hub is the starting point for open construction bids. Each preview shows what is being bought, the value band, the region where one is listed and the closing window.
 
-This guide splits construction contracts UK buyers advertise into four types of work and shows a live example of each. If you work mainly for local authorities, read our guide on [where councils publish their tenders](/guides/council-tenders-uk).
+This guide splits construction contracts UK buyers advertise into four types of work and shows a live example of each. If you work mainly for local authorities, read our guide on [council tenders UK](/guides/council-tenders-uk).
 
 [Create your free DealAtlas account](/signup) to start filtering construction work.
 
@@ -83,7 +83,7 @@ See the current [installation deals](/deals?category=Construction%20%26%20Infras
 
 Construction buyers publish in many places, and each one has its own layout and search. DealAtlas puts them into one list with the same filters for category, value band, closing date and region. You can check every type of work above in a few minutes instead of working through each source in turn. The free preview shows what is being bought, the value band, the closing window and the region where one is listed. Browse the [construction and infrastructure category page](/categories/construction-infrastructure) for an overview of the sector.
 
-When you've picked a tender to bid for, read our guide to [writing a council bid that scores well](/guides/how-to-win-council-contracts).
+When you've picked a tender to bid for, read our guide to [how to bid for council contracts](/guides/how-to-win-council-contracts).
 
 ## FAQ
 

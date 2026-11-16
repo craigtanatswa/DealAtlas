@@ -1,12 +1,12 @@
 ---
 slug: how-to-win-council-contracts
 published: true
-title: "How to win council contracts: a UK guide for SMEs"
+title: "How to bid for and win council contracts: UK SME guide"
 description: "How to win council contracts under the Procurement Act 2023: the 2026 thresholds, where tenders appear, a pre-bid checklist and how bids are scored."
 h1: "How to win council contracts: a practical guide for SMEs"
 breadcrumb: "How to win council contracts"
 datePublished: 2026-10-19
-updated: 2026-11-11
+updated: 2026-11-16
 primaryKeyword: "how to win council contracts"
 secondaryKeywords: ["council tenders for small businesses", "how to bid for council contracts", "local authority tenders UK", "selling to local government UK", "council procurement"]
 relatedGuides: ["how-to-find-public-sector-tenders", "council-tenders-uk", "uk-tender-search"]
@@ -14,7 +14,7 @@ securityClearedAt: 2026-10-19
 craigApprovedAt: 2026-10-19
 ---
 
-Councils buy works, services and goods all year, often in contract sizes a small firm can deliver. Knowing how to win council contracts comes down to three habits. Find the right opportunities early, meet the entry requirements without last-minute scrambling, and write a bid that answers the published scoring criteria. This guide covers how councils in England, Wales and Northern Ireland buy under the [Procurement Act 2023](https://www.legislation.gov.uk/ukpga/2023/54/contents), which has applied to new procurements since 24 February 2025, and what that means for your next bid.
+Councils buy works, services and goods all year, often in contract sizes a small firm can deliver if you know how to bid for council contracts. Knowing how to win council contracts comes down to three habits. Find the right opportunities early, meet the entry requirements without last-minute scrambling, and write a bid that answers the published scoring criteria. This guide covers how councils in England, Wales and Northern Ireland buy under the [Procurement Act 2023](https://www.legislation.gov.uk/ukpga/2023/54/contents), which has applied to new procurements since 24 February 2025, and what that means for your next bid.
 
 ## The short answer
 
@@ -119,7 +119,7 @@ What the rules tell you about scoring:
 - If your price looks abnormally low, the council must give you a chance to show you can deliver at that price before it rejects the tender.
 - A council may disregard a tender that breaks a procedural rule in the documents, such as a late submission or an answer over the word limit.
 
-## How to win council contracts once the tender is live
+## How to bid for council contracts, step by step
 
 Knowing how to bid for council contracts well means working to the evaluator's marking scheme.
 
