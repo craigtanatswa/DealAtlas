@@ -16,6 +16,7 @@ describe("analytics rejection", () => {
 
   it("opts PostHog out, denies GA consent and clears _ga/_ga_* cookies", () => {
     const optOut = vi.fn();
+    const reset = vi.fn();
     const gtag = vi.fn();
     const cookieWrites: string[] = [];
     const documentStub = {
@@ -26,7 +27,7 @@ describe("analytics rejection", () => {
         cookieWrites.push(value);
       },
     };
-    vi.stubGlobal("window", { posthog: { opt_out_capturing: optOut }, gtag });
+    vi.stubGlobal("window", { posthog: { opt_out_capturing: optOut, reset }, gtag });
     vi.stubGlobal("document", documentStub);
 
     const registeredOptOut = vi.fn();
@@ -35,6 +36,7 @@ describe("analytics rejection", () => {
     setAnalyticsConsent(false);
 
     expect(optOut).toHaveBeenCalledOnce();
+    expect(reset).toHaveBeenCalledOnce();
     expect(gtag).toHaveBeenCalledWith("consent", "update", {
       analytics_storage: "denied",
     });

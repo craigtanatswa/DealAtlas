@@ -57,9 +57,11 @@ export default function CookiesPage() {
             We use PostHog, hosted in the EU, to count page views, guide CTA
             views and clicks, sign-ups and upgrades so we can see which pages
             and guides help people. It loads only when our PostHog project key
-            is configured and you have accepted analytics. PostHog itself sets
-            no cookies and writes nothing to local or session storage: each
-            visit is held in memory and forgotten when you close the tab.
+            is configured and you have accepted analytics. PostHog sets no
+            cookies. Once you accept analytics it keeps a random visitor ID and
+            the current session in local storage (under a key starting{" "}
+            <code>ph_</code>) so that a reload or a new tab continues the same
+            visit; choosing Reject analytics deletes it.
           </p>
           <p>
             PostHog never receives opportunity details. Page addresses are

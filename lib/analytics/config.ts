@@ -36,9 +36,11 @@ export function buildPostHogClientConfig(origin: string): Partial<PostHogConfig>
   return {
     api_host: POSTHOG_INGEST_PATH,
     ui_host: POSTHOG_EU_UI_HOST,
-    // No cookies or localStorage at all: identity lives in memory for the tab.
-    persistence: "memory",
-    disable_persistence: true,
+    // PostHog keeps its anonymous id and session in first-party localStorage
+    // (key `ph_<project key>_posthog`), only after analytics consent; consent
+    // withdrawal removes it. No cookies.
+    persistence: "localStorage",
+    cross_subdomain_cookie: false,
     person_profiles: "identified_only",
     // $pageview is captured manually on every App Router navigation.
     capture_pageview: false,

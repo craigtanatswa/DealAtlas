@@ -18,6 +18,7 @@ export type AnalyticsConsent = "granted" | "denied" | "unknown";
 type AnalyticsPostHogGlobal = {
   opt_out_capturing?: () => void;
   opt_in_capturing?: () => void;
+  reset?: () => void;
 };
 
 type AnalyticsWindow = Window & {
@@ -58,13 +59,51 @@ export function clearGoogleAnalyticsCookies(): void {
 }
 
 /**
+ * Removes PostHog's first-party web storage: the anonymous distinct id and
+ * session (`ph_*`, localStorage), its per-tab window id and session props
+ * (`ph_*`, sessionStorage) and its opt-in/out flag (`__ph_opt_in_out_*`).
+ * Never throws.
+ */
+export function clearPostHogStorage(): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+  for (const area of ["localStorage", "sessionStorage"] as const) {
+    try {
+      const storage = window[area];
+      if (!storage) {
+        continue;
+      }
+      const keys: string[] = [];
+      for (let index = 0; index < storage.length; index += 1) {
+        const key = storage.key(index);
+        if (key && (key.startsWith("ph_") || key.startsWith("__ph_opt_in_out_"))) {
+          keys.push(key);
+        }
+      }
+      for (const key of keys) {
+        storage.removeItem(key);
+      }
+    } catch {
+      // Blocked storage APIs keep nothing to clear.
+    }
+  }
+}
+
+/**
  * Withdraws every browser-side tracker when analytics is rejected: PostHog is
- * opted out, GA consent is denied and any existing `_ga` cookies are cleared.
+ * opted out and reset, GA consent is denied and any existing `_ga` cookies are
+ * cleared.
  */
 export function optOutAnalyticsTracking(): void {
   const target = analyticsWindow();
   try {
     target?.posthog?.opt_out_capturing?.();
+  } catch {
+    // A partially initialised SDK must not block the rest of the opt-out.
+  }
+  try {
+    target?.posthog?.reset?.();
   } catch {
     // A partially initialised SDK must not block the rest of the opt-out.
   }
@@ -135,6 +174,7 @@ export function setAnalyticsConsent(granted: boolean): void {
   } else {
     removeLocalValue(ANALYTICS_FIRST_TOUCH_STORAGE_KEY);
     optOutAnalyticsTracking();
+    clearPostHogStorage();
   }
   notifyConsent();
 }
@@ -151,4 +191,5 @@ export function resetAnalyticsConsentForTests(): void {
   removeLocalValue(ANALYTICS_CONSENT_STORAGE_KEY);
   removeCookie(ANALYTICS_CONSENT_COOKIE);
   removeLocalValue(ANALYTICS_FIRST_TOUCH_STORAGE_KEY);
+  clearPostHogStorage();
 }
