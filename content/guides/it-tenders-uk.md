@@ -148,7 +148,7 @@ Most IT tenders close within 30 days. Start with whatever closes soonest that yo
 
 Filter to the area you serve, then add nationwide opportunities and ones with no region listed. Remote delivery is common in IT, so a wider net often pays off.
 
-For bid advice, read [how to win council contracts](/guides/how-to-win-council-contracts). For the wider market, see [how to find public sector tenders](/guides/how-to-find-public-sector-tenders), [council tenders UK](/guides/council-tenders-uk) and [UK tender search](/guides/uk-tender-search). If you also sell to finance teams, see [financial services tenders UK](/guides/financial-services-tenders-uk).
+For bid advice, read [how to win council contracts](/guides/how-to-win-council-contracts). For the wider market, see [government tenders in the UK](/guides/how-to-find-public-sector-tenders), [council tenders UK](/guides/council-tenders-uk) and [UK tender search](/guides/uk-tender-search). If you also sell to finance teams, see [financial services tenders UK](/guides/financial-services-tenders-uk).
 
 ## Free preview or Pro
 

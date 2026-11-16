@@ -117,7 +117,7 @@ Most of this work closes within the month. Start with whatever closes soonest th
 
 Filter to the area you serve, then add nationwide opportunities and ones with no region listed.
 
-For general bid advice, read [how to win council contracts](/guides/how-to-win-council-contracts). For the wider market, see [how to find public sector tenders](/guides/how-to-find-public-sector-tenders), [council tenders UK](/guides/council-tenders-uk) and [UK tender search](/guides/uk-tender-search).
+For general bid advice, read [how to win council contracts](/guides/how-to-win-council-contracts). For the wider market, see [government tenders in the UK](/guides/how-to-find-public-sector-tenders), [council tenders UK](/guides/council-tenders-uk) and [UK tender search](/guides/uk-tender-search).
 
 ## Free preview or Pro
 

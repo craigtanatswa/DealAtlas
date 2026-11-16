@@ -124,7 +124,7 @@ describe("guide content", () => {
     const guide = getPublishedGuide(SLUG)!;
     expect(guide.published).toBe(true);
     expect(guide.path).toBe(`/guides/${SLUG}`);
-    expect(guide.title).toBe("How to win council contracts: a UK guide for SMEs");
+    expect(guide.title).toBe("How to bid for and win council contracts: UK SME guide");
     expect(guide.h1).toBe("How to win council contracts: a practical guide for SMEs");
     expect(guide.updated).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     const second = getPublishedGuide(SLUG_2)!;
@@ -635,8 +635,8 @@ describe("guide sitemap and robots", () => {
     const entries = guideSitemapEntries(ORIGIN, listPublishedGuides());
     expect(entries.map((entry) => [entry.url, entry.lastModified])).toEqual(
       expect.arrayContaining([
-        [`${ORIGIN}/guides`, "2026-11-11"],
-        [`${ORIGIN}/guides/${SLUG}`, "2026-11-11"],
+        [`${ORIGIN}/guides`, "2026-11-16"],
+        [`${ORIGIN}/guides/${SLUG}`, "2026-11-16"],
         [`${ORIGIN}/guides/${SLUG_2}`, "2026-11-11"],
         [`${ORIGIN}/guides/${SLUG_3}`, "2026-11-11"],
         [`${ORIGIN}/guides/${SLUG_4}`, "2026-11-11"],

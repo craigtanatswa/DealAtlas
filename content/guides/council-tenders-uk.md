@@ -15,7 +15,7 @@ craigApprovedAt: 2026-10-29
 
 **Short answer:** council tenders UK suppliers can bid for are spread across many sources, so the quickest way to find them is one searchable hub. [DealAtlas](/deals) lists {{LIVE_COUNT}} live UK opportunities, and roughly 4 in 10 of them come from councils and other local authorities. Councils buy construction, healthcare and social care, and professional services more than anything else. Most of their deals close within a month, so you need to spot them early.
 
-This guide covers where council work appears, what councils buy, and how to filter it. If you already have a tender in front of you, read our guide on [preparing a bid that scores well with a council](/guides/how-to-win-council-contracts).
+This guide covers where council work appears, what councils buy, and how to filter it. If you already have a tender in front of you, read our guide on [how to bid for council contracts](/guides/how-to-win-council-contracts).
 
 **Find your next contract faster.** [Create your free DealAtlas account](/signup) to filter live UK opportunities by category, value band, closing date and region. When a deal is worth pursuing, [DealAtlas Pro](/pricing?utm_source=dealatlas&utm_medium=organic&utm_campaign=lifetime&utm_content=council-tenders-uk) unlocks the buyer, documents, saved searches and alerts. {{LIFETIME_PLAN_LINE}}
 
@@ -26,6 +26,10 @@ A council tender is a contract a local authority puts out to suppliers. Local au
 Councils must publish a notice for contracts of £30,000 or more. Above £207,720 for goods and services, or £5,193,000 for works, the full rules of the Act apply.
 
 You'll need to register on the government's central digital platform before you bid, so find the right opportunity on [DealAtlas](/deals) first.
+
+## Local authority contracts and local government tenders
+
+Local authority contracts and local government tenders are the contracts that county, district, unitary and borough councils put out to suppliers. Other local authorities, including city councils, London boroughs and combined authorities, publish the same kind of work. [DealAtlas](/deals) lets you filter them by category, value band, closing date and region.
 
 ## Where to find council tenders UK suppliers can bid for
 
