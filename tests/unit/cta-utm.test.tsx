@@ -151,6 +151,8 @@ const GUIDE_SLUGS = [
   "uk-tender-search",
   "financial-services-tenders-uk",
   "it-tenders-uk",
+  "bid-no-bid-decision",
+  "social-value-in-tenders",
 ] as const;
 
 describe("deal page CTA UTMs", () => {
