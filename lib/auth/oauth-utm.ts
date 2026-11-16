@@ -1,7 +1,10 @@
-import { ATTRIBUTION_FIELDS } from "@/lib/analytics/attribution";
+import { ANALYTICS_ANON_ID_FIELD, ATTRIBUTION_FIELDS } from "@/lib/analytics/attribution";
+import { isAnalyticsUuid } from "@/lib/analytics/sanitize";
 import { sanitizeUtmValue } from "@/lib/analytics/utm-value";
 
 const OAUTH_UTM_KEYS = ["utm_source", "utm_medium", "utm_campaign"] as const;
+const OAUTH_ANON_ID_KEY = "anon_id";
+const OAUTH_CONSENT_KEY = "consent";
 const MAX_OAUTH_UTM_LENGTH = 400;
 
 type OAuthUtmKey = (typeof OAUTH_UTM_KEYS)[number];
@@ -20,6 +23,13 @@ export function encodeOAuthUtm(read: (name: string) => unknown): string | null {
       params.set(key, value);
     }
   }
+  const anonId = read(ANALYTICS_ANON_ID_FIELD);
+  if (isAnalyticsUuid(anonId)) {
+    params.set(OAUTH_ANON_ID_KEY, anonId);
+  }
+  if (read(ATTRIBUTION_FIELDS.consent) === "granted") {
+    params.set(OAUTH_CONSENT_KEY, "granted");
+  }
   const encoded = params.toString();
   return encoded === "" ? null : encoded;
 }
@@ -37,6 +47,13 @@ export function decodeOAuthUtm(
     if (sanitized) {
       decoded.set(UTM_FIELD_BY_KEY[key], sanitized);
     }
+  }
+  const anonId = params.get(OAUTH_ANON_ID_KEY);
+  if (isAnalyticsUuid(anonId)) {
+    decoded.set(ANALYTICS_ANON_ID_FIELD, anonId);
+  }
+  if (params.get(OAUTH_CONSENT_KEY) === "granted") {
+    decoded.set(ATTRIBUTION_FIELDS.consent, "granted");
   }
   return (name: string) => decoded.get(name);
 }

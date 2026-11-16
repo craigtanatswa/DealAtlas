@@ -116,6 +116,21 @@ export function isAnalyticsConsentGranted(value: unknown): boolean {
   return value === "granted";
 }
 
+/**
+ * Server-side consent decision for sign-up analytics. An explicit "denied"
+ * cookie wins over the form. Otherwise consent needs an explicit "granted"
+ * from either the cookie or the form; missing or unknown values send nothing.
+ */
+export function serverAnalyticsConsentAllows(
+  cookieValue: unknown,
+  formValue: unknown,
+): boolean {
+  if (cookieValue === "denied") {
+    return false;
+  }
+  return cookieValue === "granted" || formValue === "granted";
+}
+
 function notifyConsent(): void {
   try {
     if (typeof window !== "undefined") {

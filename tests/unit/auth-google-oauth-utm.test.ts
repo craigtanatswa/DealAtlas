@@ -62,13 +62,15 @@ vi.mock("@/lib/supabase/server", () => ({
 }));
 
 import { signInWithGoogleAction } from "@/lib/auth/actions";
-import { ATTRIBUTION_FIELDS } from "@/lib/analytics/attribution";
+import { ANALYTICS_ANON_ID_FIELD, ATTRIBUTION_FIELDS } from "@/lib/analytics/attribution";
 import { ANALYTICS_CONSENT_COOKIE } from "@/lib/analytics/storage-keys";
 import {
   OAUTH_NEXT_COOKIE,
   OAUTH_NEXT_COOKIE_MAX_AGE_SECONDS,
   OAUTH_UTM_COOKIE,
 } from "@/lib/auth/cookies";
+
+const ANON_ID = "019a0c1e-1111-7111-8111-111111111111";
 
 function form(fields: Record<string, string>): FormData {
   const formData = new FormData();
@@ -123,7 +125,29 @@ describe("signInWithGoogleAction UTM cookie", () => {
       [ATTRIBUTION_FIELDS.utm_source]: "newsletter",
     });
 
-    expect(utmSetCall()?.value).toBe("utm_source=newsletter");
+    expect(utmSetCall()?.value).toBe("utm_source=newsletter&consent=granted");
+  });
+
+  it("ignores a granted form when the consent cookie is denied", async () => {
+    mocks.values.set(ANALYTICS_CONSENT_COOKIE, "denied");
+
+    await startGoogleSignIn({
+      [ATTRIBUTION_FIELDS.consent]: "granted",
+      [ATTRIBUTION_FIELDS.utm_source]: "newsletter",
+      [ANALYTICS_ANON_ID_FIELD]: ANON_ID,
+    });
+
+    expect(utmSetCall()).toBeUndefined();
+    expect(mocks.deletes).toContain(OAUTH_UTM_COOKIE);
+  });
+
+  it("carries the anonymous id in the existing UTM cookie", async () => {
+    mocks.values.set(ANALYTICS_CONSENT_COOKIE, "granted");
+
+    await startGoogleSignIn({ [ANALYTICS_ANON_ID_FIELD]: ANON_ID });
+
+    const params = new URLSearchParams(utmSetCall()?.value);
+    expect(params.get("anon_id")).toBe(ANON_ID);
   });
 
   it("does not set or keep the UTM cookie without consent", async () => {

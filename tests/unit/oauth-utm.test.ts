@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { ATTRIBUTION_FIELDS } from "@/lib/analytics/attribution";
+import { ANALYTICS_ANON_ID_FIELD, ATTRIBUTION_FIELDS } from "@/lib/analytics/attribution";
 import { sanitizeUtmValue } from "@/lib/analytics/utm-value";
 import { decodeOAuthUtm, encodeOAuthUtm } from "@/lib/auth/oauth-utm";
+
+const ANON_ID = "019a0c1e-1111-7111-8111-111111111111";
 
 const UTM_FIELDS = [
   ATTRIBUTION_FIELDS.utm_source,
@@ -124,5 +126,41 @@ describe("OAuth UTM cookie encoding", () => {
         expect(read(name)).toBeUndefined();
       }
     }
+  });
+
+  it("carries an allowlisted anonymous id and explicit form consent", () => {
+    const encoded = encodeOAuthUtm(
+      reader({
+        [ANALYTICS_ANON_ID_FIELD]: ANON_ID,
+        [ATTRIBUTION_FIELDS.consent]: "granted",
+        [ATTRIBUTION_FIELDS.utm_source]: "newsletter",
+      }),
+    );
+    expect(encoded).toBe(`utm_source=newsletter&anon_id=${ANON_ID}&consent=granted`);
+
+    const read = decodeOAuthUtm(encoded);
+    expect(read(ANALYTICS_ANON_ID_FIELD)).toBe(ANON_ID);
+    expect(read(ATTRIBUTION_FIELDS.consent)).toBe("granted");
+  });
+
+  it("drops an invalid anonymous id and never invents consent", () => {
+    const encoded = encodeOAuthUtm(
+      reader({
+        [ANALYTICS_ANON_ID_FIELD]: "buyer@canary.example",
+        [ATTRIBUTION_FIELDS.consent]: "unknown",
+      }),
+    );
+    expect(encoded).toBeNull();
+  });
+
+  it("validates a tampered anonymous id and consent on decode", () => {
+    const read = decodeOAuthUtm(
+      new URLSearchParams({
+        anon_id: "buyer@canary.example",
+        consent: "yes",
+      }).toString(),
+    );
+    expect(read(ANALYTICS_ANON_ID_FIELD)).toBeUndefined();
+    expect(read(ATTRIBUTION_FIELDS.consent)).toBeUndefined();
   });
 });
