@@ -11,7 +11,7 @@ export const CLIENT_EVENTS = [
 ] as const;
 export type ClientEventName = (typeof CLIENT_EVENTS)[number];
 
-export const SERVER_EVENTS = ["user_signed_up", "pro_subscribed"] as const;
+export const SERVER_EVENTS = ["user_signed_up", "pro_subscribed", "$identify"] as const;
 export type ServerEventName = (typeof SERVER_EVENTS)[number];
 
 export const CHECKOUT_ANALYTICS_PLANS = ["monthly", "annual", "founding"] as const;

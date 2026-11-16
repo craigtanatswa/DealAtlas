@@ -24,10 +24,10 @@ import {
 } from "@/lib/auth/schemas";
 import { getProfileForUser } from "@/lib/auth/profile";
 import { displayNameFromEmail } from "@/lib/auth/profile-insert";
-import { ANALYTICS_CONSENT_FIELD } from "@/lib/analytics/attribution";
-import { isAnalyticsConsentGranted } from "@/lib/analytics/consent";
+import { ANALYTICS_CONSENT_FIELD, ANALYTICS_ANON_ID_FIELD } from "@/lib/analytics/attribution";
+import { serverAnalyticsConsentAllows } from "@/lib/analytics/consent";
 import { captureServerEvent } from "@/lib/analytics/server";
-import { buildUserSignedUpEvent } from "@/lib/analytics/server-events";
+import { buildIdentifyEvent, buildUserSignedUpEvent } from "@/lib/analytics/server-events";
 import { ANALYTICS_CONSENT_COOKIE } from "@/lib/analytics/storage-keys";
 import { getAuthUser } from "@/lib/auth/session";
 import { mapAuthError, type ActionState } from "@/lib/auth/messages";
@@ -96,10 +96,9 @@ export async function signInWithGoogleAction(
 
   const analyticsConsent = cookieStore.get(ANALYTICS_CONSENT_COOKIE)?.value;
   const formConsent = formData.get(ANALYTICS_CONSENT_FIELD);
-  const oauthUtm =
-    isAnalyticsConsentGranted(analyticsConsent) || isAnalyticsConsentGranted(formConsent)
-      ? encodeOAuthUtm((name) => formData.get(name))
-      : null;
+  const oauthUtm = serverAnalyticsConsentAllows(analyticsConsent, formConsent)
+    ? encodeOAuthUtm((name) => formData.get(name))
+    : null;
   if (oauthUtm) {
     cookieStore.set(OAUTH_UTM_COOKIE, oauthUtm, oauthCookieOptions);
   } else {
@@ -189,14 +188,22 @@ export async function signUpAction(
   if (
     data.user &&
     (data.user.identities?.length ?? 0) > 0 &&
-    (isAnalyticsConsentGranted(analyticsConsent) || isAnalyticsConsentGranted(formConsent))
+    serverAnalyticsConsentAllows(analyticsConsent, formConsent)
   ) {
+    const read = (name: string) => formData.get(name);
     await captureServerEvent(
       buildUserSignedUpEvent({
         userId: data.user.id,
-        read: (name) => formData.get(name),
+        read,
       }),
     );
+    const identify = buildIdentifyEvent({
+      userId: data.user.id,
+      anonId: read(ANALYTICS_ANON_ID_FIELD),
+    });
+    if (identify) {
+      await captureServerEvent(identify);
+    }
   }
 
   if (data.user && data.session) {

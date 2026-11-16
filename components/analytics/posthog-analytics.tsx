@@ -18,10 +18,13 @@ import {
   guideCtaClickProperties,
   guideCtaViewProperties,
 } from "@/lib/analytics/guide-cta";
+import { isAnalyticsUuid } from "@/lib/analytics/sanitize";
 
 type PostHogClient = (typeof import("posthog-js/dist/module.slim.no-external"))["default"];
 
 let clientPromise: Promise<PostHogClient | null> | null = null;
+let loadedClient: PostHogClient | null = null;
+const clientListeners = new Set<() => void>();
 
 function loadClient(apiKey: string): Promise<PostHogClient | null> {
   if (!clientPromise) {
@@ -36,11 +39,36 @@ function loadClient(apiKey: string): Promise<PostHogClient | null> {
     clientPromise = import("posthog-js/dist/module.slim.no-external")
       .then(({ default: posthog }) => {
         posthog.init(apiKey, buildPostHogClientConfig(window.location.origin));
+        loadedClient = posthog;
+        for (const listener of [...clientListeners]) {
+          listener();
+        }
         return posthog;
       })
       .catch(() => null);
   }
   return clientPromise;
+}
+
+/**
+ * The loaded SDK's anonymous distinct id. Never initialises the SDK and never
+ * identifies the user; returns null until PostHog is actually loaded.
+ */
+export function getAnalyticsDistinctId(): string | null {
+  try {
+    const id = loadedClient?.get_distinct_id();
+    return isAnalyticsUuid(id) ? id : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Notifies when the SDK has finished loading, so forms can pick up the id. */
+export function subscribeToAnalyticsClient(listener: () => void): () => void {
+  clientListeners.add(listener);
+  return () => {
+    clientListeners.delete(listener);
+  };
 }
 
 const CHECKOUT_ACTION_PATH = "/api/billing/checkout";

@@ -16,9 +16,10 @@ import {
   SIGNUP_NEXT_COOKIE,
 } from "@/lib/auth/cookies";
 import { decodeOAuthUtm } from "@/lib/auth/oauth-utm";
-import { isAnalyticsConsentGranted } from "@/lib/analytics/consent";
+import { ANALYTICS_ANON_ID_FIELD, ATTRIBUTION_FIELDS } from "@/lib/analytics/attribution";
+import { serverAnalyticsConsentAllows } from "@/lib/analytics/consent";
 import { captureServerEvent } from "@/lib/analytics/server";
-import { buildUserSignedUpEvent } from "@/lib/analytics/server-events";
+import { buildIdentifyEvent, buildUserSignedUpEvent } from "@/lib/analytics/server-events";
 import { ANALYTICS_CONSENT_COOKIE } from "@/lib/analytics/storage-keys";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -129,17 +130,28 @@ export async function GET(request: NextRequest) {
       return errorRedirect(request, "auth_callback_failed");
     }
     verifiedUser = data.user;
-    if (
-      data.user &&
-      isNewGoogleAccount(data.user) &&
-      isAnalyticsConsentGranted(cookieStore.get(ANALYTICS_CONSENT_COOKIE)?.value)
-    ) {
-      await captureServerEvent(
-        buildUserSignedUpEvent({
+    if (data.user && isNewGoogleAccount(data.user)) {
+      const read = decodeOAuthUtm(pendingOAuthUtm?.value);
+      if (
+        serverAnalyticsConsentAllows(
+          cookieStore.get(ANALYTICS_CONSENT_COOKIE)?.value,
+          read(ATTRIBUTION_FIELDS.consent),
+        )
+      ) {
+        await captureServerEvent(
+          buildUserSignedUpEvent({
+            userId: data.user.id,
+            read,
+          }),
+        );
+        const identify = buildIdentifyEvent({
           userId: data.user.id,
-          read: decodeOAuthUtm(pendingOAuthUtm?.value),
-        }),
-      );
+          anonId: read(ANALYTICS_ANON_ID_FIELD),
+        });
+        if (identify) {
+          await captureServerEvent(identify);
+        }
+      }
     }
   } else if (tokenHash && type) {
     const { data, error } = await supabase.auth.verifyOtp({

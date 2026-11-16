@@ -32,6 +32,12 @@ export const ATTRIBUTION_FIELDS = {
 
 export const ANALYTICS_CONSENT_FIELD = ATTRIBUTION_FIELDS.consent;
 
+/**
+ * Hidden sign-up field carrying PostHog's anonymous distinct id. It is only
+ * rendered with consent and is joined to the Supabase user UUID server-side.
+ */
+export const ANALYTICS_ANON_ID_FIELD = "analytics_anon_id";
+
 type SignupUtmKey = (typeof SIGNUP_UTM_KEYS)[number];
 
 type StoredFirstTouch = {

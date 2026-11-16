@@ -211,6 +211,30 @@ export function buildUserSignedUpEvent(input: {
   };
 }
 
+/**
+ * Joins the browser's anonymous PostHog id to the Supabase user UUID for a new
+ * account. Only the anonymous id is carried; nothing else from the form or
+ * auth provider may be added here.
+ */
+export function buildIdentifyEvent(input: {
+  userId: string;
+  anonId: unknown;
+}): ServerEvent | null {
+  if (
+    !isAnalyticsUuid(input.userId) ||
+    !isAnalyticsUuid(input.anonId) ||
+    input.anonId === input.userId
+  ) {
+    return null;
+  }
+  return {
+    event: "$identify",
+    distinctId: input.userId,
+    uuid: deterministicEventUuid(`identify:${input.userId}`),
+    properties: { $anon_distinct_id: input.anonId },
+  };
+}
+
 export function buildProSubscribedEvent(input: {
   userId: string;
   providerEventId: string;
