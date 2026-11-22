@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect, useRef } from "react";
 import Link from "next/link";
 
 import { FormStatus } from "@/components/auth/form-status";
@@ -17,6 +17,7 @@ export function SaveDealButton({
   limit,
   signedIn,
   loginHref,
+  onChanged,
 }: {
   dealId: string | null;
   saved: boolean;
@@ -24,10 +25,22 @@ export function SaveDealButton({
   limit: number | null;
   signedIn: boolean;
   loginHref?: string;
+  onChanged?: () => void;
 }) {
   const action = saved ? unsaveDealAction : saveDealAction;
   const [state, formAction, pending] = useActionState(action, INITIAL_ACTION_STATE);
+  const handledState = useRef(INITIAL_ACTION_STATE);
   const atLimit = !saved && limit !== null && used >= limit;
+
+  useEffect(() => {
+    if (state === INITIAL_ACTION_STATE || state === handledState.current) {
+      return;
+    }
+    handledState.current = state;
+    if (state.success !== null) {
+      onChanged?.();
+    }
+  }, [state, onChanged]);
 
   if (!signedIn || !dealId) {
     return (

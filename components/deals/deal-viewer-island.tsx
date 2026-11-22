@@ -93,6 +93,7 @@ export function DealViewerIsland({
       limit={viewer.limit}
       signedIn
       loginHref={loginHref}
+      onChanged={refreshViewer}
     />
   ) : (
     <SaveDealButton
