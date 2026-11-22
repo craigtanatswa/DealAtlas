@@ -73,18 +73,32 @@ describe("public discovery data boundary", () => {
       path.join(ROOT, "app/(marketing)/deals/[slug]/page.tsx"),
       "utf8",
     );
-    expect(slugPage).toContain("userId: user?.id ?? null");
-    expect(slugPage).toContain("const dealId = user ? page.dealId : null;");
+    expect(slugPage).not.toContain("getAuthUser");
+    expect(slugPage).not.toContain("getPublicDealPreviewPageBySlug");
+    expect(slugPage).not.toContain("resolvePublishedPreviewDealId");
+    const viewerRoute = fs.readFileSync(
+      path.join(ROOT, "app/api/deals/[id]/viewer/route.ts"),
+      "utf8",
+    );
+    expect(viewerRoute).toContain("getAuthUser()");
+    expect(viewerRoute).toContain('"Sign in required."');
+    expect(viewerRoute).toContain("{ userId: user.id }");
+    expect(viewerRoute).toMatch(/if \(!page \|\| !page\.dealId\)/);
+    const publicCached = fs.readFileSync(
+      path.join(ROOT, "lib/search/public-cached.ts"),
+      "utf8",
+    );
+    expect(publicCached).toContain(
+      "getPublicDealPreviewBySlug(createSupabaseAnonymousClient(), slug)",
+    );
+    expect(publicCached).not.toContain("getPublicDealPreviewPageBySlug");
   });
 
   it("does not import paid/canonical helpers from public/free discovery", () => {
     for (const { file, source } of sources) {
-      const relative = file.replaceAll("\\", "/");
       expect(source, file).not.toMatch(/from ["']@\/lib\/deals\/protected["']/);
       expect(source, file).not.toMatch(/from ["']@\/lib\/deals\/paid-dto["']/);
-      if (!relative.endsWith("app/(marketing)/deals/[slug]/page.tsx")) {
-        expect(source, file).not.toMatch(/from ["']@\/lib\/entitlements\/service["']/);
-      }
+      expect(source, file).not.toMatch(/from ["']@\/lib\/entitlements\/service["']/);
     }
   });
 
@@ -94,7 +108,7 @@ describe("public discovery data boundary", () => {
     );
     expect(slugPage).toBeTruthy();
     expect(slugPage?.source).toContain("publicDealPreviewMetadata");
-    expect(slugPage?.source).toContain("getPublicDealPreviewPageBySlug");
+    expect(slugPage?.source).toContain("getCachedPublicDealPreview");
     expect(slugPage?.source).not.toContain("source_title");
     expect(slugPage?.source).not.toContain("source_url");
     expect(slugPage?.source).not.toContain("loadPaidDealDto");

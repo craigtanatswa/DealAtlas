@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { PHASE_PRODUCTION_BUILD } from "next/constants";
 
 import {
   HomeHero,
@@ -9,18 +10,17 @@ import {
 import { HomeFoundingCta } from "@/components/marketing/home-founding-cta";
 import { Container } from "@/components/layout/container";
 import { JsonLd } from "@/components/seo/json-ld";
-import { getAuthUser } from "@/lib/auth/session";
 import { getAppOrigin } from "@/lib/auth/urls";
 import { foundingUiState } from "@/lib/billing/founding-ui";
 import { readFoundingPublicCount } from "@/lib/billing/founding-public";
 import { getHomeSearchChips } from "@/lib/search/home-chips-server";
-import { searchLiveHomePreviews } from "@/lib/search/public";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getCachedHomeLivePreviews } from "@/lib/search/public-cached";
 import { organizationJsonLd, webPageJsonLd } from "@/lib/seo/json-ld";
 import { marketingPageMetadata } from "@/lib/seo/metadata";
 import { PUBLIC_PAGE_COPY } from "@/lib/seo/pages";
 
-export const dynamic = "force-dynamic";
+export const dynamic = "error";
+export const revalidate = 300;
 
 const origin = getAppOrigin();
 
@@ -33,12 +33,18 @@ export const metadata: Metadata = marketingPageMetadata({
 });
 
 export default async function HomePage() {
-  const [user, founding, searchChips, live] = await Promise.all([
-    getAuthUser(),
+  const [founding, searchChips, live] = await Promise.all([
     readFoundingPublicCount(),
     // Cached ~1h; on failure show no "Try" chips rather than possibly empty ones.
     getHomeSearchChips().catch(() => []),
-    createSupabaseServerClient().then((client) => searchLiveHomePreviews(client)),
+    // Build-time prerender only (CI has no database): render an empty list and let the
+    // first request after deploy regenerate. At runtime a failure throws, so ISR keeps
+    // serving the last good page instead of caching an empty one.
+    getCachedHomeLivePreviews().catch((error: unknown) => {
+      if (process.env.NEXT_PHASE !== PHASE_PRODUCTION_BUILD) throw error;
+      console.warn("Home live previews unavailable at build; prerendering an empty list.");
+      return { items: [], total: 0, page: 1, pageSize: 0 };
+    }),
   ]);
   const foundingState = foundingUiState(founding);
 
@@ -55,14 +61,14 @@ export default async function HomePage() {
           }),
         ]}
       />
-      <HomeHero signedIn={Boolean(user)} searchChips={searchChips} />
+      <HomeHero signedIn="viewer" searchChips={searchChips} />
       <HomeLiveOpportunities
         items={live.items}
         total={live.total}
-        signedIn={Boolean(user)}
+        signedIn="viewer"
       />
       {foundingState === "available" ? (
-        <HomeFoundingCta signedIn={Boolean(user)} founding={founding} />
+        <HomeFoundingCta signedIn="viewer" founding={founding} />
       ) : null}
       <HomeTestimonialsSection />
       <Container className="flex flex-col gap-16 py-12 md:py-16">

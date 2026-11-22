@@ -6,6 +6,7 @@ import { FoundingCheckoutButton } from "@/components/billing/founding-checkout-b
 import { FoundingButtonLabel, FoundingPriceLead } from "@/components/billing/founding-price";
 import { Container } from "@/components/layout/container";
 import { Button } from "@/components/ui/button";
+import { SignedInSwitch } from "@/components/viewer/viewer-provider";
 import { signupPathForPlan } from "@/lib/auth/redirect";
 import {
   FOUNDING_COPY,
@@ -19,10 +20,41 @@ export function HomeFoundingCta({
   signedIn,
   founding,
 }: {
-  signedIn: boolean;
+  signedIn: boolean | "viewer";
   founding?: FoundingPublicCount;
 }) {
   if (foundingUiState(founding) !== "available") return null;
+
+  const signedInActions = (
+    <>
+      <FoundingCheckoutButton
+        label={<FoundingButtonLabel text={FOUNDING_COPY.cta} />}
+        returnTo="/pricing"
+        className="mt-5"
+        buttonClassName="bg-[#00806A] text-white hover:bg-[#006b56]"
+      />
+      <CheckoutPlanForm
+        planKey="PRO_MONTHLY"
+        label={`or Pro ${proMonthlyShort()}`}
+        showPrice={false}
+        variant="link"
+        returnTo="/pricing"
+        className="mt-2 justify-center"
+      />
+    </>
+  );
+  const anonymousActions = (
+    <>
+      <Button asChild className="mt-5 h-auto min-h-11 w-full whitespace-normal py-2 bg-[#00806A] text-white hover:bg-[#006b56]">
+        <Link href={foundingSignupPath()}><FoundingButtonLabel text={FOUNDING_COPY.cta} /></Link>
+      </Button>
+      <Button asChild variant="link" className="mt-2 w-full">
+        <Link href={signupPathForPlan("PRO_MONTHLY")}>
+          {`or Pro ${proMonthlyShort()}`}
+        </Link>
+      </Button>
+    </>
+  );
 
   return (
     <section aria-labelledby="home-founding-heading" className="border-b border-border">
@@ -52,33 +84,15 @@ export function HomeFoundingCta({
             </div>
             <div className="flex flex-col justify-center rounded-xl border border-dealatlas-teal/30 bg-background p-5 shadow-sm">
               <FoundingPriceLead />
-              {signedIn ? (
-                <FoundingCheckoutButton
-                  label={<FoundingButtonLabel text={FOUNDING_COPY.cta} />}
-                  returnTo="/pricing"
-                  className="mt-5"
-                  buttonClassName="bg-[#00806A] text-white hover:bg-[#006b56]"
+              {signedIn === "viewer" ? (
+                <SignedInSwitch
+                  signedIn={signedInActions}
+                  anonymous={anonymousActions}
                 />
+              ) : signedIn ? (
+                signedInActions
               ) : (
-                <Button asChild className="mt-5 h-auto min-h-11 w-full whitespace-normal py-2 bg-[#00806A] text-white hover:bg-[#006b56]">
-                  <Link href={foundingSignupPath()}><FoundingButtonLabel text={FOUNDING_COPY.cta} /></Link>
-                </Button>
-              )}
-              {signedIn ? (
-                <CheckoutPlanForm
-                  planKey="PRO_MONTHLY"
-                  label={`or Pro ${proMonthlyShort()}`}
-                  showPrice={false}
-                  variant="link"
-                  returnTo="/pricing"
-                  className="mt-2 justify-center"
-                />
-              ) : (
-                <Button asChild variant="link" className="mt-2 w-full">
-                  <Link href={signupPathForPlan("PRO_MONTHLY")}>
-                    {`or Pro ${proMonthlyShort()}`}
-                  </Link>
-                </Button>
+                anonymousActions
               )}
             </div>
           </div>

@@ -10,7 +10,13 @@ export const UPGRADE_POLL_MS = 2_000;
 /** Stop checking after 2 minutes without Pro and say what to do next. */
 export const UPGRADE_TIMEOUT_MS = 120_000;
 
-export function UpgradeStatusBanner({ initialPro }: { initialPro: boolean }) {
+export function UpgradeStatusBanner({
+  initialPro,
+  onConfirmed,
+}: {
+  initialPro: boolean;
+  onConfirmed?: () => void;
+}) {
   const router = useRouter();
   const [pro, setPro] = useState(initialPro);
   const [timedOut, setTimedOut] = useState(false);
@@ -34,7 +40,11 @@ export function UpgradeStatusBanner({ initialPro }: { initialPro: boolean }) {
         const body = (await response.json()) as { plan?: string };
         if (!cancelled && body.plan === "PRO") {
           setPro(true);
-          router.refresh();
+          if (onConfirmed) {
+            onConfirmed();
+          } else {
+            router.refresh();
+          }
         }
       } catch {
         // Ignore errors; keep waiting for the verified entitlement.
@@ -56,7 +66,7 @@ export function UpgradeStatusBanner({ initialPro }: { initialPro: boolean }) {
       cancelled = true;
       window.clearInterval(interval);
     };
-  }, [pro, router]);
+  }, [pro, router, onConfirmed]);
 
   if (pro) {
     return (

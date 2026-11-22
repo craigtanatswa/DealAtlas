@@ -6,6 +6,10 @@ import { assertSafeDbTestTargets } from "../../../scripts/db-target-guard.mjs";
 
 loadEnvConfig(process.cwd());
 
+/** Local-only Playwright fixture (not a real secret) for /api/internal/revalidate. */
+export const E2E_REVALIDATE_SECRET =
+  "e2e-revalidate-secret-not-real-0123456789abcdef";
+
 export type SupabaseTestEnv = {
   url: string;
   anonKey: string;

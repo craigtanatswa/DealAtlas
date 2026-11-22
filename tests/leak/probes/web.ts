@@ -291,9 +291,18 @@ export async function htmlProbes(ctx: Ctx, roles: Role[] = NON_PRO_ROLES): Promi
               status: [200],
               check: (o) => {
                 const out: Assertion[] = [];
-                if (role === "anon") {
+                if (role !== "pro") {
                   const l3 = o.scan.layers.L3;
-                  out.push(ok("save_dealId_null", /"dealId":null/.test(l3) && !/"dealId":"[0-9a-f-]{36}"/.test(l3), l3.match(/"dealId":[^,}]*/g)?.slice(0, 3)));
+                  const dealIdKey = /\\*"dealId\\*"\s*:/;
+                  const dealIdUuid =
+                    /\\*"dealId\\*"\s*:\s*\\*"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\*"/i;
+                  out.push(
+                    ok(
+                      "no_dealId_key",
+                      !dealIdKey.test(l3) && !dealIdUuid.test(l3),
+                      l3.match(/\\*"dealId\\*"[^,}]*/g)?.slice(0, 3),
+                    ),
+                  );
                 }
                 out.push(
                   ...relatedDealAssertions(ctx, o.final.body, ctx.row(rowId).slug),

@@ -175,6 +175,23 @@ export function publicSearchRateLimit(): PublicRateLimitRule {
 }
 
 /**
+ * Signed-in viewer bootstrap caps. `DEALATLAS_VIEWER_API_RATE_LIMIT` overrides
+ * the default for local suites.
+ */
+export function viewerApiRateLimit(
+  kind: "me" | "deal-viewer",
+): { bucket: "api-me" | "api-deal-viewer"; limit: number; windowMs: number } {
+  return {
+    bucket: kind === "me" ? "api-me" : "api-deal-viewer",
+    limit: rateLimitFromEnv(
+      "DEALATLAS_VIEWER_API_RATE_LIMIT",
+      kind === "me" ? 120 : 60,
+    ),
+    windowMs: 60_000,
+  };
+}
+
+/**
  * Anonymous-reachable preview pages throttled in proxy.ts against bulk
  * scraping, per client IP. /api/search is limited in its route handler.
  */

@@ -13,7 +13,7 @@ describe("who sees the pending state", () => {
 
   it.each([
     ["/app/deals/[id]", "app/(app)/app/deals/[id]/page.tsx", /paymentPending: paymentPendingFor\(\{ signedIn: true, upgraded, isPro \}\)/],
-    ["/deals/[slug]", "app/(marketing)/deals/[slug]/page.tsx", /paymentPending: paymentPendingFor\(\{\s*signedIn: Boolean\(user\),\s*upgraded,\s*isPro: mode === "pro",\s*\}\)/],
+    ["/api/deals/[id]/viewer", "app/api/deals/[id]/viewer/route.ts", /paymentPending: paymentPendingFor\(\{\s*signedIn: true,\s*upgraded,\s*isPro,\s*\}\)/],
   ])("%s derives pending from the server entitlement", (_route, file, pattern) => {
     const source = readFileSync(file, "utf8");
     expect(source).toMatch(pattern);

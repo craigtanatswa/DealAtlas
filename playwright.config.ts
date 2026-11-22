@@ -5,7 +5,7 @@ import {
   BILLING_FIXTURE_PRODUCTS,
   BILLING_FIXTURE_WEBHOOK_SECRET,
 } from "./lib/billing/fixtures";
-import { bindLocalSupabaseEnv, fromSupabaseStatus } from "./tests/e2e/helpers/env";
+import { bindLocalSupabaseEnv, E2E_REVALIDATE_SECRET, fromSupabaseStatus } from "./tests/e2e/helpers/env";
 
 loadEnvConfig(process.cwd());
 
@@ -58,6 +58,8 @@ export default defineConfig({
       DODO_PAYMENTS_ENVIRONMENT: "test_mode",
       NEXT_PUBLIC_POSTHOG_KEY: E2E_POSTHOG_KEY,
       DEALATLAS_ANALYTICS_UPSTREAM: "off",
+      REVALIDATE_SECRET: E2E_REVALIDATE_SECRET,
+      DEALATLAS_VIEWER_API_RATE_LIMIT: "4000",
       DODO_PAYMENTS_API_KEY:
         process.env.DODO_PAYMENTS_API_KEY || "rk_test_e2e_placeholder",
     },

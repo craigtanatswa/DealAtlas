@@ -17,9 +17,17 @@ import {
 import { MobileNav } from "@/components/navigation/mobile-nav";
 import { NavItemLabel, NavLink } from "@/components/navigation/nav-link";
 import { Button } from "@/components/ui/button";
+import { useIsAuthenticated } from "@/components/viewer/viewer-provider";
 import { AUTH_NAV, PUBLIC_NAV } from "@/lib/constants";
 
-export function SiteHeader({ isAuthenticated }: { isAuthenticated: boolean }) {
+export function SiteHeader({
+  isAuthenticated: isAuthenticatedProp,
+}: {
+  isAuthenticated?: boolean;
+}) {
+  const viewerAuthenticated = useIsAuthenticated();
+  const isAuthenticated = isAuthenticatedProp ?? viewerAuthenticated;
+
   return (
     <header className={HEADER_BAR_CLASS}>
       <div className={HEADER_BAR_INNER_CLASS}>

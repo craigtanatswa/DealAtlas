@@ -16,6 +16,7 @@ import { alertProbes, apiProbes, appProbes, proProbes } from "./probes/api";
 import { clientProbes } from "./probes/client";
 import { aclDiff, dbProbes, type Acl } from "./probes/db";
 import { flowProbes } from "./probes/flow";
+import { isrProbes } from "./probes/isr";
 import { matchProbes } from "./probes/match";
 import { lockCompare, normaliseRows, restProbes } from "./probes/rest";
 import { htmlProbes, metaExtraProbes, rscHandBuiltProbes, seoProbes } from "./probes/web";
@@ -203,6 +204,7 @@ async function main(): Promise<void> {
     const rejected = settled.find((item) => item.status === "rejected");
     if (rejected?.status === "rejected") throw rejected.reason;
   });
+  await step(ctx, "isr", () => isrProbes(ctx));
   await step(ctx, "seo", () => seoProbes(ctx));
   await step(ctx, "digest", () => digestProbes(ctx));
   await step(ctx, "mail", () => mailProbes(ctx));

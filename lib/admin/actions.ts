@@ -23,6 +23,11 @@ import {
 } from "@/lib/admin/mutations";
 import { parseAdminIdParam } from "@/lib/admin/paths";
 import type { ActionState } from "@/lib/auth/messages";
+import {
+  revalidatePublicPreview,
+  slugForDealId,
+} from "@/lib/cache/public-preview";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { ValidationError } from "@/lib/validation";
 
 function formString(formData: FormData, key: string): string {
@@ -39,6 +44,23 @@ function revalidateAdmin(paths: string[] = []) {
   revalidatePath("/admin");
   for (const path of paths) {
     revalidatePath(path);
+  }
+}
+
+const PUBLIC_CACHE_REFRESH_ERROR =
+  "Saved, but the public cache could not be refreshed. Run the cache purge runbook.";
+
+async function refreshPublicPreview(dealId: string): Promise<ActionState | null> {
+  try {
+    const slug = await slugForDealId(createSupabaseAdminClient(), dealId);
+    await revalidatePublicPreview({ slug });
+    return null;
+  } catch (error) {
+    console.error("[public-preview] admin cache refresh failed", {
+      dealId,
+      error: error instanceof Error ? error.message : "unknown error",
+    });
+    return { error: PUBLIC_CACHE_REFRESH_ERROR, success: null };
   }
 }
 
@@ -101,6 +123,8 @@ export async function holdPreviewUnpublishedAction(
     }
     await holdPreviewUnpublished({ actorId, dealId });
     revalidateAdmin([`/admin/deals/${dealId}`, "/admin/deals", "/admin/data-quality"]);
+    const cacheError = await refreshPublicPreview(dealId);
+    if (cacheError) return cacheError;
     return { error: null, success: "Preview will stay unpublished." };
   });
 }
@@ -116,6 +140,8 @@ export async function releasePreviewHoldAction(
     }
     await releasePreviewHold({ actorId, dealId });
     revalidateAdmin([`/admin/deals/${dealId}`, "/admin/deals", "/admin/data-quality"]);
+    const cacheError = await refreshPublicPreview(dealId);
+    if (cacheError) return cacheError;
     return { error: null, success: "Unpublished hold released. Preview stays unpublished until published." };
   });
 }
@@ -131,6 +157,8 @@ export async function publishPreviewAction(
     }
     await publishPreviewIfLow({ actorId, dealId });
     revalidateAdmin([`/admin/deals/${dealId}`, "/admin/deals"]);
+    const cacheError = await refreshPublicPreview(dealId);
+    if (cacheError) return cacheError;
     return { error: null, success: "Published the LOW-risk preview." };
   });
 }
@@ -146,6 +174,8 @@ export async function regeneratePreviewAction(
     }
     const result = await regenerateDealPreview({ actorId, dealId });
     revalidateAdmin([`/admin/deals/${dealId}`, "/admin/deals", "/admin/data-quality"]);
+    const cacheError = await refreshPublicPreview(dealId);
+    if (cacheError) return cacheError;
     return {
       error: null,
       success: result.published

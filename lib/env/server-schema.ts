@@ -30,6 +30,7 @@ export const serverEnvSchema = z.object({
   DEALATLAS_EMBEDDING_BASE_URL: z.url().optional(),
   DEALATLAS_EMBEDDING_MODEL: z.string().min(1).optional(),
   ALERT_TOKEN_SECRET: z.string().min(32).optional(),
+  REVALIDATE_SECRET: z.string().min(32).optional(),
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;
@@ -62,4 +63,5 @@ export const SERVER_ENV_KEYS = [
   "DEALATLAS_EMBEDDING_BASE_URL",
   "DEALATLAS_EMBEDDING_MODEL",
   "ALERT_TOKEN_SECRET",
+  "REVALIDATE_SECRET",
 ] as const satisfies ReadonlyArray<keyof ServerEnv>;
