@@ -11,6 +11,7 @@ import { Heading, Text } from "@/components/layout/heading";
 import { BrandLogo } from "@/components/navigation/brand-mark";
 import { SectionHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
+import { SignedInSwitch } from "@/components/viewer/viewer-provider";
 import { APP_NAME } from "@/lib/constants";
 import { HOW_IT_WORKS_STEPS } from "@/lib/seo/pages";
 import type { HomeSearchChip } from "@/lib/search/home-chips";
@@ -39,9 +40,15 @@ export function HomeHero({
   signedIn = false,
   searchChips,
 }: {
-  signedIn?: boolean;
+  signedIn?: boolean | "viewer";
   searchChips?: HomeSearchChip[];
 }) {
+  const createAccountButton = (
+    <Button asChild className="min-h-11">
+      <Link href="/signup">Create free account</Link>
+    </Button>
+  );
+
   return (
     <section className="surface-hero relative overflow-hidden border-b border-border">
       <HeroCategoryCloud />
@@ -53,10 +60,10 @@ export function HomeHero({
             The #1 destination for finding the right business opportunities,
             contracts, tenders, supply requests and deals.
           </Text>
-          {signedIn ? null : (
-            <Button asChild className="min-h-11">
-              <Link href="/signup">Create free account</Link>
-            </Button>
+          {signedIn === "viewer" ? (
+            <SignedInSwitch signedIn={null} anonymous={createAccountButton} />
+          ) : signedIn ? null : (
+            createAccountButton
           )}
         </div>
         <div className="w-full max-w-3xl text-left">
@@ -135,7 +142,7 @@ export function HomeLiveOpportunities({
 }: {
   items: PublicDealPreview[];
   total: number;
-  signedIn?: boolean;
+  signedIn?: boolean | "viewer";
 }) {
   if (items.length === 0) {
     return null;

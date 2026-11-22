@@ -59,8 +59,9 @@ describe("signup prompt timing", () => {
   });
 
   it("is wired for anonymous marketing visitors only", () => {
-    expect(read("app/(marketing)/layout.tsx")).toContain(
-      "<SignupPrompt enabled={!isAuthenticated} />",
+    expect(read("app/(marketing)/layout.tsx")).toContain("SignupPromptGate");
+    expect(read("components/conversion/signup-prompt-gate.tsx")).toContain(
+      'enabled={status === "anonymous"}',
     );
     expect(read("app/(auth)/layout.tsx")).not.toContain("SignupPrompt");
     expect(read("app/(app)/app/layout.tsx")).not.toContain("SignupPrompt");

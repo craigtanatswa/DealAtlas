@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { jobProcessShouldFail, parseJobArgs } from "@/lib/jobs/cli";
 import { errorMessage } from "@/lib/observability/log";
@@ -154,6 +154,39 @@ describe("publish jobs", () => {
     expect(alert.status).toBe("PARTIAL");
     expect(messages[0]).toContain("published_live=40");
     expect(messages[0]).not.toMatch(/[0-9a-f]{8}-/);
+  });
+
+  it("keeps the live unpublish SUCCEEDED when the revalidate endpoint is missing", async () => {
+    const consoleWarn = vi
+      .spyOn(console, "warn")
+      .mockImplementation(() => undefined);
+    const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {
+      expect(String(input)).toContain("/api/internal/revalidate");
+      return new Response("", { status: 404 });
+    });
+
+    const stale = await runUnpublishStale({
+      mode: "live",
+      client: client({
+        count: 140,
+        rpc: () => ({ selected: 2, unpublished: 2 }),
+      }),
+      env: {
+        REVALIDATE_SECRET: "r".repeat(32),
+        NEXT_PUBLIC_APP_URL: "https://dealatlas.test",
+      },
+      fetchImpl,
+      alert: async () => {
+        throw new Error("a missing revalidate endpoint should not alert");
+      },
+    });
+
+    expect(stale.status).toBe("SUCCEEDED");
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(consoleWarn).toHaveBeenCalledWith(
+      "[public-preview] revalidate endpoint returned 404 (REVALIDATE_SECRET not set on the app yet?); cached pages expire within 300s",
+      { slugs: [] },
+    );
   });
 
   it("refreshes deadline bands after a live unpublish and merges the counts", async () => {

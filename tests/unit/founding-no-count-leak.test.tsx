@@ -32,6 +32,9 @@ vi.mock("@/lib/search/home-chips-server", () => ({
 vi.mock("@/lib/search/public", () => ({
   searchLiveHomePreviews: mocks.searchLiveHomePreviews,
 }));
+vi.mock("@/lib/search/public-cached", () => ({
+  getCachedHomeLivePreviews: mocks.searchLiveHomePreviews,
+}));
 vi.mock("@/lib/supabase/server", () => ({
   createSupabaseServerClient: mocks.createSupabaseServerClient,
 }));

@@ -11,7 +11,7 @@ export function DealList({
 }: {
   items: RankedDealSearchItem[];
   hrefForSlug?: (slug: string) => string;
-  signedIn?: boolean;
+  signedIn?: boolean | "viewer";
   className?: string;
   proLock?: boolean;
 }) {

@@ -1,4 +1,5 @@
 /** Phase B flows (B-FLOW-01..04): the lockdown keeps signed-in and Pro paths working. */
+import { header } from "../lib/http";
 import type { Ctx, ProbeOutcome } from "../lib/probe";
 import { eq, ok, slugsIn } from "../lib/probe";
 import { mustFind, proProbes } from "./api";
@@ -10,7 +11,7 @@ function savedLists(o: ProbeOutcome, title: string | undefined, dealId: string):
   return text.includes(dealId) || (title ? text.includes(title.toLowerCase()) : false);
 }
 
-/** FLOW-01, FLOW-02 (REST half; the UI save is in client.ts), FLOW-03, FLOW-04. */
+/** FLOW-01 (free viewer + public page), FLOW-02 (REST half; the UI save is in client.ts), FLOW-03, FLOW-04. */
 export async function flowProbes(ctx: Ctx): Promise<void> {
   const titles = previewTitles(ctx);
   const b1 = ctx.row("B1");
@@ -19,14 +20,41 @@ export async function flowProbes(ctx: Ctx): Promise<void> {
 
   await ctx.run({
     id: "FLOW-01",
+    instance: "B1@viewer",
+    role: "free",
+    req: { path: `/api/deals/${b1.slug}/viewer` },
+    status: [200],
+    check: (o) => {
+      const json = o.json as Record<string, unknown> | undefined;
+      const keys = Object.keys(json ?? {});
+      const cacheControl = (header(o.final, "cache-control") ?? "").toLowerCase();
+      return [
+        ok("save_dealId_is_B1", json?.dealId === b1.deal_id, json?.dealId),
+        ok("mode_free", json?.mode === "free", json?.mode),
+        ok("no_pro_keys_for_free", ["match", "revealHref", "returnTo"].every((key) => !keys.includes(key)), keys),
+        ok("no_store", cacheControl.includes("no-store"), cacheControl),
+      ];
+    },
+  });
+  await ctx.run({
+    id: "FLOW-01",
     instance: "B1",
     role: "free",
     req: { path: `/deals/${b1.slug}` },
     status: [200],
-    check: (o) => [
-      ok("save_dealId_is_B1", o.scan.layers.L3.includes(`"dealId":"${b1.deal_id}"`), o.scan.layers.L3.match(/"dealId":[^,}]*/g)?.slice(0, 3)),
-      ok("revealHref_is_app_deal", o.scan.layers.L3.includes(`/app/deals/${b1.deal_id}`), o.scan.layers.L3.match(/"revealHref":[^,}]*/g)?.slice(0, 3)),
-    ],
+    check: (o) => {
+      const l3 = o.scan.layers.L3;
+      return [
+        ok(
+          "public_page_has_no_dealId",
+          !l3.includes(`"dealId"`) && !l3.includes(`/app/deals/${b1.deal_id}`),
+          {
+            dealId: l3.match(/"dealId":[^,}]*/g)?.slice(0, 3),
+            revealHref: l3.match(/"revealHref":[^,}]*/g)?.slice(0, 3),
+          },
+        ),
+      ];
+    },
   });
 
   // FLOW-02 (REST): save B2, see it in /app/saved, unsave it so the UI flow can save it again.

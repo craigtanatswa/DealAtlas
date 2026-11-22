@@ -1,3 +1,4 @@
+import { requestPublicPreviewRevalidation } from "@/lib/cache/public-preview-remote";
 import type { BandRefreshResult } from "@/lib/jobs/refresh-deadline-bands";
 import { alertDepsFromEnv } from "@/lib/leak-scan/alert";
 
@@ -16,6 +17,12 @@ export type PublishJobResult = {
   counts: Record<string, number>;
   errorMessage?: string | null;
 };
+
+type PublishRevalidator = (input: {
+  slugs: string[];
+  env?: Record<string, string | undefined>;
+  fetchImpl?: typeof fetch;
+}) => Promise<unknown>;
 
 type QueryResult = { count: number | null; error: { message: string } | null };
 type RpcError = { message?: string; code?: string };
@@ -132,6 +139,7 @@ export async function runPublishEligible(input: {
   env?: Record<string, string | undefined>;
   fetchImpl?: typeof fetch;
   alert?: (subject: string, text: string) => Promise<void>;
+  revalidate?: PublishRevalidator;
 }): Promise<PublishJobResult> {
   const publishedLive = await countPublished(input.client);
   if (input.mode !== "live") {
@@ -165,6 +173,12 @@ export async function runPublishEligible(input: {
       break;
     }
   }
+  const revalidate = input.revalidate ?? requestPublicPreviewRevalidation;
+  await revalidate({
+    slugs: [],
+    env: input.env,
+    fetchImpl: input.fetchImpl,
+  });
   const after = await countPublished(input.client);
   const status = publishStatusForLiveCount(after);
   if (status === "PARTIAL") {
@@ -189,6 +203,7 @@ export async function runUnpublishStale(input: {
   fetchImpl?: typeof fetch;
   alert?: (subject: string, text: string) => Promise<void>;
   refreshBands?: (now: Date) => Promise<BandRefreshResult>;
+  revalidate?: PublishRevalidator;
 }): Promise<PublishJobResult> {
   const publishedLive = await countPublished(input.client);
   if (input.mode !== "live") {
@@ -213,6 +228,12 @@ export async function runUnpublishStale(input: {
     });
     return { status: "FAILED", dryRun: false, publishedLive: after, counts: {}, errorMessage };
   }
+  const revalidate = input.revalidate ?? requestPublicPreviewRevalidation;
+  await revalidate({
+    slugs: [],
+    env: input.env,
+    fetchImpl: input.fetchImpl,
+  });
   if (input.refreshBands) {
     try {
       const bands = await input.refreshBands(new Date());

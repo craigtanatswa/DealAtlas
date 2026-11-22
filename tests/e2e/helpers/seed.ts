@@ -54,7 +54,7 @@ async function createUser(
   return { id, email, password };
 }
 
-async function insertDeal(
+export async function insertDeal(
   env: SupabaseTestEnv,
   input: {
     id: string;
@@ -90,7 +90,7 @@ async function insertDeal(
   });
 }
 
-async function insertPreview(
+export async function insertPreview(
   env: SupabaseTestEnv,
   input: {
     dealId: string;

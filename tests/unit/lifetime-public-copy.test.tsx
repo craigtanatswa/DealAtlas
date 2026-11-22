@@ -25,6 +25,9 @@ vi.mock("@/lib/search/home-chips-server", () => ({
 vi.mock("@/lib/search/public", () => ({
   searchLiveHomePreviews: mocks.searchLiveHomePreviews,
 }));
+vi.mock("@/lib/search/public-cached", () => ({
+  getCachedHomeLivePreviews: mocks.searchLiveHomePreviews,
+}));
 vi.mock("@/lib/supabase/server", () => ({
   createSupabaseServerClient: mocks.createSupabaseServerClient,
 }));
@@ -147,7 +150,10 @@ describe("Lifetime public copy constants", () => {
 
 describe("Lifetime marketing pages", () => {
   it("renders available Lifetime copy on pricing and home without old founding pricing", async () => {
-    for (const html of [await renderPricing(available, true), await renderHome(available, true)]) {
+    const pricing = await renderPricing(available, true);
+    const home = await renderHome(available, true);
+
+    for (const html of [pricing, home]) {
       expect(html).toContain(LIFETIME_PLAN_LINE);
       expect(html).not.toMatch(/<s[^>]*>£180\/yr<\/s>/);
       expect(html).toContain("£250 once");
@@ -158,12 +164,21 @@ describe("Lifetime marketing pages", () => {
       expect(html).not.toContain("£290");
       expect(html).not.toContain("£24.17");
       expect(html).not.toContain("stay subscribed");
-
-      const foundingForms = foundingFormPlanKeys(html);
-      expect(foundingForms.length).toBeGreaterThan(0);
-      expect(foundingForms.every((value) => value === "founding_lifetime")).toBe(true);
       expect(planKeyValues(html)).not.toContain("FOUNDING");
     }
+
+    const pricingFoundingForms = foundingFormPlanKeys(pricing);
+    expect(pricingFoundingForms.length).toBeGreaterThan(0);
+    expect(pricingFoundingForms.every((value) => value === "founding_lifetime")).toBe(true);
+
+    // The home page is cached signed-out HTML: the Lifetime CTA links to signup
+    // and carries no checkout form for any viewer.
+    expect(planKeyValues(home)).toEqual([]);
+    expect(
+      hrefsAndActions(home).some((href) =>
+        href.includes("/signup?plan=lifetime&next=/checkout?plan=lifetime"),
+      ),
+    ).toBe(true);
   });
 
   it("hides the Lifetime offer on pricing and home when sold out", async () => {

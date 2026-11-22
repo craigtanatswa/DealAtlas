@@ -17,6 +17,7 @@ import {
   keyDatesRemainder,
 } from "@/lib/preview/display";
 import { Skeleton } from "@/components/ui/skeleton";
+import { SignedInSwitch } from "@/components/viewer/viewer-provider";
 import { DEAL_TYPE_LABELS } from "@/lib/search/filters";
 import { cn } from "@/lib/utils";
 
@@ -31,7 +32,7 @@ export function DealCard({
 }: {
   deal: DealCardData;
   href?: string;
-  signedIn?: boolean;
+  signedIn?: boolean | "viewer";
   /** Static lock line. Never substitutes for hidden buyer or source text. */
   proLock?: boolean;
   /** Public card fields only: title, category, region, value and closing. */
@@ -222,6 +223,15 @@ export function DealCard({
                 </ul>
               ) : null}
             </div>
+          ) : signedIn === "viewer" ? (
+            <SignedInSwitch
+              signedIn={
+                <div className="mt-3">
+                  <MatchScore score={null} />
+                </div>
+              }
+              anonymous={null}
+            />
           ) : signedIn ? (
             <div className="mt-3">
               <MatchScore score={null} />

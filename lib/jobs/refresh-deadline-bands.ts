@@ -1,3 +1,4 @@
+import { requestPublicPreviewRevalidation } from "@/lib/cache/public-preview-remote";
 import {
   deadlineBandFromDeadline,
   rewriteClosingWindow,
@@ -226,10 +227,19 @@ function planPreviewRefresh(
   return plan;
 }
 
+type PublicPreviewRevalidator = (input: {
+  slugs: string[];
+  env?: Record<string, string | undefined>;
+  fetchImpl?: typeof fetch;
+}) => Promise<unknown>;
+
 export async function refreshDeadlineBands(input: {
   client: BandRefreshClient;
   now?: Date;
   apply: boolean;
+  env?: Record<string, string | undefined>;
+  fetchImpl?: typeof fetch;
+  revalidate?: PublicPreviewRevalidator;
 }): Promise<BandRefreshResult> {
   const now = input.now ?? new Date();
   const result: BandRefreshResult = {
@@ -357,6 +367,15 @@ export async function refreshDeadlineBands(input: {
     }
   } catch {
     throw new Error("deadline band refresh failed");
+  }
+
+  if (input.apply && result.unpublishedByGate > 0) {
+    const revalidate = input.revalidate ?? requestPublicPreviewRevalidation;
+    await revalidate({
+      slugs: [],
+      env: input.env,
+      fetchImpl: input.fetchImpl,
+    });
   }
 
   return result;

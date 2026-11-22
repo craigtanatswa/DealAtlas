@@ -180,8 +180,8 @@ describe("design-system anti-bypass guards", () => {
     expect(page).not.toContain("HomeOpportunitySections");
     expect(page).not.toContain("searchHomeLatestDealPreviews");
     expect(page).toContain("HomeLiveOpportunities");
-    expect(page).toContain("searchLiveHomePreviews");
-    expect(page).toContain('dynamic = "force-dynamic"');
+    expect(page).toContain("getCachedHomeLivePreviews");
+    expect(page).toContain('dynamic = "error"');
     expect(page).toContain("HomeTestimonialsSection");
     expect(data).toContain(
       "Placeholder testimonial content — replace with verified customer",

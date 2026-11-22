@@ -276,6 +276,7 @@ async function dispatchJob(
       const counts = await refreshDeadlineBands({
         client,
         apply: args.mode === "live",
+        env: process.env,
       });
       return {
         status: "SUCCEEDED",
@@ -295,7 +296,12 @@ async function dispatchJob(
         client,
         env: process.env,
         refreshBands: (now) =>
-          refreshDeadlineBands({ client, now, apply: true }),
+          refreshDeadlineBands({
+            client,
+            now,
+            apply: true,
+            env: process.env,
+          }),
       });
     }
     return runPublishAlert({ mode: args.mode, client, env: process.env });

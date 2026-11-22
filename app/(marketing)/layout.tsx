@@ -2,23 +2,20 @@ import type { ReactNode } from "react";
 
 import { SiteFooter } from "@/components/navigation/site-footer";
 import { SiteHeader } from "@/components/navigation/site-header";
-import { SignupPrompt } from "@/components/conversion/signup-prompt";
-import { getAuthUser } from "@/lib/auth/session";
+import { SignupPromptGate } from "@/components/conversion/signup-prompt-gate";
+import { ViewerProvider } from "@/components/viewer/viewer-provider";
 
-export default async function MarketingLayout({
+export default function MarketingLayout({
   children,
 }: {
   children: ReactNode;
 }) {
-  const user = await getAuthUser();
-  const isAuthenticated = Boolean(user);
-
   return (
-    <>
-      <SiteHeader isAuthenticated={isAuthenticated} />
+    <ViewerProvider>
+      <SiteHeader />
       {children}
       <SiteFooter />
-      <SignupPrompt enabled={!isAuthenticated} />
-    </>
+      <SignupPromptGate />
+    </ViewerProvider>
   );
 }

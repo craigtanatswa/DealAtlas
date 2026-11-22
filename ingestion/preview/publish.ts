@@ -11,6 +11,7 @@ import {
   generatePreviewDraft,
   leakScanInputFromContext,
 } from "@/ingestion/preview/generate";
+import { requestPublicPreviewRevalidation } from "@/lib/cache/public-preview-remote";
 import {
   buyerTypeFromLegacySector,
   sectorFromLegacySector,
@@ -76,12 +77,18 @@ export async function generatePreviewDraftWithGateRetry(
   return { draft, attempts: 2 };
 }
 
+type PublicPreviewRevalidator = (input: {
+  slugs: string[];
+  previousSlugs?: string[];
+}) => Promise<unknown>;
+
 export async function persistIntelligenceAndPreview(options: {
   store: IngestionStore;
   context: IntelligenceContext;
   provider?: LanguageModelProvider;
   /** auto may publish a LOW preview. preserve never turns is_published on. */
   publication?: "auto" | "preserve";
+  revalidate?: PublicPreviewRevalidator;
 }): Promise<PreviewPublishResult> {
   const provider = options.provider ?? createRulesLanguageModel();
   const { store, context } = options;
@@ -99,8 +106,12 @@ export async function persistIntelligenceAndPreview(options: {
       ? existing.slug
       : null;
   const slug = keptSlug ?? (await allocatePreviewSlug(store, draft.previewTitle, context.deal.id));
-  if (!keptSlug && existing?.slug && existing.slug !== slug) {
-    await store.retirePreviewSlug(existing.slug, context.deal.id);
+  const retiredSlug =
+    !keptSlug && existing?.slug && existing.slug !== slug
+      ? existing.slug
+      : null;
+  if (retiredSlug) {
+    await store.retirePreviewSlug(retiredSlug, context.deal.id);
   }
   const finalScan = scanPreviewLeaks(
     leakScanInputFromContext(context, draft, { slug, broadRegion: draft.broadRegion }),
@@ -163,6 +174,19 @@ export async function persistIntelligenceAndPreview(options: {
     createdAt: context.now.toISOString(),
   };
   await store.insertPreviewGenerationRun(run);
+
+  const publishedChanged = (existing?.isPublished ?? false) !== saved.isPublished;
+  const slugChanged = (existing?.slug ?? null) !== saved.slug;
+  if (publishedChanged || slugChanged) {
+    const revalidate =
+      options.revalidate ??
+      ((input) =>
+        requestPublicPreviewRevalidation({ ...input, env: process.env }));
+    await revalidate({
+      slugs: [saved.slug],
+      previousSlugs: retiredSlug ? [retiredSlug] : [],
+    });
+  }
 
   return {
     published: saved.isPublished && saved.leakageRisk === "LOW",
