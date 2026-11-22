@@ -5,9 +5,15 @@ import { sanitizeUtmValue } from "@/lib/analytics/utm-value";
 const OAUTH_UTM_KEYS = ["utm_source", "utm_medium", "utm_campaign"] as const;
 const OAUTH_ANON_ID_KEY = "anon_id";
 const OAUTH_CONSENT_KEY = "consent";
-const MAX_OAUTH_UTM_LENGTH = 400;
+export const MAX_OAUTH_UTM_LENGTH = 400;
 
 type OAuthUtmKey = (typeof OAUTH_UTM_KEYS)[number];
+
+const OAUTH_UTM_DROP_ORDER: readonly OAuthUtmKey[] = [
+  "utm_campaign",
+  "utm_medium",
+  "utm_source",
+];
 
 const UTM_FIELD_BY_KEY: Record<OAuthUtmKey, string> = {
   utm_source: ATTRIBUTION_FIELDS.utm_source,
@@ -29,6 +35,12 @@ export function encodeOAuthUtm(read: (name: string) => unknown): string | null {
   }
   if (read(ATTRIBUTION_FIELDS.consent) === "granted") {
     params.set(OAUTH_CONSENT_KEY, "granted");
+  }
+  for (const key of OAUTH_UTM_DROP_ORDER) {
+    if (params.toString().length <= MAX_OAUTH_UTM_LENGTH) {
+      break;
+    }
+    params.delete(key);
   }
   const encoded = params.toString();
   return encoded === "" ? null : encoded;
