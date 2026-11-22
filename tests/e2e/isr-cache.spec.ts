@@ -76,18 +76,28 @@ test.describe("ISR public cache", () => {
         id: dealId,
         sourceId: seed.sourceId,
         organizationId: seed.organizationId,
-        sourceTitle: `ISR cache fixture ${suffix}`,
-        sourceDescription: `Public ISR cache fixture ${suffix}`,
+        sourceTitle: `CANARY SOURCE TITLE NEVER FREE isr purge fixture ${suffix}`,
+        sourceDescription: "Protected ISR purge canonical description",
         externalId: `e2e-isr-${suffix}`,
       });
       await insertPreview(env, {
         dealId,
         slug,
-        title: `ISR cache fixture ${suffix}`,
+        title: `Sanitised isr purge preview ${suffix}`,
         summary:
-          "A fresh public opportunity used to verify the ISR cache purge.",
+          "Sanitised preview of a public opportunity used to check the cache purge.",
         published: true,
       });
+
+      const storedPreview = await requireOk(
+        env,
+        env.secretKey,
+        `/rest/v1/deal_previews?deal_id=eq.${dealId}&select=is_published,leakage_risk`,
+      );
+      expect(
+        storedPreview,
+        "fixture preview was not published with LOW leakage risk; check the preview text against the source",
+      ).toEqual([{ is_published: true, leakage_risk: "LOW" }]);
 
       const purge = await request.post(REVALIDATE, {
         headers: { Authorization: AUTHORIZATION },
