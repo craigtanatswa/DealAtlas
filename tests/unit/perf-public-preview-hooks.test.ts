@@ -61,9 +61,9 @@ describe("revalidatePublicPreview", () => {
 });
 
 describe("requestPublicPreviewRevalidation", () => {
-  it("logs and returns not_configured when the env is incomplete", async () => {
-    const consoleError = vi
-      .spyOn(console, "error")
+  it("warns and returns not_configured when the env is incomplete", async () => {
+    const consoleWarn = vi
+      .spyOn(console, "warn")
       .mockImplementation(() => undefined);
     const fetchImpl = vi.fn();
 
@@ -75,7 +75,7 @@ describe("requestPublicPreviewRevalidation", () => {
 
     expect(result).toEqual({ ok: false, reason: "not_configured" });
     expect(fetchImpl).not.toHaveBeenCalled();
-    expect(consoleError).toHaveBeenCalledWith(
+    expect(consoleWarn).toHaveBeenCalledWith(
       "[public-preview] revalidate not configured; cached pages expire within 300s",
       { slugs: ["valid-deal"] },
     );
@@ -109,7 +109,57 @@ describe("requestPublicPreviewRevalidation", () => {
     });
   });
 
-  it("throws and logs slugs without the secret on a non-2xx response", async () => {
+  it("warns and resolves not_found on a 404 response without throwing", async () => {
+    const consoleWarn = vi
+      .spyOn(console, "warn")
+      .mockImplementation(() => undefined);
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    const fetchImpl = vi.fn(async () => new Response("", { status: 404 }));
+
+    const result = await requestPublicPreviewRevalidation({
+      slugs: ["valid-deal"],
+      env: {
+        REVALIDATE_SECRET: SECRET,
+        NEXT_PUBLIC_APP_URL: APP_URL,
+      },
+      fetchImpl,
+    });
+
+    expect(result).toEqual({ ok: false, reason: "not_found" });
+    expect(consoleError).not.toHaveBeenCalled();
+    expect(consoleWarn).toHaveBeenCalledWith(
+      "[public-preview] revalidate endpoint returned 404 (REVALIDATE_SECRET not set on the app yet?); cached pages expire within 300s",
+      { slugs: ["valid-deal"] },
+    );
+    expect(JSON.stringify(consoleWarn.mock.calls)).not.toContain(SECRET);
+  });
+
+  it("throws when the revalidate request cannot reach the app", async () => {
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    const fetchImpl = vi.fn(async () => {
+      throw new TypeError("network down");
+    });
+
+    await expect(
+      requestPublicPreviewRevalidation({
+        slugs: ["valid-deal"],
+        env: {
+          REVALIDATE_SECRET: SECRET,
+          NEXT_PUBLIC_APP_URL: APP_URL,
+        },
+        fetchImpl,
+      }),
+    ).rejects.toThrow("public-preview revalidate failed");
+
+    expect(consoleError).toHaveBeenCalled();
+    expect(JSON.stringify(consoleError.mock.calls)).not.toContain(SECRET);
+  });
+
+  it("throws and logs slugs without the secret on a 500 response", async () => {
     const consoleError = vi
       .spyOn(console, "error")
       .mockImplementation(() => undefined);

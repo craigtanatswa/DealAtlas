@@ -39,6 +39,11 @@ test.describe("Free account journey", () => {
     await expect(page.getByRole("button", { name: "Unsave" })).toBeVisible({
       timeout: 20_000,
     });
+    await expect(
+      page
+        .locator(`input[name="returnTo"][value="/deals/${seed.publishedSlug}"]`)
+        .first(),
+    ).toBeAttached();
     await expectNoProtectedLeaks(page);
 
     await page.goto("/app/search");

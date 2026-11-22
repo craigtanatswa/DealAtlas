@@ -13,7 +13,8 @@ export type PublicPreviewRevalidationInput = {
 
 export type PublicPreviewRevalidationResult =
   | { ok: true }
-  | { ok: false; reason: "not_configured" };
+  | { ok: false; reason: "not_configured" }
+  | { ok: false; reason: "not_found" };
 
 export async function requestPublicPreviewRevalidation(
   input: PublicPreviewRevalidationInput = {},
@@ -25,7 +26,7 @@ export async function requestPublicPreviewRevalidation(
   const appUrl = env.NEXT_PUBLIC_APP_URL?.trim();
 
   if (!secret || !appUrl) {
-    console.error(
+    console.warn(
       "[public-preview] revalidate not configured; cached pages expire within 300s",
       { slugs },
     );
@@ -56,6 +57,14 @@ export async function requestPublicPreviewRevalidation(
       error: error instanceof Error ? error.message : "unknown error",
     });
     throw new Error("public-preview revalidate failed");
+  }
+
+  if (response.status === 404) {
+    console.warn(
+      "[public-preview] revalidate endpoint returned 404 (REVALIDATE_SECRET not set on the app yet?); cached pages expire within 300s",
+      { slugs },
+    );
+    return { ok: false, reason: "not_found" };
   }
 
   if (!response.ok) {

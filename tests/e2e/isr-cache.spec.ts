@@ -1,8 +1,12 @@
+import { randomUUID } from "node:crypto";
+
 import { expect, test, type APIResponse } from "@playwright/test";
 
-import { E2E_REVALIDATE_SECRET } from "./helpers/env";
+import { requestPublicPreviewRevalidation } from "../../lib/cache/public-preview-remote";
+import { E2E_REVALIDATE_SECRET, requireSupabaseEnv } from "./helpers/env";
 import { findProtectedMarkerLeaks } from "./helpers/leaks";
-import { readSeed } from "./helpers/seed";
+import { requireOk, restRequest } from "./helpers/rest";
+import { insertDeal, insertPreview, readSeed } from "./helpers/seed";
 
 const REVALIDATE = "/api/internal/revalidate";
 const AUTHORIZATION = `Bearer ${E2E_REVALIDATE_SECRET}`;
@@ -51,6 +55,98 @@ test.describe("ISR public cache", () => {
     });
     expect(rsc.status()).toBe(200);
     await expectSanitised(rsc);
+  });
+
+  test("unpublish + job purge stops the cached page", async ({
+    request,
+    baseURL,
+  }) => {
+    if (!baseURL) {
+      throw new Error("Playwright baseURL is not configured");
+    }
+    const seed = readSeed();
+    const env = requireSupabaseEnv();
+    const suffix = randomUUID().slice(0, 8);
+    const dealId = randomUUID();
+    const slug = `e2e-isr-unpublish-${suffix}`;
+    const dealPath = `/deals/${slug}`;
+
+    try {
+      await insertDeal(env, {
+        id: dealId,
+        sourceId: seed.sourceId,
+        organizationId: seed.organizationId,
+        sourceTitle: `ISR cache fixture ${suffix}`,
+        sourceDescription: `Public ISR cache fixture ${suffix}`,
+        externalId: `e2e-isr-${suffix}`,
+      });
+      await insertPreview(env, {
+        dealId,
+        slug,
+        title: `ISR cache fixture ${suffix}`,
+        summary:
+          "A fresh public opportunity used to verify the ISR cache purge.",
+        published: true,
+      });
+
+      const purge = await request.post(REVALIDATE, {
+        headers: { Authorization: AUTHORIZATION },
+        data: { slugs: [slug] },
+      });
+      expect(purge.status()).toBe(200);
+
+      const first = await request.get(dealPath);
+      expect(first.status()).toBe(200);
+      const second = await request.get(dealPath);
+      expect(second.status()).toBe(200);
+      expectCacheHit(second);
+
+      const homeFirst = await request.get("/");
+      expect(homeFirst.status()).toBe(200);
+      const homeSecond = await request.get("/");
+      expect(homeSecond.status()).toBe(200);
+      expectCacheHit(homeSecond);
+      expect(await homeSecond.text()).toContain(slug);
+
+      await requireOk(
+        env,
+        env.secretKey,
+        `/rest/v1/deal_previews?deal_id=eq.${dealId}`,
+        {
+          method: "PATCH",
+          headers: { Prefer: "return=minimal" },
+          body: JSON.stringify({ is_published: false }),
+        },
+      );
+
+      const revalidated = await requestPublicPreviewRevalidation({
+        slugs: [slug],
+        env: {
+          REVALIDATE_SECRET: E2E_REVALIDATE_SECRET,
+          NEXT_PUBLIC_APP_URL: baseURL,
+        },
+      });
+      expect(revalidated).toEqual({ ok: true });
+
+      const goneFirst = await request.get(dealPath);
+      expect(goneFirst.status()).toBe(404);
+      const goneSecond = await request.get(dealPath);
+      expect(goneSecond.status()).toBe(404);
+
+      const homeGone = await request.get("/");
+      expect(homeGone.status()).toBe(200);
+      expect(await homeGone.text()).not.toContain(slug);
+    } finally {
+      await restRequest(
+        env,
+        env.secretKey,
+        `/rest/v1/deal_previews?deal_id=eq.${dealId}`,
+        { method: "DELETE" },
+      );
+      await restRequest(env, env.secretKey, `/rest/v1/deals?id=eq.${dealId}`, {
+        method: "DELETE",
+      });
+    }
   });
 
   test("revalidate stays authenticated and the viewer API stays no-store", async ({

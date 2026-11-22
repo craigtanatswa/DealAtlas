@@ -9,6 +9,7 @@ import {
 
 import { UpgradeStatusBanner } from "@/components/billing/upgrade-status-banner";
 import { DealPreviewDetail } from "@/components/deals/deal-preview-detail";
+import { dealUnlockProps } from "@/components/deals/deal-unlock-props";
 import { SaveDealButton } from "@/components/saves/save-deal-button";
 import { useIsAuthenticated } from "@/components/viewer/viewer-provider";
 import type { FoundingPublicCount } from "@/lib/billing/founding-ui";
@@ -106,27 +107,7 @@ export function DealViewerIsland({
     />
   );
 
-  const unlock =
-    viewer?.mode === "pro"
-      ? {
-          mode: "pro" as const,
-          loginHref,
-          revealHref: viewer.revealHref,
-          returnTo: viewer.returnTo,
-          paymentPending: viewer.paymentPending,
-        }
-      : viewer?.mode === "free"
-        ? {
-            mode: "free" as const,
-            loginHref,
-            founding: viewer.founding,
-            paymentPending: viewer.paymentPending,
-          }
-        : {
-            mode: "anonymous" as const,
-            loginHref,
-            founding,
-          };
+  const unlock = dealUnlockProps({ viewer, slug, loginHref, founding });
 
   return (
     <>
