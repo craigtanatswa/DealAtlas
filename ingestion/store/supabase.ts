@@ -445,6 +445,36 @@ export function createSupabaseIngestionStore(
       const rows = throwIfQueryError("List deals", result) ?? [];
       return rows.map(mapDeal);
     },
+    async listCategoryBackfillDealIds(limit = 100000) {
+      const cap = Math.min(100000, Math.max(1, Math.floor(limit)));
+      const dealIds: string[] = [];
+      let after: string | null = null;
+      for (let page = 0; page < 200 && dealIds.length < cap; page += 1) {
+        let query = client
+          .from("deals")
+          .select("id")
+          .order("id", { ascending: true })
+          .limit(Math.min(1000, cap - dealIds.length));
+        if (after) {
+          query = query.gt("id", after);
+        }
+        const rows = throwIfQueryError(
+          "List deals for category backfill",
+          await query,
+        ) ?? [];
+        if (rows.length === 0) {
+          break;
+        }
+        for (const row of rows) {
+          dealIds.push(row.id);
+        }
+        after = rows[rows.length - 1]?.id ?? null;
+        if (rows.length < 1000 || !after) {
+          break;
+        }
+      }
+      return dealIds;
+    },
     async listDealIdsMissingPreview(limit = 500) {
       const cap = Math.min(500, Math.max(1, Math.floor(limit)));
       const missing: string[] = [];
@@ -751,6 +781,50 @@ export function createSupabaseIngestionStore(
         description: row.source_description,
         isPrimary: row.is_primary,
       }));
+    },
+    async listClassificationsForCategoryBackfill(dealId) {
+      const result = await client
+        .from("deal_classifications")
+        .select("id, cpv_code, category_id, is_primary")
+        .eq("deal_id", dealId)
+        .order("created_at", { ascending: true });
+      const rows = throwIfQueryError("List category backfill classifications", result) ?? [];
+      return rows.map((row) => ({
+        id: row.id,
+        cpvCode: row.cpv_code,
+        categoryId: row.category_id,
+        isPrimary: row.is_primary,
+      }));
+    },
+    async updateDealMainCategory(id, mainCategory) {
+      const result = await client
+        .from("deals")
+        .update({ main_category: mainCategory })
+        .eq("id", id);
+      throwIfQueryError("Update deal main category", {
+        data: result.data,
+        error: result.error,
+      });
+    },
+    async updateDealPreviewMainCategory(dealId, mainCategory) {
+      const result = await client
+        .from("deal_previews")
+        .update({ main_category: mainCategory })
+        .eq("deal_id", dealId);
+      throwIfQueryError("Update preview main category", {
+        data: result.data,
+        error: result.error,
+      });
+    },
+    async updateClassificationCategoryId(classificationId, categoryId) {
+      const result = await client
+        .from("deal_classifications")
+        .update({ category_id: categoryId })
+        .eq("id", classificationId);
+      throwIfQueryError("Update classification category", {
+        data: result.data,
+        error: result.error,
+      });
     },
     async countDocumentsForDeal(dealId) {
       const result = await client

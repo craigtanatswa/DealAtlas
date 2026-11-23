@@ -128,6 +128,7 @@ export const TED_SEARCH_FIELDS = [
   "buyer-internet-address",
   "buyer-legal-type",
   "classification-cpv",
+  "contract-nature",
   "deadline-receipt-request",
   "place-of-performance",
   "submission-language",
