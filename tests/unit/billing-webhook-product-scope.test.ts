@@ -26,6 +26,7 @@ vi.mock("@/lib/billing/reconcile", () => ({
   reconcileDodoSubscription: vi.fn(async () => null),
   cancelDodoSubscription: vi.fn(async () => {}),
   retrieveDodoPayment: vi.fn(async () => null),
+  retrieveDodoPaymentForScope: vi.fn(async () => null),
 }));
 vi.mock("@/lib/billing/founding-db", () => ({
   syncFoundingSlot: vi.fn(async () => {}),
@@ -37,6 +38,7 @@ vi.mock("@/lib/analytics/server", () => ({
 import {
   BILLING_FIXTURE_LIFETIME_PRODUCT_ID,
   BILLING_FIXTURE_PRODUCTS,
+  BILLING_FIXTURE_SUBSCRIPTION_ID,
   BILLING_FIXTURE_USER_ID,
   applyBillingEvent,
   billingWebhookFixtures,
@@ -46,7 +48,10 @@ import {
   subscriptionWebhookFixture,
 } from "@/lib/billing";
 import { getAllowedProductIds } from "@/lib/billing/allowed-products";
-import { classifyEventProductScope } from "@/lib/billing/product-scope";
+import {
+  FOREIGN_PRODUCT_WEBHOOK_NOTE,
+  classifyEventProductScope,
+} from "@/lib/billing/product-scope";
 import { processVerifiedDodoWebhook } from "@/lib/billing/process";
 import type { StoredSubscription } from "@/lib/billing/types";
 
@@ -302,6 +307,76 @@ describe("classifyEventProductScope", () => {
     expect(retrievePayment).toHaveBeenCalledWith("pay_scope_unknown");
   });
 
+  it("uses the provider cart before the subscription for an unknown refund", async () => {
+    const store = createMemoryBillingStore({
+      subscriptions: [
+        storedSubscription({ dodoSubscriptionId: "sub_scope_remote" }),
+      ],
+    });
+    const data = {
+      payment_id: "pay_scope_remote",
+      metadata: {},
+      customer: { customer_id: "cus_scope_unknown" },
+    };
+
+    const allowlisted = await classifyEventProductScope({
+      eventType: "refund.succeeded",
+      data,
+      allowedProductIds: fixtureAllowlist(),
+      store,
+      retrievePayment: vi.fn(async () => ({
+        subscriptionId: "sub_scope_unknown",
+        totalAmount: 25000,
+        currency: "GBP",
+        productIds: [BILLING_FIXTURE_PRODUCTS.PRO_MONTHLY],
+      })),
+    });
+    expect(allowlisted).toBe("ours");
+
+    const foreign = await classifyEventProductScope({
+      eventType: "refund.succeeded",
+      data,
+      allowedProductIds: fixtureAllowlist(),
+      store,
+      retrievePayment: vi.fn(async () => ({
+        subscriptionId: "sub_scope_remote",
+        totalAmount: 25000,
+        currency: "GBP",
+        productIds: ["pdt_foreign_starter"],
+      })),
+    });
+    expect(foreign).toBe("foreign");
+  });
+
+  it("uses the provider subscription when the refund cart is empty", async () => {
+    const store = createMemoryBillingStore({
+      subscriptions: [
+        storedSubscription({ dodoSubscriptionId: "sub_scope_remote" }),
+      ],
+    });
+    const retrievePayment = vi.fn(async () => ({
+      subscriptionId: "sub_scope_remote",
+      totalAmount: 25000,
+      currency: "GBP",
+      productIds: [],
+    }));
+
+    const scope = await classifyEventProductScope({
+      eventType: "refund.succeeded",
+      data: {
+        payment_id: "pay_scope_remote",
+        metadata: {},
+        customer: { customer_id: "cus_scope_unknown" },
+      },
+      allowedProductIds: fixtureAllowlist(),
+      store,
+      retrievePayment,
+    });
+
+    expect(scope).toBe("ours");
+    expect(retrievePayment).toHaveBeenCalledWith("pay_scope_remote");
+  });
+
   it("fails safe to ours when a lookup throws", async () => {
     const store = createMemoryBillingStore();
     vi.spyOn(store, "profileExists").mockRejectedValueOnce(
@@ -385,19 +460,86 @@ describe("processVerifiedDodoWebhook product scope", () => {
   });
 
   it("acknowledges and ignores a foreign product with no store writes", async () => {
-    const payload = subscriptionWebhookFixture("subscription.active", {
-      product_id: "pdt_foreign_starter",
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      const payload = subscriptionWebhookFixture("subscription.active", {
+        product_id: "pdt_foreign_starter",
+      });
+
+      const result = await processVerifiedDodoWebhook({
+        payload: WebhookPayloadSchema.parse(payload),
+        rawBody: JSON.stringify(payload),
+        webhookId: "evt_foreign_scope",
+      });
+
+      expect(result).toEqual({ outcome: "ignored" });
+      for (const spy of Object.values(writes)) {
+        expect(spy).not.toHaveBeenCalled();
+      }
+
+      expect(warn).toHaveBeenCalledTimes(1);
+      const logged = JSON.parse(
+        String(warn.mock.calls[0]?.[0]),
+      ) as Record<string, unknown>;
+      expect(logged.level).toBe("warn");
+      expect(logged.msg).toBe(FOREIGN_PRODUCT_WEBHOOK_NOTE);
+      expect(logged.event).toBe("dodo_webhook_foreign_product");
+      expect(logged.eventType).toBe("subscription.active");
+      expect(logged.job).toBe("dodo-webhook");
+      expect(Object.keys(logged).sort()).toEqual(
+        ["event", "eventType", "job", "level", "msg", "ts"].sort(),
+      );
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it("applies an allowlisted subscription renewal and stores it", async () => {
+    const store = createMemoryBillingStore({
+      profileIds: [BILLING_FIXTURE_USER_ID],
     });
+    storeState.current = store;
+    const payload = subscriptionWebhookFixture("subscription.renewed", {
+      product_id: BILLING_FIXTURE_PRODUCTS.PRO_MONTHLY,
+    });
+
+    expect(await scoped(payload, store)).toBe("ours");
 
     const result = await processVerifiedDodoWebhook({
       payload: WebhookPayloadSchema.parse(payload),
       rawBody: JSON.stringify(payload),
-      webhookId: "evt_foreign_scope",
+      webhookId: "evt_scope_renewed",
+    });
+
+    expect(result).toEqual({ outcome: "applied" });
+    expect(store.events.get("evt_scope_renewed")?.status).toBe("PROCESSED");
+    expect(store.subscriptions).toHaveLength(1);
+    expect(store.subscriptions[0]?.dodoSubscriptionId).toBe(
+      BILLING_FIXTURE_SUBSCRIPTION_ID,
+    );
+  });
+
+  it("processes a renewal payment without a product cart when the subscription is known", async () => {
+    const store = createMemoryBillingStore({
+      subscriptions: [storedSubscription()],
+    });
+    storeState.current = store;
+    const payload = paymentWebhookFixture("payment.succeeded", {
+      subscription_id: "sub_scope",
+      product_cart: null,
+    });
+
+    expect(await scoped(payload, store)).toBe("ours");
+
+    const result = await processVerifiedDodoWebhook({
+      payload: WebhookPayloadSchema.parse(payload),
+      rawBody: JSON.stringify(payload),
+      webhookId: "evt_scope_renewal_payment",
     });
 
     expect(result).toEqual({ outcome: "ignored" });
-    for (const spy of Object.values(writes)) {
-      expect(spy).not.toHaveBeenCalled();
-    }
+    expect(store.events.get("evt_scope_renewal_payment")?.status).toBe(
+      "PROCESSED",
+    );
   });
 });

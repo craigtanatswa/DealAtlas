@@ -4,10 +4,12 @@ import {
   CHECKOUT_METADATA_KEYS,
   readMetadataString,
 } from "@/lib/billing/metadata";
-import type { BillingStore, RetrievePaymentFn } from "@/lib/billing/types";
+import type { BillingStore, PaymentFacts } from "@/lib/billing/types";
 import { uuidSchema } from "@/lib/validation";
 
 export type EventProductScope = "ours" | "foreign";
+
+export type ScopePaymentFacts = PaymentFacts & { productIds?: string[] };
 
 export const FOREIGN_PRODUCT_WEBHOOK_NOTE =
   "foreign_product_event: Dodo event for a product outside this deployment's allowlist; acknowledged and ignored.";
@@ -75,7 +77,9 @@ export async function classifyEventProductScope(input: {
   data: Record<string, unknown>;
   allowedProductIds: ReadonlySet<string>;
   store: ProductScopeStore;
-  retrievePayment?: RetrievePaymentFn;
+  retrievePayment?: (
+    paymentId: string,
+  ) => Promise<ScopePaymentFacts | PaymentFacts | null>;
 }): Promise<EventProductScope> {
   const { eventType, data, allowedProductIds, store, retrievePayment } = input;
 
@@ -122,6 +126,13 @@ export async function classifyEventProductScope(input: {
 
       if (isReversalEvent(eventType) && retrievePayment) {
         const remote = await retrievePayment(paymentId);
+        const remoteProductIds =
+          remote && "productIds" in remote ? remote.productIds : undefined;
+        if (remoteProductIds && remoteProductIds.length > 0) {
+          return remoteProductIds.some((id) => allowedProductIds.has(id))
+            ? "ours"
+            : "foreign";
+        }
         if (
           remote?.subscriptionId &&
           (await store.getSubscriptionByDodoId(remote.subscriptionId))
@@ -131,6 +142,8 @@ export async function classifyEventProductScope(input: {
       }
     }
   } catch {
+    // Fail safe to "ours": an event that might be ours must reach existing
+    // handling so Dodo can retry instead of being dropped as foreign.
     return "ours";
   }
 

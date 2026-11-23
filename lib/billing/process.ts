@@ -19,6 +19,7 @@ import {
   cancelDodoSubscription,
   reconcileDodoSubscription,
   retrieveDodoPayment,
+  retrieveDodoPaymentForScope,
 } from "@/lib/billing/reconcile";
 import { createBillingStore } from "@/lib/billing/store";
 import type { ApplyResult } from "@/lib/billing/types";
@@ -46,11 +47,11 @@ export async function processVerifiedDodoWebhook(input: {
     data: asRecord(input.payload.data),
     allowedProductIds: getAllowedProductIds(),
     store,
-    retrievePayment: retrieveDodoPayment,
+    retrievePayment: (paymentId) => retrieveDodoPaymentForScope(paymentId),
   });
   if (scope === "foreign") {
     structuredLog({
-      level: "info",
+      level: "warn",
       msg: FOREIGN_PRODUCT_WEBHOOK_NOTE,
       event: "dodo_webhook_foreign_product",
       eventType: input.payload.type,
