@@ -1,5 +1,25 @@
 import { DatabaseQueryError } from "@/lib/db/errors";
 
+const TRANSPORT_FAILURE_CODES = new Set(["HTTP_TIMEOUT", "HTTP_NETWORK", "RUN_TIMEOUT"]);
+
+/** HTTP 5xx, network and timeout failures should fail a zero-record run. HTTP 4xx is not included. */
+export function isTransportFailureCode(code: string | null | undefined): boolean {
+  if (!code) {
+    return false;
+  }
+  return /^HTTP_5\d\d$/.test(code) || TRANSPORT_FAILURE_CODES.has(code);
+}
+
+export function isTransportFailureError(error: { code?: string | null }): boolean {
+  return isTransportFailureCode(error.code);
+}
+
+export function findTransportFailure<T extends { code?: string | null }>(
+  errors: readonly T[],
+): T | undefined {
+  return errors.find((error) => isTransportFailureError(error));
+}
+
 export class IngestionError extends Error {
   readonly stage: string;
   readonly code: string;

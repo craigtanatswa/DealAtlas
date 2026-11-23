@@ -245,7 +245,7 @@ describe("TED fixture ingestion", () => {
     expect("ocid" in dto).toBe(false);
   });
 
-  it("records a fetch failure as PARTIAL so the step can fail without publishing", async () => {
+  it("records a zero-record fetch failure as FAILED so the step fails without publishing", async () => {
     const result = await runOpenTedIngest({
       store: createMemoryIngestionStore({
         sources: [tedSourceRecord({ id: "source-ted" })],
@@ -268,7 +268,7 @@ describe("TED fixture ingestion", () => {
         },
       },
     });
-    expect(result.status).toBe("PARTIAL");
+    expect(result.status).toBe("FAILED");
     expect(result.counts.failed).toBe(1);
     expect(result.errors[0]?.stage).toBe("fetch");
     expect(result.changedDealIds).toEqual([]);

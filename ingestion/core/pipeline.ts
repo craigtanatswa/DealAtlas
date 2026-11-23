@@ -1,4 +1,9 @@
-import { asIngestionError, IngestionError } from "@/ingestion/core/errors";
+import {
+  asIngestionError,
+  findTransportFailure,
+  IngestionError,
+  isTransportFailureError,
+} from "@/ingestion/core/errors";
 import { buildTlsWarning, type TlsWarning } from "@/ingestion/core/tls";
 import {
   assertCanIngestSource,
@@ -63,6 +68,7 @@ export type RunIngestionOptions = {
     sourceKey: string;
     status: IngestionStatus;
     counters: IngestionCounters;
+    errors: IngestionRunResult["errors"];
   }) => { status: IngestionStatus; metadata?: Record<string, unknown> };
   onPersisted?: (info: {
     dealId: string;
@@ -315,6 +321,19 @@ export async function runIngestion(
           code: ingestionError.code,
           message: ingestionError.message,
         });
+        if (!options.dryRun && runId) {
+          await options.store.insertError({
+            sourceId: source.id,
+            ingestionRunId: runId,
+            rawRecordId: null,
+            externalRecordId: null,
+            errorStage: ingestionError.stage,
+            errorCode: ingestionError.code,
+            message: ingestionError.message,
+            retryable: ingestionError.retryable,
+            details: ingestionError.details,
+          });
+        }
         if (options.failureMode === "partial") {
           break;
         }
@@ -608,20 +627,25 @@ export async function runIngestion(
       await runBody();
     }
 
+    const zeroRecords = counters.fetched + counters.discovered === 0;
+    const transportFailure = errors.some((error) => isTransportFailureError(error));
     let status: IngestionStatus =
-      options.failureMode === "partial" && counters.errorCount > 0
-        ? "PARTIAL"
-        : counters.errorCount === 0
-          ? "SUCCEEDED"
-          : counters.new + counters.updated + counters.unchanged > 0
-            ? "PARTIAL"
-            : "FAILED";
+      zeroRecords && transportFailure
+        ? "FAILED"
+        : options.failureMode === "partial" && counters.errorCount > 0
+          ? "PARTIAL"
+          : counters.errorCount === 0
+            ? "SUCCEEDED"
+            : counters.new + counters.updated + counters.unchanged > 0
+              ? "PARTIAL"
+              : "FAILED";
     let outcomeMetadata: Record<string, unknown> = {};
     if (options.classifyResult) {
       const classified = options.classifyResult({
         sourceKey: source.sourceKey,
         status,
         counters,
+        errors,
       });
       status = classified.status;
       outcomeMetadata = classified.metadata ?? {};
@@ -650,12 +674,20 @@ export async function runIngestion(
 
       const tlsWarning = warnings[0];
       const failed = status === "FAILED";
+      const failureError = failed
+        ? (findTransportFailure(errors) ?? errors[0])
+        : undefined;
+      const lastError = tlsWarning
+        ? tlsWarningError(tlsWarning)
+        : failureError
+          ? `${failureError.code ?? "INGESTION_ERROR"}: ${failureError.message}`
+          : undefined;
       await options.store.updateSource(source.id, {
         lastSuccessAt:
           failed || tlsWarning ? source.lastSuccessAt : new Date().toISOString(),
         consecutiveFailures:
           failed || tlsWarning ? source.consecutiveFailures + 1 : 0,
-        ...(tlsWarning ? { lastError: tlsWarningError(tlsWarning) } : {}),
+        ...(lastError ? { lastError } : {}),
       });
     }
 

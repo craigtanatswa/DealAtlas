@@ -114,6 +114,14 @@ describe("open ingest alerts", () => {
     expect(body).not.toHaveProperty("sell2wales_status");
   });
 
+  it("marks Sell2Wales red when the ingest step fails", () => {
+    const body = JSON.parse(ingestAlertBody({ sell2WalesOk: "0" })) as Record<
+      string,
+      unknown
+    >;
+    expect(body.sell2wales_ok).toBe(0);
+  });
+
   it("does not call the provider for a placeholder", async () => {
     let calls = 0;
     const outcome = await sendIngestAlert({

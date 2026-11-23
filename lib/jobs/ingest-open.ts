@@ -5,6 +5,7 @@ import {
   type JsonHttpClient,
   type TextHttpClient,
 } from "@/ingestion/core/http";
+import { isTransportFailureError } from "@/ingestion/core/errors";
 import { runIngestion } from "@/ingestion/core/pipeline";
 import { defaultSleep } from "@/ingestion/core/retry";
 import {
@@ -60,7 +61,11 @@ import {
   GCA_PIPELINE_SOURCE_KEY,
 } from "@/ingestion/sources/gca/constants";
 import { createGcaPipelineAdapter } from "@/ingestion/sources/gca/pipeline";
-import type { IngestionStatus, SourceAdapter } from "@/ingestion/core/types";
+import type {
+  IngestionRunResult,
+  IngestionStatus,
+  SourceAdapter,
+} from "@/ingestion/core/types";
 import type { IngestionStore } from "@/ingestion/store/types";
 import { rebuildChangedPreviews } from "@/lib/jobs/previews";
 
@@ -251,15 +256,24 @@ export function isZeroRecordSource(sourceKey: string): boolean {
 /**
  * A completed run from PCS/Sell2Wales that fetches or discovers 0 records is a
  * success (ok-with-zero). An empty quiet response is not a failure or a partial
- * import and must not fire an ingest alert.
+ * import and must not fire an ingest alert. A 0-record run after a transport
+ * failure (HTTP 5xx, network or timeout) is FAILED for every source.
  */
 export function classifyZeroRecordRun(input: {
   sourceKey: string;
   status: OpenIngestResult["status"];
   fetched: number;
   discovered?: number;
+  errors?: ReadonlyArray<{ stage?: string; code?: string; message?: string }>;
 }): ZeroRecordRunClassification {
   const records = input.fetched + (input.discovered ?? 0);
+  if (
+    input.status !== "SKIPPED" &&
+    records === 0 &&
+    input.errors?.some((error) => isTransportFailureError(error))
+  ) {
+    return { status: "FAILED", zeroRecords: false, reason: null };
+  }
   if (
     !isZeroRecordSource(input.sourceKey) ||
     input.status === "SKIPPED" ||
@@ -306,12 +320,14 @@ function classifyIngestionRun(input: {
   sourceKey: string;
   status: IngestionStatus;
   counters: { fetched: number; discovered: number };
+  errors: IngestionRunResult["errors"];
 }): { status: IngestionStatus; metadata?: Record<string, unknown> } {
   const classification = classifyZeroRecordRun({
     sourceKey: input.sourceKey,
     status: input.status as OpenIngestResult["status"],
     fetched: input.counters.fetched,
     discovered: input.counters.discovered,
+    errors: input.errors,
   });
   return {
     status: classification.status,
@@ -561,7 +577,7 @@ export async function runOpenFindATenderIngest(options: {
             error.stage === "run",
         );
       if (fetchLevel) {
-        status = "PARTIAL";
+        status = result.status === "FAILED" ? "FAILED" : "PARTIAL";
         break;
       }
       if (result.status === "PARTIAL") {
@@ -612,7 +628,7 @@ export async function runOpenFindATenderIngest(options: {
     }
   }
 
-  if (counts.failed === 0 && status !== "PARTIAL") {
+  if (counts.failed === 0 && status !== "PARTIAL" && status !== "FAILED") {
     status = "SUCCEEDED";
   }
 
@@ -622,6 +638,7 @@ export async function runOpenFindATenderIngest(options: {
       sourceKey,
       status,
       fetched: counts.fetched,
+      errors,
     });
     status = zeroRecord.status;
     metadata = zeroRecord.metadata;
@@ -878,6 +895,7 @@ export async function runOpenCatalogueIngest(options: {
       sourceKey,
       status,
       fetched: counts.fetched,
+      errors,
     });
     status = zeroRecord.status;
     metadata = zeroRecord.metadata;

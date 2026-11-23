@@ -101,7 +101,7 @@ describe("open Find a Tender ingest", () => {
       },
     });
 
-    expect(result.status).toBe("PARTIAL");
+    expect(result.status).toBe("FAILED");
     expect(result.counts.failed).toBe(1);
     expect(result.errors).toEqual([
       {
@@ -111,6 +111,7 @@ describe("open Find a Tender ingest", () => {
           "ETIMEDOUT fetching https://www.find-tender.service.gov.uk/api/1.0/ocdsReleasePackages?updatedFrom=secret",
       },
     ]);
+    expect(result.metadata).toBeUndefined();
     const line = publicIngestErrorLine(result.errors[0]!);
     expect(line).toBe(
       "fetch HTTP_NETWORK ETIMEDOUT www.find-tender.service.gov.uk",
@@ -554,7 +555,7 @@ describe("open Find a Tender ingest", () => {
         },
       },
     });
-    expect(failed.status).toBe("PARTIAL");
+    expect(failed.status).toBe("FAILED");
     expect(failed.counts.failed).toBeGreaterThan(0);
     expect(openIngestShouldFail(failed)).toBe(true);
     expect(publicIngestErrorLine(failed.errors[0]!)).toBe(
