@@ -86,6 +86,19 @@ export function createMemoryBillingStore(seed?: {
         existing.processingError = processingError ?? null;
       }
     },
+    async stripForeignEventPayload(providerEventId, note) {
+      const existing = events.get(providerEventId);
+      if (
+        !existing ||
+        (existing.status !== "RECEIVED" && existing.status !== "FAILED")
+      ) {
+        return false;
+      }
+      existing.payload = {};
+      existing.status = "IGNORED";
+      existing.processingError = note;
+      return true;
+    },
     async profileExists(userId) {
       return profileIds.has(userId);
     },

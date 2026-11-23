@@ -14,6 +14,9 @@ export type ScopePaymentFacts = PaymentFacts & { productIds?: string[] };
 export const FOREIGN_PRODUCT_WEBHOOK_NOTE =
   "foreign_product_event: Dodo event for a product outside this deployment's allowlist; acknowledged and ignored.";
 
+export const FOREIGN_EVENT_PAYLOAD_STRIPPED_NOTE =
+  "foreign_product_event: payload removed; event belongs to a product outside this deployment's allowlist.";
+
 type ProductScopeStore = Pick<
   BillingStore,
   | "profileExists"

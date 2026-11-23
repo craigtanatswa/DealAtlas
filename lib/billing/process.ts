@@ -12,6 +12,7 @@ import { foundingSideEffect } from "@/lib/billing/founding";
 import { proSubscribedPlan } from "@/lib/billing/analytics";
 import { syncFoundingSlot } from "@/lib/billing/founding-db";
 import {
+  FOREIGN_EVENT_PAYLOAD_STRIPPED_NOTE,
   FOREIGN_PRODUCT_WEBHOOK_NOTE,
   classifyEventProductScope,
 } from "@/lib/billing/product-scope";
@@ -57,6 +58,40 @@ export async function processVerifiedDodoWebhook(input: {
       eventType: input.payload.type,
       job: "dodo-webhook",
     });
+
+    try {
+      const eventId = extractBillingEvent(
+        input.payload,
+        input.rawBody,
+        input.webhookId,
+        products,
+      ).providerEventId;
+      const stripped = await store.stripForeignEventPayload(
+        eventId,
+        FOREIGN_EVENT_PAYLOAD_STRIPPED_NOTE,
+      );
+      if (stripped) {
+        structuredLog({
+          level: "warn",
+          msg: "Foreign Dodo event payload removed from an earlier delivery.",
+          event: "dodo_webhook_foreign_payload_stripped",
+          eventType: input.payload.type,
+          job: "dodo-webhook",
+        });
+      }
+    } catch {
+      // 200-on-strip-failure: the row stays FAILED with its payload and is
+      // flagged by this warn. Returning 5xx would make Dodo retry, but retries
+      // are bounded and the event is not ours, so acknowledge and alert.
+      structuredLog({
+        level: "warn",
+        msg: "Could not remove a stored foreign Dodo event payload; review billing_events.",
+        event: "dodo_webhook_foreign_strip_failed",
+        eventType: input.payload.type,
+        job: "dodo-webhook",
+      });
+    }
+
     return { outcome: "ignored" };
   }
 
