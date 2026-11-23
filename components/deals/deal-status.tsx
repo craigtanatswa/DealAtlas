@@ -12,8 +12,8 @@ const PILL: Record<
     className: "border-amber-200 bg-amber-50 text-amber-700",
   },
   UPCOMING: {
-    label: "Opening soon",
-    className: "border-blue-200 bg-blue-50 text-blue-700",
+    label: "Upcoming",
+    className: "border-blue-900 bg-blue-800 text-white",
   },
   AWARDED: {
     label: "Awarded",

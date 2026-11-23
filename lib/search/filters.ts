@@ -175,6 +175,6 @@ export const BIDDABLE_STATUSES = ["OPEN", "CLOSING_SOON", "UPCOMING"] as const;
 export const PUBLIC_STATUS_FILTERS = [
   { value: "CLOSING_SOON", label: "Closing soon" },
   { value: "OPEN", label: "Open" },
-  { value: "UPCOMING", label: "Opening soon" },
+  { value: "UPCOMING", label: "Upcoming" },
   { value: "AWARDED", label: "Awarded" },
 ] as const;
