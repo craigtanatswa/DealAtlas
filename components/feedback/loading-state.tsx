@@ -30,8 +30,8 @@ export function LoadingState({
 
 export function PageLoadingState({ label = "Loading" }: { label?: string }) {
   return (
-    <Main>
-      <LoadingState label={label} className="min-h-[50vh]" />
+    <Main className="flex-1 justify-center">
+      <LoadingState label={label} className="min-h-[50vh] flex-1" />
     </Main>
   );
 }
