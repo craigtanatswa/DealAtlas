@@ -69,7 +69,8 @@ const SLUG_7 = "it-tenders-uk";
 const SLUG_8 = "construction-tenders-uk";
 const SLUG_9 = "bid-no-bid-decision";
 const SLUG_10 = "social-value-in-tenders";
-const PUBLISHED = [SLUG, SLUG_2, SLUG_3, SLUG_4, SLUG_5, SLUG_6, SLUG_7, SLUG_8, SLUG_9, SLUG_10];
+const SLUG_11 = "how-to-get-on-a-framework";
+const PUBLISHED = [SLUG, SLUG_2, SLUG_3, SLUG_4, SLUG_5, SLUG_6, SLUG_7, SLUG_8, SLUG_9, SLUG_10, SLUG_11];
 const UNPUBLISHED_SLUG = "frameworks-and-dynamic-markets";
 
 function frontmatter(slug: string, published: boolean, updated: string) {
@@ -637,7 +638,7 @@ describe("guide sitemap and robots", () => {
     const entries = guideSitemapEntries(ORIGIN, listPublishedGuides());
     expect(entries.map((entry) => [entry.url, entry.lastModified])).toEqual(
       expect.arrayContaining([
-        [`${ORIGIN}/guides`, "2026-11-16"],
+        [`${ORIGIN}/guides`, "2026-11-23"],
         [`${ORIGIN}/guides/${SLUG}`, "2026-11-16"],
         [`${ORIGIN}/guides/${SLUG_2}`, "2026-11-11"],
         [`${ORIGIN}/guides/${SLUG_3}`, "2026-11-11"],
@@ -648,9 +649,10 @@ describe("guide sitemap and robots", () => {
         [`${ORIGIN}/guides/${SLUG_8}`, "2026-11-10"],
         [`${ORIGIN}/guides/${SLUG_9}`, "2026-11-16"],
         [`${ORIGIN}/guides/${SLUG_10}`, "2026-11-16"],
+        [`${ORIGIN}/guides/${SLUG_11}`, "2026-11-23"],
       ]),
     );
-    expect(entries).toHaveLength(11);
+    expect(entries).toHaveLength(12);
   });
 
   it("emits no sitemap entries when nothing is published", () => {
