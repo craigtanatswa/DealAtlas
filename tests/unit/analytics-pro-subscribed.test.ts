@@ -16,6 +16,23 @@ vi.mock("@/lib/billing/config", async () => {
   return { requirePlanProductMap: () => fixtures.BILLING_FIXTURE_PRODUCTS };
 });
 vi.mock("@/lib/billing/store", () => ({ createBillingStore: () => store.current }));
+// Production reads both the plan map and this allowlist from the same env vars.
+vi.mock("@/lib/billing/allowed-products", async () => {
+  const fixtures = await import("@/lib/billing/fixtures");
+  const products = fixtures.BILLING_FIXTURE_PRODUCTS;
+  return {
+    getAllowedProductIds: () =>
+      new Set(
+        [
+          products.PRO_MONTHLY,
+          products.PRO_ANNUAL,
+          products.FOUNDING_ANNUAL,
+          products.FOUNDING_LIFETIME,
+          ...products.PRO_ANNUAL_LEGACY,
+        ].filter((id): id is string => Boolean(id)),
+      ),
+  };
+});
 vi.mock("@/lib/billing/founding-db", () => ({ syncFoundingSlot: vi.fn() }));
 vi.mock("@/lib/billing/reconcile", () => ({
   reconcileDodoSubscription: vi.fn(async () => null),
