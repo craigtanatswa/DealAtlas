@@ -204,6 +204,26 @@ export function createBillingStore(): BillingStore {
       });
     },
 
+    async stripForeignEventPayload(providerEventId, note) {
+      const { data, error } = await admin
+        .from("billing_events")
+        .update({
+          payload: {},
+          status: "IGNORED",
+          processed_at: new Date().toISOString(),
+          processing_error: note,
+        })
+        .eq("provider", "DODO")
+        .eq("provider_event_id", providerEventId)
+        .in("status", ["RECEIVED", "FAILED"])
+        .select("provider_event_id");
+      const rows = throwIfQueryError("Failed to strip billing event payload", {
+        data,
+        error,
+      });
+      return (rows?.length ?? 0) > 0;
+    },
+
     async profileExists(userId) {
       const { data, error } = await admin
         .from("profiles")

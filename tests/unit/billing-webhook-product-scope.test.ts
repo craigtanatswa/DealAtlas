@@ -433,6 +433,7 @@ describe("processVerifiedDodoWebhook product scope", () => {
       getEvent: vi.fn(async () => null),
       insertReceivedEvent: writes.insertReceivedEvent,
       markEvent: writes.markEvent,
+      stripForeignEventPayload: vi.fn(async () => false),
       profileExists: vi.fn(async () => false),
       getSubscriptionByDodoId: vi.fn(async () => null),
       getSubscriptionByCustomerId: vi.fn(async () => null),

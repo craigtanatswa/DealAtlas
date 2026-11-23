@@ -222,6 +222,10 @@ export type BillingStore = {
     status: BillingEventRecord["status"],
     processingError?: string | null,
   ): Promise<void>;
+  stripForeignEventPayload(
+    providerEventId: string,
+    note: string,
+  ): Promise<boolean>;
   profileExists(userId: string): Promise<boolean>;
   getSubscriptionByDodoId(
     dodoSubscriptionId: string,
