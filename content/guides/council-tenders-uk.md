@@ -116,7 +116,7 @@ The free preview shows the category, value band, closing date and region where o
 
 Browse council deals free on [live opportunities](/deals), and move to [Pro](/pricing?utm_source=dealatlas&utm_medium=organic&utm_campaign=lifetime&utm_content=council-tenders-uk) when one is worth pursuing. See [how DealAtlas works](/how-it-works).
 
-For a wider view beyond councils, read [how to find public sector tenders](/guides/how-to-find-public-sector-tenders).
+For a wider view beyond councils, read [how to find public sector tenders](/guides/how-to-find-public-sector-tenders), plus our guides to [transport and logistics tenders](/guides/transport-logistics-tenders-uk) and [financial services tenders](/guides/financial-services-tenders-uk).
 
 ## FAQ
 

@@ -14,7 +14,7 @@ securityClearedAt: 2026-10-19
 craigApprovedAt: 2026-10-19
 ---
 
-Councils buy works, services and goods all year, often in contract sizes a small firm can deliver if you know how to bid for council contracts. Knowing how to win council contracts comes down to three habits. Find the right opportunities early, meet the entry requirements without last-minute scrambling, and write a bid that answers the published scoring criteria. This guide covers how councils in England, Wales and Northern Ireland buy under the [Procurement Act 2023](https://www.legislation.gov.uk/ukpga/2023/54/contents), which has applied to new procurements since 24 February 2025, and what that means for your next bid.
+Here is how to bid for and tender for council contracts: find a suitable opportunity early on [DealAtlas](/deals), bid only where you meet the conditions of participation, and answer every question against the published award criteria, with evidence, a realistic price and specific social value commitments. Knowing how to win council contracts comes down to those three habits. Councils buy works, services and goods all year, often in contract sizes a small firm can deliver. This guide covers how councils in England, Wales and Northern Ireland buy under the [Procurement Act 2023](https://www.legislation.gov.uk/ukpga/2023/54/contents), which has applied to new procurements since 24 February 2025, and what that means for your next bid.
 
 ## The short answer
 
@@ -119,7 +119,7 @@ What the rules tell you about scoring:
 - If your price looks abnormally low, the council must give you a chance to show you can deliver at that price before it rejects the tender.
 - A council may disregard a tender that breaks a procedural rule in the documents, such as a late submission or an answer over the word limit.
 
-## How to bid for council contracts, step by step
+## How to tender for council contracts, step by step
 
 Knowing how to bid for council contracts well means working to the evaluator's marking scheme.
 
