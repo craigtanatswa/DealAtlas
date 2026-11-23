@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { IngestionError } from "@/ingestion/core/errors";
 import { runIngestion } from "@/ingestion/core/pipeline";
 import type { DiscoverResult, SourceAdapter } from "@/ingestion/core/types";
 import { findATenderSourceRecord } from "@/ingestion/sources/find-a-tender/seed";
@@ -13,6 +14,7 @@ import {
   classifyZeroRecordRun,
   isZeroRecordSource,
   openIngestShouldFail,
+  runOpenFindATenderIngest,
   runOpenPublicContractsScotlandIngest,
   runOpenSell2WalesIngest,
   zeroRecordNoticeLine,
@@ -32,6 +34,20 @@ function emptyAdapter(sourceKey: string): SourceAdapter {
     },
     async parse() {
       return [];
+    },
+  };
+}
+
+function failingHttp(code: string, stage = "fetch") {
+  return {
+    async getJson(): Promise<never> {
+      throw new IngestionError({
+        message: `${code} from api.example.test`,
+        stage,
+        code,
+        retryable: false,
+        details: { code },
+      });
     },
   };
 }
@@ -230,12 +246,53 @@ describe("zero-record classification", () => {
     );
   });
 
-  it("treats a partial status with zero records as ok-with-zero", () => {
+  it("treats a partial status with zero records and no transport errors as ok-with-zero", () => {
     const classified = classifyZeroRecordRun({
       sourceKey: PUBLIC_CONTRACTS_SCOTLAND_SOURCE_KEY,
       status: "PARTIAL",
       fetched: 0,
       discovered: 0,
+    });
+    expect(classified.status).toBe("SUCCEEDED");
+    expect(classified.metadata).toMatchObject({ ok_with_zero: true });
+  });
+
+  it("fails a zero-record run after a transport error for every source", () => {
+    const transportCodes = [
+      "HTTP_500",
+      "HTTP_503",
+      "HTTP_NETWORK",
+      "HTTP_TIMEOUT",
+      "RUN_TIMEOUT",
+    ];
+    const sourceKeys = [
+      SELL2WALES_SOURCE_KEY,
+      PUBLIC_CONTRACTS_SCOTLAND_SOURCE_KEY,
+      "find-a-tender",
+    ];
+    for (const sourceKey of sourceKeys) {
+      for (const code of transportCodes) {
+        const classified = classifyZeroRecordRun({
+          sourceKey,
+          status: "PARTIAL",
+          fetched: 0,
+          discovered: 0,
+          errors: [{ stage: "fetch", code, message: "upstream unavailable" }],
+        });
+        expect(classified.status).toBe("FAILED");
+        expect(classified.zeroRecords).toBe(false);
+        expect(classified.metadata).toBeUndefined();
+      }
+    }
+  });
+
+  it("does not fail a zero-record run on an HTTP 4xx", () => {
+    const classified = classifyZeroRecordRun({
+      sourceKey: SELL2WALES_SOURCE_KEY,
+      status: "PARTIAL",
+      fetched: 0,
+      discovered: 0,
+      errors: [{ stage: "fetch", code: "HTTP_404", message: "not found" }],
     });
     expect(classified.status).toBe("SUCCEEDED");
     expect(classified.metadata).toMatchObject({ ok_with_zero: true });
@@ -300,5 +357,77 @@ describe("zero-record classification", () => {
     expect(result.status).toBe("SUCCEEDED");
     expect(result.metadata).toMatchObject({ zero_records: true, ok_with_zero: true });
     expect(openIngestShouldFail(result)).toBe(false);
+  });
+
+  it("fails a Sell2Wales zero-record 500 run and persists the discover error", async () => {
+    const store = createMemoryIngestionStore({
+      sources: [sell2WalesSourceRecord({ id: "source-s2w" })],
+    });
+    const result = await runOpenSell2WalesIngest({
+      store,
+      now: NOW,
+      dryRun: false,
+      backfillDays: 7,
+      sleep: async () => undefined,
+      http: failingHttp("HTTP_500"),
+    });
+
+    expect(result.status).toBe("FAILED");
+    expect(result.counts.fetched).toBe(0);
+    expect(result.metadata).toBeUndefined();
+    expect(openIngestShouldFail(result)).toBe(true);
+    expect(store.runs).toHaveLength(1);
+    expect(store.runs[0]?.status).toBe("FAILED");
+    expect(store.errors).toHaveLength(1);
+    expect(store.errors[0]).toMatchObject({
+      sourceId: "source-s2w",
+      ingestionRunId: store.runs[0]?.id,
+      rawRecordId: null,
+      externalRecordId: null,
+      errorStage: "fetch",
+      errorCode: "HTTP_500",
+      message: "HTTP_500 from api.example.test",
+      retryable: false,
+      details: { code: "HTTP_500" },
+    });
+    expect(store.sources[0]?.consecutiveFailures).toBe(1);
+    expect(store.sources[0]?.lastError).toBe(
+      "HTTP_500: HTTP_500 from api.example.test",
+    );
+    expect(store.sources[0]?.lastSuccessAt).toBeNull();
+  });
+
+  it("fails a Public Contracts Scotland zero-record timeout run", async () => {
+    const result = await runOpenPublicContractsScotlandIngest({
+      store: createMemoryIngestionStore({
+        sources: [publicContractsScotlandSourceRecord({ id: "source-pcs" })],
+      }),
+      now: NOW,
+      dryRun: true,
+      backfillDays: 7,
+      sleep: async () => undefined,
+      http: failingHttp("HTTP_TIMEOUT"),
+    });
+
+    expect(result.status).toBe("FAILED");
+    expect(result.metadata).toBeUndefined();
+    expect(openIngestShouldFail(result)).toBe(true);
+  });
+
+  it("fails a Find a Tender zero-record run timeout", async () => {
+    const result = await runOpenFindATenderIngest({
+      store: createMemoryIngestionStore({
+        sources: [findATenderSourceRecord({ id: "source-fat" })],
+      }),
+      now: NOW,
+      dryRun: true,
+      backfillDays: 7,
+      sleep: async () => undefined,
+      http: failingHttp("RUN_TIMEOUT", "run"),
+    });
+
+    expect(result.status).toBe("FAILED");
+    expect(result.metadata).toBeUndefined();
+    expect(openIngestShouldFail(result)).toBe(true);
   });
 });
