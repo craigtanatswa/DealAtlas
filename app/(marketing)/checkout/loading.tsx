@@ -1,5 +1,5 @@
 import { PageLoadingState } from "@/components/feedback/loading-state";
 
-export default function MarketingLoading() {
+export default function CheckoutLoading() {
   return <PageLoadingState label="Loading" />;
 }
