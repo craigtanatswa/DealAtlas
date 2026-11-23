@@ -298,3 +298,73 @@ export function HomeValueSections() {
     </div>
   );
 }
+
+export const HOME_GUIDES_LIMIT = 3;
+
+function formatGuideUpdated(isoDate: string): string {
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(`${isoDate}T00:00:00Z`));
+}
+
+export function HomeGuidesSection({
+  guides,
+}: {
+  guides: Array<{
+    slug: string;
+    path: string;
+    h1: string;
+    description: string;
+    updated: string;
+  }>;
+}) {
+  if (guides.length === 0) {
+    return null;
+  }
+
+  return (
+    <section className="border-b border-border" aria-labelledby="home-guides-heading">
+      <Container className="flex flex-col gap-6 py-12 md:py-16">
+        <SectionHeader
+          id="home-guides-heading"
+          title="Guides"
+          description="Plain-English guides to finding and winning UK public sector tenders."
+          action={
+            <Button asChild variant="outline" className="min-h-11">
+              <Link href="/guides">View all guides</Link>
+            </Button>
+          }
+        />
+        <ul className="grid gap-3">
+          {guides.map((guide) => (
+            <li key={guide.slug}>
+              <Link
+                href={guide.path}
+                className="group flex flex-col gap-2 rounded-lg border border-border bg-card p-5 transition-colors hover:border-primary/30 hover:bg-muted/20 focus-visible:ring-3 focus-visible:ring-ring focus-visible:outline-none"
+              >
+                <h3 className="font-heading text-lg leading-snug font-semibold text-balance group-hover:text-primary">
+                  {guide.h1}
+                </h3>
+                <p className="text-[0.9375rem] leading-7 text-muted-foreground">
+                  {guide.description}
+                </p>
+                <p className="text-sm font-medium text-muted-foreground">
+                  Updated{" "}
+                  <time dateTime={guide.updated}>{formatGuideUpdated(guide.updated)}</time>
+                </p>
+              </Link>
+            </li>
+          ))}
+        </ul>
+        <div className="text-center">
+          <Button asChild variant="link" className="h-auto min-h-11 px-0">
+            <Link href="/guides">View all guides →</Link>
+          </Button>
+        </div>
+      </Container>
+    </section>
+  );
+}

@@ -48,6 +48,7 @@ export const DISPLAY_PRICING = {
 export const PUBLIC_NAV = [
   { href: "/deals", label: "Find Deals" },
   { href: "/how-it-works", label: "How It Works" },
+  { href: "/guides", label: "Guides" },
   { href: "/pricing", label: "Pricing" },
 ] as const;
 

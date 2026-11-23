@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { PHASE_PRODUCTION_BUILD } from "next/constants";
 
 import {
+  HOME_GUIDES_LIMIT,
+  HomeGuidesSection,
   HomeHero,
   HomeLiveOpportunities,
   HomeTestimonialsSection,
@@ -13,6 +15,7 @@ import { JsonLd } from "@/components/seo/json-ld";
 import { getAppOrigin } from "@/lib/auth/urls";
 import { foundingUiState } from "@/lib/billing/founding-ui";
 import { readFoundingPublicCount } from "@/lib/billing/founding-public";
+import { listPublishedGuides } from "@/lib/guides/content";
 import { getHomeSearchChips } from "@/lib/search/home-chips-server";
 import { getCachedHomeLivePreviews } from "@/lib/search/public-cached";
 import { organizationJsonLd, webPageJsonLd } from "@/lib/seo/json-ld";
@@ -67,6 +70,7 @@ export default async function HomePage() {
         total={live.total}
         signedIn="viewer"
       />
+      <HomeGuidesSection guides={listPublishedGuides().slice(0, HOME_GUIDES_LIMIT)} />
       {foundingState === "available" ? (
         <HomeFoundingCta signedIn="viewer" founding={founding} />
       ) : null}

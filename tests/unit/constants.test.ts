@@ -36,6 +36,7 @@ describe("application constants", () => {
     expect(PUBLIC_NAV.map((item) => item.label)).toEqual([
       "Find Deals",
       "How It Works",
+      "Guides",
       "Pricing",
     ]);
     expect(AUTH_NAV.map((item) => item.label)).toEqual([
