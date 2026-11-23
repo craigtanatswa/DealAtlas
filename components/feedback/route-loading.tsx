@@ -5,13 +5,16 @@ import {
   Suspense,
   useCallback,
   useEffect,
+  useRef,
   useState,
+  type MutableRefObject,
   type ReactNode,
 } from "react";
 
 import { PageLoadingState } from "@/components/feedback/loading-state";
 
-const SHOW_DELAY_MS = 150;
+export const ROUTE_LOADING_SHOW_DELAY_MS = 150;
+export const ROUTE_LOADING_SETTLE_TIMEOUT_MS = 8_000;
 
 function sameDocumentUrl(next: URL, current: URL): boolean {
   return (
@@ -40,6 +43,11 @@ export function isInternalPathChange(href: string, currentHref: string): boolean
   return !sameDocumentUrl(next, current);
 }
 
+function pathAndSearch(href: string = window.location.href): string {
+  const url = new URL(href);
+  return `${url.pathname}${url.search}`;
+}
+
 function RouteChangeClear({ onSettled }: { onSettled: () => void }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -52,8 +60,20 @@ function RouteChangeClear({ onSettled }: { onSettled: () => void }) {
   return null;
 }
 
-function RouteLoadingTriggers({ onStart }: { onStart: () => void }) {
+function RouteLoadingTriggers({
+  onStart,
+  onSettle,
+  lastPathSearchRef,
+}: {
+  onStart: () => void;
+  onSettle: () => void;
+  lastPathSearchRef: MutableRefObject<string | null>;
+}) {
   useEffect(() => {
+    if (lastPathSearchRef.current === null) {
+      lastPathSearchRef.current = pathAndSearch();
+    }
+
     const onClick = (event: MouseEvent) => {
       if (event.defaultPrevented || event.button !== 0) {
         return;
@@ -85,17 +105,32 @@ function RouteLoadingTriggers({ onStart }: { onStart: () => void }) {
     };
 
     const onPopState = () => {
+      const next = pathAndSearch();
+      if (next === lastPathSearchRef.current) {
+        return;
+      }
+      lastPathSearchRef.current = next;
       onStart();
     };
 
-    document.addEventListener("click", onClick, true);
+    const onPageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) {
+        onSettle();
+      }
+    };
+
+    // Bubble phase: anchors that preventDefault in onClick must be seen
+    // after that, or the loader starts and never clears.
+    document.addEventListener("click", onClick);
     window.addEventListener("popstate", onPopState);
+    window.addEventListener("pageshow", onPageShow);
 
     return () => {
-      document.removeEventListener("click", onClick, true);
+      document.removeEventListener("click", onClick);
       window.removeEventListener("popstate", onPopState);
+      window.removeEventListener("pageshow", onPageShow);
     };
-  }, [onStart]);
+  }, [lastPathSearchRef, onSettle, onStart]);
 
   return null;
 }
@@ -103,17 +138,30 @@ function RouteLoadingTriggers({ onStart }: { onStart: () => void }) {
 export function RouteLoadingSlot({ children }: { children: ReactNode }) {
   const [pendingSince, setPendingSince] = useState<number | null>(null);
   const [readyAt, setReadyAt] = useState<number | null>(null);
+  const lastPathSearchRef = useRef<string | null>(null);
   const start = useCallback(() => setPendingSince(Date.now()), []);
-  const settle = useCallback(() => setPendingSince(null), []);
+  const settle = useCallback(() => {
+    if (typeof window !== "undefined") {
+      lastPathSearchRef.current = pathAndSearch();
+    }
+    setPendingSince(null);
+  }, []);
 
   useEffect(() => {
     if (pendingSince === null) {
       return;
     }
 
-    const timer = window.setTimeout(() => setReadyAt(pendingSince), SHOW_DELAY_MS);
-    return () => window.clearTimeout(timer);
-  }, [pendingSince]);
+    const showTimer = window.setTimeout(
+      () => setReadyAt(pendingSince),
+      ROUTE_LOADING_SHOW_DELAY_MS,
+    );
+    const capTimer = window.setTimeout(settle, ROUTE_LOADING_SETTLE_TIMEOUT_MS);
+    return () => {
+      window.clearTimeout(showTimer);
+      window.clearTimeout(capTimer);
+    };
+  }, [pendingSince, settle]);
 
   const show = pendingSince !== null && readyAt === pendingSince;
 
@@ -122,7 +170,11 @@ export function RouteLoadingSlot({ children }: { children: ReactNode }) {
       <Suspense fallback={null}>
         <RouteChangeClear onSettled={settle} />
       </Suspense>
-      <RouteLoadingTriggers onStart={start} />
+      <RouteLoadingTriggers
+        onStart={start}
+        onSettle={settle}
+        lastPathSearchRef={lastPathSearchRef}
+      />
       {show ? <PageLoadingState label="Loading" /> : children}
     </>
   );
