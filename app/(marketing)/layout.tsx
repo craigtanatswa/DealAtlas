@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import { RouteLoadingSlot } from "@/components/feedback/route-loading";
 import { SiteFooter } from "@/components/navigation/site-footer";
 import { SiteHeader } from "@/components/navigation/site-header";
 import { SignupPromptGate } from "@/components/conversion/signup-prompt-gate";
@@ -13,7 +14,7 @@ export default function MarketingLayout({
   return (
     <ViewerProvider>
       <SiteHeader />
-      {children}
+      <RouteLoadingSlot>{children}</RouteLoadingSlot>
       <SiteFooter />
       <SignupPromptGate />
     </ViewerProvider>
