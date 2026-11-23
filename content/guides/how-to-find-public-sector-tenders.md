@@ -54,7 +54,7 @@ Under the Act, contracting authorities in England, Wales and Northern Ireland pu
 
 Two kinds of work won't show up as a new open tender notice. Contracts awarded under an existing framework go only to suppliers already on it. Below-threshold work offered to selected suppliers without advertising stays invisible until a contract details notice appears, where one is required. To compete for either, you need to be on the framework, or known to the buyer, before the work is offered.
 
-If you mainly sell to local authorities, our guide to [council tenders UK](/guides/council-tenders-uk) shows what councils buy and how to filter their deals. To search every live opportunity at once, see our [UK tender search](/guides/uk-tender-search) guide.
+If you mainly sell to local authorities, our guide to [council tenders UK](/guides/council-tenders-uk) shows what councils buy and how to filter their deals. To search every live opportunity at once, see our [UK tender search](/guides/uk-tender-search) guide, or the sector guides on [transport and logistics tenders](/guides/transport-logistics-tenders-uk) and [financial services tenders](/guides/financial-services-tenders-uk).
 
 ## By sector
 

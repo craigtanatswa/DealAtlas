@@ -112,7 +112,7 @@ The best social value answers come from bidders who saw the opportunity early en
 
 [Create your free DealAtlas account](/signup) to start your shortlist. When one is worth pursuing, [DealAtlas Pro](/pricing?utm_source=dealatlas&utm_medium=organic&utm_campaign=lifetime&utm_content=social-value-in-tenders) unlocks the buyer, source, contacts and documents, so you can read the social value question before you commit. {{LIFETIME_PLAN_LINE}}
 
-For the rest of the bid, read [how to bid for and win council contracts](/guides/how-to-win-council-contracts).
+For the rest of the bid, read [how to bid for and win council contracts](/guides/how-to-win-council-contracts), and [find public sector tenders](/guides/how-to-find-public-sector-tenders) to shortlist contracts where your offer fits.
 
 ## FAQ
 

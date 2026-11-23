@@ -113,7 +113,7 @@ The bid no bid decision starts with seeing the right tenders early. [DealAtlas](
 
 [Create your free DealAtlas account](/signup) to build your shortlist. When a deal passes your matrix, [DealAtlas Pro](/pricing?utm_source=dealatlas&utm_medium=organic&utm_campaign=lifetime&utm_content=bid-no-bid-decision) unlocks the buyer, the source, contacts and documents, so you can check pass/fail requirements and price weighting before you start writing. {{LIFETIME_PLAN_LINE}}
 
-If you decide to bid for local authority work, read [how to bid for and win council contracts](/guides/how-to-win-council-contracts). For more ways to find opportunities, see [UK tender search](/guides/uk-tender-search).
+If you decide to bid for local authority work, read [how to bid for and win council contracts](/guides/how-to-win-council-contracts). For more ways to find opportunities, see [UK tender search](/guides/uk-tender-search) or [find public sector tenders](/guides/how-to-find-public-sector-tenders).
 
 ## FAQ
 
