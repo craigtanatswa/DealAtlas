@@ -42,6 +42,9 @@ const PRO_FEATURES = [
 const FOUNDING_BUTTON =
   "w-full bg-[#00806A] text-white hover:bg-[#006b56]";
 
+const POPULAR_BUTTON =
+  "w-full bg-dealatlas-blue text-white hover:bg-primary-hover";
+
 function splitPrice(label: string): { amount: string; period: string } {
   const slash = label.indexOf("/");
   if (slash === -1) return { amount: label, period: "" };
@@ -172,7 +175,10 @@ export function PricingPlans({
           </div>
         </PlanCard>
 
-        <PlanCard>
+        <PlanCard className="border-2 border-dealatlas-blue bg-[color-mix(in_srgb,var(--atlas-blue)_8%,var(--background))]">
+          <p className="absolute -top-3 left-6 rounded-full bg-dealatlas-blue px-2.5 py-0.5 text-xs font-medium text-white">
+            {FOUNDING_COPY.popular}
+          </p>
           <h2 className="font-heading text-xl font-semibold text-balance">Pro monthly</h2>
           <Price label={DISPLAY_PRICING.proMonthly} />
           <p className="mt-1 text-sm text-muted-foreground">{FOUNDING_COPY.monthlyNote}</p>
@@ -182,6 +188,7 @@ export function PricingPlans({
               signedIn={signedIn}
               planKey="PRO_MONTHLY"
               label={FOUNDING_COPY.startMonthly}
+              buttonClassName={POPULAR_BUTTON}
             />
           </div>
         </PlanCard>

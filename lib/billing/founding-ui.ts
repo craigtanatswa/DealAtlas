@@ -157,6 +157,7 @@ export const FOUNDING_COPY = {
   raceAnnual: "Continue with annual",
   raceMonthly: `Choose monthly – ${DISPLAY_PRICING.proMonthly.replace("/month", "/mo")}`,
   recommended: "Recommended",
+  popular: "Popular",
   annualSaving: annualSaveVsMonthly(),
   monthlyNote: "Cancel any time.",
   freeNote: "Browse previews, no card needed.",
