@@ -48,7 +48,7 @@ describe("supabase migrations", () => {
   const files = listMigrations();
   const sql = files.map(readMigration).join("\n");
 
-  it("are numbered 0001-0026, 0028-0030, 0040-0043, 0045-0047, 0049, 0051-0066, leaving 0027, 0031-0039, 0044, 0048 and 0050 for open pull requests", () => {
+  it("are numbered 0001-0026, 0028-0030, 0040-0043, 0045-0047, 0049, 0051-0066, 0068, leaving 0027, 0031-0039, 0044, 0048, 0050 and 0067 for open pull requests", () => {
     expect(files).toEqual([
       "0001_extensions_and_types.sql",
       "0002_core_schema.sql",
@@ -103,6 +103,7 @@ describe("supabase migrations", () => {
       "0064_subscription_refund_revoke.sql",
       "0065_utm_landing_counts.sql",
       "0066_reclassify_private_buyers.sql",
+      "0068_publish_upcoming_early.sql",
     ]);
   });
 
@@ -720,6 +721,35 @@ describe("supabase migrations", () => {
     expect(body).toContain("jsonb_array_elements");
     expect(body).toContain("order by item.ordinality");
     expect(body).not.toMatch(/\b(create|drop|alter|grant)\b/i);
+  });
+
+  it("0068 allows UPCOMING EARLY previews through the unchanged publish gate", () => {
+    const body = readMigration("0068_publish_upcoming_early.sql");
+    expect(body).toContain("create or replace function public.publish_eligible_previews(");
+    expect(body).toContain("create or replace function public.unpublish_stale_previews(");
+    expect(body).toContain("d.status in ('OPEN', 'CLOSING_SOON')");
+    expect(body).toContain("d.stage = 'LIVE'");
+    expect(body).toContain("dp.stage = 'LIVE'");
+    expect(body).toContain("d.stage in ('PLANNING', 'EARLY')");
+    expect(body).toContain("dp.stage = d.stage");
+    expect(body).toContain("d.submission_deadline <= pg_catalog.now() + interval '24 hours'");
+    expect(body).toContain("d.submission_deadline <= pg_catalog.now()");
+    expect(body).toContain("dp.leakage_risk is distinct from 'LOW'::public.leakage_risk");
+    expect(body).toContain("private.detect_preview_leakage(");
+    expect(body).not.toContain("scraping_permitted");
+    expect(body).not.toMatch(/disable row level security/i);
+    expect(body).toContain(
+      "revoke all on function public.publish_eligible_previews(integer, text) from public, anon, authenticated;",
+    );
+    expect(body).toContain(
+      "grant execute on function public.publish_eligible_previews(integer, text) to service_role;",
+    );
+    expect(body).toContain(
+      "revoke all on function public.unpublish_stale_previews(text) from public, anon, authenticated;",
+    );
+    expect(body).toContain(
+      "grant execute on function public.unpublish_stale_previews(text) to service_role;",
+    );
   });
 
   it("adds a disabled TED Search API source and does not publish it", () => {
