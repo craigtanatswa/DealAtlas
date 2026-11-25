@@ -4,6 +4,7 @@ import type { WebhookPayload } from "@dodopayments/core/schemas";
 
 import { captureServerEvent } from "@/lib/analytics/server";
 import { buildProSubscribedEvent } from "@/lib/analytics/server-events";
+import { getAllowedProductIds } from "@/lib/billing/allowed-products";
 import { applyBillingEvent } from "@/lib/billing/apply";
 import { requirePlanProductMap } from "@/lib/billing/config";
 import { extractBillingEvent } from "@/lib/billing/extract";
@@ -11,12 +12,24 @@ import { foundingSideEffect } from "@/lib/billing/founding";
 import { proSubscribedPlan } from "@/lib/billing/analytics";
 import { syncFoundingSlot } from "@/lib/billing/founding-db";
 import {
+  FOREIGN_PRODUCT_WEBHOOK_NOTE,
+  classifyEventProductScope,
+} from "@/lib/billing/product-scope";
+import {
   cancelDodoSubscription,
   reconcileDodoSubscription,
   retrieveDodoPayment,
+  retrieveDodoPaymentForScope,
 } from "@/lib/billing/reconcile";
 import { createBillingStore } from "@/lib/billing/store";
 import type { ApplyResult } from "@/lib/billing/types";
+import { structuredLog } from "@/lib/observability/log";
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
 
 export async function processVerifiedDodoWebhook(input: {
   payload: WebhookPayload;
@@ -24,6 +37,29 @@ export async function processVerifiedDodoWebhook(input: {
   webhookId: string | null;
 }): Promise<ApplyResult> {
   const products = requirePlanProductMap();
+  const store = createBillingStore();
+
+  // Same allowlist as entitlements (#93): this deployment's env product ids.
+  // Events for any other product on the shared Dodo business are acknowledged
+  // and dropped before anything is written.
+  const scope = await classifyEventProductScope({
+    eventType: input.payload.type,
+    data: asRecord(input.payload.data),
+    allowedProductIds: getAllowedProductIds(),
+    store,
+    retrievePayment: (paymentId) => retrieveDodoPaymentForScope(paymentId),
+  });
+  if (scope === "foreign") {
+    structuredLog({
+      level: "warn",
+      msg: FOREIGN_PRODUCT_WEBHOOK_NOTE,
+      event: "dodo_webhook_foreign_product",
+      eventType: input.payload.type,
+      job: "dodo-webhook",
+    });
+    return { outcome: "ignored" };
+  }
+
   const event = extractBillingEvent(
     input.payload,
     input.rawBody,
@@ -31,7 +67,6 @@ export async function processVerifiedDodoWebhook(input: {
     products,
   );
 
-  const store = createBillingStore();
   const result = await applyBillingEvent(event, store, {
     reconcile: async (subscriptionId) => {
       try {

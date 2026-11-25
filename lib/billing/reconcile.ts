@@ -4,7 +4,13 @@ import DodoPayments from "dodopayments";
 
 import { requireDodoApiConfig, requirePlanProductMap } from "@/lib/billing/config";
 import { snapshotFromSubscriptionFields } from "@/lib/billing/extract";
+import type { ScopePaymentFacts } from "@/lib/billing/product-scope";
 import type { PaymentFacts, SubscriptionSnapshot } from "@/lib/billing/types";
+
+export const SCOPE_PAYMENT_LOOKUP_OPTIONS = {
+  timeout: 10_000,
+  maxRetries: 1,
+} as const;
 
 function createDodoClient() {
   const config = requireDodoApiConfig();
@@ -37,6 +43,29 @@ export async function retrieveDodoPayment(
     totalAmount:
       typeof payment.total_amount === "number" ? payment.total_amount : null,
     currency: payment.currency ?? null,
+  };
+}
+
+/** Read-only payment facts plus cart product ids for webhook scope checks. */
+export async function retrieveDodoPaymentForScope(
+  paymentId: string,
+): Promise<ScopePaymentFacts | null> {
+  const client = createDodoClient();
+  const payment = await client.payments.retrieve(
+    paymentId,
+    SCOPE_PAYMENT_LOOKUP_OPTIONS,
+  );
+  const productIds = (payment.product_cart ?? [])
+    .map((item) =>
+      typeof item?.product_id === "string" ? item.product_id.trim() : "",
+    )
+    .filter((id) => id.length > 0);
+  return {
+    subscriptionId: payment.subscription_id ?? null,
+    totalAmount:
+      typeof payment.total_amount === "number" ? payment.total_amount : null,
+    currency: payment.currency ?? null,
+    productIds,
   };
 }
 
