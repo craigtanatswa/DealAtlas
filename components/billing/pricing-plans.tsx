@@ -193,14 +193,7 @@ export function PricingPlans({
           </div>
         </PlanCard>
 
-        <PlanCard
-          className={cn(!showFounding && "border-2 border-primary")}
-        >
-          {!showFounding ? (
-            <p className="absolute -top-3 left-6 rounded-full bg-primary px-2.5 py-0.5 text-xs font-medium text-primary-foreground">
-              {FOUNDING_COPY.recommended}
-            </p>
-          ) : null}
+        <PlanCard>
           <h2 className="font-heading text-xl font-semibold text-balance">Pro annual</h2>
           <ProAnnualPriceLead className="mt-4" />
           <p className="mt-1 text-sm text-muted-foreground">{FOUNDING_COPY.annualSaving}</p>

@@ -90,6 +90,8 @@ describe("lifetime pricing cards", () => {
       "Pro annual",
       "Lifetime deal",
     ]);
+    expect(screen.getByText("Popular")).toBeTruthy();
+    expect(screen.queryByText("Recommended")).toBeNull();
     expect((container.textContent?.match(/Limited places/g) ?? []).length).toBe(1);
     expect(container.textContent).not.toMatch(/\d+\s*places?/i);
     expect(container.textContent).not.toMatch(/\d+\s*places?\s*(left|remaining)|of\s*\d+/i);
@@ -143,12 +145,28 @@ describe("lifetime pricing cards", () => {
       "Pro monthly",
       "Pro annual",
     ]);
-    expect(screen.getByText("Recommended")).toBeTruthy();
+    expect(screen.getByText("Popular")).toBeTruthy();
+    expect(screen.queryByText("Recommended")).toBeNull();
     expect(screen.queryByText("Get the Lifetime deal")).toBeNull();
     expect(screen.queryByRole("heading", { name: "Lifetime deal" })).toBeNull();
     expect(container.querySelector("input[name='offer']")).toBeNull();
     expect(screen.getByRole("link", { name: /Start Pro annual/ })).toBeTruthy();
     expect(screen.getByRole("link", { name: "Create free account" })).toBeTruthy();
+  });
+
+  it("keeps Pro monthly Popular and leaves annual plain when Lifetime is not offered", () => {
+    const { container } = render(
+      <PricingPlans signedIn={false} founding={{ offered: false, sold_out: true }} />,
+    );
+    expect(screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent)).toEqual([
+      "Free",
+      "Pro monthly",
+      "Pro annual",
+    ]);
+    expect(screen.getByText("Popular")).toBeTruthy();
+    expect(screen.queryByText("Recommended")).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Lifetime deal" })).toBeNull();
+    expect(container.textContent).not.toMatch(/The Lifetime deal is sold out/);
   });
 });
 
