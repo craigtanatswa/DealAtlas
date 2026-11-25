@@ -13,9 +13,9 @@ import type {
 } from "@/ingestion/core/types";
 import { IngestionError } from "@/ingestion/core/errors";
 import {
-  categoryFromCpv,
   mapDealStatus,
   mapDealType,
+  resolveMainCategory,
 } from "@/ingestion/normalizers/taxonomy";
 import {
   asRecord,
@@ -153,7 +153,10 @@ export function parseTedNotice(
     description: null,
     isPrimary: index === 0,
   }));
-  const category = categoryFromCpv(cpvCodes[0]);
+  const category = resolveMainCategory(
+    cpvCodes,
+    firstText(notice?.["contract-nature"]),
+  );
   const buyerType = tedBuyerSector(notice?.["buyer-legal-type"]);
   const sector = sectorFromCpv(cpvCodes[0]);
   const countries = countryNames(notice?.["place-of-performance"]);
@@ -241,7 +244,7 @@ export function parseTedNotice(
       now,
       hasAwards: false,
     }),
-    mainCategory: category?.label ?? null,
+    mainCategory: category,
     procurementMethod: firstText(notice?.["procedure-type"]),
     specialRegime: null,
     currency: procedureCurrency,

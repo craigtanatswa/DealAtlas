@@ -93,6 +93,7 @@ describe("TED expert query", () => {
       "org-sub",
     ]);
     expect(TED_SEARCH_FIELDS).toContain("buyer-legal-type");
+    expect(TED_SEARCH_FIELDS).toContain("contract-nature");
     expect(query).toContain(
       "(submission-language = ENG OR buyer-legal-type IN (spec-rights-entity org-sub))",
     );
@@ -131,6 +132,7 @@ describe("TED notice parse", () => {
     expect(candidate?.documents).toHaveLength(1);
     expect(candidate?.exactLocationText).toBe("Sweden");
     expect(candidate?.reference).toBe("REF-CANARY-42");
+    expect(candidate?.mainCategory).toBe("Technology");
 
     const [privateCandidate] = parseTedRaw(
       { notice: { ...readOpenNotice(), "buyer-legal-type": ["org-sub"] } },
@@ -144,6 +146,74 @@ describe("TED notice parse", () => {
       "deadline-receipt-request": ["2026-10-01T00:00:00Z"],
     };
     expect(parseTedNotice(closed, NOW)).toBeNull();
+  });
+
+  it("uses the widened CPV map for a division that was previously unmapped", () => {
+    const [candidate] = parseTedRaw(
+      {
+        notice: {
+          ...readOpenNotice(),
+          "classification-cpv": ["50000000-5"],
+        },
+      },
+      NOW,
+    );
+    expect(candidate?.mainCategory).toBe("Facilities & Property");
+  });
+
+  it("walks secondary CPVs when the primary division is unmapped", () => {
+    const [candidate] = parseTedRaw(
+      {
+        notice: {
+          ...readOpenNotice(),
+          "classification-cpv": ["99000000-1", "34000000-1"],
+        },
+      },
+      NOW,
+    );
+    expect(candidate?.mainCategory).toBe("Transport & Logistics");
+    expect(candidate?.classifications[0]?.isPrimary).toBe(true);
+    expect(candidate?.classifications[1]?.isPrimary).toBe(false);
+  });
+
+  it("falls back to the TED contract nature when no CPV maps", () => {
+    const services = parseTedRaw(
+      {
+        notice: {
+          ...readOpenNotice(),
+          "classification-cpv": ["99000000-1"],
+          "contract-nature": ["services"],
+        },
+      },
+      NOW,
+    )[0];
+    expect(services?.mainCategory).toBe("services");
+
+    const goods = parseTedRaw(
+      {
+        notice: {
+          ...readOpenNotice(),
+          "classification-cpv": [],
+          "contract-nature": { eng: ["supplies"] },
+        },
+      },
+      NOW,
+    )[0];
+    expect(goods?.mainCategory).toBe("goods");
+  });
+
+  it("ignores the contract nature when a CPV maps", () => {
+    const [candidate] = parseTedRaw(
+      {
+        notice: {
+          ...readOpenNotice(),
+          "classification-cpv": ["85000000-1"],
+          "contract-nature": ["works"],
+        },
+      },
+      NOW,
+    );
+    expect(candidate?.mainCategory).toBe("Healthcare");
   });
 
   it("accepts odd optional shapes and still rejects a missing title", () => {

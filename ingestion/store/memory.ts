@@ -66,9 +66,11 @@ export type MemoryIngestionState = {
     lotId: string | null;
   }>;
   classifications: Array<{
+    id: string;
     dealId: string;
     cpvCode: string | null;
     lotId: string | null;
+    categoryId: string | null;
     sourceDescription: string | null;
     isPrimary: boolean;
   }>;
@@ -165,6 +167,13 @@ export function createMemoryIngestionStore(seed?: {
     },
     async listDeals(limit = 100) {
       return state.deals.slice(0, limit);
+    },
+    async listCategoryBackfillDealIds(limit = 100000) {
+      const cap = Math.min(100000, Math.max(1, Math.floor(limit)));
+      return state.deals
+        .map((deal) => deal.id)
+        .sort((left, right) => (left < right ? -1 : left > right ? 1 : 0))
+        .slice(0, cap);
     },
     async listDealIdsMissingPreview(limit = 500) {
       const cap = Math.min(500, Math.max(1, Math.floor(limit)));
@@ -325,6 +334,39 @@ export function createMemoryIngestionStore(seed?: {
           description: item.sourceDescription,
           isPrimary: item.isPrimary,
         }));
+    },
+    async listClassificationsForCategoryBackfill(dealId) {
+      return state.classifications
+        .filter((item) => item.dealId === dealId)
+        .map((item) => ({
+          id: item.id,
+          cpvCode: item.cpvCode,
+          categoryId: item.categoryId,
+          isPrimary: item.isPrimary,
+        }));
+    },
+    async updateDealMainCategory(id, mainCategory) {
+      const deal = state.deals.find((item) => item.id === id);
+      if (!deal) {
+        throw new Error(`Deal ${id} not found`);
+      }
+      deal.mainCategory = mainCategory;
+    },
+    async updateDealPreviewMainCategory(dealId, mainCategory) {
+      const preview = state.previews.find((item) => item.dealId === dealId);
+      if (!preview) {
+        throw new Error(`Preview ${dealId} not found`);
+      }
+      preview.mainCategory = mainCategory;
+    },
+    async updateClassificationCategoryId(classificationId, categoryId) {
+      const classification = state.classifications.find(
+        (item) => item.id === classificationId,
+      );
+      if (!classification) {
+        throw new Error(`Classification ${classificationId} not found`);
+      }
+      classification.categoryId = categoryId;
     },
     async countDocumentsForDeal(dealId) {
       return state.documents.filter((item) => item.dealId === dealId).length;
@@ -816,9 +858,11 @@ export function createMemoryIngestionStore(seed?: {
     },
     async insertClassification(input) {
       state.classifications.push({
+        id: randomUUID(),
         dealId: input.dealId,
         cpvCode: input.cpvCode ?? null,
         lotId: input.lotId ?? null,
+        categoryId: input.categoryId ?? null,
         sourceDescription: input.sourceDescription ?? null,
         isPrimary: input.isPrimary ?? false,
       });

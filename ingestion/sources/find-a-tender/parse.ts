@@ -28,13 +28,13 @@ import {
 import {
   buyerSectorFromClassifications,
   buyerTypeFromClassifications,
-  categoryFromCpv,
   dealSectorFromClassifications,
   mapDealStage,
   mapDealStatus,
   mapDealType,
   mapOrganizationRole,
   mapRequirementType,
+  resolveMainCategory,
 } from "@/ingestion/normalizers/taxonomy";
 import {
   FIND_A_TENDER_PARSER_VERSION,
@@ -374,8 +374,12 @@ export function mapFindATenderRelease(
     tender?.items,
     true,
   );
-  const primaryCpv = classifications.find((item) => item.isPrimary)?.code ?? classifications[0]?.code;
-  const category = categoryFromCpv(primaryCpv);
+  const primaryClassifications = classifications.filter((item) => item.isPrimary);
+  const secondaryClassifications = classifications.filter((item) => !item.isPrimary);
+  const cpvCodes = [...primaryClassifications, ...secondaryClassifications].map(
+    (item) => item.code,
+  );
+  const category = resolveMainCategory(cpvCodes, tender?.mainProcurementCategory);
   const buyerType = buyerTypeFromClassifications(buyerClassifications);
   const privateUtility = buyerClassifications.some(
     (item) =>
@@ -508,7 +512,7 @@ export function mapFindATenderRelease(
       now,
       hasAwards: awards.length > 0,
     }),
-    mainCategory: category?.label ?? tender?.mainProcurementCategory ?? null,
+    mainCategory: category,
     procurementMethod: blankToNull(tender?.procurementMethod ?? null),
     specialRegime: blankToNull(tender?.procurementMethodDetails ?? null),
     currency,

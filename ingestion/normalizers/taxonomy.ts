@@ -30,7 +30,64 @@ const CPV_CATEGORY: Array<{ prefix: string; slug: string; label: string }> = [
   { prefix: "79", slug: "professional-services", label: "Professional Services" },
   { prefix: "71", slug: "professional-services", label: "Professional Services" },
   { prefix: "39", slug: "office-business-supplies", label: "Office & Business Supplies" },
+  // 03 Agricultural, farming, fishing, forestry and related products
+  { prefix: "03", slug: "food-catering", label: "Food & Catering" },
+  // 14 Mining, basic metals and related products
+  { prefix: "14", slug: "manufacturing-industrial", label: "Manufacturing & Industrial" },
+  // 16 Agricultural machinery
+  { prefix: "16", slug: "manufacturing-industrial", label: "Manufacturing & Industrial" },
+  // 18 Clothing, footwear, luggage articles and accessories
+  { prefix: "18", slug: "other", label: "Other" },
+  // 19 Leather and textile fabrics, plastic and rubber materials
+  { prefix: "19", slug: "manufacturing-industrial", label: "Manufacturing & Industrial" },
+  // 22 Printed matter and related products
+  { prefix: "22", slug: "office-business-supplies", label: "Office & Business Supplies" },
+  // 24 Chemical products
+  { prefix: "24", slug: "manufacturing-industrial", label: "Manufacturing & Industrial" },
+  // 31 Electrical machinery, apparatus, equipment and consumables; lighting
+  { prefix: "31", slug: "manufacturing-industrial", label: "Manufacturing & Industrial" },
+  // 34 Transport equipment and auxiliary products to transportation
+  { prefix: "34", slug: "transport-logistics", label: "Transport & Logistics" },
+  // 35 Security, fire-fighting, police and defence equipment
+  { prefix: "35", slug: "facilities-property", label: "Facilities & Property" },
+  // 37 Musical instruments, sport goods, games, toys, handicraft, art materials
+  { prefix: "37", slug: "other", label: "Other" },
+  // 38 Laboratory, optical and precision equipments
+  { prefix: "38", slug: "technology", label: "Technology" },
+  // 41 Collected and purified water
+  { prefix: "41", slug: "energy-utilities", label: "Energy & Utilities" },
+  // 42 Industrial machinery
+  { prefix: "42", slug: "manufacturing-industrial", label: "Manufacturing & Industrial" },
+  // 43 Machinery for mining, quarrying, construction equipment
+  { prefix: "43", slug: "construction-infrastructure", label: "Construction & Infrastructure" },
+  // 50 Repair and maintenance services
+  { prefix: "50", slug: "facilities-property", label: "Facilities & Property" },
+  // 51 Installation services (except software)
+  { prefix: "51", slug: "facilities-property", label: "Facilities & Property" },
+  // 66 Financial and insurance services
+  { prefix: "66", slug: "professional-services", label: "Professional Services" },
+  // 70 Real estate services
+  { prefix: "70", slug: "facilities-property", label: "Facilities & Property" },
+  // 73 Research and development services and related consultancy
+  { prefix: "73", slug: "professional-services", label: "Professional Services" },
+  // 75 Administration, defence and social security services
+  { prefix: "75", slug: "professional-services", label: "Professional Services" },
+  // 76 Services related to the oil and gas industry
+  { prefix: "76", slug: "energy-utilities", label: "Energy & Utilities" },
+  // 77 Agricultural, forestry, horticultural, aquacultural and apicultural services
+  { prefix: "77", slug: "other", label: "Other" },
+  // 92 Recreational, cultural and sporting services
+  { prefix: "92", slug: "other", label: "Other" },
+  // 98 Other community, social and personal services
+  { prefix: "98", slug: "other", label: "Other" },
 ];
+
+const CONTRACT_NATURE_LABELS: Readonly<Record<string, string>> = {
+  goods: "goods",
+  services: "services",
+  works: "works",
+  supplies: "goods",
+};
 
 export function categoryFromCpv(
   code: string | null | undefined,
@@ -39,7 +96,40 @@ export function categoryFromCpv(
     return null;
   }
   const prefix = code.replace(/\D/g, "").slice(0, 2);
-  return CPV_CATEGORY.find((entry) => entry.prefix === prefix) ?? null;
+  const match = CPV_CATEGORY.find((entry) => entry.prefix === prefix);
+  return match ? { slug: match.slug, label: match.label } : null;
+}
+
+export function categoryFromCpvs(
+  codes: Array<string | null | undefined>,
+): { slug: string; label: string } | null {
+  for (const code of codes) {
+    const category = categoryFromCpv(code);
+    if (category) {
+      return category;
+    }
+  }
+  return null;
+}
+
+export function categoryLabelFromContractNature(
+  nature: string | null | undefined,
+): string | null {
+  if (!nature) {
+    return null;
+  }
+  return CONTRACT_NATURE_LABELS[nature.trim().toLowerCase()] ?? null;
+}
+
+export function resolveMainCategory(
+  codes: Array<string | null | undefined>,
+  nature: string | null | undefined,
+): string | null {
+  return (
+    categoryFromCpvs(codes)?.label ??
+    categoryLabelFromContractNature(nature) ??
+    null
+  );
 }
 
 export function buyerSectorFromClassifications(

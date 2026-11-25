@@ -17,6 +17,57 @@ describe("Find a Tender OCDS parse", () => {
     expect(candidate.organizations[0]?.identifier?.scheme).toBe("GB-PPON");
     expect(candidate.sourceUrl).toContain("/Notice/000001-2026");
     expect(candidate.valueMaxExVat).toBe(250000);
+    expect(candidate.mainCategory).toBe("Technology");
+  });
+
+  it("uses the expanded CPV map for a previously unmapped primary division", () => {
+    const payload = structuredClone(readFindATenderFixture("normal.json")) as {
+      releases: Array<{ tender: { classification?: { id: string } } }>;
+    };
+    payload.releases[0]!.tender.classification!.id = "50000000-5";
+
+    const [candidate] = parseFindATenderRaw(payload, NOW);
+    expect(candidate.mainCategory).toBe("Facilities & Property");
+  });
+
+  it("walks secondary CPVs when the primary division is unmapped", () => {
+    const payload = structuredClone(readFindATenderFixture("normal.json")) as {
+      releases: Array<{
+        tender: {
+          classification?: { id: string };
+          items?: Array<{ additionalClassifications?: Array<{ id: string }> }>;
+        };
+      }>;
+    };
+    payload.releases[0]!.tender.classification!.id = "99000000-1";
+    payload.releases[0]!.tender.items![0]!.additionalClassifications![0]!.id =
+      "34000000-1";
+
+    const [candidate] = parseFindATenderRaw(payload, NOW);
+    expect(candidate.mainCategory).toBe("Transport & Logistics");
+    expect(candidate.classifications.find((item) => item.isPrimary)?.code).toBe(
+      "99000000-1",
+    );
+  });
+
+  it("keeps the coarse procurement-category fallback when no CPV maps", () => {
+    const payload = structuredClone(readFindATenderFixture("normal.json")) as {
+      releases: Array<{
+        tender: {
+          classification?: unknown;
+          items?: Array<{ additionalClassifications?: unknown }>;
+          mainProcurementCategory?: string;
+        };
+      }>;
+    };
+    delete payload.releases[0]!.tender.classification;
+    for (const item of payload.releases[0]!.tender.items ?? []) {
+      item.additionalClassifications = [];
+    }
+    payload.releases[0]!.tender.mainProcurementCategory = "supplies";
+
+    const [candidate] = parseFindATenderRaw(payload, NOW);
+    expect(candidate.mainCategory).toBe("goods");
   });
 
   it("maps a UK_CA_TYPE private utility buyer to PRIVATE", () => {

@@ -318,6 +318,8 @@ export type IngestionStore = {
   getOrganizationById(id: string): Promise<OrganizationRecord | null>;
   listOrganizationAliases(organizationId: string): Promise<string[]>;
   listDeals(limit?: number): Promise<DealRecord[]>;
+  /** Deal ids for the label-only category backfill CLI, ordered by id. */
+  listCategoryBackfillDealIds(limit?: number): Promise<string[]>;
   listPreviewRebuildDealIds(options?: {
     afterId?: string | null;
     limit?: number;
@@ -382,6 +384,23 @@ export type IngestionStore = {
   listClassificationsForDeal(
     dealId: string,
   ): Promise<Array<{ code: string | null; description: string | null; isPrimary: boolean }>>;
+  listClassificationsForCategoryBackfill(
+    dealId: string,
+  ): Promise<
+    Array<{
+      id: string;
+      cpvCode: string | null;
+      categoryId: string | null;
+      isPrimary: boolean;
+    }>
+  >;
+  /** Category-only writes used by the label-only backfill CLI. */
+  updateDealMainCategory(id: string, mainCategory: string): Promise<void>;
+  updateDealPreviewMainCategory(dealId: string, mainCategory: string): Promise<void>;
+  updateClassificationCategoryId(
+    classificationId: string,
+    categoryId: string,
+  ): Promise<void>;
   countDocumentsForDeal(dealId: string): Promise<number>;
   updateSource(
     id: string,
